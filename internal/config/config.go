@@ -104,6 +104,9 @@ func applyEnv(cfg *Config) {
 	if v := os.Getenv("NL_REGION"); v != "" {
 		cfg.Region = v
 	}
+	if v := os.Getenv("NL_DB_PATH"); v != "" {
+		cfg.DBPath = v
+	}
 	cfg.WorkivaClientID = os.Getenv("NL_WORKIVA_CLIENT_ID")
 	cfg.WorkivaClientSecret = os.Getenv("NL_WORKIVA_CLIENT_SECRET")
 }

@@ -11,6 +11,7 @@ import (
 // them so the host environment cannot leak into assertions.
 var configEnvKeys = []string{
 	"NL_REGION",
+	"NL_DB_PATH",
 	"NL_WORKIVA_CLIENT_ID",
 	"NL_WORKIVA_CLIENT_SECRET",
 }
@@ -97,6 +98,19 @@ func TestMalformedYAMLErrors(t *testing.T) {
 	path := writeYAML(t, "region: [unclosed\n")
 	if _, err := Load(path); err == nil {
 		t.Fatal("Load with malformed YAML: expected error, got nil")
+	}
+}
+
+func TestEnvDBPathOverridesYAML(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("NL_DB_PATH", "/data/northern-lights.db")
+	path := writeYAML(t, "db_path: /tmp/from-yaml.db\n")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.DBPath != "/data/northern-lights.db" {
+		t.Errorf("DBPath = %q, want env override /data/northern-lights.db", cfg.DBPath)
 	}
 }
 

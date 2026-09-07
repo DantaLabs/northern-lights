@@ -1,0 +1,13 @@
+services:
+  workiva-mcp:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+    container_name: northern-lights-workiva-mcp
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    env_file:
+      - .env
+    restart: unless-stopped
