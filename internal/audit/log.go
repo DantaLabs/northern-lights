@@ -182,6 +182,96 @@ func normalizeTs(v any) (string, error) {
 
 const auditColumns = `seq, ts, actor, tool, action, target, before_json, after_json, workiva_op_url, prev_hash, hash`
 
+// scanEntry reads one audit row from an active cursor.
+func scanEntry(rows interface {
+	Scan(dest ...any) error
+}) (Entry, error) {
+	var (
+		e      Entry
+		tsRaw  any
+		before sql.NullString
+		after  sql.NullString
+		opURL  sql.NullString
+		actor  sql.NullString
+		tool   sql.NullString
+		action sql.NullString
+		target sql.NullString
+		prev   sql.NullString
+		hash   sql.NullString
+	)
+	err := rows.Scan(&e.Seq, &tsRaw, &actor, &tool, &action, &target, &before, &after, &opURL, &prev, &hash)
+	if err != nil {
+		return Entry{}, err
+	}
+	ts, err := normalizeTs(tsRaw)
+	if err != nil {
+		return Entry{}, err
+	}
+	if t, err := time.ParseInLocation(timeFormat, ts, time.UTC); err == nil {
+		e.Ts = t
+	}
+	if actor.Valid {
+		e.Actor = actor.String
+	}
+	if tool.Valid {
+		e.Tool = tool.String
+	}
+	if action.Valid {
+		e.Action = action.String
+	}
+	if target.Valid {
+		e.Target = target.String
+	}
+	if before.Valid {
+		e.BeforeJSON = before.String
+	}
+	if after.Valid {
+		e.AfterJSON = after.String
+	}
+	if opURL.Valid {
+		e.WorkivaOpURL = opURL.String
+	}
+	if prev.Valid {
+		e.PrevHash = prev.String
+	}
+	if hash.Valid {
+		e.Hash = hash.String
+	}
+	return e, nil
+}
+
+// Recent returns up to limit entries, newest first. When target is not
+// empty only entries with that exact target (for example a spreadsheet,
+// sheet, and range such as "ss-1/sh-1/B3") are returned. A non-positive
+// limit behaves like 20.
+func (l *Log) Recent(ctx context.Context, limit int, target string) ([]Entry, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	rows, err := l.db.QueryContext(ctx,
+		`SELECT `+auditColumns+` FROM audit_log
+		 WHERE ? = '' OR target = ?
+		 ORDER BY seq DESC LIMIT ?`,
+		target, target, limit)
+	if err != nil {
+		return nil, fmt.Errorf("audit: recent: %w", err)
+	}
+	defer rows.Close()
+
+	out := []Entry{}
+	for rows.Next() {
+		e, err := scanEntry(rows)
+		if err != nil {
+			return nil, fmt.Errorf("audit: recent: scan row: %w", err)
+		}
+		out = append(out, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("audit: recent: %w", err)
+	}
+	return out, nil
+}
+
 // Verify walks the chain in seq order and recomputes every hash. It returns
 // an error identifying the first broken seq, or nil when the chain is
 // intact.

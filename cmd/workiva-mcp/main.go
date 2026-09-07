@@ -21,6 +21,7 @@ import (
 	"github.com/dantalabs/northern-lights/internal/config"
 	"github.com/dantalabs/northern-lights/internal/mapping"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
+	"github.com/dantalabs/northern-lights/internal/mcpserver/tools"
 	"github.com/dantalabs/northern-lights/internal/ratelimit"
 	"github.com/dantalabs/northern-lights/internal/workiva"
 )
@@ -82,8 +83,17 @@ func run() error {
 	client := workiva.NewClient(baseURL, tokens, ratelimit.NewLimiter(), httpClient)
 
 	registry := mcpserver.NewRegistry()
-	// Builtin tools are registered here in a later task; the registry is
-	// the public extension point for additional tools.
+	for _, tool := range []mcpserver.Tool{
+		tools.ListSpreadsheets(),
+		tools.ReadRange(),
+		tools.SearchFields(),
+		tools.GetField(),
+		tools.UpdateField(),
+		tools.SyncMapping(),
+		tools.AuditTrail(),
+	} {
+		registry.Register(tool)
+	}
 
 	handler, err := mcpserver.New(mcpserver.Deps{
 		Client: client,

@@ -8,6 +8,7 @@ package mapping
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -39,6 +40,24 @@ CREATE TABLE IF NOT EXISTS snapshots (
   PRIMARY KEY (spreadsheet_id, sheet_id, cell)
 );
 `
+
+// migration0002 adds the pending writes table used by the two-phase
+// write confirmation flow of workiva_update_field. It is additive:
+// CREATE TABLE IF NOT EXISTS, no changes to existing tables.
+const migration0002 = `
+CREATE TABLE IF NOT EXISTS pending_writes (
+  token TEXT PRIMARY KEY,
+  field_id INTEGER NOT NULL,
+  field_name TEXT NOT NULL,
+  value TEXT NOT NULL,
+  created_at DATETIME NOT NULL
+);
+`
+
+// ErrPendingWriteExpired is returned by ConsumePendingWrite when a pending
+// write exists but is older than the allowed age. The expired row is
+// deleted as part of the consume.
+var ErrPendingWriteExpired = errors.New("mapping: pending write expired")
 
 // timeFormat is the storage format for DATETIME values. It sorts
 // lexicographically in chronological order, which lets SQL comparisons
@@ -107,6 +126,10 @@ func Open(path string) (*Store, error) {
 	// SQLITE_BUSY errors on concurrent writes while keeping reads simple.
 	db.SetMaxOpenConns(1)
 	if _, err := db.Exec(migration0001); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("mapping: migrate: %w", err)
+	}
+	if _, err := db.Exec(migration0002); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("mapping: migrate: %w", err)
 	}
@@ -333,4 +356,72 @@ func (s *Store) GetCachedCells(ctx context.Context, spreadsheetID, sheetID strin
 		return nil, fmt.Errorf("mapping: get cached cells %s/%s: %w", spreadsheetID, sheetID, err)
 	}
 	return out, nil
+}
+
+// PendingWrite is a staged write awaiting user confirmation in the
+// two-phase flow of workiva_update_field. Token is an opaque identifier
+// (a UUID) presented by the caller on the second call.
+type PendingWrite struct {
+	Token     string
+	FieldID   int64
+	FieldName string
+	Value     string
+	CreatedAt time.Time
+}
+
+// CreatePendingWrite stores one staged write. Reusing a token replaces
+// the previous entry.
+func (s *Store) CreatePendingWrite(ctx context.Context, w PendingWrite) error {
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO pending_writes (token, field_id, field_name, value, created_at)
+		 VALUES (?, ?, ?, ?, ?)
+		 ON CONFLICT(token) DO UPDATE SET
+		   field_id = excluded.field_id, field_name = excluded.field_name,
+		   value = excluded.value, created_at = excluded.created_at`,
+		w.Token, w.FieldID, w.FieldName, w.Value, formatTime(w.CreatedAt))
+	if err != nil {
+		return fmt.Errorf("mapping: create pending write: %w", err)
+	}
+	return nil
+}
+
+// ConsumePendingWrite returns the staged write for token and deletes it,
+// so every token is single use. An unknown token yields (nil, nil). A
+// token whose write is older than maxAge yields (nil,
+// ErrPendingWriteExpired); the expired row is deleted as part of the
+// consume.
+func (s *Store) ConsumePendingWrite(ctx context.Context, token string, maxAge time.Duration) (*PendingWrite, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("mapping: consume pending write: %w", err)
+	}
+	defer tx.Rollback()
+
+	var (
+		w         PendingWrite
+		createdAt time.Time
+	)
+	err = tx.QueryRowContext(ctx,
+		`SELECT field_id, field_name, value, created_at FROM pending_writes WHERE token = ?`,
+		token).Scan(&w.FieldID, &w.FieldName, &w.Value, &createdAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("mapping: consume pending write: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `DELETE FROM pending_writes WHERE token = ?`, token); err != nil {
+		return nil, fmt.Errorf("mapping: consume pending write: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("mapping: consume pending write: %w", err)
+	}
+
+	w.Token = token
+	w.CreatedAt = createdAt
+	if time.Since(createdAt) > maxAge {
+		return nil, ErrPendingWriteExpired
+	}
+	return &w, nil
 }
