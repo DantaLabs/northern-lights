@@ -1,0 +1,5 @@
+bin/
+/workiva-mcp
+*.db
+*.db-shm
+*.db-wal
