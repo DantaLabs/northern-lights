@@ -17,6 +17,8 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	"github.com/dantalabs/northern-lights/internal/sqlitedb"
 )
 
 // genesisHash is the prev_hash of the first row in the chain.
@@ -66,9 +68,10 @@ type Log struct {
 
 // Open opens (creating if needed) the SQLite database at path and applies
 // the schema migration. Use ":memory:" for an ephemeral log. The Log owns
-// the handle; Close releases it.
+// the handle; Close releases it. File-backed databases enable WAL and a
+// busy timeout so this log can share one file with the mapping store.
 func Open(path string) (*Log, error) {
-	db, err := sql.Open("sqlite", path)
+	db, err := sql.Open("sqlite", sqlitedb.SharedFileDSN(path))
 	if err != nil {
 		return nil, fmt.Errorf("audit: open %q: %w", path, err)
 	}

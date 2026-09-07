@@ -12,6 +12,8 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	"github.com/dantalabs/northern-lights/internal/sqlitedb"
 )
 
 // migration0001 creates the mapping schema. The exact column layout is part
@@ -94,8 +96,10 @@ type Store struct {
 
 // Open opens (creating if needed) the SQLite database at path and applies
 // the schema migration. Use ":memory:" for an ephemeral database.
+// File-backed databases enable WAL and a busy timeout so the store can
+// share one file with the audit log.
 func Open(path string) (*Store, error) {
-	db, err := sql.Open("sqlite", path)
+	db, err := sql.Open("sqlite", sqlitedb.SharedFileDSN(path))
 	if err != nil {
 		return nil, fmt.Errorf("mapping: open %q: %w", path, err)
 	}
