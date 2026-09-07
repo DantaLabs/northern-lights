@@ -27,6 +27,9 @@ type Config struct {
 	ListenAddr               string
 	ReadCacheTTL             time.Duration
 	RequireWriteConfirmation bool
+	// DemoMode swaps the Workiva client for a synthetic fixture client so
+	// the server can be tried without real Workiva credentials.
+	DemoMode bool
 }
 
 // rawConfig mirrors the YAML file. Pointer fields distinguish an absent
@@ -109,6 +112,7 @@ func applyEnv(cfg *Config) {
 	}
 	cfg.WorkivaClientID = os.Getenv("NL_WORKIVA_CLIENT_ID")
 	cfg.WorkivaClientSecret = os.Getenv("NL_WORKIVA_CLIENT_SECRET")
+	cfg.DemoMode = os.Getenv("NL_DEMO_MODE") == "true"
 }
 
 // BaseURL returns the Workiva API base URL for the configured region.

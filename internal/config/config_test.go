@@ -14,6 +14,7 @@ var configEnvKeys = []string{
 	"NL_DB_PATH",
 	"NL_WORKIVA_CLIENT_ID",
 	"NL_WORKIVA_CLIENT_SECRET",
+	"NL_DEMO_MODE",
 }
 
 func clearEnv(t *testing.T) {
@@ -121,6 +122,18 @@ func TestDefaults(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 	assertDefaults(t, cfg)
+}
+
+func TestDemoModeFromEnv(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("NL_DEMO_MODE", "true")
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.DemoMode {
+		t.Error("DemoMode = false, want true")
+	}
 }
 
 func assertDefaults(t *testing.T, cfg *Config) {

@@ -30,6 +30,9 @@ import (
 // version is set at build time via -ldflags.
 var version = "dev"
 
+// demoStartupMessage is printed when NL_DEMO_MODE is enabled.
+const demoStartupMessage = "DEMO MODE: no Workiva credentials required. All data is synthetic."
+
 func main() {
 	if err := run(); err != nil {
 		log.Fatalf("workiva-mcp: %v", err)
@@ -47,80 +50,11 @@ func run() error {
 		return nil
 	}
 
-	cfg, err := config.Load(*configPath)
-	if err != nil {
-		return fmt.Errorf("load config: %w", err)
-	}
-	if cfg.WorkivaClientID == "" || cfg.WorkivaClientSecret == "" {
-		return errors.New("NL_WORKIVA_CLIENT_ID and NL_WORKIVA_CLIENT_SECRET must be set")
-	}
-	apiToken, err := mcpserver.EnvAPIToken()
+	cfg, handler, cleanup, err := buildServer(*configPath, *mappingsPath)
 	if err != nil {
 		return err
 	}
-
-	// The mapping store and audit log open separate handles on the same
-	// SQLite file. Each handle pins MaxOpenConns(1), so writes serialize
-	// within each package and brief SQLITE_BUSY contention between them is
-	// possible under heavy load but self-correcting; keeping the handles
-	// independent lets the audit log be verified and exported standalone.
-	store, err := mapping.Open(cfg.DBPath)
-	if err != nil {
-		return fmt.Errorf("open mapping store: %w", err)
-	}
-	defer store.Close()
-
-	// Seed the store from a declarative mappings file when present.
-	path := *mappingsPath
-	if path == "" {
-		const defaultMappings = "configs/config.yaml"
-		if _, err := os.Stat(defaultMappings); err == nil {
-			path = defaultMappings
-		}
-	}
-	if path != "" {
-		if err := bootstrap.LoadMappings(context.Background(), path, store); err != nil {
-			return fmt.Errorf("load mappings: %w", err)
-		}
-		log.Printf("loaded mappings from %s", path)
-	}
-
-	auditLog, err := audit.Open(cfg.DBPath)
-	if err != nil {
-		return fmt.Errorf("open audit log: %w", err)
-	}
-	defer auditLog.Close()
-
-	baseURL, err := url.Parse(cfg.BaseURL())
-	if err != nil {
-		return fmt.Errorf("parse base URL: %w", err)
-	}
-	httpClient := &http.Client{Timeout: 60 * time.Second}
-	tokens := workiva.NewTokenProvider(baseURL, cfg.WorkivaClientID, cfg.WorkivaClientSecret, "file:read file:write", httpClient)
-	client := workiva.NewClient(baseURL, tokens, ratelimit.NewLimiter(), httpClient)
-
-	registry := mcpserver.NewRegistry()
-	for _, tool := range []mcpserver.Tool{
-		tools.ListSpreadsheets(),
-		tools.ReadRange(),
-		tools.SearchFields(),
-		tools.GetField(),
-		tools.UpdateField(),
-		tools.SyncMapping(),
-		tools.AuditTrail(),
-	} {
-		registry.Register(tool)
-	}
-
-	handler, err := mcpserver.New(mcpserver.Deps{
-		Client: client,
-		Store:  store,
-		Audit:  auditLog,
-		Cfg:    cfg,
-	}, registry, &mcpserver.Options{APIToken: apiToken, Version: version})
-	if err != nil {
-		return err
-	}
+	defer cleanup()
 
 	srv := &http.Server{
 		Addr:              cfg.ListenAddr,
@@ -151,4 +85,133 @@ func run() error {
 		}
 		return err
 	}
+}
+
+// buildServer loads configuration, opens the store and audit log, builds
+// the Workiva client, and returns the MCP HTTP handler. cleanup closes the
+// store and audit log. It is extracted so integration tests can construct
+// the same handler the binary serves without starting a listener.
+func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler, func(), error) {
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("load config: %w", err)
+	}
+
+	apiToken, err := mcpserver.EnvAPIToken()
+	if err != nil {
+		if !cfg.DemoMode {
+			return nil, nil, nil, err
+		}
+		// In demo mode a hard-coded API key keeps the one-liner easy.
+		apiToken = "demo"
+	}
+
+	if cfg.DemoMode {
+		log.Println(demoStartupMessage)
+		if cfg.WorkivaClientID == "" {
+			cfg.WorkivaClientID = "demo"
+		}
+		if cfg.WorkivaClientSecret == "" {
+			cfg.WorkivaClientSecret = "demo"
+		}
+		cfg.RequireWriteConfirmation = true
+	}
+
+	if cfg.WorkivaClientID == "" || cfg.WorkivaClientSecret == "" {
+		return nil, nil, nil, errors.New("NL_WORKIVA_CLIENT_ID and NL_WORKIVA_CLIENT_SECRET must be set (or enable NL_DEMO_MODE=true)")
+	}
+
+	store, err := mapping.Open(cfg.DBPath)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("open mapping store: %w", err)
+	}
+
+	// Seed the store from a declarative mappings file when present, or
+	// from the built-in demo fixture when running in demo mode.
+	path := mappingsPath
+	if cfg.DemoMode {
+		if err := bootstrap.LoadDemoMappings(context.Background(), store); err != nil {
+			store.Close()
+			return nil, nil, nil, fmt.Errorf("load demo mappings: %w", err)
+		}
+		log.Println("loaded demo mappings")
+	} else {
+		if path == "" {
+			const defaultMappings = "configs/config.yaml"
+			if _, err := os.Stat(defaultMappings); err == nil {
+				path = defaultMappings
+			}
+		}
+		if path != "" {
+			if err := bootstrap.LoadMappings(context.Background(), path, store); err != nil {
+				store.Close()
+				return nil, nil, nil, fmt.Errorf("load mappings: %w", err)
+			}
+			log.Printf("loaded mappings from %s", path)
+		}
+	}
+
+	auditLog, err := audit.Open(cfg.DBPath)
+	if err != nil {
+		store.Close()
+		return nil, nil, nil, fmt.Errorf("open audit log: %w", err)
+	}
+
+	cleanup := func() {
+		auditLog.Close()
+		store.Close()
+	}
+
+	if cfg.DemoMode {
+		if _, err := auditLog.Append(context.Background(), audit.Entry{
+			Actor:  "setup",
+			Tool:   "system",
+			Action: "init",
+			Target: "demo",
+		}); err != nil {
+			cleanup()
+			return nil, nil, nil, fmt.Errorf("seed demo audit entry: %w", err)
+		}
+	}
+
+	baseURL, err := url.Parse(cfg.BaseURL())
+	if err != nil {
+		cleanup()
+		return nil, nil, nil, fmt.Errorf("parse base URL: %w", err)
+	}
+
+	var client *workiva.Client
+	if cfg.DemoMode {
+		client = workiva.NewDemoClient(baseURL)
+	} else {
+		httpClient := &http.Client{Timeout: 60 * time.Second}
+		tokens := workiva.NewTokenProvider(baseURL, cfg.WorkivaClientID, cfg.WorkivaClientSecret, "file:read file:write", httpClient)
+		client = workiva.NewClient(baseURL, tokens, ratelimit.NewLimiter(), httpClient)
+	}
+
+	registry := mcpserver.NewRegistry()
+	for _, tool := range []mcpserver.Tool{
+		tools.ListSpreadsheets(),
+		tools.ReadRange(),
+		tools.SearchFields(),
+		tools.GetField(),
+		tools.UpdateField(),
+		tools.SyncMapping(),
+		tools.AuditTrail(),
+	} {
+		registry.Register(tool)
+	}
+
+	handler, err := mcpserver.New(mcpserver.Deps{
+		Client: client,
+		Store:  store,
+		Audit:  auditLog,
+		Cfg:    cfg,
+	}, registry, &mcpserver.Options{APIToken: apiToken, Version: version})
+	if err != nil {
+		cleanup()
+		return nil, nil, nil, err
+	}
+
+	return cfg, handler, cleanup, nil
 }

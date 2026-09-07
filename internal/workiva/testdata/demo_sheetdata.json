@@ -1,0 +1,61 @@
+{
+  "range": {
+    "startRow": 0,
+    "startColumn": 0,
+    "stopRow": 5,
+    "stopColumn": 3
+  },
+  "cells": [
+    [
+      { "value": "Field" },
+      { "value": "Value" },
+      { "value": "Unit" },
+      { "value": "Source" }
+    ],
+    [
+      { "value": "Scope 1 stationary combustion" },
+      { "value": "125000", "calculatedValue": 125000 },
+      { "value": "kWh" },
+      { "value": "Site survey" }
+    ],
+    [
+      { "value": "Scope 2 purchased electricity" },
+      { "value": "100000", "calculatedValue": 100000 },
+      { "value": "kWh" },
+      { "value": "Utility invoices" }
+    ],
+    [
+      { "value": "Total energy consumption" },
+      { "value": "=B2+B3", "calculatedValue": 225000 },
+      { "value": "kWh" },
+      { "value": "Calculated" }
+    ],
+    [
+      { "value": "Renewable energy share" },
+      { "value": "=B3/B4", "calculatedValue": 0.4444 },
+      { "value": "%" },
+      { "value": "Calculated" }
+    ],
+    [
+      { "value": "Energy intensity" },
+      { "value": "=B4/50000", "calculatedValue": 4.5 },
+      { "value": "kWh/FTE" },
+      { "value": "HR + Operations" }
+    ]
+  ],
+  "merges": [],
+  "columnMetadata": [
+    { "column": 0, "width": 220 },
+    { "column": 1, "width": 120 },
+    { "column": 2, "width": 100 },
+    { "column": 3, "width": 180 }
+  ],
+  "rowMetadata": [
+    { "row": 0, "height": 22 },
+    { "row": 1, "height": 20 },
+    { "row": 2, "height": 20 },
+    { "row": 3, "height": 20 },
+    { "row": 4, "height": 20 },
+    { "row": 5, "height": 20 }
+  ]
+}

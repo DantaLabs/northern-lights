@@ -150,3 +150,56 @@ func TestLoadMappingsUpdatesExistingRows(t *testing.T) {
 		t.Errorf("field after update = %+v, want B2/moved", f)
 	}
 }
+
+func TestDemoMappingsCount(t *testing.T) {
+	f := DemoMappings()
+	if len(f.Spreadsheets) != 2 {
+		t.Fatalf("expected 2 spreadsheets, got %d", len(f.Spreadsheets))
+	}
+	sheetCount := 0
+	fieldCount := 0
+	for _, sp := range f.Spreadsheets {
+		sheetCount += len(sp.Sheets)
+		for _, sh := range sp.Sheets {
+			fieldCount += len(sh.Fields)
+		}
+	}
+	if sheetCount != 3 {
+		t.Errorf("expected 3 sheets, got %d", sheetCount)
+	}
+	if fieldCount != 10 {
+		t.Errorf("expected 10 fields, got %d", fieldCount)
+	}
+}
+
+func TestLoadDemoMappings(t *testing.T) {
+	store, err := mapping.Open(":memory:")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+	if err := LoadDemoMappings(ctx, store); err != nil {
+		t.Fatalf("LoadDemoMappings: %v", err)
+	}
+
+	spreadsheets, err := store.ListSpreadsheets(ctx)
+	if err != nil {
+		t.Fatalf("ListSpreadsheets: %v", err)
+	}
+	if len(spreadsheets) != 2 {
+		t.Errorf("expected 2 spreadsheets, got %d", len(spreadsheets))
+	}
+
+	field, err := store.GetField(ctx, "total_energy_consumption_kwh")
+	if err != nil {
+		t.Fatalf("GetField: %v", err)
+	}
+	if field == nil {
+		t.Fatal("expected total_energy_consumption_kwh field")
+	}
+	if field.CellRange != "B4" {
+		t.Errorf("range = %q, want B4", field.CellRange)
+	}
+}

@@ -44,6 +44,57 @@ type FieldEntry struct {
 	Description string `yaml:"description"`
 }
 
+// DemoMappings returns the static mapping seeded when NL_DEMO_MODE is
+// enabled. It mirrors the VSME energy-report fixture so every demo field
+// resolves to a cell in the synthetic sheetdata response.
+func DemoMappings() File {
+	return File{
+		Region: "eu",
+		Spreadsheets: []SpreadsheetEntry{
+			{
+				ID:   "demo-sp-energy-2026",
+				Name: "VSME Energy Report 2026",
+				Sheets: []SheetEntry{
+					{
+						ID:   "demo-sh-b3-energy",
+						Name: "B3 Energy",
+						Fields: []FieldEntry{
+							{Name: "scope1_stationary_combustion_kwh", Range: "B2", Aliases: "scope 1,direct emissions", FieldType: "number", Description: "Scope 1 stationary combustion energy consumption"},
+							{Name: "scope2_purchased_electricity_kwh", Range: "B3", Aliases: "scope 2,purchased electricity", FieldType: "number", Description: "Scope 2 purchased electricity energy consumption"},
+							{Name: "total_energy_consumption_kwh", Range: "B4", Aliases: "total energy,energy consumption", FieldType: "number", Description: "Total energy consumption across scopes 1 and 2"},
+							{Name: "renewable_energy_share_pct", Range: "B5", Aliases: "renewable share,renewable percentage", FieldType: "percent", Description: "Share of renewable energy in total consumption"},
+							{Name: "energy_intensity_kwh_fte", Range: "B6", Aliases: "energy intensity,intensity", FieldType: "number", Description: "Energy intensity per full-time equivalent"},
+						},
+					},
+					{
+						ID:   "demo-sh-reference",
+						Name: "Reference data",
+						Fields: []FieldEntry{
+							{Name: "employee_count", Range: "B2", FieldType: "number", Description: "Number of full-time equivalents used for intensity calculation"},
+							{Name: "electricity_rate_eur_kwh", Range: "B3", FieldType: "currency", Description: "Average electricity rate applied to energy cost estimates"},
+						},
+					},
+				},
+			},
+			{
+				ID:   "demo-sp-energy-2025",
+				Name: "VSME Energy Report 2025",
+				Sheets: []SheetEntry{
+					{
+						ID:   "demo-sh-b3-energy-2025",
+						Name: "B3 Energy",
+						Fields: []FieldEntry{
+							{Name: "scope1_stationary_combustion_kwh_2025", Range: "B2", FieldType: "number", Description: "2025 Scope 1 stationary combustion energy consumption"},
+							{Name: "scope2_purchased_electricity_kwh_2025", Range: "B3", FieldType: "number", Description: "2025 Scope 2 purchased electricity energy consumption"},
+							{Name: "total_energy_consumption_kwh_2025", Range: "B4", FieldType: "number", Description: "2025 total energy consumption across scopes 1 and 2"},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 // LoadMappings parses the YAML file at path and upserts every
 // spreadsheet, sheet, and field into store. It is idempotent: re-loading
 // the same file updates existing rows instead of duplicating them. A
@@ -62,7 +113,18 @@ func LoadMappings(ctx context.Context, path string, store *mapping.Store) error 
 	if err := yaml.Unmarshal(data, &f); err != nil {
 		return fmt.Errorf("bootstrap: parse mappings file %s: %w", path, err)
 	}
+	return applyFile(ctx, f, store)
+}
 
+// LoadDemoMappings seeds the mapping store with the static demo fixture
+// metadata.
+func LoadDemoMappings(ctx context.Context, store *mapping.Store) error {
+	return applyFile(ctx, DemoMappings(), store)
+}
+
+// applyFile upserts the spreadsheets, sheets, and fields from f into
+// store. It is shared by file-based and demo-based bootstrap.
+func applyFile(ctx context.Context, f File, store *mapping.Store) error {
 	region := f.Region
 	if region == "" {
 		region = "eu"
@@ -70,7 +132,7 @@ func LoadMappings(ctx context.Context, path string, store *mapping.Store) error 
 
 	for _, sp := range f.Spreadsheets {
 		if sp.ID == "" {
-			return fmt.Errorf("bootstrap: mappings file %s: spreadsheet entry without id", path)
+			return fmt.Errorf("bootstrap: spreadsheet entry without id")
 		}
 		if err := store.UpsertSpreadsheet(ctx, mapping.Spreadsheet{
 			ID:       sp.ID,
@@ -82,7 +144,7 @@ func LoadMappings(ctx context.Context, path string, store *mapping.Store) error 
 		}
 		for _, sh := range sp.Sheets {
 			if sh.ID == "" {
-				return fmt.Errorf("bootstrap: mappings file %s: sheet entry without id in spreadsheet %q", path, sp.ID)
+				return fmt.Errorf("bootstrap: sheet entry without id in spreadsheet %q", sp.ID)
 			}
 			if err := store.UpsertSheet(ctx, mapping.Sheet{
 				ID:            sh.ID,
@@ -93,7 +155,7 @@ func LoadMappings(ctx context.Context, path string, store *mapping.Store) error 
 			}
 			for _, fe := range sh.Fields {
 				if fe.Name == "" || fe.Range == "" {
-					return fmt.Errorf("bootstrap: mappings file %s: field in %s/%s needs name and range", path, sp.ID, sh.ID)
+					return fmt.Errorf("bootstrap: field in %s/%s needs name and range", sp.ID, sh.ID)
 				}
 				fieldType := fe.FieldType
 				if fieldType == "" {
