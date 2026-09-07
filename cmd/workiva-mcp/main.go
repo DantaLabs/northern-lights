@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
+	"github.com/dantalabs/northern-lights/internal/bootstrap"
 	"github.com/dantalabs/northern-lights/internal/config"
 	"github.com/dantalabs/northern-lights/internal/mapping"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
@@ -37,6 +38,7 @@ func main() {
 
 func run() error {
 	configPath := flag.String("config", "", "path to YAML config file (optional; NL_ env vars override)")
+	mappingsPath := flag.String("mappings", "", "path to declarative mappings YAML (optional; defaults to configs/config.yaml if it exists)")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
@@ -67,6 +69,21 @@ func run() error {
 		return fmt.Errorf("open mapping store: %w", err)
 	}
 	defer store.Close()
+
+	// Seed the store from a declarative mappings file when present.
+	path := *mappingsPath
+	if path == "" {
+		const defaultMappings = "configs/config.yaml"
+		if _, err := os.Stat(defaultMappings); err == nil {
+			path = defaultMappings
+		}
+	}
+	if path != "" {
+		if err := bootstrap.LoadMappings(context.Background(), path, store); err != nil {
+			return fmt.Errorf("load mappings: %w", err)
+		}
+		log.Printf("loaded mappings from %s", path)
+	}
 
 	auditLog, err := audit.Open(cfg.DBPath)
 	if err != nil {

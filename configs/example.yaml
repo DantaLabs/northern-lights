@@ -1,0 +1,17 @@
+# Example declarative mapping for northern-lights.
+#
+# Copy this file to configs/config.yaml (or pass -mappings <path>) to seed
+# the mapping store at startup. Loading is idempotent: restarting the
+# server re-applies the same upserts without creating duplicates.
+#
+# region is optional; it defaults to the server config region (eu).
+region: eu
+spreadsheets:
+  - id: "abc123"
+    name: "VSME 2026"
+    sheets:
+      - id: "sheet-1"
+        name: "B3 Energy"
+        fields:
+          - { name: scope1_kwh, range: "B3", aliases: "scope 1,direct energy", field_type: number, description: "Scope 1 direct energy consumption in kWh" }
+          - { name: scope2_kwh, range: "B4", aliases: "scope 2,purchased energy", field_type: number, description: "Scope 2 purchased energy consumption in kWh" }
