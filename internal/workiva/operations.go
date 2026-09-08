@@ -61,10 +61,13 @@ func (c *Client) WaitOperation(ctx context.Context, opURL string) (string, error
 			return "", fmt.Errorf("operation %s failed: %s", op.ID, msg)
 		}
 
-		// retryAfterDelay defaults to one second, which matches the
-		// documented one request per second operations limit.
-		if err := c.sleep(ctx, retryAfterDelay(retryAfter)); err != nil {
-			return "", fmt.Errorf("wait operation: %w", err)
+		// The limiter (1 request/sec for operations) already paces polls;
+		// sleep additionally only when the server asks for a longer wait
+		// via Retry-After.
+		if d := retryAfterDelay(retryAfter); d > time.Second {
+			if err := c.sleep(ctx, d); err != nil {
+				return "", fmt.Errorf("wait operation: %w", err)
+			}
 		}
 	}
 }
