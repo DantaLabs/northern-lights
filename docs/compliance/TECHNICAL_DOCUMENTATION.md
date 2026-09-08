@@ -50,19 +50,15 @@ API and the MCP client.
    wrong field. The two-phase write confirmation is the primary
    safeguard; the deployer should train users to review confirmations.
 
-2. **No 401 token refresh retry.** If Workiva returns a 401 due to
-   early token expiration, the client does not automatically invalidate
-   and refetch. Documented in BACKLOG.md.
-
-3. **Write payload schema unverified against live API.** The `editCells`
+2. **Write payload schema unverified against live API.** The `editCells`
    payload shape is built from Workiva's 2026-01-01 documentation, not
    from a live workspace. First deployment must validate against a real
    environment.
 
-4. **Spreadsheet-only scope.** Workiva Documents API (prose editing) is
+3. **Spreadsheet-only scope.** Workiva Documents API (prose editing) is
    not supported. Deferred to v0.2.
 
-5. **Rate limits are workspace-wide.** Heavy Northern Lights usage
+4. **Rate limits are workspace-wide.** Heavy Northern Lights usage
    counts against the same 600/min (reads) and 60/min (writes) limits
    as all other integrations in the workspace.
 

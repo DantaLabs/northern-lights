@@ -114,6 +114,86 @@ func TestDoSetsContentTypeWithBody(t *testing.T) {
 	}
 }
 
+func TestDoRetries401WithFreshToken(t *testing.T) {
+	var tokenCalls atomic.Int32
+	var apiCalls atomic.Int32
+	var authHeaders []string
+	var authMu sync.Mutex
+
+	c, _, _ := setupTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/iam/v1/oauth2/token" {
+			n := tokenCalls.Add(1)
+			fmt.Fprintf(w, `{"access_token":"tok-%d","expires_in":3600}`, n)
+			return
+		}
+
+		n := apiCalls.Add(1)
+		authMu.Lock()
+		authHeaders = append(authHeaders, r.Header.Get("Authorization"))
+		authMu.Unlock()
+		if n == 1 {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, `{"ok":true}`)
+	}))
+
+	resp, err := c.Do(context.Background(), http.MethodGet, "/x", nil, ratelimit.CategoryReads)
+	if err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	resp.Body.Close()
+
+	if got := tokenCalls.Load(); got != 2 {
+		t.Errorf("token requests = %d, want 2", got)
+	}
+	if got := apiCalls.Load(); got != 2 {
+		t.Errorf("API requests = %d, want 2", got)
+	}
+	authMu.Lock()
+	defer authMu.Unlock()
+	if got := authHeaders[0]; got != "Bearer tok-1" {
+		t.Errorf("first Authorization = %q, want %q", got, "Bearer tok-1")
+	}
+	if got := authHeaders[1]; got != "Bearer tok-2" {
+		t.Errorf("second Authorization = %q, want %q", got, "Bearer tok-2")
+	}
+}
+
+func TestDoReturns401APIErrorAfterOne401Retry(t *testing.T) {
+	var tokenCalls atomic.Int32
+	var apiCalls atomic.Int32
+
+	c, _, _ := setupTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/iam/v1/oauth2/token" {
+			tokenCalls.Add(1)
+			fmt.Fprint(w, `{"access_token":"tok-1","expires_in":3600}`)
+			return
+		}
+		apiCalls.Add(1)
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+
+	_, err := c.Do(context.Background(), http.MethodGet, "/x", nil, ratelimit.CategoryReads)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("error type = %T, want *APIError", err)
+	}
+	if apiErr.StatusCode != http.StatusUnauthorized {
+		t.Errorf("StatusCode = %d, want 401", apiErr.StatusCode)
+	}
+	if got := apiCalls.Load(); got != 2 {
+		t.Errorf("API requests = %d, want 2", got)
+	}
+	if got := tokenCalls.Load(); got != 2 {
+		t.Errorf("token requests = %d, want 2", got)
+	}
+}
+
 func TestDoRetries429HonoringRetryAfter(t *testing.T) {
 	var apiCalls atomic.Int32
 	c, requests, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {

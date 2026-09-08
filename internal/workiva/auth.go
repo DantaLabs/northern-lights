@@ -65,6 +65,15 @@ func NewTokenProvider(baseURL *url.URL, clientID, clientSecret, scope string, ht
 	}
 }
 
+// Invalidate clears the cached token so the next token request fetches a
+// fresh access token.
+func (p *TokenProvider) Invalidate() {
+	p.mu.Lock()
+	p.token = ""
+	p.expiresAt = time.Time{}
+	p.mu.Unlock()
+}
+
 // ClientCredentialsToken returns a valid access token, fetching a new one
 // only when the cached token is missing or within expiryBuffer of
 // expiring.

@@ -2,31 +2,31 @@
 
 ## Open
 
-1. **401 token refresh retry** (internal/workiva/client.go): `Do` fetches the
-   token once before the attempt loop and never retries on 401. If Workiva
-   expires a token early (clock skew, revocation), requests fail until the
-   cached token naturally expires. Fix: on 401, invalidate the cached token,
-   refetch, and retry once.
-
-2. **Verify editCells/SheetUpdate payload against live API**: the write
+1. **Verify editCells/SheetUpdate payload against live API**: the write
    payload shape (`editCells` array of `{range, value}`) is built from the
    2026-01-01 docs, not from a live workspace. First run against a real
    Workiva sandbox must validate the exact schema, including whether
    `editCells` entries nest the range differently.
 
-3. **Documents API out of scope for MVP**: Workiva Documents (prose editing)
+2. **Documents API out of scope for MVP**: Workiva Documents (prose editing)
    intentionally deferred to v0.2.
 
-4. **Copilot Studio auth header support**: bearer token middleware assumes
+3. **Copilot Studio auth header support**: bearer token middleware assumes
    Copilot connectors can send a static Authorization header. Verify against
    a real Copilot Studio MCP connector; may need a proxy shim.
 
-5. **Rate limits are process-local** (adversarial review ISSUE-017): the
+4. **Rate limits are process-local** (adversarial review ISSUE-017): the
    token-bucket limiter lives in the server process, so multiple replicas
    each get their own budget while Workiva enforces workspace-wide limits.
    Single-replica deployments are unaffected. Horizontal scaling needs a
    shared limiter (e.g. Redis) or per-replica budget division. Documented
    here as a known limitation.
+
+## Closed by adversarial review pass
+
+1. **401 token refresh retry** (internal/workiva/client.go): `Do` now
+   invalidates the cached token and retries once with a freshly fetched token
+   after a 401 response. Repeated 401 responses return `APIError{401}`.
 
 ## Disposition of the 2026-09-08 adversarial review (ADVERSARIAL_REVIEW.md)
 

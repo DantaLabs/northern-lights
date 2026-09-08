@@ -105,7 +105,14 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader, ca
 	}
 
 	var lastErr error
+	retried401 := false
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		if token == "" {
+			token, err = c.tokens.ClientCredentialsToken(ctx)
+			if err != nil {
+				return nil, err
+			}
+		}
 		if c.limiter != nil {
 			if err := c.limiter.Wait(ctx, category); err != nil {
 				return nil, fmt.Errorf("rate limit wait (%s): %w", category, err)
@@ -142,6 +149,13 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader, ca
 			return nil, fmt.Errorf("request %s %s: %w", method, path, err)
 		}
 
+		if resp.StatusCode == http.StatusUnauthorized && !retried401 {
+			retried401 = true
+			drainAndClose(resp)
+			c.tokens.Invalidate()
+			token = ""
+			continue
+		}
 		if resp.StatusCode == http.StatusTooManyRequests && attempt < maxAttempts {
 			delay := retryAfterDelay(resp.Header.Get("Retry-After"))
 			drainAndClose(resp)
