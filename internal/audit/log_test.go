@@ -196,6 +196,23 @@ func TestExportPropagatesWriterErrors(t *testing.T) {
 	}
 }
 
+func TestWorkivaOpURLAffectsHash(t *testing.T) {
+	ctx := context.Background()
+	l := openTestLog(t)
+
+	e1, err := l.Append(ctx, Entry{Actor: "a", Tool: "t", Action: "a", Target: "x", WorkivaOpURL: "https://api.eu.wdesk.com/operations/op-1"})
+	if err != nil {
+		t.Fatalf("Append returned error: %v", err)
+	}
+	e2, err := l.Append(ctx, Entry{Actor: "a", Tool: "t", Action: "a", Target: "x", WorkivaOpURL: "https://api.eu.wdesk.com/operations/op-2"})
+	if err != nil {
+		t.Fatalf("Append returned error: %v", err)
+	}
+	if e1.Hash == e2.Hash {
+		t.Errorf("hashes should differ when only WorkivaOpURL differs")
+	}
+}
+
 type failingWriter struct{}
 
 func (failingWriter) Write(p []byte) (int, error) { return 0, errTestSentinel }

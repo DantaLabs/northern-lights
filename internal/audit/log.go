@@ -106,8 +106,8 @@ func (l *Log) Close() error {
 	return l.db.Close()
 }
 
-func entryHash(prevHash, ts, actor, tool, action, target, before, after string) string {
-	sum := sha256.Sum256([]byte(prevHash + ts + actor + tool + action + target + before + after))
+func entryHash(prevHash, ts, actor, tool, action, target, before, after, opURL string) string {
+	sum := sha256.Sum256([]byte(prevHash + ts + actor + tool + action + target + before + after + opURL))
 	return hex.EncodeToString(sum[:])
 }
 
@@ -128,7 +128,7 @@ func (l *Log) Append(ctx context.Context, e Entry) (Entry, error) {
 		prev = genesisHash
 	}
 
-	hash := entryHash(prev, tsStr, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON)
+	hash := entryHash(prev, tsStr, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL)
 	res, err := l.db.ExecContext(ctx,
 		`INSERT INTO audit_log (ts, actor, tool, action, target, before_json, after_json, workiva_op_url, prev_hash, hash)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -326,7 +326,7 @@ func (l *Log) Verify(ctx context.Context) error {
 		if !prev.Valid || prev.String != expectedPrev {
 			return fmt.Errorf("audit: chain broken at seq %d: prev_hash = %q, want %q", e.Seq, prev.String, expectedPrev)
 		}
-		want := entryHash(prev.String, ts, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON)
+		want := entryHash(prev.String, ts, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL)
 		if !hash.Valid || hash.String != want {
 			return fmt.Errorf("audit: chain broken at seq %d: stored hash %q, recomputed %q", e.Seq, hash.String, want)
 		}
