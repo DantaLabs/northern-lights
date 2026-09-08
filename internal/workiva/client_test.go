@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -199,6 +200,95 @@ func TestDo400ReturnsAPIErrorWithoutRetry(t *testing.T) {
 		t.Errorf("total requests = %d, want 2 (token + 1 API)", got)
 	}
 }
+
+func TestDoRetries500ForGetNotPatch(t *testing.T) {
+	var apiCalls atomic.Int32
+	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
+		n := apiCalls.Add(1)
+		if n == 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, `{"ok":true}`)
+	}))
+
+	resp, err := c.Do(context.Background(), http.MethodGet, "/x", nil, ratelimit.CategoryReads)
+	if err != nil {
+		t.Fatalf("GET Do: %v", err)
+	}
+	resp.Body.Close()
+	if got := apiCalls.Load(); got != 2 {
+		t.Errorf("GET API calls = %d, want 2", got)
+	}
+
+	apiCalls.Store(0)
+	headerCalls := make(map[string]int)
+	c2, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
+		key := r.Method + " " + r.URL.Path
+		headerCalls[key]++
+		if headerCalls[key] == 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, `{"ok":true}`)
+	}))
+	_, err = c2.Do(context.Background(), http.MethodPatch, "/x", strings.NewReader(`{}`), ratelimit.CategoryWrites)
+	if err == nil {
+		t.Fatal("PATCH Do: expected error, got nil")
+	}
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("PATCH Do error = %v, want 500 APIError", err)
+	}
+	if got := headerCalls["PATCH /x"]; got != 1 {
+		t.Errorf("PATCH API calls = %d, want 1 (no retry on 500 for non-idempotent method)", got)
+	}
+}
+
+func TestDoRetriesTransportErrorForGetNotPatch(t *testing.T) {
+	var attempts atomic.Int32
+	errDo := errors.New("boom")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// token endpoint returns token
+		fmt.Fprint(w, `{"access_token":"tok-1","expires_in":3600}`)
+	}))
+	defer srv.Close()
+	u, _ := url.Parse(srv.URL)
+	tokens := NewTokenProvider(u, "c", "s", "file:read", srv.Client())
+	c := NewClient(u, tokens, nil, &http.Client{
+		Transport: roundTripFn(func(r *http.Request) (*http.Response, error) {
+			if r.URL.Path == "/iam/v1/oauth2/token" {
+				return srv.Client().Transport.RoundTrip(r)
+			}
+			attempts.Add(1)
+			return nil, errDo
+		}),
+	})
+	c.sleep = func(ctx context.Context, d time.Duration) error { return nil }
+
+	_, err := c.Do(context.Background(), http.MethodGet, "/x", nil, ratelimit.CategoryReads)
+	if err == nil {
+		t.Fatal("GET Do: expected error")
+	}
+	if got := attempts.Load(); got != 5 {
+		t.Errorf("GET attempts = %d, want 5", got)
+	}
+
+	attempts.Store(0)
+	_, err = c.Do(context.Background(), http.MethodPatch, "/x", strings.NewReader(`{}`), ratelimit.CategoryWrites)
+	if err == nil {
+		t.Fatal("PATCH Do: expected error")
+	}
+	if got := attempts.Load(); got != 1 {
+		t.Errorf("PATCH attempts = %d, want 1 (no retry on transport error for non-idempotent method)", got)
+	}
+}
+
+type roundTripFn func(*http.Request) (*http.Response, error)
+
+func (f roundTripFn) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestDoRetriesServerErrorWithBackoff(t *testing.T) {
 	var apiCalls atomic.Int32

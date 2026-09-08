@@ -114,8 +114,10 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader, ca
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			lastErr = err
-			// Transport errors are retried with the same backoff as 5xx.
-			if attempt < maxAttempts {
+			// Transport errors are retried with the same backoff as 5xx,
+			// but only for idempotent methods where the request may not
+			// have reached the server.
+			if attempt < maxAttempts && isIdempotent(method) {
 				if serr := c.sleep(ctx, backoff(attempt)); serr != nil {
 					return nil, serr
 				}
@@ -132,7 +134,7 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader, ca
 			}
 			continue
 		}
-		if isRetryableServerError(resp.StatusCode) && attempt < maxAttempts {
+		if isRetryableServerError(resp.StatusCode) && attempt < maxAttempts && isIdempotent(method) {
 			drainAndClose(resp)
 			if err := c.sleep(ctx, backoff(attempt)); err != nil {
 				return nil, err
@@ -184,6 +186,18 @@ func retryAfterDelay(header string) time.Duration {
 		return time.Duration(secs) * time.Second
 	}
 	return time.Second
+}
+
+// isIdempotent reports whether method is safe to retry after the request
+// may have reached the server. Only GET and HEAD are idempotent here;
+// PATCH/POST/PUT are retried only on 429 (the request was rejected).
+func isIdempotent(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead:
+		return true
+	default:
+		return false
+	}
 }
 
 // isRetryableServerError reports 5xx statuses worth retrying.
