@@ -431,3 +431,29 @@ func TestDoCallsLimiterOncePerAttempt(t *testing.T) {
 		t.Errorf("limiter Wait calls = %d, want 2 (one per attempt)", got)
 	}
 }
+
+func TestDoCapsRetryAfterAtThirtySeconds(t *testing.T) {
+	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "120")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+
+	var slept atomic.Value
+	c.sleep = func(ctx context.Context, d time.Duration) error {
+		slept.Store(d)
+		return nil // continue retry loop; eventually maxAttempts exhausted.
+	}
+
+	_, err := c.Do(context.Background(), http.MethodGet, "/x", nil, ratelimit.CategoryReads)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	d, ok := slept.Load().(time.Duration)
+	if !ok {
+		t.Fatal("sleep was not recorded")
+	}
+	if d != 30*time.Second {
+		t.Errorf("retry sleep = %v, want 30s", d)
+	}
+}

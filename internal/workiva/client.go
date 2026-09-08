@@ -21,6 +21,11 @@ const DefaultAPIVersion = "2026-01-01"
 // single Do call.
 const maxAttempts = 5
 
+// maxRetryAfterDelay is the longest duration the client will wait in
+// response to a Retry-After header, protecting against unreasonably long
+// server-requested delays.
+const maxRetryAfterDelay = 30 * time.Second
+
 // APIError describes a terminal non-2xx response from the Workiva API
 // after all retries are exhausted.
 type APIError struct {
@@ -184,8 +189,9 @@ func drainAndClose(resp *http.Response) {
 	resp.Body.Close()
 }
 
-// retryAfterDelay parses the Retry-After header (seconds) and falls back
-// to one second when absent or unparsable.
+// retryAfterDelay parses the Retry-After header (seconds), falls back to
+// one second when absent or unparsable, and caps the returned delay at
+// maxRetryAfterDelay.
 func retryAfterDelay(header string) time.Duration {
 	if header == "" {
 		return time.Second
@@ -194,7 +200,11 @@ func retryAfterDelay(header string) time.Duration {
 		if secs < 0 {
 			return time.Second
 		}
-		return time.Duration(secs) * time.Second
+		d := time.Duration(secs) * time.Second
+		if d > maxRetryAfterDelay {
+			return maxRetryAfterDelay
+		}
+		return d
 	}
 	return time.Second
 }
