@@ -253,3 +253,40 @@ func TestGetCachedCellsRespectsMaxAge(t *testing.T) {
 		t.Errorf("cached value = %q, want %q", got[0].Value, "fresh")
 	}
 }
+
+func TestSearchFieldsLikeEscaping(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	for _, name := range []string{"100pct", "100x", "200"} {
+		if _, err := s.UpsertField(ctx, Field{SpreadsheetID: "ss-1", SheetID: "sh-1", Name: name, CellRange: "A1"}); err != nil {
+			t.Fatalf("UpsertField %q: %v", name, err)
+		}
+	}
+
+	// A literal percent in the query must not act as a LIKE wildcard.
+	got, err := s.SearchFields(ctx, "100%")
+	if err != nil {
+		t.Fatalf("SearchFields: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("query with literal %% matched %d fields, want 0 (no field contains \"100%%\")", len(got))
+	}
+
+	// Underscores must not act as single-char wildcards either.
+	if _, err := s.UpsertField(ctx, Field{SpreadsheetID: "ss-1", SheetID: "sh-1", Name: "scope_1", CellRange: "A1"}); err != nil {
+		t.Fatalf("UpsertField: %v", err)
+	}
+	if _, err := s.UpsertField(ctx, Field{SpreadsheetID: "ss-1", SheetID: "sh-1", Name: "scopex1", CellRange: "A1"}); err != nil {
+		t.Fatalf("UpsertField: %v", err)
+	}
+	got, err = s.SearchFields(ctx, "scope_1")
+	if err != nil {
+		t.Fatalf("SearchFields: %v", err)
+	}
+	for _, f := range got {
+		if f.Name == "scopex1" {
+			t.Errorf("query \"scope_1\" matched scopex1; underscore treated as wildcard")
+		}
+	}
+}

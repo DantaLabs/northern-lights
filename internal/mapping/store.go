@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -264,16 +265,24 @@ func (s *Store) GetField(ctx context.Context, name string) (*Field, error) {
 	return &f, nil
 }
 
+// escapeLike escapes LIKE wildcard characters so user input is matched
+// literally. The backslash is the escape character used with ESCAPE '\'.
+func escapeLike(s string) string {
+	r := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+	return r.Replace(s)
+}
+
 // SearchFields returns fields matching query, ranked: exact name match
 // first, then names containing the query, then alias matches last.
+// Wildcard characters in the query are matched literally.
 func (s *Store) SearchFields(ctx context.Context, query string) ([]Field, error) {
-	like := "%" + query + "%"
+	like := "%" + escapeLike(query) + "%"
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT `+fieldColumns+` FROM fields
-		 WHERE name = ? OR name LIKE ? OR aliases LIKE ?
+		 WHERE name = ? OR name LIKE ? ESCAPE '\' OR aliases LIKE ? ESCAPE '\'
 		 ORDER BY CASE
 		   WHEN name = ? THEN 0
-		   WHEN name LIKE ? THEN 1
+		   WHEN name LIKE ? ESCAPE '\' THEN 1
 		   ELSE 2
 		 END, name`,
 		query, like, like, query, like)
