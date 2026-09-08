@@ -322,6 +322,9 @@ func (l *Log) Verify(ctx context.Context) error {
 		if after.Valid {
 			e.AfterJSON = after.String
 		}
+		if opURL.Valid {
+			e.WorkivaOpURL = opURL.String
+		}
 
 		if !prev.Valid || prev.String != expectedPrev {
 			return fmt.Errorf("audit: chain broken at seq %d: prev_hash = %q, want %q", e.Seq, prev.String, expectedPrev)
