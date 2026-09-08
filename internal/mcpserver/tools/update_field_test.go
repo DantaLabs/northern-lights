@@ -22,14 +22,24 @@ func writeMock(t *testing.T, edits *[][]byte) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/sheetdata"):
-			fmt.Fprint(w, sheetdataBody)
+			if _, err := fmt.Fprint(w, sheetdataBody); err != nil {
+				t.Errorf("write sheetdata response: %v", err)
+			}
 		case r.Method == http.MethodPatch && strings.HasSuffix(r.URL.Path, "/data"):
-			body, _ := io.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Errorf("read update request: %v", err)
+				return
+			}
 			*edits = append(*edits, body)
 			w.WriteHeader(http.StatusAccepted)
-			fmt.Fprint(w, `{"operationLocation": "/operations/op-1"}`)
+			if _, err := fmt.Fprint(w, `{"operationLocation": "/operations/op-1"}`); err != nil {
+				t.Errorf("write update response: %v", err)
+			}
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/operations/"):
-			fmt.Fprint(w, `{"id": "op-1", "status": "completed", "resourceUrl": "/spreadsheets/sp-1/sheets/sh-1"}`)
+			if _, err := fmt.Fprint(w, `{"id": "op-1", "status": "completed", "resourceUrl": "/spreadsheets/sp-1/sheets/sh-1"}`); err != nil {
+				t.Errorf("write operation response: %v", err)
+			}
 		default:
 			http.NotFound(w, r)
 		}

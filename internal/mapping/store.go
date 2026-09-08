@@ -126,9 +126,11 @@ func Open(path string) (*Store, error) {
 	// SQLite allows one writer at a time; a single connection avoids
 	// SQLITE_BUSY errors on concurrent writes while keeping reads simple.
 	db.SetMaxOpenConns(1)
-	if err := sqlitedb.Migrate(context.Background(), db, "mapping", []string{migration0001, migration0002}); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("mapping: migrate: %w", err)
+	if migrateErr := sqlitedb.Migrate(context.Background(), db, "mapping", []string{migration0001, migration0002}); migrateErr != nil {
+		if closeErr := db.Close(); closeErr != nil {
+			migrateErr = errors.Join(migrateErr, fmt.Errorf("mapping: close after migrate failure: %w", closeErr))
+		}
+		return nil, fmt.Errorf("mapping: migrate: %w", migrateErr)
 	}
 	return &Store{db: db}, nil
 }
@@ -163,7 +165,7 @@ func (s *Store) UpsertSheet(ctx context.Context, sh Sheet) error {
 }
 
 // ListSpreadsheets returns all mapped spreadsheets with their sheets.
-func (s *Store) ListSpreadsheets(ctx context.Context) ([]Spreadsheet, error) {
+func (s *Store) ListSpreadsheets(ctx context.Context) (out []Spreadsheet, err error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT s.id, s.name, s.region, s.synced_at, sh.id, sh.name
 		 FROM spreadsheets s
@@ -172,7 +174,11 @@ func (s *Store) ListSpreadsheets(ctx context.Context) ([]Spreadsheet, error) {
 	if err != nil {
 		return nil, fmt.Errorf("mapping: list spreadsheets: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("mapping: list spreadsheets: close rows: %w", closeErr))
+		}
+	}()
 
 	byID := map[string]*Spreadsheet{}
 	var order []string
@@ -207,7 +213,7 @@ func (s *Store) ListSpreadsheets(ctx context.Context) ([]Spreadsheet, error) {
 		return nil, fmt.Errorf("mapping: list spreadsheets: %w", err)
 	}
 
-	out := make([]Spreadsheet, 0, len(order))
+	out = make([]Spreadsheet, 0, len(order))
 	for _, id := range order {
 		out = append(out, *byID[id])
 	}
@@ -271,7 +277,7 @@ func escapeLike(s string) string {
 // SearchFields returns fields matching query, ranked: exact name match
 // first, then names containing the query, then alias matches last.
 // Wildcard characters in the query are matched literally.
-func (s *Store) SearchFields(ctx context.Context, query string) ([]Field, error) {
+func (s *Store) SearchFields(ctx context.Context, query string) (out []Field, err error) {
 	like := "%" + escapeLike(query) + "%"
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT `+fieldColumns+` FROM fields
@@ -285,9 +291,12 @@ func (s *Store) SearchFields(ctx context.Context, query string) ([]Field, error)
 	if err != nil {
 		return nil, fmt.Errorf("mapping: search fields %q: %w", query, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("mapping: search fields %q: close rows: %w", query, closeErr))
+		}
+	}()
 
-	var out []Field
 	for rows.Next() {
 		f, err := scanField(rows)
 		if err != nil {
@@ -302,12 +311,19 @@ func (s *Store) SearchFields(ctx context.Context, query string) ([]Field, error)
 }
 
 // CacheCells upserts cell values into the snapshot cache.
-func (s *Store) CacheCells(ctx context.Context, cells []CellValue) error {
+func (s *Store) CacheCells(ctx context.Context, cells []CellValue) (err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("mapping: cache cells: %w", err)
 	}
-	defer tx.Rollback()
+	committed := false
+	defer func() {
+		if !committed {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = errors.Join(err, fmt.Errorf("mapping: cache cells rollback: %w", rollbackErr))
+			}
+		}
+	}()
 	stmt, err := tx.PrepareContext(ctx,
 		`INSERT INTO snapshots (spreadsheet_id, sheet_id, cell, value, fetched_at)
 		 VALUES (?, ?, ?, ?, ?)
@@ -316,7 +332,11 @@ func (s *Store) CacheCells(ctx context.Context, cells []CellValue) error {
 	if err != nil {
 		return fmt.Errorf("mapping: cache cells: %w", err)
 	}
-	defer stmt.Close()
+	defer func() {
+		if closeErr := stmt.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("mapping: cache cells close statement: %w", closeErr))
+		}
+	}()
 	for _, c := range cells {
 		if _, err := stmt.ExecContext(ctx, c.SpreadsheetID, c.SheetID, c.Cell, c.Value, formatTime(c.FetchedAt)); err != nil {
 			return fmt.Errorf("mapping: cache cell %q: %w", c.Cell, err)
@@ -325,12 +345,13 @@ func (s *Store) CacheCells(ctx context.Context, cells []CellValue) error {
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("mapping: cache cells: %w", err)
 	}
+	committed = true
 	return nil
 }
 
 // GetCachedCells returns cached cells for a sheet whose fetched_at is
 // within maxAge of now. Stale rows are filtered out.
-func (s *Store) GetCachedCells(ctx context.Context, spreadsheetID, sheetID string, maxAge time.Duration) ([]CellValue, error) {
+func (s *Store) GetCachedCells(ctx context.Context, spreadsheetID, sheetID string, maxAge time.Duration) (out []CellValue, err error) {
 	cutoff := formatTime(time.Now().Add(-maxAge))
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT spreadsheet_id, sheet_id, cell, value, fetched_at
@@ -341,9 +362,12 @@ func (s *Store) GetCachedCells(ctx context.Context, spreadsheetID, sheetID strin
 	if err != nil {
 		return nil, fmt.Errorf("mapping: get cached cells %s/%s: %w", spreadsheetID, sheetID, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("mapping: get cached cells %s/%s: close rows: %w", spreadsheetID, sheetID, closeErr))
+		}
+	}()
 
-	var out []CellValue
 	for rows.Next() {
 		var (
 			c         CellValue
@@ -408,12 +432,19 @@ func (s *Store) DeleteExpiredPendingWrites(ctx context.Context, maxAge time.Dura
 // token whose write is older than maxAge yields (nil,
 // ErrPendingWriteExpired); the expired row is deleted as part of the
 // consume.
-func (s *Store) ConsumePendingWrite(ctx context.Context, token string, maxAge time.Duration) (*PendingWrite, error) {
+func (s *Store) ConsumePendingWrite(ctx context.Context, token string, maxAge time.Duration) (write *PendingWrite, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("mapping: consume pending write: %w", err)
 	}
-	defer tx.Rollback()
+	committed := false
+	defer func() {
+		if !committed {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = errors.Join(err, fmt.Errorf("mapping: consume pending write rollback: %w", rollbackErr))
+			}
+		}
+	}()
 
 	var (
 		w         PendingWrite
@@ -435,6 +466,7 @@ func (s *Store) ConsumePendingWrite(ctx context.Context, token string, maxAge ti
 	if err := tx.Commit(); err != nil {
 		return nil, fmt.Errorf("mapping: consume pending write: %w", err)
 	}
+	committed = true
 
 	w.Token = token
 	w.CreatedAt = createdAt

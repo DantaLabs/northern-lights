@@ -22,13 +22,21 @@ func TestConcurrentHandlesSameFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("mapping.Open: %v", err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close mapping store: %v", err)
+		}
+	})
 
 	log, err := audit.Open(path)
 	if err != nil {
 		t.Fatalf("audit.Open: %v", err)
 	}
-	defer log.Close()
+	t.Cleanup(func() {
+		if err := log.Close(); err != nil {
+			t.Errorf("close audit log: %v", err)
+		}
+	})
 
 	ctx := context.Background()
 	var wg sync.WaitGroup

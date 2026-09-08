@@ -49,7 +49,9 @@ func tokenResponder(t *testing.T, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/iam/v1/oauth2/token":
-			fmt.Fprint(w, `{"access_token":"tok-1","expires_in":3600}`)
+			if _, err := fmt.Fprint(w, `{"access_token":"tok-1","expires_in":3600}`); err != nil {
+				t.Errorf("write token response: %v", err)
+			}
 		default:
 			next(w, r)
 		}
@@ -71,14 +73,20 @@ func TestDoInjectsHeaders(t *testing.T) {
 		got.accept = r.Header.Get("Accept")
 		got.authCount++
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"ok":true}`)
+		if _, err := fmt.Fprint(w, `{"ok":true}`); err != nil {
+			t.Errorf("write API response: %v", err)
+		}
 	}))
 
 	resp, err := c.Do(context.Background(), http.MethodGet, "/spreadsheets/s1/sheets/sh1/sheetdata", nil, ratelimit.CategoryReads)
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}
-	defer resp.Body.Close()
+	t.Cleanup(func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close response body: %v", err)
+		}
+	})
 
 	if got.auth != "Bearer tok-1" {
 		t.Errorf("Authorization = %q, want %q", got.auth, "Bearer tok-1")
@@ -102,7 +110,9 @@ func TestDoSetsContentTypeWithBody(t *testing.T) {
 	var contentType string
 	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
 		contentType = r.Header.Get("Content-Type")
-		fmt.Fprint(w, `{}`)
+		if _, err := fmt.Fprint(w, `{}`); err != nil {
+			t.Errorf("write API response: %v", err)
+		}
 	}))
 
 	_, err := c.Do(context.Background(), http.MethodPatch, "/x", newStubReader("{}"), ratelimit.CategoryWrites)
@@ -123,7 +133,9 @@ func TestDoRetries401WithFreshToken(t *testing.T) {
 	c, _, _ := setupTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/iam/v1/oauth2/token" {
 			n := tokenCalls.Add(1)
-			fmt.Fprintf(w, `{"access_token":"tok-%d","expires_in":3600}`, n)
+			if _, err := fmt.Fprintf(w, `{"access_token":"tok-%d","expires_in":3600}`, n); err != nil {
+				t.Errorf("write token response: %v", err)
+			}
 			return
 		}
 
@@ -136,14 +148,18 @@ func TestDoRetries401WithFreshToken(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"ok":true}`)
+		if _, err := fmt.Fprint(w, `{"ok":true}`); err != nil {
+			t.Errorf("write API response: %v", err)
+		}
 	}))
 
 	resp, err := c.Do(context.Background(), http.MethodGet, "/x", nil, ratelimit.CategoryReads)
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close response body: %v", err)
+	}
 
 	if got := tokenCalls.Load(); got != 2 {
 		t.Errorf("token requests = %d, want 2", got)
@@ -168,7 +184,9 @@ func TestDoReturns401APIErrorAfterOne401Retry(t *testing.T) {
 	c, _, _ := setupTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/iam/v1/oauth2/token" {
 			tokenCalls.Add(1)
-			fmt.Fprint(w, `{"access_token":"tok-1","expires_in":3600}`)
+			if _, err := fmt.Fprint(w, `{"access_token":"tok-1","expires_in":3600}`); err != nil {
+				t.Errorf("write token response: %v", err)
+			}
 			return
 		}
 		apiCalls.Add(1)
@@ -204,14 +222,18 @@ func TestDoRetries429HonoringRetryAfter(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"ok":true}`)
+		if _, err := fmt.Fprint(w, `{"ok":true}`); err != nil {
+			t.Errorf("write API response: %v", err)
+		}
 	}))
 
 	resp, err := c.Do(context.Background(), http.MethodGet, "/x", nil, ratelimit.CategoryReads)
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close response body: %v", err)
+	}
 
 	if got := requests.Load(); got != 3 {
 		t.Errorf("total requests = %d, want 3 (1 token + 2 API: initial 429 and retry)", got)
@@ -257,7 +279,9 @@ func TestDo400ReturnsAPIErrorWithoutRetry(t *testing.T) {
 	c, requests, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
 		apiCalls.Add(1)
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, `{"error":"bad range"}`)
+		if _, err := fmt.Fprint(w, `{"error":"bad range"}`); err != nil {
+			t.Errorf("write error response: %v", err)
+		}
 	}))
 
 	_, err := c.Do(context.Background(), http.MethodGet, "/x", nil, ratelimit.CategoryReads)
@@ -291,14 +315,18 @@ func TestDoRetries500ForGetNotPatch(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"ok":true}`)
+		if _, err := fmt.Fprint(w, `{"ok":true}`); err != nil {
+			t.Errorf("write API response: %v", err)
+		}
 	}))
 
 	resp, err := c.Do(context.Background(), http.MethodGet, "/x", nil, ratelimit.CategoryReads)
 	if err != nil {
 		t.Fatalf("GET Do: %v", err)
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close response body: %v", err)
+	}
 	if got := apiCalls.Load(); got != 2 {
 		t.Errorf("GET API calls = %d, want 2", got)
 	}
@@ -313,7 +341,9 @@ func TestDoRetries500ForGetNotPatch(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"ok":true}`)
+		if _, err := fmt.Fprint(w, `{"ok":true}`); err != nil {
+			t.Errorf("write API response: %v", err)
+		}
 	}))
 	_, err = c2.Do(context.Background(), http.MethodPatch, "/x", strings.NewReader(`{}`), ratelimit.CategoryWrites)
 	if err == nil {
@@ -333,7 +363,9 @@ func TestDoRetriesTransportErrorForGetNotPatch(t *testing.T) {
 	errDo := errors.New("boom")
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// token endpoint returns token
-		fmt.Fprint(w, `{"access_token":"tok-1","expires_in":3600}`)
+		if _, err := fmt.Fprint(w, `{"access_token":"tok-1","expires_in":3600}`); err != nil {
+			t.Errorf("write token response: %v", err)
+		}
 	}))
 	defer srv.Close()
 	u, _ := url.Parse(srv.URL)
@@ -380,14 +412,18 @@ func TestDoRetriesServerErrorWithBackoff(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"ok":true}`)
+		if _, err := fmt.Fprint(w, `{"ok":true}`); err != nil {
+			t.Errorf("write API response: %v", err)
+		}
 	}))
 
 	resp, err := c.Do(context.Background(), http.MethodGet, "/x", nil, ratelimit.CategoryReads)
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close response body: %v", err)
+	}
 	if got := apiCalls.Load(); got != 3 {
 		t.Errorf("API attempts = %d, want 3", got)
 	}
@@ -491,14 +527,18 @@ func TestDoCallsLimiterOncePerAttempt(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"ok":true}`)
+		if _, err := fmt.Fprint(w, `{"ok":true}`); err != nil {
+			t.Errorf("write API response: %v", err)
+		}
 	}), lim)
 
 	resp, err := c.Do(context.Background(), http.MethodGet, "/x", nil, ratelimit.CategoryReads)
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}
-	resp.Body.Close()
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close response body: %v", err)
+	}
 
 	if got := apiCalls.Load(); got != 2 {
 		t.Errorf("API calls = %d, want 2", got)

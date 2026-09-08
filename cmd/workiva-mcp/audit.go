@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -13,7 +14,7 @@ import (
 // runAudit handles the `workiva-mcp audit <verify|export>` subcommand
 // family. out receives human readable results; JSONL exports are written
 // to out as well.
-func runAudit(args []string, out io.Writer) error {
+func runAudit(args []string, out io.Writer) (err error) {
 	if len(args) == 0 {
 		return fmt.Errorf("audit: missing subcommand (verify|export)")
 	}
@@ -31,14 +32,25 @@ func runAudit(args []string, out io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("audit: %w", err)
 	}
-	defer log.Close()
+	defer func() {
+		if closeErr := log.Close(); closeErr != nil {
+			closeErr = fmt.Errorf("audit: close: %w", closeErr)
+			if err == nil {
+				err = closeErr
+			} else {
+				err = errors.Join(err, closeErr)
+			}
+		}
+	}()
 
 	switch sub {
 	case "verify":
 		if err := log.Verify(context.Background()); err != nil {
 			return fmt.Errorf("audit chain broken: %w", err)
 		}
-		fmt.Fprintln(out, "OK: audit chain intact")
+		if _, err := fmt.Fprintln(out, "OK: audit chain intact"); err != nil {
+			return fmt.Errorf("audit: write output: %w", err)
+		}
 		return nil
 	case "export":
 		if *format != "jsonl" {

@@ -3,6 +3,7 @@ package sqlitedb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -38,12 +39,16 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 			return fmt.Errorf("migrate %s: begin version %d: %w", app, version, err)
 		}
 		if _, err := tx.ExecContext(ctx, m); err != nil {
-			tx.Rollback()
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = errors.Join(err, fmt.Errorf("rollback: %w", rollbackErr))
+			}
 			return fmt.Errorf("migrate %s: apply version %d: %w", app, version, err)
 		}
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO schema_migrations (app, version) VALUES (?, ?)`, app, version); err != nil {
-			tx.Rollback()
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = errors.Join(err, fmt.Errorf("rollback: %w", rollbackErr))
+			}
 			return fmt.Errorf("migrate %s: record version %d: %w", app, version, err)
 		}
 		if err := tx.Commit(); err != nil {

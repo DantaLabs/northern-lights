@@ -45,7 +45,11 @@ func TestDemoModeEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
-	t.Cleanup(func() { session.Close() })
+	t.Cleanup(func() {
+		if err := session.Close(); err != nil {
+			t.Errorf("close session: %v", err)
+		}
+	})
 
 	// 1. list_spreadsheets returns 2 demo spreadsheets.
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
@@ -143,7 +147,11 @@ func TestDemoModeEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("audit.Open: %v", err)
 	}
-	defer log.Close()
+	t.Cleanup(func() {
+		if err := log.Close(); err != nil {
+			t.Errorf("close audit log: %v", err)
+		}
+	})
 	if err := log.Verify(ctx); err != nil {
 		t.Fatalf("audit verify: %v", err)
 	}
@@ -156,7 +164,9 @@ func TestDemoModeEndToEnd(t *testing.T) {
 
 func TestDemoModeWithoutAPIKey(t *testing.T) {
 	// Unset any inherited API key.
-	os.Unsetenv("NL_API_KEY")
+	if err := os.Unsetenv("NL_API_KEY"); err != nil {
+		t.Fatalf("unset NL_API_KEY: %v", err)
+	}
 	t.Setenv("NL_DEMO_MODE", "true")
 	t.Setenv("NL_DB_PATH", filepath.Join(t.TempDir(), "demo2.db"))
 	t.Setenv("NL_LISTEN_ADDR", "127.0.0.1:0")
@@ -181,8 +191,12 @@ func TestDemoModeWithoutAPIKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}
-	defer resp.Body.Close()
-	io.Copy(io.Discard, resp.Body)
+	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+		t.Fatalf("read unauthorized response: %v", err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Fatalf("close unauthorized response: %v", err)
+	}
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("hardcoded demo token accepted: status = %d, want 401", resp.StatusCode)
 	}

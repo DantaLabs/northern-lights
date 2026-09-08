@@ -12,6 +12,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -78,9 +79,11 @@ func Open(path string) (*Log, error) {
 	// Single connection: appends are serialized and SQLite never sees
 	// concurrent writers.
 	db.SetMaxOpenConns(1)
-	if err := sqlitedb.Migrate(context.Background(), db, "audit", []string{migration0001}); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("audit: migrate: %w", err)
+	if migrateErr := sqlitedb.Migrate(context.Background(), db, "audit", []string{migration0001}); migrateErr != nil {
+		if closeErr := db.Close(); closeErr != nil {
+			migrateErr = errors.Join(migrateErr, fmt.Errorf("audit: close after migrate failure: %w", closeErr))
+		}
+		return nil, fmt.Errorf("audit: migrate: %w", migrateErr)
 	}
 	return &Log{db: db, ownsDB: true}, nil
 }
@@ -244,7 +247,7 @@ func scanEntry(rows interface {
 // empty only entries with that exact target (for example a spreadsheet,
 // sheet, and range such as "ss-1/sh-1/B3") are returned. A non-positive
 // limit behaves like 20.
-func (l *Log) Recent(ctx context.Context, limit int, target string) ([]Entry, error) {
+func (l *Log) Recent(ctx context.Context, limit int, target string) (out []Entry, err error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -256,9 +259,13 @@ func (l *Log) Recent(ctx context.Context, limit int, target string) ([]Entry, er
 	if err != nil {
 		return nil, fmt.Errorf("audit: recent: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("audit: recent: close rows: %w", closeErr))
+		}
+	}()
 
-	out := []Entry{}
+	out = []Entry{}
 	for rows.Next() {
 		e, err := scanEntry(rows)
 		if err != nil {
@@ -275,12 +282,16 @@ func (l *Log) Recent(ctx context.Context, limit int, target string) ([]Entry, er
 // Verify walks the chain in seq order and recomputes every hash. It returns
 // an error identifying the first broken seq, or nil when the chain is
 // intact.
-func (l *Log) Verify(ctx context.Context) error {
+func (l *Log) Verify(ctx context.Context) (err error) {
 	rows, err := l.db.QueryContext(ctx, `SELECT `+auditColumns+` FROM audit_log ORDER BY seq`)
 	if err != nil {
 		return fmt.Errorf("audit: verify: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("audit: verify: close rows: %w", closeErr))
+		}
+	}()
 
 	expectedPrev := genesisHash
 	for rows.Next() {
@@ -344,12 +355,16 @@ func (l *Log) Verify(ctx context.Context) error {
 // Export writes every entry as one JSON object per line (JSONL), in seq
 // order. JSONL is the auditor-facing format required for EU AI Act Art. 12
 // review.
-func (l *Log) Export(w io.Writer) error {
+func (l *Log) Export(w io.Writer) (err error) {
 	rows, err := l.db.Query(`SELECT ` + auditColumns + ` FROM audit_log ORDER BY seq`)
 	if err != nil {
 		return fmt.Errorf("audit: export: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("audit: export: close rows: %w", closeErr))
+		}
+	}()
 
 	enc := json.NewEncoder(w)
 	for rows.Next() {

@@ -138,7 +138,9 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	path := mappingsPath
 	if cfg.DemoMode {
 		if err := bootstrap.LoadDemoMappings(context.Background(), store); err != nil {
-			store.Close()
+			if err := store.Close(); err != nil {
+				log.Printf("close mapping store: %v", err)
+			}
 			return nil, nil, nil, fmt.Errorf("load demo mappings: %w", err)
 		}
 		log.Println("loaded demo mappings")
@@ -151,7 +153,9 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		}
 		if path != "" {
 			if err := bootstrap.LoadMappings(context.Background(), path, store); err != nil {
-				store.Close()
+				if err := store.Close(); err != nil {
+					log.Printf("close mapping store: %v", err)
+				}
 				return nil, nil, nil, fmt.Errorf("load mappings: %w", err)
 			}
 			log.Printf("loaded mappings from %s", path)
@@ -160,7 +164,9 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 
 	auditLog, err := audit.Open(cfg.DBPath)
 	if err != nil {
-		store.Close()
+		if err := store.Close(); err != nil {
+			log.Printf("close mapping store: %v", err)
+		}
 		return nil, nil, nil, fmt.Errorf("open audit log: %w", err)
 	}
 
@@ -172,8 +178,12 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	}
 
 	cleanup := func() {
-		auditLog.Close()
-		store.Close()
+		if err := auditLog.Close(); err != nil {
+			log.Printf("close audit log: %v", err)
+		}
+		if err := store.Close(); err != nil {
+			log.Printf("close mapping store: %v", err)
+		}
 	}
 
 	if cfg.DemoMode {

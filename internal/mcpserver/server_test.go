@@ -53,8 +53,14 @@ func TestRequestWithoutBearerTokenRejected(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Do: %v", err)
 			}
-			defer resp.Body.Close()
-			io.Copy(io.Discard, resp.Body)
+			t.Cleanup(func() {
+				if err := resp.Body.Close(); err != nil {
+					t.Errorf("close unauthorized response: %v", err)
+				}
+			})
+			if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+				t.Fatalf("read unauthorized response: %v", err)
+			}
 			if resp.StatusCode != http.StatusUnauthorized {
 				t.Fatalf("status = %d, want 401", resp.StatusCode)
 			}
@@ -87,7 +93,11 @@ func TestServerAuditsToolCalls(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
-	t.Cleanup(func() { session.Close() })
+	t.Cleanup(func() {
+		if err := session.Close(); err != nil {
+			t.Errorf("close session: %v", err)
+		}
+	})
 
 	if _, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      "echo",
@@ -147,7 +157,11 @@ func TestServerAuditUsesActorHeader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
-	t.Cleanup(func() { session.Close() })
+	t.Cleanup(func() {
+		if err := session.Close(); err != nil {
+			t.Errorf("close session: %v", err)
+		}
+	})
 
 	if _, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      "echo",

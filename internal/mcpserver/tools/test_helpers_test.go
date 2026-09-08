@@ -47,13 +47,21 @@ func newTestEnv(t *testing.T, handler http.HandlerFunc) testEnv {
 	if err != nil {
 		t.Fatalf("mapping.Open: %v", err)
 	}
-	t.Cleanup(func() { store.Close() })
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close mapping store: %v", err)
+		}
+	})
 
 	log, err := audit.Open(":memory:")
 	if err != nil {
 		t.Fatalf("audit.Open: %v", err)
 	}
-	t.Cleanup(func() { log.Close() })
+	t.Cleanup(func() {
+		if err := log.Close(); err != nil {
+			t.Errorf("close audit log: %v", err)
+		}
+	})
 
 	tokens := workiva.NewTokenProvider(u, "test-client", "test-secret", "file:read", srv.Client())
 	client := workiva.NewClient(u, tokens, nil, srv.Client())
@@ -97,7 +105,11 @@ func callTool(t *testing.T, deps mcpserver.Deps, tool mcpserver.Tool, args map[s
 	if err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
-	t.Cleanup(func() { session.Close() })
+	t.Cleanup(func() {
+		if err := session.Close(); err != nil {
+			t.Errorf("close session: %v", err)
+		}
+	})
 
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      tool.Name(),
@@ -140,7 +152,9 @@ func tokenHandler(t *testing.T, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/iam/v1/oauth2/token" {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"access_token":"tok-1","expires_in":3600}`))
+			if _, err := w.Write([]byte(`{"access_token":"tok-1","expires_in":3600}`)); err != nil {
+				t.Errorf("write token response: %v", err)
+			}
 			return
 		}
 		next(w, r)

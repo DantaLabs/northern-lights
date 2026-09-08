@@ -28,7 +28,9 @@ func TestGetSheetDataDecodesFixture(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(loadFixture(t, "sheetdata_response.json"))
+		if _, err := w.Write(loadFixture(t, "sheetdata_response.json")); err != nil {
+			t.Errorf("write sheetdata response: %v", err)
+		}
 	}))
 
 	data, err := c.GetSheetData(context.Background(), "s-1", "sh-1", "B3:D10", []string{"value", "calculatedValue"})
@@ -78,7 +80,9 @@ func TestGetSheetDataSendsQueryParams(t *testing.T) {
 		gotRange = r.URL.Query().Get("$cellrange")
 		gotFields = r.URL.Query().Get("$fields")
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"cells":[]}`)
+		if _, err := fmt.Fprint(w, `{"cells":[]}`); err != nil {
+			t.Errorf("write sheetdata response: %v", err)
+		}
 	}))
 
 	_, err := c.GetSheetData(context.Background(), "s-1", "sh-1", "B3:D10", []string{"value", "calculatedValue"})
@@ -98,7 +102,9 @@ func TestGetSheetDataOmitsEmptyQueryParams(t *testing.T) {
 	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
 		rawQuery = r.URL.RawQuery
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"cells":[]}`)
+		if _, err := fmt.Fprint(w, `{"cells":[]}`); err != nil {
+			t.Errorf("write sheetdata response: %v", err)
+		}
 	}))
 
 	_, err := c.GetSheetData(context.Background(), "s-1", "sh-1", "", nil)
@@ -115,11 +121,15 @@ func TestGetSheetDataFollowsNextLink(t *testing.T) {
 	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Query().Get("$page") == "2" {
-			fmt.Fprint(w, page2)
+			if _, err := fmt.Fprint(w, page2); err != nil {
+				t.Errorf("write sheetdata response: %v", err)
+			}
 			return
 		}
 		next := "http://" + r.Host + "/spreadsheets/s-1/sheets/sh-1/sheetdata?$page=2"
-		fmt.Fprintf(w, `{"cells":[[{"value":"p1a"}],[{"value":"p1b"}]],"@nextLink":%q}`, next)
+		if _, err := fmt.Fprintf(w, `{"cells":[[{"value":"p1a"}],[{"value":"p1b"}]],"@nextLink":%q}`, next); err != nil {
+			t.Errorf("write sheetdata response: %v", err)
+		}
 	}))
 
 	data, err := c.GetSheetData(context.Background(), "s-1", "sh-1", "", nil)
@@ -139,7 +149,9 @@ func TestGetRangeValues(t *testing.T) {
 	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `[[1,"a"],[null,true]]`)
+		if _, err := fmt.Fprint(w, `[[1,"a"],[null,true]]`); err != nil {
+			t.Errorf("write values response: %v", err)
+		}
 	}))
 
 	values, err := c.GetRangeValues(context.Background(), "s-1", "sh-1", "A1:D10")
@@ -164,7 +176,9 @@ func TestGetSheetDataCapsPaginationAtFiftyPages(t *testing.T) {
 		apiCalls.Add(1)
 		next := "http://" + r.Host + "/spreadsheets/s-1/sheets/sh-1/sheetdata?$page=next"
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"cells":[[{"value":"x"}]],"@nextLink":%q}`, next)
+		if _, err := fmt.Fprintf(w, `{"cells":[[{"value":"x"}]],"@nextLink":%q}`, next); err != nil {
+			t.Errorf("write sheetdata response: %v", err)
+		}
 	}))
 
 	_, err := c.GetSheetData(context.Background(), "s-1", "sh-1", "", nil)

@@ -39,7 +39,9 @@ func TestUnauditedWriteRefused(t *testing.T) {
 	deps := testDeps(t)
 
 	// Break the audit log: appends fail on a closed handle.
-	deps.Audit.Close()
+	if err := deps.Audit.Close(); err != nil {
+		t.Fatalf("close audit log: %v", err)
+	}
 
 	called := false
 	reg := NewRegistry()
@@ -62,7 +64,11 @@ func TestUnauditedWriteRefused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
-	t.Cleanup(func() { session.Close() })
+	t.Cleanup(func() {
+		if err := session.Close(); err != nil {
+			t.Errorf("close session: %v", err)
+		}
+	})
 
 	// Write tool: refused, never executes.
 	if _, err := session.CallTool(ctx, &mcp.CallToolParams{

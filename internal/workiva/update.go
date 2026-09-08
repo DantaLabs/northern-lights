@@ -104,7 +104,7 @@ func (u SheetUpdate) MarshalJSON() ([]byte, error) {
 // returns the operationLocation of the accepted async operation. The
 // location is read from the 202 response body, falling back to the
 // Location header.
-func (c *Client) UpdateSheet(ctx context.Context, spreadsheetID, sheetID string, upd SheetUpdate) (string, error) {
+func (c *Client) UpdateSheet(ctx context.Context, spreadsheetID, sheetID string, upd SheetUpdate) (operationURL string, err error) {
 	payload, err := json.Marshal(upd)
 	if err != nil {
 		return "", err
@@ -116,10 +116,17 @@ func (c *Client) UpdateSheet(ctx context.Context, spreadsheetID, sheetID string,
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close update response: %w", closeErr))
+		}
+	}()
 
 	if resp.StatusCode != http.StatusAccepted {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		if readErr != nil {
+			return "", fmt.Errorf("read update error response body: %w", readErr)
+		}
 		return "", &APIError{StatusCode: resp.StatusCode, Body: string(body)}
 	}
 

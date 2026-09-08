@@ -3,6 +3,7 @@ package workiva
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -45,9 +46,15 @@ func (c *Client) WaitOperation(ctx context.Context, opURL string) (string, error
 		var op operationResponse
 		decErr := json.NewDecoder(resp.Body).Decode(&op)
 		retryAfter := resp.Header.Get("Retry-After")
-		resp.Body.Close()
+		closeErr := resp.Body.Close()
 		if decErr != nil {
+			if closeErr != nil {
+				decErr = errors.Join(decErr, closeErr)
+			}
 			return "", fmt.Errorf("decode operation response: %w", decErr)
+		}
+		if closeErr != nil {
+			return "", fmt.Errorf("close operation response: %w", closeErr)
 		}
 
 		switch op.Status {

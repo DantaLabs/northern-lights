@@ -28,7 +28,9 @@ func syncMock(t *testing.T) http.HandlerFunc {
 				t.Errorf("$cellrange = %q, want A:B", got)
 			}
 			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, mapperSheetdataBody)
+			if _, err := fmt.Fprint(w, mapperSheetdataBody); err != nil {
+				t.Errorf("write sheetdata response: %v", err)
+			}
 			return
 		}
 		http.NotFound(w, r)
@@ -107,10 +109,12 @@ func TestSyncMappingCustomColumns(t *testing.T) {
 			t.Errorf("$cellrange = %q, want C:D", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{
+		if _, err := fmt.Fprint(w, `{
 			"range": {"startRow": 1, "startColumn": 2, "stopRow": 1, "stopColumn": 3},
 			"cells": [[{"value": "Revenue EUR"}, {"value": "1000"}]]
-		}`)
+		}`); err != nil {
+			t.Errorf("write sheetdata response: %v", err)
+		}
 	}))
 
 	result := callTool(t, env.deps, SyncMapping(), map[string]any{

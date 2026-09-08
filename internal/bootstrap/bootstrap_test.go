@@ -14,7 +14,11 @@ func TestLoadMappingsMissingFileIsNoOp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close mapping store: %v", err)
+		}
+	})
 
 	missing := filepath.Join(t.TempDir(), "does-not-exist.yaml")
 	if err := LoadMappings(context.Background(), missing, store); err != nil {
@@ -35,7 +39,11 @@ func TestLoadMappingsExampleFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close mapping store: %v", err)
+		}
+	})
 
 	if err := LoadMappings(ctx, "../../configs/example.yaml", store); err != nil {
 		t.Fatalf("LoadMappings: %v", err)
@@ -91,7 +99,11 @@ func TestLoadMappingsIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close mapping store: %v", err)
+		}
+	})
 
 	for i := 0; i < 2; i++ {
 		if err := LoadMappings(ctx, "../../configs/example.yaml", store); err != nil {
@@ -121,7 +133,11 @@ func TestLoadMappingsUpdatesExistingRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close mapping store: %v", err)
+		}
+	})
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "mappings.yaml")
@@ -177,7 +193,11 @@ func TestLoadDemoMappings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open store: %v", err)
 	}
-	defer store.Close()
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close mapping store: %v", err)
+		}
+	})
 
 	ctx := context.Background()
 	if err := LoadDemoMappings(ctx, store); err != nil {

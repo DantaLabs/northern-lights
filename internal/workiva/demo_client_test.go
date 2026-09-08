@@ -84,11 +84,18 @@ func TestDemoTransportTokenEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RoundTrip: %v", err)
 	}
-	defer resp.Body.Close()
+	t.Cleanup(func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close token response: %v", err)
+		}
+	})
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read token response: %v", err)
+	}
 	var tr tokenResponse
 	if err := json.Unmarshal(body, &tr); err != nil {
 		t.Fatalf("decode token: %v", err)

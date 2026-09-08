@@ -71,7 +71,11 @@ func seedAuditDB(t *testing.T, dbPath string, tamper bool) {
 	if err != nil {
 		t.Fatalf("open audit db: %v", err)
 	}
-	defer log.Close()
+	t.Cleanup(func() {
+		if err := log.Close(); err != nil {
+			t.Errorf("close audit log: %v", err)
+		}
+	})
 	ctx := context.Background()
 	for _, tool := range []string{"tool_a", "tool_b", "tool_c"} {
 		if _, err := log.Append(ctx, audit.Entry{Actor: "test", Tool: tool, Action: "call"}); err != nil {
@@ -83,7 +87,11 @@ func seedAuditDB(t *testing.T, dbPath string, tamper bool) {
 		if err != nil {
 			t.Fatalf("open raw db: %v", err)
 		}
-		defer db.Close()
+		t.Cleanup(func() {
+			if err := db.Close(); err != nil {
+				t.Errorf("close raw audit db: %v", err)
+			}
+		})
 		if _, err := db.Exec(`UPDATE audit_log SET actor = 'mallory' WHERE seq = 2`); err != nil {
 			t.Fatalf("tamper: %v", err)
 		}

@@ -3,6 +3,7 @@ package workiva
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -69,11 +70,17 @@ func (c *Client) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 			return nil, err
 		}
 		var page SheetData
-		if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
-			resp.Body.Close()
-			return nil, fmt.Errorf("decode sheetdata response: %w", err)
+		decodeErr := json.NewDecoder(resp.Body).Decode(&page)
+		closeErr := resp.Body.Close()
+		if decodeErr != nil {
+			if closeErr != nil {
+				decodeErr = errors.Join(decodeErr, closeErr)
+			}
+			return nil, fmt.Errorf("decode sheetdata response: %w", decodeErr)
 		}
-		resp.Body.Close()
+		if closeErr != nil {
+			return nil, fmt.Errorf("close sheetdata response: %w", closeErr)
+		}
 
 		if result.Range == nil && page.Range != nil {
 			result.Range = page.Range
@@ -97,7 +104,7 @@ func (c *Client) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 // GetRangeValues reads the evaluated values of a range in A1 notation
 // from the values endpoint and returns the decoded JSON body (an array
 // of rows, each an array of values).
-func (c *Client) GetRangeValues(ctx context.Context, spreadsheetID, sheetID, a1 string) (any, error) {
+func (c *Client) GetRangeValues(ctx context.Context, spreadsheetID, sheetID, a1 string) (values any, err error) {
 	path := fmt.Sprintf("/spreadsheets/%s/sheets/%s/values/%s",
 		url.PathEscape(spreadsheetID), url.PathEscape(sheetID), url.PathEscape(a1))
 
@@ -105,9 +112,12 @@ func (c *Client) GetRangeValues(ctx context.Context, spreadsheetID, sheetID, a1 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close values response: %w", closeErr))
+		}
+	}()
 
-	var values any
 	if err := json.NewDecoder(resp.Body).Decode(&values); err != nil {
 		return nil, fmt.Errorf("decode values response: %w", err)
 	}

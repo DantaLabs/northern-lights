@@ -3,6 +3,7 @@ package workiva
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -151,21 +152,27 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader, ca
 
 		if resp.StatusCode == http.StatusUnauthorized && !retried401 {
 			retried401 = true
-			drainAndClose(resp)
+			if err := drainAndClose(resp); err != nil {
+				return nil, fmt.Errorf("drain response before retry: %w", err)
+			}
 			c.tokens.Invalidate()
 			token = ""
 			continue
 		}
 		if resp.StatusCode == http.StatusTooManyRequests && attempt < maxAttempts {
 			delay := retryAfterDelay(resp.Header.Get("Retry-After"))
-			drainAndClose(resp)
+			if err := drainAndClose(resp); err != nil {
+				return nil, fmt.Errorf("drain response before retry: %w", err)
+			}
 			if err := c.sleep(ctx, delay); err != nil {
 				return nil, err
 			}
 			continue
 		}
 		if isRetryableServerError(resp.StatusCode) && attempt < maxAttempts && isIdempotent(method) {
-			drainAndClose(resp)
+			if err := drainAndClose(resp); err != nil {
+				return nil, fmt.Errorf("drain response before retry: %w", err)
+			}
 			if err := c.sleep(ctx, backoff(attempt)); err != nil {
 				return nil, err
 			}
@@ -188,19 +195,24 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader, ca
 // errorResponse converts a terminal non-2xx response into an *APIError,
 // consuming the body.
 func errorResponse(resp *http.Response) (*http.Response, error) {
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	resp.Body.Close()
-	if err != nil {
-		return nil, fmt.Errorf("read error response body (status %d): %w", resp.StatusCode, err)
+	body, readErr := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	closeErr := resp.Body.Close()
+	if readErr != nil {
+		return nil, fmt.Errorf("read error response body (status %d): %w", resp.StatusCode, readErr)
 	}
-	return nil, &APIError{StatusCode: resp.StatusCode, Body: string(body)}
+	apiErr := &APIError{StatusCode: resp.StatusCode, Body: string(body)}
+	if closeErr != nil {
+		return nil, errors.Join(apiErr, fmt.Errorf("close error response body (status %d): %w", resp.StatusCode, closeErr))
+	}
+	return nil, apiErr
 }
 
 // drainAndClose discards and closes a response body before a retry so the
 // connection can be reused.
-func drainAndClose(resp *http.Response) {
-	io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
-	resp.Body.Close()
+func drainAndClose(resp *http.Response) error {
+	_, copyErr := io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+	closeErr := resp.Body.Close()
+	return errors.Join(copyErr, closeErr)
 }
 
 // retryAfterDelay parses the Retry-After header (seconds), falls back to

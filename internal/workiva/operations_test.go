@@ -24,10 +24,14 @@ func TestWaitOperationPollsUntilCompleted(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		if n == 1 {
-			w.Write(loadFixture(t, "operation_started.json"))
+			if _, err := w.Write(loadFixture(t, "operation_started.json")); err != nil {
+				t.Errorf("write operation fixture: %v", err)
+			}
 			return
 		}
-		w.Write(loadFixture(t, "operation_completed.json"))
+		if _, err := w.Write(loadFixture(t, "operation_completed.json")); err != nil {
+			t.Errorf("write operation fixture: %v", err)
+		}
 	}))
 
 	resourceURL, err := c.WaitOperation(context.Background(), "/operations/op-1")
@@ -48,7 +52,9 @@ func TestWaitOperationFailedReturnsError(t *testing.T) {
 	c, _ := setupFastClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
 		polls++
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"id":"op-1","status":"failed","error":{"message":"cell range is invalid"}}`))
+		if _, err := w.Write([]byte(`{"id":"op-1","status":"failed","error":{"message":"cell range is invalid"}}`)); err != nil {
+			t.Errorf("write failed operation response: %v", err)
+		}
 	}))
 
 	_, err := c.WaitOperation(context.Background(), "/operations/op-1")
@@ -77,10 +83,14 @@ func TestWaitOperationRespectsRetryAfter(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		if n == 1 {
 			w.Header().Set("Retry-After", "7")
-			w.Write(loadFixture(t, "operation_started.json"))
+			if _, err := w.Write(loadFixture(t, "operation_started.json")); err != nil {
+				t.Errorf("write operation fixture: %v", err)
+			}
 			return
 		}
-		w.Write(loadFixture(t, "operation_completed.json"))
+		if _, err := w.Write(loadFixture(t, "operation_completed.json")); err != nil {
+			t.Errorf("write operation fixture: %v", err)
+		}
 	}))
 	c.sleep = func(ctx context.Context, d time.Duration) error {
 		mu.Lock()
@@ -111,7 +121,9 @@ func TestWaitOperationTimesOut(t *testing.T) {
 
 	c, _ := setupFastClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(loadFixture(t, "operation_started.json"))
+		if _, err := w.Write(loadFixture(t, "operation_started.json")); err != nil {
+			t.Errorf("write operation fixture: %v", err)
+		}
 	}))
 
 	start := time.Now()

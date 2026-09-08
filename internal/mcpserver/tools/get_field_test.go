@@ -26,7 +26,9 @@ func TestGetFieldLiveReadCachesValue(t *testing.T) {
 			t.Errorf("$cellrange = %q, want B3", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, sheetdataBody)
+		if _, err := fmt.Fprint(w, sheetdataBody); err != nil {
+			t.Errorf("write sheetdata response: %v", err)
+		}
 	}))
 	seedField(t, env)
 
@@ -99,7 +101,9 @@ func TestGetFieldServesFreshCacheWithoutAPICall(t *testing.T) {
 func TestGetFieldRefreshesStaleCache(t *testing.T) {
 	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, sheetdataBody)
+		if _, err := fmt.Fprint(w, sheetdataBody); err != nil {
+			t.Errorf("write sheetdata response: %v", err)
+		}
 	}))
 	seedField(t, env)
 	if err := env.deps.Store.CacheCells(context.Background(), []mapping.CellValue{

@@ -22,10 +22,20 @@ func clearEnv(t *testing.T) {
 	for _, k := range configEnvKeys {
 		if v, ok := os.LookupEnv(k); ok {
 			old := v
-			os.Unsetenv(k)
-			t.Cleanup(func() { os.Setenv(k, old) })
+			if err := os.Unsetenv(k); err != nil {
+				t.Fatalf("unset %s: %v", k, err)
+			}
+			t.Cleanup(func() {
+				if err := os.Setenv(k, old); err != nil {
+					t.Errorf("restore %s: %v", k, err)
+				}
+			})
 		} else {
-			t.Cleanup(func() { os.Unsetenv(k) })
+			t.Cleanup(func() {
+				if err := os.Unsetenv(k); err != nil {
+					t.Errorf("clear %s: %v", k, err)
+				}
+			})
 		}
 	}
 }

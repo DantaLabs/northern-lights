@@ -42,9 +42,11 @@ func TestUpdateSheetReturnsOperationLocation(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
-		json.NewEncoder(w).Encode(map[string]string{
+		if err := json.NewEncoder(w).Encode(map[string]string{
 			"operationLocation": "http://" + r.Host + "/operations/op-1",
-		})
+		}); err != nil {
+			t.Errorf("write operation response: %v", err)
+		}
 	}))
 
 	opURL, err := c.UpdateSheet(context.Background(), "s-1", "sh-1",
@@ -79,7 +81,9 @@ func TestUpdateSheetSendsEditCellsPayload(t *testing.T) {
 	c, _ := setupFastClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
 		body, _ = io.ReadAll(r.Body)
 		w.WriteHeader(http.StatusAccepted)
-		json.NewEncoder(w).Encode(map[string]string{"operationLocation": "http://x/operations/op-1"})
+		if err := json.NewEncoder(w).Encode(map[string]string{"operationLocation": "http://x/operations/op-1"}); err != nil {
+			t.Errorf("write operation response: %v", err)
+		}
 	}))
 
 	edits := []CellEdit{
@@ -133,7 +137,9 @@ func TestUpdateSheetSendsEditCellsPayload(t *testing.T) {
 func TestUpdateSheetRejectsNon202(t *testing.T) {
 	c, _ := setupFastClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"unexpected":true}`)
+		if _, err := fmt.Fprint(w, `{"unexpected":true}`); err != nil {
+			t.Errorf("write update response: %v", err)
+		}
 	}))
 
 	_, err := c.UpdateSheet(context.Background(), "s-1", "sh-1",
@@ -202,14 +208,20 @@ func TestWriteCellsUpdatesAndWaits(t *testing.T) {
 		switch {
 		case r.URL.Path == "/spreadsheets/s-1/sheets/sh-1/data":
 			w.WriteHeader(http.StatusAccepted)
-			json.NewEncoder(w).Encode(map[string]string{
+			if err := json.NewEncoder(w).Encode(map[string]string{
 				"operationLocation": "http://" + r.Host + "/operations/op-1",
-			})
+			}); err != nil {
+				t.Errorf("write operation response: %v", err)
+			}
 		case r.URL.Path == "/operations/op-1" && n <= 2:
 			// First poll after the 202: still running.
-			w.Write(loadFixture(t, "operation_started.json"))
+			if _, err := w.Write(loadFixture(t, "operation_started.json")); err != nil {
+				t.Errorf("write operation fixture: %v", err)
+			}
 		case r.URL.Path == "/operations/op-1":
-			w.Write(loadFixture(t, "operation_completed.json"))
+			if _, err := w.Write(loadFixture(t, "operation_completed.json")); err != nil {
+				t.Errorf("write operation fixture: %v", err)
+			}
 		default:
 			http.NotFound(w, r)
 		}

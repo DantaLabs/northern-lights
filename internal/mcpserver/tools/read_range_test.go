@@ -20,13 +20,15 @@ func TestReadRangeFetchesGridAndCachesCells(t *testing.T) {
 		}
 		gotRange = r.URL.Query().Get("$cellrange")
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{
+		if _, err := fmt.Fprint(w, `{
 			"range": {"startRow": 2, "startColumn": 1, "stopRow": 3, "stopColumn": 2},
 			"cells": [
 				[{"value": "Scope 2"}, {"value": "=1+1", "calculatedValue": 2}],
 				[{"value": "kWh"}, {"value": "42", "calculatedValue": 42}]
 			]
-		}`)
+		}`); err != nil {
+			t.Errorf("write sheetdata response: %v", err)
+		}
 	}))
 
 	result := callTool(t, env.deps, ReadRange(), map[string]any{

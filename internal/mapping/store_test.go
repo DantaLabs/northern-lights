@@ -12,7 +12,11 @@ func openTestStore(t *testing.T) *Store {
 	if err != nil {
 		t.Fatalf("Open(:memory:) returned error: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	t.Cleanup(func() {
+		if err := s.Close(); err != nil {
+			t.Errorf("close mapping store: %v", err)
+		}
+	})
 	return s
 }
 

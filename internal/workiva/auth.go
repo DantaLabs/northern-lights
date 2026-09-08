@@ -3,6 +3,7 @@ package workiva
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -116,7 +117,7 @@ type tokenResponse struct {
 }
 
 // fetch requests a new token and caches the result under p.mu.
-func (p *TokenProvider) fetch(ctx context.Context) error {
+func (p *TokenProvider) fetch(ctx context.Context) (err error) {
 	form := url.Values{
 		"grant_type":    {"client_credentials"},
 		"client_id":     {p.clientID},
@@ -136,7 +137,11 @@ func (p *TokenProvider) fetch(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("token request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close token response: %w", closeErr))
+		}
+	}()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {

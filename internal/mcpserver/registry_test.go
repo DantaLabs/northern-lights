@@ -46,13 +46,21 @@ func testDeps(t *testing.T) Deps {
 	if err != nil {
 		t.Fatalf("mapping.Open: %v", err)
 	}
-	t.Cleanup(func() { store.Close() })
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close mapping store: %v", err)
+		}
+	})
 
 	log, err := audit.Open(":memory:")
 	if err != nil {
 		t.Fatalf("audit.Open: %v", err)
 	}
-	t.Cleanup(func() { log.Close() })
+	t.Cleanup(func() {
+		if err := log.Close(); err != nil {
+			t.Errorf("close audit log: %v", err)
+		}
+	})
 
 	return Deps{
 		Store: store,
@@ -107,7 +115,11 @@ func TestRegistryListAndCall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
-	t.Cleanup(func() { session.Close() })
+	t.Cleanup(func() {
+		if err := session.Close(); err != nil {
+			t.Errorf("close session: %v", err)
+		}
+	})
 
 	tools, err := session.ListTools(ctx, nil)
 	if err != nil {

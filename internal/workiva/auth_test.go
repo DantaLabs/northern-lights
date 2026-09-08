@@ -26,7 +26,9 @@ func (h *tokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Fprintf(w, `{"access_token":"test-token-abc123","token_type":"Bearer","expires_in":%d}`, h.expires)
+	if _, err := fmt.Fprintf(w, `{"access_token":"test-token-abc123","token_type":"Bearer","expires_in":%d}`, h.expires); err != nil {
+		return
+	}
 }
 
 // fakeTime replaces the package clock and returns a restore function.
@@ -64,7 +66,9 @@ func TestClientCredentialsTokenRequestsToken(t *testing.T) {
 		}
 		gotForm = r.Form
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(fixture)
+		if _, err := w.Write(fixture); err != nil {
+			t.Errorf("write token fixture: %v", err)
+		}
 	}))
 	defer srv.Close()
 
@@ -159,7 +163,9 @@ func TestClientCredentialsTokenScopePassedThrough(t *testing.T) {
 					return
 				}
 				gotScope = r.Form.Get("scope")
-				fmt.Fprint(w, `{"access_token":"t","expires_in":3600}`)
+				if _, err := fmt.Fprint(w, `{"access_token":"t","expires_in":3600}`); err != nil {
+					t.Errorf("write token response: %v", err)
+				}
 			}))
 			defer srv.Close()
 
@@ -182,7 +188,9 @@ func TestClientCredentialsTokenNon200ReturnsTypedError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
-		fmt.Fprint(w, `{"error":"invalid_client","error_description":"bad credentials"}`)
+		if _, err := fmt.Fprint(w, `{"error":"invalid_client","error_description":"bad credentials"}`); err != nil {
+			t.Errorf("write error response: %v", err)
+		}
 	}))
 	defer srv.Close()
 
@@ -214,7 +222,9 @@ func TestClientCredentialsTokenConcurrentCallersShareOneFetch(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 		// Use a short expires_in so the cache is immediately stale;
 		// without singleflight every caller would fetch independently.
-		fmt.Fprint(w, `{"access_token":"shared-token","expires_in":10}`)
+		if _, err := fmt.Fprint(w, `{"access_token":"shared-token","expires_in":10}`); err != nil {
+			t.Errorf("write token response: %v", err)
+		}
 	}))
 	defer srv.Close()
 	u, err := url.Parse(srv.URL)

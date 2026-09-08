@@ -13,7 +13,11 @@ func TestMigrateAppliesAndRecords(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close database: %v", err)
+		}
+	})
 	ctx := context.Background()
 
 	migrations := []string{
@@ -60,7 +64,11 @@ func TestMigrateRollbackOnError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close database: %v", err)
+		}
+	})
 	ctx := context.Background()
 
 	err = Migrate(ctx, db, "bad", []string{`CREATE TABLE ok_table (id INTEGER)`, `THIS IS NOT SQL`})

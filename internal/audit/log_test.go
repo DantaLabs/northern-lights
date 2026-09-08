@@ -16,7 +16,11 @@ func openTestLog(t *testing.T) *Log {
 	if err != nil {
 		t.Fatalf("Open(:memory:) returned error: %v", err)
 	}
-	t.Cleanup(func() { l.Close() })
+	t.Cleanup(func() {
+		if err := l.Close(); err != nil {
+			t.Errorf("close audit log: %v", err)
+		}
+	})
 	return l
 }
 
@@ -29,7 +33,6 @@ func TestAppendAndVerify(t *testing.T) {
 		{Actor: "bob@example.com", Tool: "workiva_update_field", Action: "editCells", Target: "ss-1/sh-1/B3", BeforeJSON: `{"value":"42"}`, AfterJSON: `{"value":"43"}`, WorkivaOpURL: "https://api.eu.wdesk.com/operations/op-1"},
 		{Actor: "copilot", Tool: "workiva_search_fields", Action: "search", Target: "energy"},
 	}
-	var seqs []int64
 	var prevHash string
 	for i, e := range entries {
 		got, err := l.Append(ctx, e)
@@ -52,7 +55,6 @@ func TestAppendAndVerify(t *testing.T) {
 			t.Errorf("entry %d prev_hash = %q, want previous hash %q", i, got.PrevHash, prevHash)
 		}
 		prevHash = got.Hash
-		seqs = append(seqs, got.Seq)
 	}
 
 	if err := l.Verify(ctx); err != nil {

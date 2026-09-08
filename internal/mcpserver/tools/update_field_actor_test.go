@@ -48,7 +48,11 @@ func callToolWithActor(t *testing.T, deps mcpserver.Deps, tool mcpserver.Tool, a
 	if err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
-	t.Cleanup(func() { session.Close() })
+	t.Cleanup(func() {
+		if err := session.Close(); err != nil {
+			t.Errorf("close session: %v", err)
+		}
+	})
 
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      tool.Name(),
