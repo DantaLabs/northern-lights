@@ -34,10 +34,16 @@ func (e *APIError) Error() string {
 
 // Client is the rate-limited, retrying HTTP client for the Workiva API.
 // It injects auth and version headers and honors Retry-After on 429s.
+// waitLimiter is the subset of *ratelimit.Limiter used by Client so tests
+// can inject a fake without exposing production internals.
+type waitLimiter interface {
+	Wait(ctx context.Context, category ratelimit.Category) error
+}
+
 type Client struct {
 	httpClient *http.Client
 	tokens     *TokenProvider
-	limiter    *ratelimit.Limiter
+	limiter    waitLimiter
 	baseURL    *url.URL
 	apiVersion string
 
@@ -53,26 +59,25 @@ func NewClient(baseURL *url.URL, tokens *TokenProvider, limiter *ratelimit.Limit
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	return &Client{
+	c := &Client{
 		httpClient: httpClient,
 		tokens:     tokens,
-		limiter:    limiter,
 		baseURL:    baseURL,
 		apiVersion: DefaultAPIVersion,
 		sleep:      sleepContext,
 	}
+	// Keep the limiter field as a nil interface when no limiter is
+	// supplied so the nil check in Do behaves intuitively.
+	if limiter != nil {
+		c.limiter = limiter
+	}
+	return c
 }
 
 // Do executes a single API request with rate limiting, auth headers, and
 // retry handling, returning the final response. The caller owns
 // resp.Body and must close it.
 func (c *Client) Do(ctx context.Context, method, path string, body io.Reader, category ratelimit.Category) (*http.Response, error) {
-	if c.limiter != nil {
-		if err := c.limiter.Wait(ctx, category); err != nil {
-			return nil, fmt.Errorf("rate limit wait (%s): %w", category, err)
-		}
-	}
-
 	token, err := c.tokens.ClientCredentialsToken(ctx)
 	if err != nil {
 		return nil, err
@@ -96,6 +101,12 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader, ca
 
 	var lastErr error
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		if c.limiter != nil {
+			if err := c.limiter.Wait(ctx, category); err != nil {
+				return nil, fmt.Errorf("rate limit wait (%s): %w", category, err)
+			}
+		}
+
 		var reqBody io.Reader
 		if body != nil {
 			reqBody = bytes.NewReader(bodyBytes)

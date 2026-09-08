@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -350,4 +351,83 @@ func (r *stubReader) Read(p []byte) (int, error) {
 	n := copy(p, r.s[r.i:])
 	r.i += n
 	return n, nil
+}
+
+// fakeWaitLimiter records how many times Wait was called and optionally
+// returns an error after a configured number of calls.
+type fakeWaitLimiter struct {
+	mu       sync.Mutex
+	calls    int
+	errAfter int
+}
+
+func (f *fakeWaitLimiter) Wait(ctx context.Context, category ratelimit.Category) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	if f.errAfter > 0 && f.calls >= f.errAfter {
+		return errors.New("rate limiter exhausted")
+	}
+	return nil
+}
+
+func (f *fakeWaitLimiter) Calls() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.calls
+}
+
+// setupTestClientWithLimiter wires a Client with an injectable limiter.
+func setupTestClientWithLimiter(t *testing.T, handler http.Handler, limiter waitLimiter) (*Client, *atomic.Int32) {
+	t.Helper()
+
+	var requests atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		handler.ServeHTTP(w, r)
+	}))
+	t.Cleanup(srv.Close)
+
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatalf("parse server url: %v", err)
+	}
+
+	tokens := NewTokenProvider(u, "test-client", "test-secret", "file:read", srv.Client())
+	c := NewClient(u, tokens, nil, srv.Client())
+	c.limiter = limiter
+	c.sleep = func(ctx context.Context, d time.Duration) error { return nil }
+	return c, &requests
+}
+
+func TestDoCallsLimiterOncePerAttempt(t *testing.T) {
+	var apiCalls atomic.Int32
+	lim := &fakeWaitLimiter{}
+	c, requests := setupTestClientWithLimiter(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
+		n := apiCalls.Add(1)
+		if n == 1 {
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, `{"ok":true}`)
+	}), lim)
+
+	resp, err := c.Do(context.Background(), http.MethodGet, "/x", nil, ratelimit.CategoryReads)
+	if err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	resp.Body.Close()
+
+	if got := apiCalls.Load(); got != 2 {
+		t.Errorf("API calls = %d, want 2", got)
+	}
+	// token fetch + 2 API attempts, each gated by the limiter.
+	if got := requests.Load(); got != 3 {
+		t.Errorf("total requests = %d, want 3", got)
+	}
+	if got := lim.Calls(); got != 2 {
+		t.Errorf("limiter Wait calls = %d, want 2 (one per attempt)", got)
+	}
 }
