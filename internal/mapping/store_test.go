@@ -290,3 +290,29 @@ func TestSearchFieldsLikeEscaping(t *testing.T) {
 		}
 	}
 }
+
+func TestDeleteExpiredPendingWrites(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	old := PendingWrite{Token: "old", FieldID: 1, FieldName: "f1", Value: "1", CreatedAt: time.Now().Add(-time.Hour)}
+	fresh := PendingWrite{Token: "fresh", FieldID: 2, FieldName: "f2", Value: "2", CreatedAt: time.Now()}
+	if err := s.CreatePendingWrite(ctx, old); err != nil {
+		t.Fatalf("CreatePendingWrite old: %v", err)
+	}
+	if err := s.CreatePendingWrite(ctx, fresh); err != nil {
+		t.Fatalf("CreatePendingWrite fresh: %v", err)
+	}
+
+	n, err := s.DeleteExpiredPendingWrites(ctx, 5*time.Minute)
+	if err != nil {
+		t.Fatalf("DeleteExpiredPendingWrites: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("deleted %d rows, want 1", n)
+	}
+	pw, err := s.ConsumePendingWrite(ctx, "fresh", 5*time.Minute)
+	if err != nil || pw == nil {
+		t.Errorf("fresh pending write missing after cleanup: pw=%v err=%v", pw, err)
+	}
+}

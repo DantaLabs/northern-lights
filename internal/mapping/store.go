@@ -394,6 +394,19 @@ func (s *Store) CreatePendingWrite(ctx context.Context, w PendingWrite) error {
 	return nil
 }
 
+// DeleteExpiredPendingWrites removes staged writes older than maxAge and
+// returns how many rows were deleted. Called once at server startup so
+// abandoned confirmations do not accumulate.
+func (s *Store) DeleteExpiredPendingWrites(ctx context.Context, maxAge time.Duration) (int64, error) {
+	cutoff := formatTime(time.Now().UTC().Add(-maxAge))
+	res, err := s.db.ExecContext(ctx,
+		`DELETE FROM pending_writes WHERE created_at < ?`, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("mapping: delete expired pending writes: %w", err)
+	}
+	return res.RowsAffected()
+}
+
 // ConsumePendingWrite returns the staged write for token and deletes it,
 // so every token is single use. An unknown token yields (nil, nil). A
 // token whose write is older than maxAge yields (nil,

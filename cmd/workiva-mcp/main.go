@@ -161,6 +161,13 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		return nil, nil, nil, fmt.Errorf("open audit log: %w", err)
 	}
 
+	// Drop staged write confirmations left over from previous runs.
+	if n, err := store.DeleteExpiredPendingWrites(context.Background(), 5*time.Minute); err != nil {
+		log.Printf("pending write cleanup failed: %v", err)
+	} else if n > 0 {
+		log.Printf("cleaned up %d expired pending writes", n)
+	}
+
 	cleanup := func() {
 		auditLog.Close()
 		store.Close()
