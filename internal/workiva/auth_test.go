@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -203,5 +204,49 @@ func TestClientCredentialsTokenNon200ReturnsTypedError(t *testing.T) {
 	}
 	if te.Body == "" {
 		t.Error("Body is empty, want the response body captured")
+	}
+}
+
+func TestClientCredentialsTokenConcurrentCallersShareOneFetch(t *testing.T) {
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		time.Sleep(50 * time.Millisecond)
+		// Use a short expires_in so the cache is immediately stale;
+		// without singleflight every caller would fetch independently.
+		fmt.Fprint(w, `{"access_token":"shared-token","expires_in":10}`)
+	}))
+	defer srv.Close()
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatalf("parse server url: %v", err)
+	}
+
+	p := NewTokenProvider(u, "c", "s", "file:read", srv.Client())
+	ctx := context.Background()
+
+	const n = 20
+	var wg sync.WaitGroup
+	tokens := make([]string, n)
+	errs := make([]error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			tokens[idx], errs[idx] = p.ClientCredentialsToken(ctx)
+		}(i)
+	}
+	wg.Wait()
+
+	if got := hits.Load(); got != 1 {
+		t.Errorf("server hits = %d, want 1", got)
+	}
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("caller %d: %v", i, err)
+		}
+		if tokens[i] != "shared-token" {
+			t.Errorf("caller %d token = %q, want shared-token", i, tokens[i])
+		}
 	}
 }

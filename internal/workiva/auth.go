@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 // expiryBuffer is subtracted from the token lifetime so a cached token is
@@ -40,6 +42,7 @@ type TokenProvider struct {
 	httpClient   *http.Client
 
 	mu        sync.Mutex
+	group     singleflight.Group
 	token     string
 	expiresAt time.Time
 }
@@ -67,16 +70,35 @@ func NewTokenProvider(baseURL *url.URL, clientID, clientSecret, scope string, ht
 // expiring.
 func (p *TokenProvider) ClientCredentialsToken(ctx context.Context) (string, error) {
 	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	if p.token != "" && now().Before(p.expiresAt) {
+		p.mu.Unlock()
 		return p.token, nil
 	}
+	p.mu.Unlock()
 
-	if err := p.fetch(ctx); err != nil {
+	v, err, _ := p.group.Do("token", func() (interface{}, error) {
+		// Re-check the cache after winning the singleflight race in
+		// case another flight refreshed the token first.
+		p.mu.Lock()
+		if p.token != "" && now().Before(p.expiresAt) {
+			tok := p.token
+			p.mu.Unlock()
+			return tok, nil
+		}
+		p.mu.Unlock()
+
+		if err := p.fetch(ctx); err != nil {
+			return nil, err
+		}
+		p.mu.Lock()
+		tok := p.token
+		p.mu.Unlock()
+		return tok, nil
+	})
+	if err != nil {
 		return "", err
 	}
-	return p.token, nil
+	return v.(string), nil
 }
 
 type tokenResponse struct {
@@ -84,7 +106,7 @@ type tokenResponse struct {
 	ExpiresIn   int    `json:"expires_in"`
 }
 
-// fetch requests a new token. Callers must hold p.mu.
+// fetch requests a new token and caches the result under p.mu.
 func (p *TokenProvider) fetch(ctx context.Context) error {
 	form := url.Values{
 		"grant_type":    {"client_credentials"},
@@ -132,7 +154,9 @@ func (p *TokenProvider) fetch(ctx context.Context) error {
 	} else {
 		lifetime = 0
 	}
+	p.mu.Lock()
 	p.token = tr.AccessToken
 	p.expiresAt = now().Add(lifetime)
+	p.mu.Unlock()
 	return nil
 }
