@@ -170,7 +170,8 @@ func TestDemoModeWithoutAPIKey(t *testing.T) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	// A request with the demo token should succeed.
+	// The legacy hardcoded "demo" token must be rejected: demo mode now
+	// generates a random token per run (printed to the server log).
 	req, err := http.NewRequest(http.MethodPost, srv.URL+"/mcp", strings.NewReader(`{}`))
 	if err != nil {
 		t.Fatalf("NewRequest: %v", err)
@@ -182,8 +183,8 @@ func TestDemoModeWithoutAPIKey(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	io.Copy(io.Discard, resp.Body)
-	if resp.StatusCode == http.StatusUnauthorized {
-		t.Fatal("expected demo API key to be accepted")
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("hardcoded demo token accepted: status = %d, want 401", resp.StatusCode)
 	}
 }
 

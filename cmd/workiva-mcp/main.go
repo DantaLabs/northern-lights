@@ -106,8 +106,11 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		if !cfg.DemoMode {
 			return nil, nil, nil, err
 		}
-		// In demo mode a hard-coded API key keeps the one-liner easy.
-		apiToken = "demo"
+		// In demo mode, generate a random token per run and print it so the
+		// operator can connect. A hardcoded demo token would let anyone
+		// reach a demo server exposed on a network.
+		apiToken = randomToken()
+		log.Printf("demo mode API token: %s", apiToken)
 	}
 
 	if cfg.DemoMode {
