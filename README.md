@@ -33,14 +33,15 @@ trail for EU AI Act compliance.
 docker compose -f deployments/docker-compose.yml up -d
 ```
 
-### Demo mode (no credentials needed)
+### Demo mode (no Workiva credentials needed)
 
 ```bash
-NL_DEMO_MODE=true NL_API_KEY=demo ./workiva-mcp
+NL_DEMO_MODE=true NL_API_KEY= ./workiva-mcp
 ```
 
-All data is synthetic. Connect any MCP client to
-`http://localhost:8080/mcp` to explore.
+The server generates a random bearer token for the run and prints it to the
+server log. Use that token when connecting an MCP client. All data is
+synthetic. Connect any MCP client to `http://localhost:8080/mcp` to explore.
 
 ## Tool catalog
 

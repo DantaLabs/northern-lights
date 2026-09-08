@@ -13,12 +13,13 @@ spreadsheet edits that are applied through the Workiva API.
 ## What data is processed
 
 - **Your Workiva spreadsheet data** is read and, if requested, written
-  through the official Workiva API. All data remains in your Workiva
-  workspace; Northern Lights does not transfer it to any third party.
+  through the official Workiva API. Values read from Workiva can be cached
+  locally in SQLite; Northern Lights does not transfer them to any service
+  other than the Workiva API and the MCP client.
 - **Field mappings** (how spreadsheet cells relate to named reporting
   concepts) are stored locally in a SQLite database on your
   infrastructure.
-- **Audit records** of every tool call and data mutation are stored in
+- **Audit records** of tool calls and data mutations are stored in
   the same local database.
 
 ## What is NOT sent externally
@@ -32,7 +33,9 @@ only outbound network traffic is:
 
 ## How to verify what happened
 
-Every read and write is recorded in a tamper-evident audit log. Ask your
+The server attempts to record every tool call in a tamper-evident audit log.
+If the initial audit append fails, write tools are refused, while some
+read-only tools can continue after the failure is logged. Ask your
 administrator to run:
 
 ```bash
@@ -53,4 +56,4 @@ administrator to reverse it in Workiva.
 ## Contact
 
 For questions about Northern Lights, its data handling, or to report a
-concern, see [SECURITY.md](../SECURITY.md).
+concern, see [SECURITY.md](../../SECURITY.md).

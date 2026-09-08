@@ -19,7 +19,7 @@ docker compose -f deployments/docker-compose.yml up -d
 export NL_API_KEY="your-secret-key"
 export NL_WORKIVA_CLIENT_ID="your-workiva-client-id"
 export NL_WORKIVA_CLIENT_SECRET="your-workiva-client-secret"
-./workiva-mcp -config configs/example.yaml
+./workiva-mcp -mappings configs/example.yaml
 ```
 
 The server listens on port 8080 by default and serves the MCP endpoint

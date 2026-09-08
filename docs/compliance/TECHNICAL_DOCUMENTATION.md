@@ -11,11 +11,14 @@ Northern Lights is a deterministic, rule-based software tool that:
 - Translates tool calls from an MCP client (typically a Copilot LLM)
   into Workiva Spreadsheets API (version 2026-01-01) requests.
 - Caches read data locally for fast repeated access.
-- Maintains a hash-chained, append-only audit log of every tool call
-  and data mutation.
+- Attempts to record every tool call and data mutation in a hash-chained,
+  application-level append-only audit log. Write calls are refused when the
+  initial audit record cannot be appended; some read-only calls can continue
+  after the failure is logged.
 
 It contains no machine-learning model, no training data, and no
-learned parameters. All behaviour is deterministic and fully auditable.
+learned parameters. All behaviour is deterministic, and the audit mechanisms
+are operator-verifiable.
 
 ## 2. System architecture
 
@@ -33,8 +36,8 @@ Workiva Spreadsheets API (2026-01-01)
 ```
 
 All data at rest is in a single SQLite database on the operator's
-infrastructure. No data is sent to third parties other than the Workiva
-API and the MCP client.
+infrastructure. No data is sent to third parties other than the Workiva API
+or identity service and the MCP client.
 
 ## 3. Intended use
 
@@ -68,15 +71,17 @@ API and the MCP client.
 |---|---|---|---|
 | OAuth2 client credentials | Env vars | Workiva token endpoint | Never stored |
 | Access token | Workiva token endpoint | In-memory cache | Until expiry + 30s buffer |
-| Field mappings | YAML config or `sync_mapping` tool | SQLite (mapping tables) | Until manually deleted |
-| Cell values | Workiva sheetdata endpoint | SQLite (snapshots table) | Overwritten on each read, maxAge-configurable |
-| Audit entries | Every tool call | SQLite (audit_log table) | Default 10-year guidance, operator-managed |
+| Field mappings | YAML config or `workiva_sync_mapping` tool | SQLite (mapping tables) | Until manually deleted |
+| Cell values | Workiva sheetdata endpoint | SQLite (snapshots table) | Overwritten on each read, controlled by `read_cache_ttl` |
+| Audit entries | Tool-call and mutation audit records | SQLite (audit_log table) | Default 10-year guidance, operator-managed |
 
 ## 6. Human oversight measures
 
 - `RequireWriteConfirmation` (default true): writes require a two-phase
   confirm token, ensuring a human or the LLM explicitly approves each
   mutation.
-- All write operations record before and after values in the audit log.
-- The audit log is verifiable: any tampering breaks the hash chain and
-  `audit verify` reports the first corrupted sequence number.
+- Successful Workiva field updates include before and after values in their
+  mutation audit record; an audit append failure is returned to the caller.
+- The audit log is verifiable: changing a stored row or deleting a row with a
+  successor breaks the hash chain, and `audit verify` reports the first
+  corrupted sequence number.

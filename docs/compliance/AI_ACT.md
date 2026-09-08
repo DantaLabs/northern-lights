@@ -5,8 +5,8 @@
 Northern Lights is an open-source MCP server that mediates between a
 large language model (via Copilot Studio) and the Workiva platform. It
 maps reporting field names to spreadsheet cells, translates natural-language
-queries into API calls, and maintains a hash-chained audit log of every
-tool invocation and data mutation.
+queries into API calls, and attempts to record every tool invocation and data
+mutation in a hash-chained audit log.
 
 ## Risk classification under the AI Act
 
@@ -50,8 +50,8 @@ ensure human oversight of AI-assisted decisions (Art. 14).
 |---|---|---|
 | Art. 12 | Record-keeping | Hash-chained audit log in SQLite, exportable as JSONL, integrity-verifiable via CLI |
 | Art. 13 | Transparency | This document, tool descriptions visible to the LLM, public source code |
-| Art. 14 | Human oversight | Two-phase write confirmation (configurable, on by default); all writes audited before and after |
-| Art. 15 | Accuracy / robustness | Rate limiting, retry handling, Ones-scale caveat documented; no LLM interpretation of raw data values |
+| Art. 14 | Human oversight | Two-phase write confirmation (configurable, on by default); write calls request an audit record before execution and a mutation record after a successful Workiva update |
+| Art. 15 | Accuracy / robustness | Rate limiting, retry handling, ones-scale caveat documented; no LLM interpretation of raw data values |
 
 ## What Northern Lights does NOT control
 

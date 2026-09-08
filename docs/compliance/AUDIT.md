@@ -2,9 +2,11 @@
 
 ## Design
 
-The audit log is an append-only SQLite table with a SHA-256 hash chain.
-Each row hashes the previous row's hash along with its own fields, so
-modifying or deleting any row breaks the chain at that sequence number.
+The audit log is an application-level append-only SQLite table with a
+SHA-256 hash chain. Each row hashes the previous row's hash along with its
+own fields. Modifying any row, or deleting a row that has a successor, breaks
+the chain at that sequence number. Deleting only the final row is not
+detectable by the chain verifier.
 
 ```
 row N: hash = sha256(row[N-1].hash || ts || actor || tool || action || target || before || after)
@@ -54,6 +56,7 @@ include the database file in their backup and retention policies.
 
 ## Integration with Workiva's own history
 
-Every write operation stores the Workiva `operationLocation` URL in the
-`workiva_op_url` column. An auditor can follow this URL (authenticated)
-to see the exact Workiva file revision that resulted from the mutation.
+Every Workiva field update through `workiva_update_field` stores the Workiva
+`operationLocation` URL in the `workiva_op_url` column. An auditor can follow
+this URL (authenticated) to see the exact Workiva file revision that resulted
+from the mutation.

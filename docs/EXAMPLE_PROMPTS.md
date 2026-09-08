@@ -67,12 +67,12 @@ Copilot reports how many fields were discovered and their names.
 
 ---
 
-**"Who last changed the emissions data?"**
+**"Who last changed the cell ss-1/sh-1/B3?"**
 
-Tools: `workiva_audit_trail(limit: 10, target: "emissions")`
+Tools: `workiva_audit_trail(limit: 10, target: "ss-1/sh-1/B3")`
 
-Copilot lists recent audit entries showing actor, tool, timestamp, and
-what changed.
+Copilot lists recent audit entries for that exact target, showing actor, tool,
+timestamp, and what changed.
 
 ---
 
