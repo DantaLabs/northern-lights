@@ -40,6 +40,10 @@ func main() {
 }
 
 func run() error {
+	if isAuditInvocation(os.Args[1:]) {
+		return runAudit(os.Args[2:], os.Stdout)
+	}
+
 	configPath := flag.String("config", "", "path to YAML config file (optional; NL_ env vars override)")
 	mappingsPath := flag.String("mappings", "", "path to declarative mappings YAML (optional; defaults to configs/config.yaml if it exists)")
 	showVersion := flag.Bool("version", false, "print version and exit")

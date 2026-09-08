@@ -25,8 +25,7 @@ trail for EU AI Act compliance.
 ### Docker
 
 ```bash
-cp deployments/docker-compose.yml.example deployments/docker-compose.yml
-# Edit .env with your credentials:
+# Create deployments/.env with your credentials:
 #   NL_API_KEY=your-secret
 #   NL_WORKIVA_CLIENT_ID=your-client-id
 #   NL_WORKIVA_CLIENT_SECRET=your-client-secret
