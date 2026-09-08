@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -153,5 +155,26 @@ func TestGetRangeValues(t *testing.T) {
 	}
 	if len(rows) != 2 {
 		t.Fatalf("len(rows) = %d, want 2", len(rows))
+	}
+}
+
+func TestGetSheetDataCapsPaginationAtFiftyPages(t *testing.T) {
+	var apiCalls atomic.Int32
+	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
+		apiCalls.Add(1)
+		next := "http://" + r.Host + "/spreadsheets/s-1/sheets/sh-1/sheetdata?$page=next"
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"cells":[[{"value":"x"}]],"@nextLink":%q}`, next)
+	}))
+
+	_, err := c.GetSheetData(context.Background(), "s-1", "sh-1", "", nil)
+	if err == nil {
+		t.Fatal("expected error after pagination cap, got nil")
+	}
+	if got := apiCalls.Load(); got != 50 {
+		t.Errorf("API calls = %d, want 50", got)
+	}
+	if !strings.Contains(err.Error(), "50") {
+		t.Errorf("error = %q, want it to name the 50 page cap", err.Error())
 	}
 }

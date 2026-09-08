@@ -11,6 +11,10 @@ import (
 	"github.com/dantalabs/northern-lights/internal/ratelimit"
 )
 
+// maxSheetDataPages is the maximum number of sheetdata pages
+// GetSheetData will follow via @nextLink before returning an error.
+const maxSheetDataPages = 50
+
 // Cell is one entry of the row-major cells array of a sheetdata
 // response. Value is the raw cell content (a formula when it starts
 // with "="); CalculatedValue is the evaluated result when the cell
@@ -59,7 +63,7 @@ func (c *Client) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 
 	result := &SheetData{}
 	nextPath := path
-	for {
+	for pageNum := 1; pageNum <= maxSheetDataPages; pageNum++ {
 		resp, err := c.Do(ctx, http.MethodGet, nextPath, nil, ratelimit.CategoryReads)
 		if err != nil {
 			return nil, err
@@ -82,8 +86,12 @@ func (c *Client) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 		if page.NextLink == "" {
 			return result, nil
 		}
+		if pageNum == maxSheetDataPages {
+			return nil, fmt.Errorf("sheetdata pagination exceeded maximum of %d pages", maxSheetDataPages)
+		}
 		nextPath = page.NextLink
 	}
+	return nil, fmt.Errorf("sheetdata pagination exceeded maximum of %d pages", maxSheetDataPages)
 }
 
 // GetRangeValues reads the evaluated values of a range in A1 notation
