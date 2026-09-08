@@ -3,6 +3,7 @@ package workiva
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -102,4 +103,19 @@ func value(c Cell) string {
 		return ""
 	}
 	return *c.Value
+}
+
+func TestDemoClientValuesInvalidRangeReturnsBadRequest(t *testing.T) {
+	client := NewDemoClient(demoBaseURL(t))
+	_, err := client.GetRangeValues(context.Background(), "demo-sp-1", "demo-sh-b3-energy", "not-a-range")
+	if err == nil {
+		t.Fatal("expected error for invalid range, got nil")
+	}
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("error type = %T, want *APIError", err)
+	}
+	if apiErr.StatusCode != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", apiErr.StatusCode)
+	}
 }

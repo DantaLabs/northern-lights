@@ -142,7 +142,7 @@ func (t *DemoTransport) valuesResponse(u *url.URL) *http.Response {
 	}
 	rng, err := A1ToRange(cellRange)
 	if err != nil {
-		return demoJSONResponse(mustJSON(ValuesOnlyGrid(t.fixture, rng)))
+		return demoBadRequest(fmt.Sprintf("invalid range: %s", cellRange))
 	}
 	return demoJSONResponse(mustJSON(ValuesOnlyGrid(t.fixture, rng)))
 }
