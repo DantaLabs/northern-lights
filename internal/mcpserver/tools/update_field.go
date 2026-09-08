@@ -64,10 +64,12 @@ func (updateFieldTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "workiva_update_field",
 		Description: updateFieldDescription,
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateFieldInput) (*mcp.CallToolResult, updateFieldOutput, error) {
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in updateFieldInput) (*mcp.CallToolResult, updateFieldOutput, error) {
 		if err := requireDeps(deps, true, true); err != nil {
 			return nil, updateFieldOutput{}, err
 		}
+
+		actor := mcpserver.ActorFromRequest(req, mcpserver.DefaultActorHeader)
 
 		field, err := resolveField(ctx, deps, in.Name)
 		if err != nil {
@@ -76,13 +78,13 @@ func (updateFieldTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 
 		// Phase 2: a confirm token was presented.
 		if in.ConfirmToken != "" {
-			return executeConfirmedWrite(ctx, deps, field, in)
+			return executeConfirmedWrite(ctx, deps, field, in, actor)
 		}
 
 		// Single-phase write is allowed only when the operator disabled
 		// the confirmation requirement.
 		if !confirmationRequired(deps) {
-			return executeWrite(ctx, deps, field, in.Value)
+			return executeWrite(ctx, deps, field, in.Value, actor)
 		}
 
 		// Phase 1: stage the write and return a confirmation token.
@@ -145,7 +147,7 @@ func stageWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, 
 
 // executeConfirmedWrite is phase 2: consume the single-use token and run
 // the staged write.
-func executeConfirmedWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, in updateFieldInput) (*mcp.CallToolResult, updateFieldOutput, error) {
+func executeConfirmedWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, in updateFieldInput, actor string) (*mcp.CallToolResult, updateFieldOutput, error) {
 	pending, err := deps.Store.ConsumePendingWrite(ctx, in.ConfirmToken, pendingWriteTTL)
 	if err == nil && pending == nil {
 		return nil, updateFieldOutput{}, failMsg("unknown or already used confirm_token "+in.ConfirmToken,
@@ -167,13 +169,22 @@ func executeConfirmedWrite(ctx context.Context, deps mcpserver.Deps, field *mapp
 			"re-call with name "+pending.FieldName+" and value "+pending.Value+", or stage a new write")
 	}
 
-	return executeWrite(ctx, deps, field, pending.Value)
+	// The confirmed value must match what was previewed. Writing a
+	// different value than the one the user approved would defeat the
+	// point of the confirmation step.
+	if in.Value != pending.Value {
+		return nil, updateFieldOutput{}, failMsg(
+			"the value does not match the staged write (staged "+pending.Value+", got "+in.Value+")",
+			"re-call with the staged value, or stage a new write by calling workiva_update_field without confirm_token")
+	}
+
+	return executeWrite(ctx, deps, field, pending.Value, actor)
 }
 
 // executeWrite sends the batched editCells update, polls the async
 // operation, audits the mutation, and refreshes the snapshot cache for
 // single-cell fields.
-func executeWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, value string) (*mcp.CallToolResult, updateFieldOutput, error) {
+func executeWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, value string, actor string) (*mcp.CallToolResult, updateFieldOutput, error) {
 	rng, err := workiva.A1ToRange(field.CellRange)
 	if err != nil {
 		return nil, updateFieldOutput{}, fail(err, "the field's mapped range is not valid A1 notation")
@@ -196,7 +207,7 @@ func executeWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field
 		return nil, updateFieldOutput{}, fail(err, "the write operation did not complete; check Workiva file history before retrying")
 	}
 
-	if err := auditWrite(ctx, deps, field, before, value, opURL); err != nil {
+	if err := auditWrite(ctx, deps, actor, field, before, value, opURL); err != nil {
 		return nil, updateFieldOutput{}, err
 	}
 	refreshCacheAfterWrite(ctx, deps, field, rng, value)
@@ -228,13 +239,14 @@ func readFieldValue(ctx context.Context, deps mcpserver.Deps, field *mapping.Fie
 	return value, nil
 }
 
-// auditWrite records the mutation in the hash-chained audit log.
-func auditWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, before, after, opURL string) error {
+// auditWrite records the mutation in the hash-chained audit log. actor is
+// the sanitized caller identity from the request (see ActorFromRequest).
+func auditWrite(ctx context.Context, deps mcpserver.Deps, actor string, field *mapping.Field, before, after, opURL string) error {
 	target := field.SpreadsheetID + "/" + field.SheetID + "/" + field.CellRange
 	b, _ := json.Marshal(map[string]string{"value": before})
 	a, _ := json.Marshal(map[string]string{"value": after})
 	if _, err := deps.Audit.Append(ctx, audit.Entry{
-		Actor:        "copilot",
+		Actor:        actor,
 		Tool:         "workiva_update_field",
 		Action:       "write",
 		Target:       target,

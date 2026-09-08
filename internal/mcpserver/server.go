@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	log2 "log"
 	"net/http"
 	"os"
 	"strings"
@@ -82,42 +83,80 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 // names are recorded as both the tool and the target when no more specific
 // target can be derived from the arguments; tools that perform Workiva
 // mutations append their own richer entries with before/after values.
+// writeTools mutate state and must never execute when the audit log is
+// unavailable; an unaudited write is an EU AI Act Art. 12 violation.
+var writeTools = map[string]bool{
+	"workiva_update_field": true,
+	"workiva_sync_mapping": true,
+}
+
 func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
 	return func(next mcp.MethodHandler) mcp.MethodHandler {
 		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
 			if method == "tools/call" {
-				recordToolCall(ctx, log, actorHeader, req)
+				tool, err := recordToolCall(ctx, log, actorHeader, req)
+				if err != nil {
+					log2.Printf("AUDIT FAILURE: could not record call to %q: %v", tool, err)
+					if writeTools[tool] {
+						return nil, fmt.Errorf("audit log unavailable, refusing unaudited write via %s: %w", tool, err)
+					}
+				}
 			}
 			return next(ctx, method, req)
 		}
 	}
 }
 
-func recordToolCall(ctx context.Context, log *audit.Log, actorHeader string, req mcp.Request) {
-	params, ok := req.GetParams().(*mcp.CallToolParamsRaw)
-	if !ok || params == nil {
-		return
+// sanitizeActor trims and validates an actor identity string. The identity
+// is asserted by the authenticated MCP client (the bearer token holder) and
+// is not independently verified; it is recorded for audit attribution only.
+// Overlong or control-character values fall back to DefaultActor.
+func sanitizeActor(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" || len(v) > 128 {
+		return DefaultActor
 	}
-	actor := DefaultActor
-	target := params.Name
-	if extra := req.GetExtra(); extra != nil {
-		if v := extra.Header.Get(actorHeader); v != "" {
-			actor = v
+	for _, r := range v {
+		if r < 0x20 || r == 0x7f {
+			return DefaultActor
 		}
 	}
+	return v
+}
+
+// ActorFromRequest extracts the sanitized caller identity from the
+// X-NL-Actor request header, falling back to DefaultActor.
+func ActorFromRequest(req mcp.Request, actorHeader string) string {
+	if extra := req.GetExtra(); extra != nil {
+		if v := extra.Header.Get(actorHeader); v != "" {
+			return sanitizeActor(v)
+		}
+	}
+	return DefaultActor
+}
+
+// recordToolCall appends one audit entry per tools/call request and returns
+// the tool name plus any append error. Tool names are recorded as both the
+// tool and the target when no more specific target can be derived from the
+// arguments; tools that perform Workiva mutations append their own richer
+// entries with before/after values.
+func recordToolCall(ctx context.Context, log *audit.Log, actorHeader string, req mcp.Request) (string, error) {
+	params, ok := req.GetParams().(*mcp.CallToolParamsRaw)
+	if !ok || params == nil {
+		return "", nil
+	}
+	actor := ActorFromRequest(req, actorHeader)
+	target := params.Name
 	if t := targetFromArguments(params.Arguments); t != "" {
 		target = t
 	}
-	if _, err := log.Append(ctx, audit.Entry{
+	_, err := log.Append(ctx, audit.Entry{
 		Actor:  actor,
 		Tool:   params.Name,
 		Action: "call",
 		Target: target,
-	}); err != nil {
-		// Auditing must not break tool execution; the error is surfaced in
-		// server logs by the caller of New via deps wiring.
-		_ = err
-	}
+	})
+	return params.Name, err
 }
 
 // targetFromArguments extracts a best-effort audit target from raw tool
