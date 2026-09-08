@@ -78,7 +78,7 @@ func Open(path string) (*Log, error) {
 	// Single connection: appends are serialized and SQLite never sees
 	// concurrent writers.
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(migration0001); err != nil {
+	if err := sqlitedb.Migrate(context.Background(), db, "audit", []string{migration0001}); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("audit: migrate: %w", err)
 	}
@@ -90,7 +90,7 @@ func Open(path string) (*Log, error) {
 // Log is a no-op. Useful when the audit log shares one database (and one
 // transaction) with the mapping store.
 func NewWithDB(db *sql.DB) (*Log, error) {
-	if _, err := db.Exec(migration0001); err != nil {
+	if err := sqlitedb.Migrate(context.Background(), db, "audit", []string{migration0001}); err != nil {
 		return nil, fmt.Errorf("audit: migrate: %w", err)
 	}
 	return &Log{db: db}, nil

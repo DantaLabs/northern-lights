@@ -126,11 +126,7 @@ func Open(path string) (*Store, error) {
 	// SQLite allows one writer at a time; a single connection avoids
 	// SQLITE_BUSY errors on concurrent writes while keeping reads simple.
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(migration0001); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("mapping: migrate: %w", err)
-	}
-	if _, err := db.Exec(migration0002); err != nil {
+	if err := sqlitedb.Migrate(context.Background(), db, "mapping", []string{migration0001, migration0002}); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("mapping: migrate: %w", err)
 	}
