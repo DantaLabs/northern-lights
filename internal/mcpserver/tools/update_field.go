@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -210,7 +212,9 @@ func executeWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field
 	if err := auditWrite(ctx, deps, actor, field, before, value, opURL); err != nil {
 		return nil, updateFieldOutput{}, err
 	}
-	refreshCacheAfterWrite(ctx, deps, field, rng, value)
+	if err := refreshCacheAfterWrite(ctx, deps, field, rng, value); err != nil {
+		log.Printf("cache refresh after Workiva write for %s failed: %v", field.Name, err)
+	}
 
 	return nil, updateFieldOutput{
 		Status:        "written",
@@ -243,8 +247,14 @@ func readFieldValue(ctx context.Context, deps mcpserver.Deps, field *mapping.Fie
 // the sanitized caller identity from the request (see ActorFromRequest).
 func auditWrite(ctx context.Context, deps mcpserver.Deps, actor string, field *mapping.Field, before, after, opURL string) error {
 	target := field.SpreadsheetID + "/" + field.SheetID + "/" + field.CellRange
-	b, _ := json.Marshal(map[string]string{"value": before})
-	a, _ := json.Marshal(map[string]string{"value": after})
+	b, err := json.Marshal(map[string]string{"value": before})
+	if err != nil {
+		return fail(err, "the write succeeded but its before value could not be serialized for the audit trail")
+	}
+	a, err := json.Marshal(map[string]string{"value": after})
+	if err != nil {
+		return fail(err, "the write succeeded but its after value could not be serialized for the audit trail")
+	}
 	if _, err := deps.Audit.Append(ctx, audit.Entry{
 		Actor:        actor,
 		Tool:         "workiva_update_field",
@@ -262,19 +272,22 @@ func auditWrite(ctx context.Context, deps mcpserver.Deps, actor string, field *m
 // refreshCacheAfterWrite updates the snapshot cache for single-cell
 // fields so a subsequent workiva_get_field does not serve the stale
 // pre-write value.
-func refreshCacheAfterWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, rng workiva.Range, value string) {
+func refreshCacheAfterWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, rng workiva.Range, value string) error {
 	if rng.StartRow != rng.StopRow || rng.StartCol != rng.StopCol {
-		return
+		return nil
 	}
 	ref, err := workiva.RangeToA1(rng)
 	if err != nil {
-		return
+		return fmt.Errorf("format updated cell range: %w", err)
 	}
-	_ = deps.Store.CacheCells(ctx, []mapping.CellValue{{
+	if err := deps.Store.CacheCells(ctx, []mapping.CellValue{{
 		SpreadsheetID: field.SpreadsheetID,
 		SheetID:       field.SheetID,
 		Cell:          ref,
 		Value:         value,
 		FetchedAt:     time.Now().UTC(),
-	}})
+	}}); err != nil {
+		return fmt.Errorf("cache updated cell %s: %w", ref, err)
+	}
+	return nil
 }

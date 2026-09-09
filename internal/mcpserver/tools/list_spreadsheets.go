@@ -2,11 +2,13 @@ package tools
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
+	"github.com/dantalabs/northern-lights/internal/workiva"
 )
 
 // listSpreadsheetsTool implements workiva_list_spreadsheets.
@@ -15,11 +17,11 @@ type listSpreadsheetsTool struct{}
 // ListSpreadsheets returns the workiva_list_spreadsheets tool.
 func ListSpreadsheets() mcpserver.Tool { return listSpreadsheetsTool{} }
 
-const listSpreadsheetsDescription = `Lists the Workiva spreadsheets currently connected to this server, with their sheets.
+const listSpreadsheetsDescription = `Discovers the Workiva spreadsheets and sheets currently available to the authenticated client.
 
-Only spreadsheets that have been connected to the semantic mapping appear here. To connect a new spreadsheet, or to import fields from a two-column name/value sheet, use the workiva_sync_mapping tool.
+When a Workiva client is configured, this tool reads the live spreadsheet and sheet catalogs, including files that are not mapped locally. In demo or no-client mode it falls back to the local mapping store.
 
-Use this tool to discover which spreadsheet_id and sheet_id values to pass to workiva_read_range, or to answer questions like "which reports are available?"`
+Use this tool to discover which spreadsheet_id and sheet_id values to pass to workiva_read_range or workiva_sync_mapping. Live discovery only identifies files and sheets; local semantic mappings are still required by workiva_search_fields, workiva_get_field, and workiva_update_field.`
 
 func (listSpreadsheetsTool) Name() string { return "workiva_list_spreadsheets" }
 
@@ -54,6 +56,18 @@ func (listSpreadsheetsTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		if err := requireDeps(deps, true, false); err != nil {
 			return nil, listSpreadsheetsOutput{}, err
 		}
+		if deps.Client != nil {
+			live, err := deps.Client.ListSpreadsheets(ctx)
+			if err != nil {
+				return nil, listSpreadsheetsOutput{}, fail(err, "Workiva could not list spreadsheets; check the client credentials and file:read scope")
+			}
+			entries, err := liveSpreadsheetEntries(ctx, deps, live)
+			if err != nil {
+				return nil, listSpreadsheetsOutput{}, fail(err, "Workiva could not list spreadsheet sheets; check the spreadsheet IDs and file:read scope")
+			}
+			return nil, listSpreadsheetsOutput{Spreadsheets: entries}, nil
+		}
+
 		spreadsheets, err := deps.Store.ListSpreadsheets(ctx)
 		if err != nil {
 			return nil, listSpreadsheetsOutput{}, fail(err, "the mapping store could not list spreadsheets")
@@ -76,4 +90,32 @@ func (listSpreadsheetsTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		}
 		return nil, listSpreadsheetsOutput{Spreadsheets: out}, nil
 	})
+}
+
+func liveSpreadsheetEntries(ctx context.Context, deps mcpserver.Deps, spreadsheets []workiva.Spreadsheet) ([]spreadsheetEntry, error) {
+	region := ""
+	if deps.Cfg != nil {
+		region = deps.Cfg.Region
+	}
+	out := make([]spreadsheetEntry, 0, len(spreadsheets))
+	for _, sp := range spreadsheets {
+		entry := spreadsheetEntry{
+			ID:     sp.ID,
+			Name:   sp.Name,
+			Region: region,
+			Sheets: make([]listSheetsOutput, 0),
+		}
+		// Sheets are fetched live for every discovered spreadsheet.
+		if deps.Client != nil {
+			sheets, err := deps.Client.ListSheets(ctx, sp.ID)
+			if err != nil {
+				return nil, fmt.Errorf("list sheets for spreadsheet %q: %w", sp.ID, err)
+			}
+			for _, sh := range sheets {
+				entry.Sheets = append(entry.Sheets, listSheetsOutput{ID: sh.ID, Name: sh.Name})
+			}
+		}
+		out = append(out, entry)
+	}
+	return out, nil
 }

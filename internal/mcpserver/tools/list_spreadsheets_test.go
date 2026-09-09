@@ -2,7 +2,9 @@ package tools
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,6 +35,7 @@ func TestListSpreadsheetsReturnsMappedSpreadsheets(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("UpsertSpreadsheet: %v", err)
 	}
+	env.deps.Client = nil
 
 	result := callTool(t, env.deps, ListSpreadsheets(), map[string]any{})
 	if result.IsError {
@@ -80,6 +83,7 @@ func TestListSpreadsheetsEmptyStore(t *testing.T) {
 	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	}))
+	env.deps.Client = nil
 
 	result := callTool(t, env.deps, ListSpreadsheets(), map[string]any{})
 	if result.IsError {
@@ -91,9 +95,50 @@ func TestListSpreadsheetsEmptyStore(t *testing.T) {
 	}
 }
 
-func TestListSpreadsheetsDescriptionMentionsSyncMapping(t *testing.T) {
+func TestListSpreadsheetsDescriptionExplainsLiveAndMappedModes(t *testing.T) {
 	desc := ListSpreadsheets().Description()
-	if desc == "" {
-		t.Fatal("Description is empty")
+	for _, phrase := range []string{"live", "local mapping", "semantic mappings"} {
+		if !strings.Contains(strings.ToLower(desc), phrase) {
+			t.Errorf("description %q does not mention %q", desc, phrase)
+		}
+	}
+}
+
+func TestListSpreadsheetsDiscoversLiveWorkivaFilesAndSheets(t *testing.T) {
+	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/spreadsheets":
+			if _, err := fmt.Fprint(w, `{"data":[{"id":"live-sp-1","name":"EU Report","template":false}]}`); err != nil {
+				t.Errorf("write spreadsheets response: %v", err)
+			}
+		case r.Method == http.MethodGet && r.URL.Path == "/spreadsheets/live-sp-1/sheets":
+			if _, err := fmt.Fprint(w, `{"data":[{"id":"live-sh-1","name":"Energy","index":0},{"id":"live-sh-2","name":"Water","index":1}]}`); err != nil {
+				t.Errorf("write sheets response: %v", err)
+			}
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+
+	result := callTool(t, env.deps, ListSpreadsheets(), map[string]any{})
+	if result.IsError {
+		t.Fatalf("tool returned error: %+v", result.Content)
+	}
+	content := structuredContent(t, result)
+	spreadsheets, ok := content["spreadsheets"].([]any)
+	if !ok || len(spreadsheets) != 1 {
+		t.Fatalf("spreadsheets = %v, want one live spreadsheet", content["spreadsheets"])
+	}
+	sp := spreadsheets[0].(map[string]any)
+	if sp["id"] != "live-sp-1" || sp["name"] != "EU Report" {
+		t.Errorf("live spreadsheet = %v, want live-sp-1/EU Report", sp)
+	}
+	sheets, ok := sp["sheets"].([]any)
+	if !ok || len(sheets) != 2 {
+		t.Fatalf("live sheets = %v, want two sheets", sp["sheets"])
+	}
+	if sheets[0].(map[string]any)["id"] != "live-sh-1" || sheets[0].(map[string]any)["name"] != "Energy" {
+		t.Errorf("first live sheet = %v, want live-sh-1/Energy", sheets[0])
 	}
 }

@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/dantalabs/northern-lights/internal/mapping"
+	"github.com/dantalabs/northern-lights/internal/mcpserver"
+	"github.com/dantalabs/northern-lights/internal/workiva"
 )
 
 // writeMock returns a handler covering the Workiva endpoints a write
@@ -244,6 +246,24 @@ func TestUpdateFieldUnknownNameIsToolError(t *testing.T) {
 	result := callTool(t, env.deps, UpdateField(), map[string]any{"name": "nope", "value": "1"})
 	if !result.IsError {
 		t.Fatal("expected tool error for unknown field name")
+	}
+}
+
+func TestUpdateFieldRefreshCacheReportsStoreErrors(t *testing.T) {
+	store, err := mapping.Open(":memory:")
+	if err != nil {
+		t.Fatalf("mapping.Open: %v", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatalf("close mapping store: %v", err)
+	}
+
+	err = refreshCacheAfterWrite(context.Background(), mcpserver.Deps{Store: store}, &mapping.Field{
+		SpreadsheetID: "sp-1",
+		SheetID:       "sh-1",
+	}, workiva.Range{StartRow: 2, StopRow: 2, StartCol: 1, StopCol: 1}, "5678")
+	if err == nil || !strings.Contains(err.Error(), "cache updated cell B3") {
+		t.Fatalf("refreshCacheAfterWrite error = %v, want cache error for B3", err)
 	}
 }
 

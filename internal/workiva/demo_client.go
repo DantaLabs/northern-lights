@@ -48,6 +48,10 @@ func (t *DemoTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	switch {
 	case path == "/iam/v1/oauth2/token" && method == http.MethodPost:
 		return demoTokenResponse(), nil
+	case path == "/spreadsheets" && method == http.MethodGet:
+		return demoSpreadsheetsResponse(), nil
+	case isSheetsPath(path) && method == http.MethodGet:
+		return demoSheetsResponse(path), nil
 	case isSheetDataPath(path) && method == http.MethodGet:
 		return t.sheetdataResponse(req.URL), nil
 	case isValuesPath(path) && method == http.MethodGet:
@@ -58,6 +62,30 @@ func (t *DemoTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return demoJSONResponse(demoOperationCompletedJSON()), nil
 	default:
 		return demoNotFound(path), nil
+	}
+}
+
+func isSheetsPath(path string) bool {
+	parts := strings.Split(path, "/")
+	return len(parts) == 4 && parts[1] == "spreadsheets" && parts[3] == "sheets"
+}
+
+func demoSpreadsheetsResponse() *http.Response {
+	return demoJSONResponse([]byte(`{"data":[{"id":"demo-sp-energy-2026","name":"VSME Energy Report 2026","template":false},{"id":"demo-sp-energy-2025","name":"VSME Energy Report 2025","template":false}]}`))
+}
+
+func demoSheetsResponse(path string) *http.Response {
+	parts := strings.Split(path, "/")
+	if len(parts) != 4 {
+		return demoBadRequest("sheets path too short")
+	}
+	switch parts[2] {
+	case "demo-sp-energy-2026":
+		return demoJSONResponse([]byte(`{"data":[{"id":"demo-sh-b3-energy","name":"B3 Energy","index":0},{"id":"demo-sh-reference","name":"Reference data","index":1}]}`))
+	case "demo-sp-energy-2025":
+		return demoJSONResponse([]byte(`{"data":[{"id":"demo-sh-b3-energy-2025","name":"B3 Energy","index":0}]}`))
+	default:
+		return demoNotFound(path)
 	}
 }
 

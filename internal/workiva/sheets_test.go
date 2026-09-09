@@ -192,3 +192,79 @@ func TestGetSheetDataCapsPaginationAtFiftyPages(t *testing.T) {
 		t.Errorf("error = %q, want it to name the 50 page cap", err.Error())
 	}
 }
+
+func TestListSpreadsheetsDecodesMetadataAndFollowsNextLink(t *testing.T) {
+	var paths []string
+	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/spreadsheets" && r.URL.Query().Get("page") == "" {
+			if _, err := fmt.Fprintf(w, `{"data":[{"id":"sp-1","name":"Report","template":true,"created":"2026-01-01T00:00:00Z","modified":"2026-01-02T00:00:00Z"}],"@nextLink":%q}`, "http://"+r.Host+"/spreadsheets?page=2"); err != nil {
+				t.Errorf("write spreadsheets response: %v", err)
+			}
+		} else if r.URL.Path == "/spreadsheets" && r.URL.Query().Get("page") == "2" {
+			if _, err := fmt.Fprint(w, `{"data":[{"id":"sp-2","name":"Second"}]}`); err != nil {
+				t.Errorf("write spreadsheets page 2 response: %v", err)
+			}
+		} else {
+			http.NotFound(w, r)
+		}
+	}))
+
+	got, err := c.ListSpreadsheets(context.Background())
+	if err != nil {
+		t.Fatalf("ListSpreadsheets: %v", err)
+	}
+	if len(got) != 2 || got[0].ID != "sp-1" || got[0].Name != "Report" || !got[0].Template || got[0].Created != "2026-01-01T00:00:00Z" || got[1].ID != "sp-2" {
+		t.Errorf("spreadsheets = %+v, want decoded paginated metadata", got)
+	}
+	if len(paths) != 2 || paths[1] != "/spreadsheets?page=2" {
+		t.Errorf("request paths = %v, want both spreadsheet pages", paths)
+	}
+}
+
+func TestListSheetsDecodesMetadata(t *testing.T) {
+	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/spreadsheets/sp-1/sheets" {
+			t.Errorf("request path = %q, want /spreadsheets/sp-1/sheets", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if _, err := fmt.Fprint(w, `{"data":[{"id":"sh-1","name":"Energy","index":3}]}`); err != nil {
+			t.Errorf("write sheets response: %v", err)
+		}
+	}))
+
+	got, err := c.ListSheets(context.Background(), "sp-1")
+	if err != nil {
+		t.Fatalf("ListSheets: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != "sh-1" || got[0].Name != "Energy" || got[0].Index != 3 {
+		t.Errorf("sheets = %+v, want sh-1/Energy/index 3", got)
+	}
+}
+
+func TestListSheetsDecodesMetadataAndCapsPagination(t *testing.T) {
+	var apiCalls atomic.Int32
+	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
+		apiCalls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		next := "http://" + r.Host + "/spreadsheets/sp-1/sheets?page=next"
+		if _, err := fmt.Fprintf(w, `{"data":[{"id":"sh-%d","name":"Sheet","index":%d}],"@nextLink":%q}`, apiCalls.Load(), apiCalls.Load(), next); err != nil {
+			t.Errorf("write sheets response: %v", err)
+		}
+	}))
+
+	got, err := c.ListSheets(context.Background(), "sp-1")
+	if err == nil {
+		t.Fatal("expected error after pagination cap, got nil")
+	}
+	if len(got) != 0 {
+		t.Errorf("sheets = %+v, want nil on pagination failure", got)
+	}
+	if apiCalls.Load() != 50 {
+		t.Errorf("API calls = %d, want 50", apiCalls.Load())
+	}
+	if !strings.Contains(err.Error(), "50") {
+		t.Errorf("error = %q, want it to name the 50 page cap", err.Error())
+	}
+}

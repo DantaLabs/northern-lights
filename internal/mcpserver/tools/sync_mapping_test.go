@@ -103,6 +103,29 @@ func TestSyncMappingHonorsStartRow(t *testing.T) {
 	}
 }
 
+func TestSyncMappingRecordsActorFromHeader(t *testing.T) {
+	env := newTestEnv(t, syncMock(t))
+
+	result := callToolWithActor(t, env.deps, SyncMapping(), "eu-operator@example.com", map[string]any{
+		"spreadsheet_id": "sp-9",
+		"sheet_id":       "sh-9",
+	})
+	if result.IsError {
+		t.Fatalf("sync returned error: %+v", result.Content)
+	}
+
+	entries, err := env.deps.Audit.Recent(context.Background(), 10, "sp-9/sh-9")
+	if err != nil {
+		t.Fatalf("Audit.Recent: %v", err)
+	}
+	if len(entries) == 0 {
+		t.Fatal("no audit entry for sync")
+	}
+	if entries[0].Actor != "eu-operator@example.com" {
+		t.Errorf("audit actor = %q, want eu-operator@example.com", entries[0].Actor)
+	}
+}
+
 func TestSyncMappingCustomColumns(t *testing.T) {
 	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
 		if got := r.URL.Query().Get("$cellrange"); got != "C:D" {

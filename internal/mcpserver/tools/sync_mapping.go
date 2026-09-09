@@ -48,7 +48,7 @@ func (syncMappingTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "workiva_sync_mapping",
 		Description: syncMappingDescription,
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in syncMappingInput) (*mcp.CallToolResult, syncMappingOutput, error) {
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in syncMappingInput) (*mcp.CallToolResult, syncMappingOutput, error) {
 		if err := requireDeps(deps, true, true); err != nil {
 			return nil, syncMappingOutput{}, err
 		}
@@ -56,6 +56,7 @@ func (syncMappingTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 			return nil, syncMappingOutput{}, failMsg("Workiva client is not available", "server misconfiguration: check Workiva credentials")
 		}
 
+		actor := mcpserver.ActorFromRequest(req, mcpserver.DefaultActorHeader)
 		nameCol, valueCol, startRowIdx, err := syncArgs(in)
 		if err != nil {
 			return nil, syncMappingOutput{}, err
@@ -77,7 +78,7 @@ func (syncMappingTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 			return nil, syncMappingOutput{}, failMsg("the mapper sheet returned no range metadata", "check that the sheet ID is correct")
 		}
 
-		names, err := syncFields(ctx, deps, in, data, nameCol, valueCol, startRowIdx)
+		names, err := syncFields(ctx, deps, in, data, nameCol, valueCol, startRowIdx, actor)
 		if err != nil {
 			return nil, syncMappingOutput{}, err
 		}
@@ -129,7 +130,7 @@ func columnIndex(letters, def string) (int, error) {
 
 // syncFields upserts one field per data row and audits the sync. It
 // returns the upserted field names in sheet order.
-func syncFields(ctx context.Context, deps mcpserver.Deps, in syncMappingInput, data *workiva.SheetData, nameCol, valueCol, startRowIdx int) ([]string, error) {
+func syncFields(ctx context.Context, deps mcpserver.Deps, in syncMappingInput, data *workiva.SheetData, nameCol, valueCol, startRowIdx int, actor string) ([]string, error) {
 	// Seed the spreadsheet and sheet rows so the mapping store stays
 	// internally consistent for later listing.
 	region := "eu"
@@ -178,7 +179,7 @@ func syncFields(ctx context.Context, deps mcpserver.Deps, in syncMappingInput, d
 	}
 
 	if _, err := deps.Audit.Append(ctx, audit.Entry{
-		Actor:     "copilot",
+		Actor:     actor,
 		Tool:      "workiva_sync_mapping",
 		Action:    "sync",
 		Target:    in.SpreadsheetID + "/" + in.SheetID,
