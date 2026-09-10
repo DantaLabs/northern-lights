@@ -19,8 +19,8 @@ const maxValuesPages = 50
 // Value is the raw cell content. CalculatedValue is the evaluated result
 // when the cell contains a formula.
 type Cell struct {
-	Value           *string `json:"value,omitempty"`
-	CalculatedValue any     `json:"calculatedValue,omitempty"`
+	Value           any `json:"value,omitempty"`
+	CalculatedValue any `json:"calculatedValue,omitempty"`
 }
 
 // SheetData is the data object nested under the official sheetdata response

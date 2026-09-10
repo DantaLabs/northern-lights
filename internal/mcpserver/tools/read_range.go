@@ -61,7 +61,7 @@ func (readRangeTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		}
 
 		data, err := deps.Client.GetSheetData(ctx, in.SpreadsheetID, in.SheetID, in.Range,
-			[]string{"value", "calculatedValue"})
+			[]string{"cells.value", "cells.calculatedValue"})
 		if err != nil {
 			return nil, readRangeOutput{}, fail(err, "verify spreadsheet_id and sheet_id with workiva_list_spreadsheets")
 		}

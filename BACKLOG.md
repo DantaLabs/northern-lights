@@ -5,7 +5,10 @@
 1. **Live Workiva sandbox validation**: run the client against a real
    Workiva workspace with suitable credentials to validate permissions,
    rate-limit behaviour, and operation polling. The 2026-01-01 request and
-   response contracts are covered by official-document-shaped tests.
+   response contracts, including field paths, scalar values, range bounds,
+   nested updates, and operation delays, are covered by
+   official-document-shaped tests. Mapped writes also enforce a 100,000-cell
+   local expansion cap that should be exercised against representative files.
 2. **Documents API out of scope for MVP**: Workiva Documents (prose editing)
    intentionally deferred to v0.2.
 

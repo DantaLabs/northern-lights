@@ -55,7 +55,9 @@ or identity service and the MCP client.
 
 2. **Live workspace validation.** The client now follows the documented
    2026-01-01 contracts: sheetdata is decoded from its `data` envelope,
-   values responses are typed and paginated, and writes use `POST .../update`
+   reads request fields rooted at `cells` (for example,
+   `cells.value` and `cells.calculatedValue`), values responses are typed and
+   paginated, and writes use `POST .../update`
    with nested `editCells.cells` records. A real workspace is still needed to
    validate permissions, rate limits, and vendor-side operation behaviour.
 3. **Spreadsheet-only scope.** Workiva Documents API (prose editing) is
@@ -64,6 +66,10 @@ or identity service and the MCP client.
 4. **Rate limits are workspace-wide.** Heavy Northern Lights usage
    counts against the same 600/min (reads) and 60/min (writes) limits
    as all other integrations in the workspace.
+
+5. **Mapped write expansion is bounded.** A mapped rectangular write is
+   limited to 100,000 cells before it is sent to Workiva. This conservative
+   cap prevents excessive memory use while supporting useful reporting ranges.
 
 ## 5. Data flows
 

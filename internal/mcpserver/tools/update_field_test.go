@@ -24,6 +24,9 @@ func writeMock(t *testing.T, edits *[][]byte) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/sheetdata"):
+			if got := r.URL.Query().Get("$fields"); got != "cells.value,cells.calculatedValue" {
+				t.Errorf("$fields = %q, want cells.value,cells.calculatedValue", got)
+			}
 			if _, err := fmt.Fprint(w, sheetdataBody); err != nil {
 				t.Errorf("write sheetdata response: %v", err)
 			}
@@ -363,5 +366,20 @@ func TestUpdateFieldRefreshesSnapshotCache(t *testing.T) {
 	}
 	if len(cells) != 1 || cells[0].Value != "5678" {
 		t.Errorf("cached cells after write = %+v, want B3=5678", cells)
+	}
+}
+
+func TestExpandCellEditsRejectsExpansionAboveCap(t *testing.T) {
+	_, err := expandCellEdits(workiva.Range{StartRow: 0, StartCol: 0, StopRow: 100000, StopCol: 0}, "x")
+	if err == nil {
+		t.Fatal("expected expansion cap error")
+	}
+}
+
+func TestExpandCellEditsRejectsOverflowSizedRange(t *testing.T) {
+	maxInt := int(^uint(0) >> 1)
+	_, err := expandCellEdits(workiva.Range{StartRow: 0, StartCol: 0, StopRow: maxInt, StopCol: 1}, "x")
+	if err == nil {
+		t.Fatal("expected overflow-sized range to be rejected")
 	}
 }

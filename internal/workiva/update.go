@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/dantalabs/northern-lights/internal/ratelimit"
 )
@@ -32,18 +33,30 @@ type EditRangeOp struct {
 	Values [][]any `json:"values"`
 }
 
-// ApplyFormatsOp applies a cell format to the cells identified by
-// Range. Format follows the 2026-01-01 CellFormat schema.
+// ApplyFormatsOp applies the official Workiva format fields to one or more
+// ranges. Omitted format fields are ignored by Workiva.
 type ApplyFormatsOp struct {
-	Range  Range          `json:"range"`
-	Format map[string]any `json:"format"`
+	CellFormat             map[string]any `json:"cellFormat,omitempty"`
+	ClearValueFormatStyles bool           `json:"clearValueFormatStyles,omitempty"`
+	Ranges                 []Range        `json:"ranges"`
+	TextFormat             map[string]any `json:"textFormat,omitempty"`
+	ValueFormat            map[string]any `json:"valueFormat,omitempty"`
 }
 
-// InsertRowsOp inserts Count empty rows starting at StartRow
-// (zero-based).
-type InsertRowsOp struct {
-	StartRow int `json:"startRow"`
-	Count    int `json:"count"`
+// Insertion describes an official Workiva row or column insertion.
+type Insertion struct {
+	Index int `json:"index"`
+	Count int `json:"count"`
+}
+
+// insertRowsUpdate is the official nested insertRows request body.
+type insertRowsUpdate struct {
+	InheritFrom string      `json:"inheritFrom"`
+	Insertions  []Insertion `json:"insertions"`
+}
+
+type applyFormatsUpdate struct {
+	Formats []ApplyFormatsOp `json:"formats"`
 }
 
 // SheetUpdate is the body of a SheetUpdate request. The Workiva API
@@ -55,8 +68,8 @@ type InsertRowsOp struct {
 type SheetUpdate struct {
 	editCells    *editCellsUpdate
 	editRange    *EditRangeOp
-	applyFormats *[]ApplyFormatsOp
-	insertRows   *[]InsertRowsOp
+	applyFormats *applyFormatsUpdate
+	insertRows   *insertRowsUpdate
 }
 
 // NewEditCellsUpdate builds a SheetUpdate that edits individual cells,
@@ -74,13 +87,14 @@ func NewEditRangeUpdate(op EditRangeOp) SheetUpdate {
 // NewApplyFormatsUpdate builds a SheetUpdate that applies cell formats,
 // batching the given operations into one request.
 func NewApplyFormatsUpdate(ops []ApplyFormatsOp) SheetUpdate {
-	return SheetUpdate{applyFormats: &ops}
+	return SheetUpdate{applyFormats: &applyFormatsUpdate{Formats: ops}}
 }
 
 // NewInsertRowsUpdate builds a SheetUpdate that inserts rows, batching
-// the given operations into one request.
-func NewInsertRowsUpdate(ops []InsertRowsOp) SheetUpdate {
-	return SheetUpdate{insertRows: &ops}
+// the given operations into one request. inheritFrom must be NONE, BEFORE,
+// or AFTER.
+func NewInsertRowsUpdate(inheritFrom string, insertions []Insertion) SheetUpdate {
+	return SheetUpdate{insertRows: &insertRowsUpdate{InheritFrom: inheritFrom, Insertions: insertions}}
 }
 
 // MarshalJSON encodes exactly the one update field set by a
@@ -89,15 +103,53 @@ func NewInsertRowsUpdate(ops []InsertRowsOp) SheetUpdate {
 func (u SheetUpdate) MarshalJSON() ([]byte, error) {
 	m := make(map[string]any, 1)
 	if u.editCells != nil {
+		if len(u.editCells.Cells) == 0 {
+			return nil, fmt.Errorf("editCells.cells must not be empty")
+		}
+		for i, cell := range u.editCells.Cells {
+			if cell.Column < 0 || cell.Row < 0 {
+				return nil, fmt.Errorf("editCells.cells[%d] must use non-negative column and row", i)
+			}
+		}
 		m["editCells"] = u.editCells
 	}
 	if u.editRange != nil {
+		if len(u.editRange.Values) == 0 {
+			return nil, fmt.Errorf("editRange.values must not be empty")
+		}
+		for i, row := range u.editRange.Values {
+			if len(row) == 0 {
+				return nil, fmt.Errorf("editRange.values[%d] must not be empty", i)
+			}
+		}
 		m["editRange"] = u.editRange
 	}
 	if u.applyFormats != nil {
+		if len(u.applyFormats.Formats) == 0 {
+			return nil, fmt.Errorf("applyFormats.formats must not be empty")
+		}
+		for i, format := range u.applyFormats.Formats {
+			if len(format.Ranges) == 0 {
+				return nil, fmt.Errorf("applyFormats.formats[%d].ranges must not be empty", i)
+			}
+			if len(format.CellFormat) == 0 && len(format.TextFormat) == 0 && len(format.ValueFormat) == 0 && !format.ClearValueFormatStyles {
+				return nil, fmt.Errorf("applyFormats.formats[%d] has no format fields", i)
+			}
+		}
 		m["applyFormats"] = u.applyFormats
 	}
 	if u.insertRows != nil {
+		if u.insertRows.InheritFrom != "NONE" && u.insertRows.InheritFrom != "BEFORE" && u.insertRows.InheritFrom != "AFTER" {
+			return nil, fmt.Errorf("insertRows.inheritFrom must be NONE, BEFORE, or AFTER")
+		}
+		if len(u.insertRows.Insertions) == 0 {
+			return nil, fmt.Errorf("insertRows.insertions must not be empty")
+		}
+		for i, insertion := range u.insertRows.Insertions {
+			if insertion.Index < 0 || insertion.Count < 1 {
+				return nil, fmt.Errorf("insertRows.insertions[%d] must have index >= 0 and count >= 1", i)
+			}
+		}
 		m["insertRows"] = u.insertRows
 	}
 	if len(m) != 1 {
@@ -106,21 +158,28 @@ func (u SheetUpdate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// UpdateSheet sends one SheetUpdate to the sheet update endpoint and
-// returns the operationLocation of the accepted async operation. The
-// location is read from the 202 response body, falling back to the
-// Location header.
-func (c *Client) UpdateSheet(ctx context.Context, spreadsheetID, sheetID string, upd SheetUpdate) (operationURL string, err error) {
+// UpdateSheet preserves the original operation URL API. Call
+// UpdateSheetWithRetryAfter when the 202 Retry-After delay is needed by the
+// caller that will poll the returned operation.
+func (c *Client) UpdateSheet(ctx context.Context, spreadsheetID, sheetID string, upd SheetUpdate) (string, error) {
+	operationURL, _, err := c.UpdateSheetWithRetryAfter(ctx, spreadsheetID, sheetID, upd)
+	return operationURL, err
+}
+
+// UpdateSheetWithRetryAfter sends one SheetUpdate and returns its operation
+// URL plus the initial Retry-After delay from the 202 response. The delay is
+// returned with this operation instead of being stored on Client state.
+func (c *Client) UpdateSheetWithRetryAfter(ctx context.Context, spreadsheetID, sheetID string, upd SheetUpdate) (operationURL string, initialRetryAfter time.Duration, err error) {
 	payload, err := json.Marshal(upd)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
 	path := fmt.Sprintf("/spreadsheets/%s/sheets/%s/update",
 		url.PathEscape(spreadsheetID), url.PathEscape(sheetID))
 	resp, err := c.Do(ctx, http.MethodPost, path, bytes.NewReader(payload), ratelimit.CategoryWrites)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil {
@@ -131,24 +190,25 @@ func (c *Client) UpdateSheet(ctx context.Context, spreadsheetID, sheetID string,
 	if resp.StatusCode != http.StatusAccepted {
 		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		if readErr != nil {
-			return "", fmt.Errorf("read update error response body: %w", readErr)
+			return "", 0, fmt.Errorf("read update error response body: %w", readErr)
 		}
-		return "", &APIError{StatusCode: resp.StatusCode, Body: string(body)}
+		return "", 0, &APIError{StatusCode: resp.StatusCode, Body: string(body)}
 	}
+	initialRetryAfter = initialRetryAfterDelay(resp.Header.Get("Retry-After"))
 
 	var res struct {
 		OperationLocation string `json:"operationLocation"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil && !errors.Is(err, io.EOF) {
-		return "", fmt.Errorf("decode update response: %w", err)
+		return "", 0, fmt.Errorf("decode update response: %w", err)
 	}
 	if res.OperationLocation == "" {
 		res.OperationLocation = resp.Header.Get("Location")
 	}
 	if res.OperationLocation == "" {
-		return "", fmt.Errorf("update sheet: 202 response has no operationLocation and no Location header")
+		return "", 0, fmt.Errorf("update sheet: 202 response has no operationLocation and no Location header")
 	}
-	return res.OperationLocation, nil
+	return res.OperationLocation, initialRetryAfter, nil
 }
 
 // WriteCells batch-writes the given cell edits in a single SheetUpdate
@@ -160,10 +220,10 @@ func (c *Client) UpdateSheet(ctx context.Context, spreadsheetID, sheetID string,
 // edits of the same kind must be batched in the cells array nested under
 // editCells, which is what this function does.
 func (c *Client) WriteCells(ctx context.Context, spreadsheetID, sheetID string, edits []CellEdit) error {
-	opURL, err := c.UpdateSheet(ctx, spreadsheetID, sheetID, NewEditCellsUpdate(edits))
+	opURL, initialRetryAfter, err := c.UpdateSheetWithRetryAfter(ctx, spreadsheetID, sheetID, NewEditCellsUpdate(edits))
 	if err != nil {
 		return err
 	}
-	_, err = c.WaitOperation(ctx, opURL)
+	_, err = c.WaitOperationWithInitialRetryAfter(ctx, opURL, initialRetryAfter)
 	return err
 }

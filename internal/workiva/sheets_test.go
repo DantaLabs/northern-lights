@@ -2,6 +2,7 @@ package workiva
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -33,7 +34,7 @@ func TestGetSheetDataDecodesFixture(t *testing.T) {
 		}
 	}))
 
-	data, err := c.GetSheetData(context.Background(), "s-1", "sh-1", "B3:D10", []string{"value", "calculatedValue"})
+	data, err := c.GetSheetData(context.Background(), "s-1", "sh-1", "B3:D10", []string{"cells.value", "cells.calculatedValue"})
 	if err != nil {
 		t.Fatalf("GetSheetData: %v", err)
 	}
@@ -53,7 +54,7 @@ func TestGetSheetDataDecodesFixture(t *testing.T) {
 	}
 
 	cell := data.Cells[0][1]
-	if cell.Value == nil || *cell.Value != "=1+1" {
+	if cell.Value != "=1+1" {
 		t.Errorf("Cells[0][1].Value = %v, want \"=1+1\"", cell.Value)
 	}
 	if cell.CalculatedValue != float64(2) {
@@ -74,6 +75,26 @@ func TestGetSheetDataDecodesFixture(t *testing.T) {
 	}
 }
 
+func TestCellDecodesOfficialScalarValues(t *testing.T) {
+	var response sheetDataResponse
+	if err := json.Unmarshal([]byte(`{"data":{"cells":[[
+		{"value":"literal"},
+		{"value":125000},
+		{"value":true},
+		{"value":null},
+		{"value":"=1+1","calculatedValue":2}
+	]]}}`), &response); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	cells := response.Data.Cells[0]
+	if cells[0].Value != "literal" || cells[1].Value != float64(125000) || cells[2].Value != true || cells[3].Value != nil {
+		t.Errorf("decoded values = %#v, want string, number, boolean, nil", []any{cells[0].Value, cells[1].Value, cells[2].Value, cells[3].Value})
+	}
+	if cells[4].Value != "=1+1" || cells[4].CalculatedValue != float64(2) {
+		t.Errorf("formula cell = %#v, want formula plus calculated value", cells[4])
+	}
+}
+
 func TestGetSheetDataSendsQueryParams(t *testing.T) {
 	var gotRange, gotFields string
 	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
@@ -85,15 +106,15 @@ func TestGetSheetDataSendsQueryParams(t *testing.T) {
 		}
 	}))
 
-	_, err := c.GetSheetData(context.Background(), "s-1", "sh-1", "B3:D10", []string{"value", "calculatedValue"})
+	_, err := c.GetSheetData(context.Background(), "s-1", "sh-1", "B3:D10", []string{"cells.value", "cells.calculatedValue"})
 	if err != nil {
 		t.Fatalf("GetSheetData: %v", err)
 	}
 	if gotRange != "B3:D10" {
 		t.Errorf("$cellrange = %q, want B3:D10", gotRange)
 	}
-	if gotFields != "value,calculatedValue" {
-		t.Errorf("$fields = %q, want value,calculatedValue", gotFields)
+	if gotFields != "cells.value,cells.calculatedValue" {
+		t.Errorf("$fields = %q, want cells.value,cells.calculatedValue", gotFields)
 	}
 }
 
@@ -139,7 +160,7 @@ func TestGetSheetDataFollowsNextLink(t *testing.T) {
 	if len(data.Cells) != 3 {
 		t.Fatalf("len(Cells) = %d, want 3 (two pages concatenated)", len(data.Cells))
 	}
-	if data.Cells[2][0].Value == nil || *data.Cells[2][0].Value != "page2" {
+	if data.Cells[2][0].Value != "page2" {
 		t.Errorf("Cells[2][0].Value = %v, want page2", data.Cells[2][0].Value)
 	}
 }

@@ -72,22 +72,35 @@ func cacheTTL(deps mcpserver.Deps) time.Duration {
 	return deps.Cfg.ReadCacheTTL
 }
 
-// cellText renders one cell for display: literal values pass through,
-// formulas resolve to their calculated value, empty cells render as "".
+// cellText renders one cell for display. Formula detection applies only to
+// string values beginning with "="; other scalar values pass through safely.
 func cellText(c workiva.Cell) string {
-	if c.Value != nil && !strings.HasPrefix(*c.Value, "=") {
-		return *c.Value
-	}
-	if c.CalculatedValue != nil {
-		if b, err := json.Marshal(c.CalculatedValue); err == nil {
-			return string(b)
+	if value, ok := c.Value.(string); ok {
+		if !strings.HasPrefix(value, "=") {
+			return value
 		}
-		return fmt.Sprintf("%v", c.CalculatedValue)
+		if c.CalculatedValue != nil {
+			return scalarText(c.CalculatedValue)
+		}
+		return value
 	}
 	if c.Value != nil {
-		return *c.Value
+		return scalarText(c.Value)
 	}
 	return ""
+}
+
+func scalarText(value any) string {
+	if value == nil {
+		return ""
+	}
+	if text, ok := value.(string); ok {
+		return text
+	}
+	if b, err := json.Marshal(value); err == nil {
+		return string(b)
+	}
+	return fmt.Sprintf("%v", value)
 }
 
 // gridToCachedCells converts a fetched SheetData grid into snapshot cache

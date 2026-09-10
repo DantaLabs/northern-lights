@@ -12,7 +12,7 @@ import (
 // rows and one row with an empty name that must be skipped.
 const mapperSheetdataBody = `{
 	"data": {
-		"range": {"startRow": 0, "startColumn": 0, "stopRow": 3, "stopColumn": 1},
+		"range": {"startColumn": 0, "stopColumn": 1},
 		"cells": [
 			[{"value": "Field Name"}, {"value": "Value"}],
 			[{"value": "Scope 2 Energy (kWh)"}, {"value": "1234"}],
@@ -28,6 +28,9 @@ func syncMock(t *testing.T) http.HandlerFunc {
 		if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/sheetdata") {
 			if got := r.URL.Query().Get("$cellrange"); got != "A:B" {
 				t.Errorf("$cellrange = %q, want A:B", got)
+			}
+			if got := r.URL.Query().Get("$fields"); got != "cells.value" {
+				t.Errorf("$fields = %q, want cells.value", got)
 			}
 			w.Header().Set("Content-Type", "application/json")
 			if _, err := fmt.Fprint(w, mapperSheetdataBody); err != nil {

@@ -1,6 +1,7 @@
 package workiva
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -19,6 +20,70 @@ type Range struct {
 	StartCol int `json:"startColumn"`
 	StopRow  int `json:"stopRow"`
 	StopCol  int `json:"stopColumn"`
+}
+
+type rangeJSON struct {
+	StartRow *int `json:"startRow"`
+	StartCol *int `json:"startColumn"`
+	StopRow  *int `json:"stopRow"`
+	StopCol  *int `json:"stopColumn"`
+}
+
+// MarshalJSON maps the internal -1 unbounded sentinel to the null bounds
+// required by Workiva request bodies. Bounded zero remains an explicit 0.
+func (r Range) MarshalJSON() ([]byte, error) {
+	for name, value := range map[string]int{
+		"startRow": r.StartRow, "startColumn": r.StartCol,
+		"stopRow": r.StopRow, "stopColumn": r.StopCol,
+	} {
+		if value < unbounded {
+			return nil, fmt.Errorf("range %s bound below -1", name)
+		}
+	}
+	return json.Marshal(rangeJSON{
+		StartRow: rangeBound(r.StartRow),
+		StartCol: rangeBound(r.StartCol),
+		StopRow:  rangeBound(r.StopRow),
+		StopCol:  rangeBound(r.StopCol),
+	})
+}
+
+// UnmarshalJSON maps omitted and null Workiva bounds to the internal -1
+// unbounded sentinel while preserving bounded zero values.
+func (r *Range) UnmarshalJSON(data []byte) error {
+	var raw rangeJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	*r = Range{
+		StartRow: unmarshalBound(raw.StartRow),
+		StartCol: unmarshalBound(raw.StartCol),
+		StopRow:  unmarshalBound(raw.StopRow),
+		StopCol:  unmarshalBound(raw.StopCol),
+	}
+	for name, value := range map[string]int{
+		"startRow": r.StartRow, "startColumn": r.StartCol,
+		"stopRow": r.StopRow, "stopColumn": r.StopCol,
+	} {
+		if value < unbounded {
+			return fmt.Errorf("range %s bound below -1", name)
+		}
+	}
+	return nil
+}
+
+func rangeBound(value int) *int {
+	if value == unbounded {
+		return nil
+	}
+	return &value
+}
+
+func unmarshalBound(value *int) int {
+	if value == nil {
+		return unbounded
+	}
+	return *value
 }
 
 // A1ToRange converts an A1 notation string into a zero-based inclusive

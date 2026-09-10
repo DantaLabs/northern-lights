@@ -1,6 +1,9 @@
 package workiva
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestA1ToRange(t *testing.T) {
 	tests := []struct {
@@ -117,5 +120,38 @@ func TestA1RoundTrip(t *testing.T) {
 		if back != a1 {
 			t.Errorf("round trip of %q gave %q", a1, back)
 		}
+	}
+}
+
+func TestRangeUnmarshalMapsNullAndMissingBoundsToUnboundedSentinel(t *testing.T) {
+	var got Range
+	if err := json.Unmarshal([]byte(`{"startColumn":0,"startRow":null,"stopColumn":1}`), &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	want := Range{StartRow: -1, StartCol: 0, StopRow: -1, StopCol: 1}
+	if got != want {
+		t.Errorf("Range = %+v, want %+v", got, want)
+	}
+}
+
+func TestRangeUnmarshalPreservesBoundedZero(t *testing.T) {
+	var got Range
+	if err := json.Unmarshal([]byte(`{"startColumn":0,"startRow":0,"stopColumn":0,"stopRow":0}`), &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	want := Range{StartRow: 0, StartCol: 0, StopRow: 0, StopCol: 0}
+	if got != want {
+		t.Errorf("Range = %+v, want %+v", got, want)
+	}
+}
+
+func TestRangeMarshalUsesNullForUnboundedBounds(t *testing.T) {
+	got, err := json.Marshal(Range{StartRow: -1, StartCol: 0, StopRow: -1, StopCol: 1})
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+	want := `{"startRow":null,"startColumn":0,"stopRow":null,"stopColumn":1}`
+	if string(got) != want {
+		t.Errorf("JSON = %s, want %s", got, want)
 	}
 }

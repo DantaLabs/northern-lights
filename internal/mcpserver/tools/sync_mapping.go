@@ -70,7 +70,7 @@ func (syncMappingTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		if err != nil {
 			return nil, syncMappingOutput{}, fail(err, "the name/value columns do not form a valid span")
 		}
-		data, err := deps.Client.GetSheetData(ctx, in.SpreadsheetID, in.SheetID, cellRange, []string{"value"})
+		data, err := deps.Client.GetSheetData(ctx, in.SpreadsheetID, in.SheetID, cellRange, []string{"cells.value"})
 		if err != nil {
 			return nil, syncMappingOutput{}, fail(err, "the mapper sheet could not be read from Workiva; check the spreadsheet and sheet IDs")
 		}
@@ -154,8 +154,12 @@ func syncFields(ctx context.Context, deps mcpserver.Deps, in syncMappingInput, d
 	valueLetters = strings.TrimRight(valueLetters, "0123456789")
 
 	var names []string
+	dataStartRow := data.Range.StartRow
+	if dataStartRow < 0 {
+		dataStartRow = 0
+	}
 	for rowIdx, row := range data.Cells {
-		sheetRow := data.Range.StartRow + rowIdx
+		sheetRow := dataStartRow + rowIdx
 		if sheetRow < startRowIdx {
 			continue
 		}

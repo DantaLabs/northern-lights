@@ -89,7 +89,7 @@ func (getFieldTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 			return nil, getFieldOutput{}, failMsg("Workiva client is not available", "server misconfiguration: check Workiva credentials")
 		}
 		data, err := deps.Client.GetSheetData(ctx, field.SpreadsheetID, field.SheetID, field.CellRange,
-			[]string{"value", "calculatedValue"})
+			[]string{"cells.value", "cells.calculatedValue"})
 		if err != nil {
 			return nil, getFieldOutput{}, fail(err, "the field could not be read from Workiva; the spreadsheet may have been disconnected")
 		}

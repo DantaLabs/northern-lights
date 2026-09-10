@@ -235,6 +235,13 @@ func retryAfterDelay(header string) time.Duration {
 	return time.Second
 }
 
+func initialRetryAfterDelay(header string) time.Duration {
+	if header == "" {
+		return 0
+	}
+	return retryAfterDelay(header)
+}
+
 // isIdempotent reports whether method is safe to retry after the request
 // may have reached the server. Only GET and HEAD are idempotent here;
 // PATCH/POST/PUT are retried only on 429 (the request was rejected).

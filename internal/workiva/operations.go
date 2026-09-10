@@ -34,8 +34,20 @@ type operationError struct {
 // operationPollTimeout (60 seconds by default). An operation that ends
 // failed is an error and stops polling immediately.
 func (c *Client) WaitOperation(ctx context.Context, opURL string) (string, error) {
+	return c.WaitOperationWithInitialRetryAfter(ctx, opURL, 0)
+}
+
+// WaitOperationWithInitialRetryAfter polls an async operation, honoring the
+// Retry-After delay returned with the operation's 202 response before the
+// first poll. The delay is supplied per operation, not stored on Client.
+func (c *Client) WaitOperationWithInitialRetryAfter(ctx context.Context, opURL string, initialRetryAfter time.Duration) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, operationPollTimeout)
 	defer cancel()
+	if initialRetryAfter > 0 {
+		if err := c.sleep(ctx, initialRetryAfter); err != nil {
+			return "", fmt.Errorf("wait operation initial retry-after: %w", err)
+		}
+	}
 
 	for {
 		resp, err := c.Do(ctx, http.MethodGet, opURL, nil, ratelimit.CategoryOperations)

@@ -255,14 +255,14 @@ func sliceCells(rows [][]Cell, rng Range) [][]Cell {
 // cellDisplayValue returns the evaluated value for display: formulas resolve
 // to their calculated value, literal values pass through.
 func cellDisplayValue(c Cell) any {
-	if c.Value != nil && strings.HasPrefix(*c.Value, "=") {
+	if value, ok := c.Value.(string); ok && strings.HasPrefix(value, "=") {
 		if c.CalculatedValue != nil {
 			return c.CalculatedValue
 		}
-		return ""
+		return value
 	}
 	if c.Value != nil {
-		return *c.Value
+		return c.Value
 	}
 	return ""
 }

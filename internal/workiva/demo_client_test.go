@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -22,7 +23,7 @@ func demoBaseURL(t *testing.T) *url.URL {
 
 func TestDemoClientSheetData(t *testing.T) {
 	client := NewDemoClient(demoBaseURL(t))
-	data, err := client.GetSheetData(context.Background(), "demo-sp-1", "demo-sh-b3-energy", "A1:D6", []string{"value", "calculatedValue"})
+	data, err := client.GetSheetData(context.Background(), "demo-sp-1", "demo-sh-b3-energy", "A1:D6", []string{"cells.value", "cells.calculatedValue"})
 	if err != nil {
 		t.Fatalf("GetSheetData: %v", err)
 	}
@@ -104,7 +105,7 @@ func value(c Cell) string {
 	if c.Value == nil {
 		return ""
 	}
-	return *c.Value
+	return fmt.Sprint(c.Value)
 }
 
 func TestDemoClientValuesInvalidRangeReturnsBadRequest(t *testing.T) {

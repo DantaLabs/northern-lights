@@ -19,6 +19,9 @@ func TestReadRangeFetchesGridAndCachesCells(t *testing.T) {
 			return
 		}
 		gotRange = r.URL.Query().Get("$cellrange")
+		if got := r.URL.Query().Get("$fields"); got != "cells.value,cells.calculatedValue" {
+			t.Errorf("$fields = %q, want cells.value,cells.calculatedValue", got)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		if _, err := fmt.Fprint(w, `{
 			"data": {

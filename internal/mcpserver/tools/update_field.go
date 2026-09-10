@@ -203,12 +203,12 @@ func executeWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field
 	if deps.Client == nil {
 		return nil, updateFieldOutput{}, failMsg("Workiva client is not available", "server misconfiguration: check Workiva credentials")
 	}
-	opURL, err := deps.Client.UpdateSheet(ctx, field.SpreadsheetID, field.SheetID,
+	opURL, initialRetryAfter, err := deps.Client.UpdateSheetWithRetryAfter(ctx, field.SpreadsheetID, field.SheetID,
 		workiva.NewEditCellsUpdate(edits))
 	if err != nil {
 		return nil, updateFieldOutput{}, fail(err, "Workiva rejected the write; check the value and the field mapping")
 	}
-	if _, err := deps.Client.WaitOperation(ctx, opURL); err != nil {
+	if _, err := deps.Client.WaitOperationWithInitialRetryAfter(ctx, opURL, initialRetryAfter); err != nil {
 		return nil, updateFieldOutput{}, fail(err, "the write operation did not complete; check Workiva file history before retrying")
 	}
 
@@ -238,7 +238,7 @@ func readFieldValue(ctx context.Context, deps mcpserver.Deps, field *mapping.Fie
 		return "", failMsg("Workiva client is not available", "server misconfiguration: check Workiva credentials")
 	}
 	data, err := deps.Client.GetSheetData(ctx, field.SpreadsheetID, field.SheetID, field.CellRange,
-		[]string{"value", "calculatedValue"})
+		[]string{"cells.value", "cells.calculatedValue"})
 	if err != nil {
 		return "", fail(err, "the current value could not be read from Workiva; the spreadsheet may have been disconnected")
 	}
@@ -272,6 +272,11 @@ func auditWrite(ctx context.Context, deps mcpserver.Deps, actor string, field *m
 	return nil
 }
 
+// maxExpandedCells limits mapped writes to a conservative 100,000 cells.
+// It supports useful ranges while preventing an unbounded A1 mapping from
+// exhausting memory during editCells expansion.
+const maxExpandedCells uint64 = 100_000
+
 // expandCellEdits converts a bounded rectangular range into the individual
 // cell records required by the Workiva editCells contract.
 func expandCellEdits(rng workiva.Range, value string) ([]workiva.CellEdit, error) {
@@ -281,9 +286,17 @@ func expandCellEdits(rng workiva.Range, value string) ([]workiva.CellEdit, error
 	if rng.StartRow > rng.StopRow || rng.StartCol > rng.StopCol {
 		return nil, fmt.Errorf("mapped write range has invalid bounds: %+v", rng)
 	}
-	edits := make([]workiva.CellEdit, 0, (rng.StopRow-rng.StartRow+1)*(rng.StopCol-rng.StartCol+1))
-	for row := rng.StartRow; row <= rng.StopRow; row++ {
-		for column := rng.StartCol; column <= rng.StopCol; column++ {
+	rows := uint64(rng.StopRow-rng.StartRow) + 1
+	columns := uint64(rng.StopCol-rng.StartCol) + 1
+	if rows > maxExpandedCells || columns > maxExpandedCells || rows > maxExpandedCells/columns {
+		return nil, fmt.Errorf("mapped write range exceeds maximum of %d cells", maxExpandedCells)
+	}
+	total := rows * columns
+	edits := make([]workiva.CellEdit, 0, int(total))
+	for rowOffset := uint64(0); rowOffset < rows; rowOffset++ {
+		row := rng.StartRow + int(rowOffset)
+		for columnOffset := uint64(0); columnOffset < columns; columnOffset++ {
+			column := rng.StartCol + int(columnOffset)
 			edits = append(edits, workiva.CellEdit{Column: column, Row: row, Value: value})
 		}
 	}
