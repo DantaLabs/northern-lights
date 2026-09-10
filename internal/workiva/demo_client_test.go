@@ -42,11 +42,7 @@ func TestDemoClientSheetData(t *testing.T) {
 
 func TestDemoClientUpdateSheet(t *testing.T) {
 	client := NewDemoClient(demoBaseURL(t))
-	rng, err := A1ToRange("B2")
-	if err != nil {
-		t.Fatalf("A1ToRange: %v", err)
-	}
-	opURL, err := client.UpdateSheet(context.Background(), "demo-sp-1", "demo-sh-b3-energy", NewEditCellsUpdate([]CellEdit{{Range: rng, Value: "99999"}}))
+	opURL, err := client.UpdateSheet(context.Background(), "demo-sp-1", "demo-sh-b3-energy", NewEditCellsUpdate([]CellEdit{{Column: 1, Row: 1, Value: "99999"}}))
 	if err != nil {
 		t.Fatalf("UpdateSheet: %v", err)
 	}
@@ -68,9 +64,8 @@ func TestDemoClientRangeValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetRangeValues: %v", err)
 	}
-	grid, ok := values.([]any)
-	if !ok || len(grid) != 6 {
-		t.Fatalf("expected 6-row array, got %T / %d rows", values, len(grid))
+	if len(values.Data) != 1 || len(values.Data[0].Values) != 6 {
+		t.Fatalf("expected one typed 6-row response, got %+v", values.Data)
 	}
 }
 
@@ -124,5 +119,37 @@ func TestDemoClientValuesInvalidRangeReturnsBadRequest(t *testing.T) {
 	}
 	if apiErr.StatusCode != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400", apiErr.StatusCode)
+	}
+}
+
+func TestDemoTransportAcceptsOnlyOfficialUpdateContract(t *testing.T) {
+	transport := NewDemoTransport()
+	req, err := http.NewRequest(http.MethodPost, "https://api.eu.wdesk.com/spreadsheets/demo-sp-1/sheets/demo-sh-b3-energy/update", strings.NewReader(`{"editCells":{"cells":[{"column":1,"row":1,"value":"99999"}]}}`))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	resp, err := transport.RoundTrip(req)
+	if err != nil {
+		t.Fatalf("RoundTrip: %v", err)
+	}
+	if resp.StatusCode != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202", resp.StatusCode)
+	}
+	_ = resp.Body.Close()
+	if !strings.Contains(transport.WrittenCells[req.URL.Path], `"column":1`) {
+		t.Errorf("recorded update = %q, want official cell payload", transport.WrittenCells[req.URL.Path])
+	}
+
+	legacy, err := http.NewRequest(http.MethodPatch, "https://api.eu.wdesk.com/spreadsheets/demo-sp-1/sheets/demo-sh-b3-energy/data", strings.NewReader(`{"editCells":[]}`))
+	if err != nil {
+		t.Fatalf("legacy NewRequest: %v", err)
+	}
+	legacyResp, err := transport.RoundTrip(legacy)
+	if err != nil {
+		t.Fatalf("legacy RoundTrip: %v", err)
+	}
+	_ = legacyResp.Body.Close()
+	if legacyResp.StatusCode != http.StatusNotFound {
+		t.Errorf("legacy status = %d, want 404", legacyResp.StatusCode)
 	}
 }

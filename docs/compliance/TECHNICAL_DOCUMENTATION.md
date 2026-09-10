@@ -53,11 +53,11 @@ or identity service and the MCP client.
    wrong field. The two-phase write confirmation is the primary
    safeguard; the deployer should train users to review confirmations.
 
-2. **Write payload schema unverified against live API.** The `editCells`
-   payload shape is built from Workiva's 2026-01-01 documentation, not
-   from a live workspace. First deployment must validate against a real
-   environment.
-
+2. **Live workspace validation.** The client now follows the documented
+   2026-01-01 contracts: sheetdata is decoded from its `data` envelope,
+   values responses are typed and paginated, and writes use `POST .../update`
+   with nested `editCells.cells` records. A real workspace is still needed to
+   validate permissions, rate limits, and vendor-side operation behaviour.
 3. **Spreadsheet-only scope.** Workiva Documents API (prose editing) is
    not supported. Deferred to v0.2.
 

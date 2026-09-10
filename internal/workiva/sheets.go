@@ -12,29 +12,42 @@ import (
 	"github.com/dantalabs/northern-lights/internal/ratelimit"
 )
 
-// maxSheetDataPages is the maximum number of sheetdata pages
-// GetSheetData will follow via @nextLink before returning an error.
 const maxSheetDataPages = 50
+const maxValuesPages = 50
 
-// Cell is one entry of the row-major cells array of a sheetdata
-// response. Value is the raw cell content (a formula when it starts
-// with "="); CalculatedValue is the evaluated result when the cell
-// contains a formula.
+// Cell is one entry of the row-major cells array of a sheetdata response.
+// Value is the raw cell content. CalculatedValue is the evaluated result
+// when the cell contains a formula.
 type Cell struct {
 	Value           *string `json:"value,omitempty"`
 	CalculatedValue any     `json:"calculatedValue,omitempty"`
 }
 
-// SheetData is the decoded body of the sheetdata endpoint. Cells is a
-// row-major two-dimensional array. NextLink carries the "@nextLink"
-// pagination URL of the response and is empty on the final page.
+// SheetData is the data object nested under the official sheetdata response
+// envelope. Cells is a row-major two-dimensional array.
 type SheetData struct {
 	Range          *Range            `json:"range,omitempty"`
 	Cells          [][]Cell          `json:"cells,omitempty"`
 	Merges         []json.RawMessage `json:"merges,omitempty"`
 	ColumnMetadata []json.RawMessage `json:"columnMetadata,omitempty"`
 	RowMetadata    []json.RawMessage `json:"rowMetadata,omitempty"`
-	NextLink       string            `json:"@nextLink,omitempty"`
+}
+
+type sheetDataResponse struct {
+	Data     SheetData `json:"data"`
+	NextLink string    `json:"@nextLink,omitempty"`
+}
+
+// RangeValues is one range result in the official values response.
+type RangeValues struct {
+	Range  string  `json:"range"`
+	Values [][]any `json:"values"`
+}
+
+// ValuesResponse is the typed, paginated response from the values endpoint.
+type ValuesResponse struct {
+	Data     []RangeValues `json:"data"`
+	NextLink string        `json:"@nextLink,omitempty"`
 }
 
 // GetSheetData reads the sheetdata of one sheet, optionally restricted
@@ -69,7 +82,7 @@ func (c *Client) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 		if err != nil {
 			return nil, err
 		}
-		var page SheetData
+		var page sheetDataResponse
 		decodeErr := json.NewDecoder(resp.Body).Decode(&page)
 		closeErr := resp.Body.Close()
 		if decodeErr != nil {
@@ -82,13 +95,13 @@ func (c *Client) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 			return nil, fmt.Errorf("close sheetdata response: %w", closeErr)
 		}
 
-		if result.Range == nil && page.Range != nil {
-			result.Range = page.Range
+		if result.Range == nil && page.Data.Range != nil {
+			result.Range = page.Data.Range
 		}
-		result.Cells = append(result.Cells, page.Cells...)
-		result.Merges = append(result.Merges, page.Merges...)
-		result.ColumnMetadata = append(result.ColumnMetadata, page.ColumnMetadata...)
-		result.RowMetadata = append(result.RowMetadata, page.RowMetadata...)
+		result.Cells = append(result.Cells, page.Data.Cells...)
+		result.Merges = append(result.Merges, page.Data.Merges...)
+		result.ColumnMetadata = append(result.ColumnMetadata, page.Data.ColumnMetadata...)
+		result.RowMetadata = append(result.RowMetadata, page.Data.RowMetadata...)
 
 		if page.NextLink == "" {
 			return result, nil
@@ -101,25 +114,39 @@ func (c *Client) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 	return nil, fmt.Errorf("sheetdata pagination exceeded maximum of %d pages", maxSheetDataPages)
 }
 
-// GetRangeValues reads the evaluated values of a range in A1 notation
-// from the values endpoint and returns the decoded JSON body (an array
-// of rows, each an array of values).
-func (c *Client) GetRangeValues(ctx context.Context, spreadsheetID, sheetID, a1 string) (values any, err error) {
+// GetRangeValues reads the values for an A1 range. It follows the official
+// paginated values response until exhausted, up to a finite page cap.
+func (c *Client) GetRangeValues(ctx context.Context, spreadsheetID, sheetID, a1 string) (*ValuesResponse, error) {
 	path := fmt.Sprintf("/spreadsheets/%s/sheets/%s/values/%s",
 		url.PathEscape(spreadsheetID), url.PathEscape(sheetID), url.PathEscape(a1))
 
-	resp, err := c.Do(ctx, http.MethodGet, path, nil, ratelimit.CategoryReads)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if closeErr := resp.Body.Close(); closeErr != nil {
-			err = errors.Join(err, fmt.Errorf("close values response: %w", closeErr))
+	result := &ValuesResponse{}
+	nextPath := path
+	for pageNum := 1; pageNum <= maxValuesPages; pageNum++ {
+		resp, err := c.Do(ctx, http.MethodGet, nextPath, nil, ratelimit.CategoryReads)
+		if err != nil {
+			return nil, err
 		}
-	}()
-
-	if err := json.NewDecoder(resp.Body).Decode(&values); err != nil {
-		return nil, fmt.Errorf("decode values response: %w", err)
+		var page ValuesResponse
+		decodeErr := json.NewDecoder(resp.Body).Decode(&page)
+		closeErr := resp.Body.Close()
+		if decodeErr != nil {
+			if closeErr != nil {
+				decodeErr = errors.Join(decodeErr, closeErr)
+			}
+			return nil, fmt.Errorf("decode values response: %w", decodeErr)
+		}
+		if closeErr != nil {
+			return nil, fmt.Errorf("close values response: %w", closeErr)
+		}
+		result.Data = append(result.Data, page.Data...)
+		if page.NextLink == "" {
+			return result, nil
+		}
+		if pageNum == maxValuesPages {
+			return nil, fmt.Errorf("values pagination exceeded maximum of %d pages", maxValuesPages)
+		}
+		nextPath = page.NextLink
 	}
-	return values, nil
+	return nil, fmt.Errorf("values pagination exceeded maximum of %d pages", maxValuesPages)
 }

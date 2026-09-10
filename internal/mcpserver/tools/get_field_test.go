@@ -12,8 +12,10 @@ import (
 
 // sheetdataBody is the Workiva response for a single cell B3 holding 1234.
 const sheetdataBody = `{
-	"range": {"startRow": 2, "startColumn": 1, "stopRow": 2, "stopColumn": 1},
-	"cells": [[{"value": "1234", "calculatedValue": 1234}]]
+	"data": {
+		"range": {"startRow": 2, "startColumn": 1, "stopRow": 2, "stopColumn": 1},
+		"cells": [[{"value": "1234", "calculatedValue": 1234}]]
+	}
 }`
 
 func TestGetFieldLiveReadCachesValue(t *testing.T) {

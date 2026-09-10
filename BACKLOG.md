@@ -2,12 +2,10 @@
 
 ## Open
 
-1. **Verify editCells/SheetUpdate payload against live API**: the write
-   payload shape (`editCells` array of `{range, value}`) is built from the
-   2026-01-01 docs, not from a live workspace. First run against a real
-   Workiva sandbox must validate the exact schema, including whether
-   `editCells` entries nest the range differently.
-
+1. **Live Workiva sandbox validation**: run the client against a real
+   Workiva workspace with suitable credentials to validate permissions,
+   rate-limit behaviour, and operation polling. The 2026-01-01 request and
+   response contracts are covered by official-document-shaped tests.
 2. **Documents API out of scope for MVP**: Workiva Documents (prose editing)
    intentionally deferred to v0.2.
 

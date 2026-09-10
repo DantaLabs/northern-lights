@@ -13,11 +13,16 @@ import (
 	"github.com/dantalabs/northern-lights/internal/ratelimit"
 )
 
-// CellEdit is one entry of an editCells update: it writes Value to
-// every cell identified by Range.
+// CellEdit is one entry of an editCells update. Workiva uses zero-based
+// column and row indexes for each individual cell.
 type CellEdit struct {
-	Range Range `json:"range"`
-	Value any   `json:"value"`
+	Column int `json:"column"`
+	Row    int `json:"row"`
+	Value  any `json:"value"`
+}
+
+type editCellsUpdate struct {
+	Cells []CellEdit `json:"cells"`
 }
 
 // EditRangeOp writes a contiguous block of values starting at Range.
@@ -45,9 +50,10 @@ type InsertRowsOp struct {
 // accepts exactly one top-level update field per request, so the fields
 // are unexported and can only be set through the constructor functions.
 // To apply several changes of the same kind, batch them through the
-// array value of a single field instead of sending several requests.
+// cells array nested under the corresponding update field instead of
+// sending several requests.
 type SheetUpdate struct {
-	editCells    *[]CellEdit
+	editCells    *editCellsUpdate
 	editRange    *EditRangeOp
 	applyFormats *[]ApplyFormatsOp
 	insertRows   *[]InsertRowsOp
@@ -56,7 +62,7 @@ type SheetUpdate struct {
 // NewEditCellsUpdate builds a SheetUpdate that edits individual cells,
 // batching the given edits into one request.
 func NewEditCellsUpdate(cells []CellEdit) SheetUpdate {
-	return SheetUpdate{editCells: &cells}
+	return SheetUpdate{editCells: &editCellsUpdate{Cells: cells}}
 }
 
 // NewEditRangeUpdate builds a SheetUpdate that writes a contiguous
@@ -100,7 +106,7 @@ func (u SheetUpdate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// UpdateSheet sends one SheetUpdate to the sheet data endpoint and
+// UpdateSheet sends one SheetUpdate to the sheet update endpoint and
 // returns the operationLocation of the accepted async operation. The
 // location is read from the 202 response body, falling back to the
 // Location header.
@@ -110,9 +116,9 @@ func (c *Client) UpdateSheet(ctx context.Context, spreadsheetID, sheetID string,
 		return "", err
 	}
 
-	path := fmt.Sprintf("/spreadsheets/%s/sheets/%s/data",
+	path := fmt.Sprintf("/spreadsheets/%s/sheets/%s/update",
 		url.PathEscape(spreadsheetID), url.PathEscape(sheetID))
-	resp, err := c.Do(ctx, http.MethodPatch, path, bytes.NewReader(payload), ratelimit.CategoryWrites)
+	resp, err := c.Do(ctx, http.MethodPost, path, bytes.NewReader(payload), ratelimit.CategoryWrites)
 	if err != nil {
 		return "", err
 	}
@@ -151,8 +157,8 @@ func (c *Client) UpdateSheet(ctx context.Context, spreadsheetID, sheetID string,
 // Note: values are written in Ones scale regardless of the cell display
 // format, so a cell shown in thousands still takes its plain numeric
 // value. Also note the one-top-level-field rule of SheetUpdate: many
-// edits of the same kind must be batched in the editCells array of one
-// request, which is what this function does.
+// edits of the same kind must be batched in the cells array nested under
+// editCells, which is what this function does.
 func (c *Client) WriteCells(ctx context.Context, spreadsheetID, sheetID string, edits []CellEdit) error {
 	opURL, err := c.UpdateSheet(ctx, spreadsheetID, sheetID, NewEditCellsUpdate(edits))
 	if err != nil {

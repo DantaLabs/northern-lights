@@ -16,7 +16,7 @@ import (
 )
 
 // writeMock returns a handler covering the Workiva endpoints a write
-// touches: sheetdata reads (before value), the PATCH data endpoint
+// touches: sheetdata reads (before value), the POST update endpoint
 // (editCells), and the operations poll endpoint.
 func writeMock(t *testing.T, edits *[][]byte) http.HandlerFunc {
 	t.Helper()
@@ -27,7 +27,7 @@ func writeMock(t *testing.T, edits *[][]byte) http.HandlerFunc {
 			if _, err := fmt.Fprint(w, sheetdataBody); err != nil {
 				t.Errorf("write sheetdata response: %v", err)
 			}
-		case r.Method == http.MethodPatch && strings.HasSuffix(r.URL.Path, "/data"):
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/update"):
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Errorf("read update request: %v", err)
@@ -76,7 +76,7 @@ func TestUpdateFieldTwoPhaseFlow(t *testing.T) {
 		t.Errorf("field = %v, want scope2_energy_kwh", sc["field"])
 	}
 	if len(edits) != 0 {
-		t.Fatalf("phase 1 must not write: got %d PATCH calls", len(edits))
+		t.Fatalf("phase 1 must not write: got %d POST calls", len(edits))
 	}
 
 	// Phase 2: confirm with the token, writes and audits.
@@ -96,20 +96,23 @@ func TestUpdateFieldTwoPhaseFlow(t *testing.T) {
 		t.Errorf("before/after = %v/%v, want 1234/5678", ec["before"], ec["after"])
 	}
 	if len(edits) != 1 {
-		t.Fatalf("phase 2 PATCH calls = %d, want 1", len(edits))
+		t.Fatalf("phase 2 POST calls = %d, want 1", len(edits))
 	}
 	var payload map[string]any
 	if err := json.Unmarshal(edits[0], &payload); err != nil {
-		t.Fatalf("PATCH payload is not JSON: %v", err)
+		t.Fatalf("POST payload is not JSON: %v", err)
 	}
-	ecEdits, ok := payload["editCells"].([]any)
-	if !ok || len(ecEdits) != 1 {
-		t.Fatalf("editCells = %v, want one entry", payload["editCells"])
+	ecEdits, ok := payload["editCells"].(map[string]any)
+	if !ok {
+		t.Fatalf("editCells = %v, want object", payload["editCells"])
 	}
-	edit, _ := ecEdits[0].(map[string]any)
-	rng, _ := edit["range"].(map[string]any)
-	if rng["startRow"] != float64(2) || rng["startColumn"] != float64(1) || rng["stopRow"] != float64(2) || rng["stopColumn"] != float64(1) {
-		t.Errorf("edit range = %v, want B3", rng)
+	rawCells, ok := ecEdits["cells"].([]any)
+	if !ok || len(rawCells) != 1 {
+		t.Fatalf("editCells.cells = %v, want one entry", ecEdits["cells"])
+	}
+	edit, _ := rawCells[0].(map[string]any)
+	if edit["row"] != float64(2) || edit["column"] != float64(1) {
+		t.Errorf("edit cell = %v, want B3", edit)
 	}
 	if edit["value"] != "5678" {
 		t.Errorf("edit value = %v, want 5678", edit["value"])
@@ -164,7 +167,7 @@ func TestUpdateFieldRejectsTokenReplay(t *testing.T) {
 		t.Fatal("expected error when replaying a consumed token")
 	}
 	if len(edits) != 1 {
-		t.Errorf("PATCH calls = %d, want 1 (replay must not write)", len(edits))
+		t.Errorf("POST calls = %d, want 1 (replay must not write)", len(edits))
 	}
 }
 
@@ -194,7 +197,7 @@ func TestUpdateFieldRejectsExpiredToken(t *testing.T) {
 		t.Fatal("expected error for an expired token")
 	}
 	if len(edits) != 0 {
-		t.Errorf("PATCH calls = %d, want 0 (expired token must not write)", len(edits))
+		t.Errorf("POST calls = %d, want 0 (expired token must not write)", len(edits))
 	}
 }
 
@@ -212,7 +215,7 @@ func TestUpdateFieldRejectsUnknownToken(t *testing.T) {
 		t.Fatal("expected error for an unknown token")
 	}
 	if len(edits) != 0 {
-		t.Errorf("PATCH calls = %d, want 0 (unknown token must not write)", len(edits))
+		t.Errorf("POST calls = %d, want 0 (unknown token must not write)", len(edits))
 	}
 }
 
@@ -234,7 +237,7 @@ func TestUpdateFieldSinglePhaseWhenConfirmationDisabled(t *testing.T) {
 		t.Errorf("status = %v, want written", ec["status"])
 	}
 	if len(edits) != 1 {
-		t.Errorf("PATCH calls = %d, want 1", len(edits))
+		t.Errorf("POST calls = %d, want 1", len(edits))
 	}
 }
 
@@ -264,6 +267,72 @@ func TestUpdateFieldRefreshCacheReportsStoreErrors(t *testing.T) {
 	}, workiva.Range{StartRow: 2, StopRow: 2, StartCol: 1, StopCol: 1}, "5678")
 	if err == nil || !strings.Contains(err.Error(), "cache updated cell B3") {
 		t.Fatalf("refreshCacheAfterWrite error = %v, want cache error for B3", err)
+	}
+}
+
+func TestExpandCellEditsRejectsUnboundedRanges(t *testing.T) {
+	_, err := expandCellEdits(workiva.Range{StartRow: -1, StartCol: 0, StopRow: -1, StopCol: 0}, "999")
+	if err == nil || !strings.Contains(err.Error(), "bounded") {
+		t.Fatalf("expandCellEdits error = %v, want bounded-range error", err)
+	}
+}
+
+func TestUpdateFieldExpandsBoundedMappedRangeIntoOfficialCells(t *testing.T) {
+	var bodies [][]byte
+	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/sheetdata"):
+			_, _ = fmt.Fprint(w, `{"data":{"range":{"startRow":2,"startColumn":1,"stopRow":3,"stopColumn":2},"cells":[[{"value":"1"},{"value":"2"}],[{"value":"3"},{"value":"4"}]]}}`)
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/update"):
+			body, _ := io.ReadAll(r.Body)
+			bodies = append(bodies, body)
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = fmt.Fprint(w, `{"operationLocation":"/operations/op-1"}`)
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/operations/"):
+			_, _ = fmt.Fprint(w, `{"id":"op-1","status":"completed","resourceUrl":"/spreadsheets/sp-1/sheets/sh-1/update"}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	seedField(t, env)
+	if _, err := env.deps.Store.UpsertField(context.Background(), mapping.Field{
+		SpreadsheetID: "sp-1", SheetID: "sh-1", Name: "energy_block", CellRange: "B3:C4",
+	}); err != nil {
+		t.Fatalf("UpsertField: %v", err)
+	}
+	env.deps.Cfg.RequireWriteConfirmation = false
+
+	result := callTool(t, env.deps, UpdateField(), map[string]any{"name": "energy_block", "value": "999"})
+	if result.IsError {
+		t.Fatalf("bounded range write returned error: %+v", result.Content)
+	}
+	if len(bodies) != 1 {
+		t.Fatalf("update requests = %d, want 1", len(bodies))
+	}
+	var payload struct {
+		EditCells struct {
+			Cells []struct {
+				Column int    `json:"column"`
+				Row    int    `json:"row"`
+				Value  string `json:"value"`
+			} `json:"cells"`
+		} `json:"editCells"`
+	}
+	if err := json.Unmarshal(bodies[0], &payload); err != nil {
+		t.Fatalf("update payload is not JSON: %v", err)
+	}
+	if len(payload.EditCells.Cells) != 4 {
+		t.Fatalf("cells = %+v, want four expanded cells", payload.EditCells.Cells)
+	}
+	got := map[[2]int]string{}
+	for _, cell := range payload.EditCells.Cells {
+		got[[2]int{cell.Row, cell.Column}] = cell.Value
+	}
+	for key, value := range map[[2]int]string{{2, 1}: "999", {2, 2}: "999", {3, 1}: "999", {3, 2}: "999"} {
+		if got[key] != value {
+			t.Errorf("cell %v = %q, want %q", key, got[key], value)
+		}
 	}
 }
 

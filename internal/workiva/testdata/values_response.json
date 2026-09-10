@@ -1,0 +1,8 @@
+{
+  "data": [
+    {
+      "range": "A1:C3",
+      "values": [["Field", 125000, "kWh"], ["Scope 2", 100000, "kWh"], ["Total", 225000, "kWh"]]
+    }
+  ]
+}

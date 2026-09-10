@@ -184,12 +184,15 @@ func executeConfirmedWrite(ctx context.Context, deps mcpserver.Deps, field *mapp
 }
 
 // executeWrite sends the batched editCells update, polls the async
-// operation, audits the mutation, and refreshes the snapshot cache for
-// single-cell fields.
+// operation, audits the mutation, and refreshes the snapshot cache.
 func executeWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, value string, actor string) (*mcp.CallToolResult, updateFieldOutput, error) {
 	rng, err := workiva.A1ToRange(field.CellRange)
 	if err != nil {
 		return nil, updateFieldOutput{}, fail(err, "the field's mapped range is not valid A1 notation")
+	}
+	edits, err := expandCellEdits(rng, value)
+	if err != nil {
+		return nil, updateFieldOutput{}, fail(err, "map the field to a bounded A1 range such as B3 or B3:C4")
 	}
 
 	before, err := readFieldValue(ctx, deps, field)
@@ -201,7 +204,7 @@ func executeWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field
 		return nil, updateFieldOutput{}, failMsg("Workiva client is not available", "server misconfiguration: check Workiva credentials")
 	}
 	opURL, err := deps.Client.UpdateSheet(ctx, field.SpreadsheetID, field.SheetID,
-		workiva.NewEditCellsUpdate([]workiva.CellEdit{{Range: rng, Value: value}}))
+		workiva.NewEditCellsUpdate(edits))
 	if err != nil {
 		return nil, updateFieldOutput{}, fail(err, "Workiva rejected the write; check the value and the field mapping")
 	}
@@ -269,25 +272,53 @@ func auditWrite(ctx context.Context, deps mcpserver.Deps, actor string, field *m
 	return nil
 }
 
-// refreshCacheAfterWrite updates the snapshot cache for single-cell
-// fields so a subsequent workiva_get_field does not serve the stale
-// pre-write value.
+// expandCellEdits converts a bounded rectangular range into the individual
+// cell records required by the Workiva editCells contract.
+func expandCellEdits(rng workiva.Range, value string) ([]workiva.CellEdit, error) {
+	if rng.StartRow < 0 || rng.StopRow < 0 || rng.StartCol < 0 || rng.StopCol < 0 {
+		return nil, fmt.Errorf("mapped write range must be bounded, got %+v", rng)
+	}
+	if rng.StartRow > rng.StopRow || rng.StartCol > rng.StopCol {
+		return nil, fmt.Errorf("mapped write range has invalid bounds: %+v", rng)
+	}
+	edits := make([]workiva.CellEdit, 0, (rng.StopRow-rng.StartRow+1)*(rng.StopCol-rng.StartCol+1))
+	for row := rng.StartRow; row <= rng.StopRow; row++ {
+		for column := rng.StartCol; column <= rng.StopCol; column++ {
+			edits = append(edits, workiva.CellEdit{Column: column, Row: row, Value: value})
+		}
+	}
+	return edits, nil
+}
+
+// refreshCacheAfterWrite updates every cell in the mapped range so a
+// subsequent workiva_get_field does not serve stale pre-write values.
 func refreshCacheAfterWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, rng workiva.Range, value string) error {
-	if rng.StartRow != rng.StopRow || rng.StartCol != rng.StopCol {
-		return nil
-	}
-	ref, err := workiva.RangeToA1(rng)
+	edits, err := expandCellEdits(rng, value)
 	if err != nil {
-		return fmt.Errorf("format updated cell range: %w", err)
+		return err
 	}
-	if err := deps.Store.CacheCells(ctx, []mapping.CellValue{{
-		SpreadsheetID: field.SpreadsheetID,
-		SheetID:       field.SheetID,
-		Cell:          ref,
-		Value:         value,
-		FetchedAt:     time.Now().UTC(),
-	}}); err != nil {
-		return fmt.Errorf("cache updated cell %s: %w", ref, err)
+	cells := make([]mapping.CellValue, 0, len(edits))
+	for _, edit := range edits {
+		ref, err := workiva.RangeToA1(workiva.Range{
+			StartRow: edit.Row, StopRow: edit.Row,
+			StartCol: edit.Column, StopCol: edit.Column,
+		})
+		if err != nil {
+			return fmt.Errorf("format updated cell range: %w", err)
+		}
+		cells = append(cells, mapping.CellValue{
+			SpreadsheetID: field.SpreadsheetID,
+			SheetID:       field.SheetID,
+			Cell:          ref,
+			Value:         value,
+			FetchedAt:     time.Now().UTC(),
+		})
+	}
+	if err := deps.Store.CacheCells(ctx, cells); err != nil {
+		if len(cells) == 1 {
+			return fmt.Errorf("cache updated cell %s: %w", cells[0].Cell, err)
+		}
+		return fmt.Errorf("cache updated cells in %s: %w", field.CellRange, err)
 	}
 	return nil
 }

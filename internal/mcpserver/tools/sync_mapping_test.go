@@ -11,13 +11,15 @@ import (
 // mapperSheetdataBody is a two-column sheet: a header row plus two data
 // rows and one row with an empty name that must be skipped.
 const mapperSheetdataBody = `{
-	"range": {"startRow": 0, "startColumn": 0, "stopRow": 3, "stopColumn": 1},
-	"cells": [
-		[{"value": "Field Name"}, {"value": "Value"}],
-		[{"value": "Scope 2 Energy (kWh)"}, {"value": "1234"}],
-		[{"value": "Water Use (m3)"}, {"value": "56"}],
-		[{"value": ""}, {"value": "999"}]
-	]
+	"data": {
+		"range": {"startRow": 0, "startColumn": 0, "stopRow": 3, "stopColumn": 1},
+		"cells": [
+			[{"value": "Field Name"}, {"value": "Value"}],
+			[{"value": "Scope 2 Energy (kWh)"}, {"value": "1234"}],
+			[{"value": "Water Use (m3)"}, {"value": "56"}],
+			[{"value": ""}, {"value": "999"}]
+		]
+	}
 }`
 
 func syncMock(t *testing.T) http.HandlerFunc {
@@ -132,10 +134,7 @@ func TestSyncMappingCustomColumns(t *testing.T) {
 			t.Errorf("$cellrange = %q, want C:D", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		if _, err := fmt.Fprint(w, `{
-			"range": {"startRow": 1, "startColumn": 2, "stopRow": 1, "stopColumn": 3},
-			"cells": [[{"value": "Revenue EUR"}, {"value": "1000"}]]
-		}`); err != nil {
+		if _, err := fmt.Fprint(w, `{"data":{"range":{"startRow":1,"startColumn":2,"stopRow":1,"stopColumn":3},"cells":[[{"value":"Revenue EUR"},{"value":"1000"}]]}}`); err != nil {
 			t.Errorf("write sheetdata response: %v", err)
 		}
 	}))

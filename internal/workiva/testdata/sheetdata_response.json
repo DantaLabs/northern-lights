@@ -1,27 +1,29 @@
 {
-  "range": {
-    "startRow": 2,
-    "startColumn": 1,
-    "stopRow": 3,
-    "stopColumn": 2
-  },
-  "cells": [
-    [
-      { "value": "Revenue" },
-      { "value": "=1+1", "calculatedValue": 2 }
+  "data": {
+    "range": {
+      "startRow": 2,
+      "startColumn": 1,
+      "stopRow": 3,
+      "stopColumn": 2
+    },
+    "cells": [
+      [
+        { "value": "Revenue" },
+        { "value": "=1+1", "calculatedValue": 2 }
+      ],
+      [
+        { "value": "42", "calculatedValue": 42 },
+        {}
+      ]
     ],
-    [
-      { "value": "42", "calculatedValue": 42 },
-      {}
+    "merges": [
+      { "startRow": 2, "startColumn": 1, "stopRow": 2, "stopColumn": 2 }
+    ],
+    "columnMetadata": [
+      { "column": 1, "width": 120 }
+    ],
+    "rowMetadata": [
+      { "row": 2, "height": 20 }
     ]
-  ],
-  "merges": [
-    { "startRow": 2, "startColumn": 1, "stopRow": 2, "stopColumn": 2 }
-  ],
-  "columnMetadata": [
-    { "column": 1, "width": 120 }
-  ],
-  "rowMetadata": [
-    { "row": 2, "height": 20 }
-  ]
+  }
 }
