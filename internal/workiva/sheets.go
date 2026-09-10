@@ -31,6 +31,9 @@ type SheetData struct {
 	Merges         []json.RawMessage `json:"merges,omitempty"`
 	ColumnMetadata []json.RawMessage `json:"columnMetadata,omitempty"`
 	RowMetadata    []json.RawMessage `json:"rowMetadata,omitempty"`
+	// Pages preserves the official range origin for every paginated response.
+	// Cells remains concatenated for compatibility with existing callers.
+	Pages []SheetData `json:"-"`
 }
 
 type sheetDataResponse struct {
@@ -64,6 +67,7 @@ func (c *Client) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 		qb.WriteString("$cellrange=")
 		qb.WriteString(url.QueryEscape(cellRange))
 	}
+	fields = coordinateFields(fields)
 	if len(fields) > 0 {
 		if qb.Len() > 0 {
 			qb.WriteString("&")
@@ -94,10 +98,14 @@ func (c *Client) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 		if closeErr != nil {
 			return nil, fmt.Errorf("close sheetdata response: %w", closeErr)
 		}
+		if len(page.Data.Cells) > 0 && page.Data.Range == nil {
+			return nil, fmt.Errorf("sheetdata page %d has cells but no range metadata", pageNum)
+		}
 
 		if result.Range == nil && page.Data.Range != nil {
 			result.Range = page.Data.Range
 		}
+		result.Pages = append(result.Pages, page.Data)
 		result.Cells = append(result.Cells, page.Data.Cells...)
 		result.Merges = append(result.Merges, page.Data.Merges...)
 		result.ColumnMetadata = append(result.ColumnMetadata, page.Data.ColumnMetadata...)
@@ -112,6 +120,21 @@ func (c *Client) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 		nextPath = page.NextLink
 	}
 	return nil, fmt.Errorf("sheetdata pagination exceeded maximum of %d pages", maxSheetDataPages)
+}
+
+// coordinateFields ensures every sheetdata request that selects fields also
+// selects range metadata. Cell coordinates cannot be derived without it.
+func coordinateFields(fields []string) []string {
+	if len(fields) == 0 {
+		return nil
+	}
+	result := append([]string(nil), fields...)
+	for _, field := range result {
+		if field == "range" {
+			return result
+		}
+	}
+	return append(result, "range")
 }
 
 // GetRangeValues reads the values for an A1 range. It follows the official

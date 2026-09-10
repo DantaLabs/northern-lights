@@ -142,14 +142,15 @@ func demoTokenResponse() *http.Response {
 // $cellrange when present, otherwise the full fixture.
 func (t *DemoTransport) sheetdataResponse(u *url.URL) *http.Response {
 	cellRange := u.Query().Get("$cellrange")
+	full := t.fixtureSnapshot()
 	if cellRange == "" {
-		return demoJSONResponse(demoSheetdataJSON)
+		return demoJSONResponse(mustJSON(sheetDataResponse{Data: *full}))
 	}
 	rng, err := A1ToRange(cellRange)
 	if err != nil {
 		return demoBadRequest(fmt.Sprintf("invalid $cellrange: %s", cellRange))
 	}
-	out := sliceSheetData(t.fixture, rng)
+	out := sliceSheetData(full, rng)
 	b, err := json.Marshal(sheetDataResponse{Data: *out})
 	if err != nil {
 		return demoServerError("marshal sheetdata")
@@ -174,7 +175,7 @@ func (t *DemoTransport) valuesResponse(u *url.URL) *http.Response {
 	}
 	return demoJSONResponse(mustJSON(ValuesResponse{Data: []RangeValues{{
 		Range:  cellRange,
-		Values: ValuesOnlyGrid(t.fixture, rng),
+		Values: ValuesOnlyGrid(t.fixtureSnapshot(), rng),
 	}}}))
 }
 
@@ -184,6 +185,25 @@ func mustJSON(v any) []byte {
 		return []byte("[]")
 	}
 	return b
+}
+
+func (t *DemoTransport) fixtureSnapshot() *SheetData {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return cloneSheetData(t.fixture)
+}
+
+func cloneSheetData(in *SheetData) *SheetData {
+	out := *in
+	if in.Range != nil {
+		rng := *in.Range
+		out.Range = &rng
+	}
+	out.Cells = make([][]Cell, len(in.Cells))
+	for rowIdx, row := range in.Cells {
+		out.Cells[rowIdx] = append([]Cell(nil), row...)
+	}
+	return &out
 }
 
 // ValuesOnlyGrid extracts the raw values for rng from full. It is exported
@@ -282,15 +302,36 @@ func (t *DemoTransport) demoUpdateResponse(req *http.Request) *http.Response {
 	if err := json.Unmarshal(body, &payload); err != nil || len(payload.EditCells.Cells) == 0 {
 		return demoBadRequest("update body must contain editCells.cells")
 	}
-	responseBody := []byte(`{"operationLocation":"/operations/demo-op-1","id":"demo-op-1"}`)
+
 	t.mu.Lock()
+	defer t.mu.Unlock()
+	for i, edit := range payload.EditCells.Cells {
+		if edit.Column < 0 || edit.Row < 0 || edit.Row >= len(t.fixture.Cells) || edit.Column >= len(t.fixture.Cells[edit.Row]) {
+			return demoBadRequest(fmt.Sprintf("editCells.cells[%d] is outside the demo sheet", i))
+		}
+		if !validDemoScalar(edit.Value) {
+			return demoBadRequest(fmt.Sprintf("editCells.cells[%d].value must be a scalar", i))
+		}
+	}
+	for _, edit := range payload.EditCells.Cells {
+		t.fixture.Cells[edit.Row][edit.Column] = Cell{Value: edit.Value}
+	}
+	responseBody := []byte(`{"operationLocation":"/operations/demo-op-1","id":"demo-op-1"}`)
 	t.WrittenCells[req.URL.Path] = string(body)
-	t.mu.Unlock()
 	return &http.Response{
 		StatusCode: http.StatusAccepted,
 		Header:     http.Header{"Content-Type": []string{"application/json"}},
 		Body:       io.NopCloser(bytes.NewReader(responseBody)),
 		Request:    &http.Request{Method: http.MethodPost, URL: &url.URL{Path: req.URL.Path}},
+	}
+}
+
+func validDemoScalar(value any) bool {
+	switch value.(type) {
+	case nil, bool, string, float64:
+		return true
+	default:
+		return false
 	}
 }
 

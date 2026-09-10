@@ -113,8 +113,36 @@ func TestGetSheetDataSendsQueryParams(t *testing.T) {
 	if gotRange != "B3:D10" {
 		t.Errorf("$cellrange = %q, want B3:D10", gotRange)
 	}
-	if gotFields != "cells.value,cells.calculatedValue" {
-		t.Errorf("$fields = %q, want cells.value,cells.calculatedValue", gotFields)
+	if gotFields != "cells.value,cells.calculatedValue,range" {
+		t.Errorf("$fields = %q, want cells.value,cells.calculatedValue,range", gotFields)
+	}
+}
+
+func TestGetSheetDataAddsRangeToCoordinateFields(t *testing.T) {
+	var gotFields string
+	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
+		gotFields = r.URL.Query().Get("$fields")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"data":{"range":{"startRow":0,"startColumn":0,"stopRow":0,"stopColumn":0},"cells":[[{"value":"x"}]]}}`)
+	}))
+
+	if _, err := c.GetSheetData(context.Background(), "s-1", "sh-1", "A1", []string{"cells.value"}); err != nil {
+		t.Fatalf("GetSheetData: %v", err)
+	}
+	if gotFields != "cells.value,range" {
+		t.Errorf("$fields = %q, want cells.value,range", gotFields)
+	}
+}
+
+func TestGetSheetDataRejectsCellsWithoutRangeMetadata(t *testing.T) {
+	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"data":{"cells":[[{"value":"x"}]]}}`)
+	}))
+
+	_, err := c.GetSheetData(context.Background(), "s-1", "sh-1", "A1", []string{"cells.value"})
+	if err == nil || !strings.Contains(err.Error(), "page 1 has cells but no range metadata") {
+		t.Fatalf("GetSheetData error = %v, want clear missing-range error", err)
 	}
 }
 
@@ -138,7 +166,7 @@ func TestGetSheetDataOmitsEmptyQueryParams(t *testing.T) {
 }
 
 func TestGetSheetDataFollowsNextLink(t *testing.T) {
-	page2 := `{"data":{"cells":[[{"value":"page2"}]]}}`
+	page2 := `{"data":{"range":{"startRow":2,"startColumn":0,"stopRow":2,"stopColumn":0},"cells":[[{"value":"page2"}]]}}`
 	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Query().Get("$page") == "2" {
@@ -148,7 +176,7 @@ func TestGetSheetDataFollowsNextLink(t *testing.T) {
 			return
 		}
 		next := "http://" + r.Host + "/spreadsheets/s-1/sheets/sh-1/sheetdata?$page=2"
-		if _, err := fmt.Fprintf(w, `{"data":{"cells":[[{"value":"p1a"}],[{"value":"p1b"}]]},"@nextLink":%q}`, next); err != nil {
+		if _, err := fmt.Fprintf(w, `{"data":{"range":{"startRow":0,"startColumn":0,"stopRow":1,"stopColumn":0},"cells":[[{"value":"p1a"}],[{"value":"p1b"}]]},"@nextLink":%q}`, next); err != nil {
 			t.Errorf("write sheetdata response: %v", err)
 		}
 	}))
@@ -196,7 +224,7 @@ func TestGetSheetDataCapsPaginationAtFiftyPages(t *testing.T) {
 		apiCalls.Add(1)
 		next := "http://" + r.Host + "/spreadsheets/s-1/sheets/sh-1/sheetdata?$page=next"
 		w.Header().Set("Content-Type", "application/json")
-		if _, err := fmt.Fprintf(w, `{"data":{"cells":[[{"value":"x"}]]},"@nextLink":%q}`, next); err != nil {
+		if _, err := fmt.Fprintf(w, `{"data":{"range":{"startRow":0,"startColumn":0,"stopRow":0,"stopColumn":0},"cells":[[{"value":"x"}]]},"@nextLink":%q}`, next); err != nil {
 			t.Errorf("write sheetdata response: %v", err)
 		}
 	}))

@@ -158,12 +158,21 @@ func (u SheetUpdate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// UpdateSheet preserves the original operation URL API. Call
-// UpdateSheetWithRetryAfter when the 202 Retry-After delay is needed by the
-// caller that will poll the returned operation.
+// UpdateSheet preserves the original operation URL API and honors the
+// initial Retry-After delay before returning. Call
+// UpdateSheetWithRetryAfter when the caller will poll and needs to carry the
+// delay explicitly.
 func (c *Client) UpdateSheet(ctx context.Context, spreadsheetID, sheetID string, upd SheetUpdate) (string, error) {
-	operationURL, _, err := c.UpdateSheetWithRetryAfter(ctx, spreadsheetID, sheetID, upd)
-	return operationURL, err
+	operationURL, initialRetryAfter, err := c.UpdateSheetWithRetryAfter(ctx, spreadsheetID, sheetID, upd)
+	if err != nil {
+		return "", err
+	}
+	if initialRetryAfter > 0 {
+		if err := c.sleep(ctx, initialRetryAfter); err != nil {
+			return "", fmt.Errorf("update sheet initial retry-after: %w", err)
+		}
+	}
+	return operationURL, nil
 }
 
 // UpdateSheetWithRetryAfter sends one SheetUpdate and returns its operation

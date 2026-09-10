@@ -128,7 +128,21 @@ func TestDemoModeEndToEnd(t *testing.T) {
 		t.Errorf("after = %v, want 230000", content["after"])
 	}
 
-	// 6. audit_trail returns entries including the seeded init entry.
+	// 6. An uncached read sees the value mutated by the demo editCells payload.
+	result, err = session.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "workiva_read_range",
+		Arguments: map[string]any{"spreadsheet_id": "demo-sp-energy-2026", "sheet_id": "demo-sh-b3-energy", "range": "B4"},
+	})
+	if err != nil {
+		t.Fatalf("read_range after update: %v", err)
+	}
+	content = structuredContent(t, result)
+	rows, ok := content["rows"].([]any)
+	if !ok || len(rows) != 1 || len(rows[0].([]any)) != 1 || rows[0].([]any)[0] != "230000" {
+		t.Fatalf("read-back rows = %v, want [[230000]]", content["rows"])
+	}
+
+	// 7. audit_trail returns entries including the seeded init entry.
 	result, err = session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      "workiva_audit_trail",
 		Arguments: map[string]any{},

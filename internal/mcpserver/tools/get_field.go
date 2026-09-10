@@ -95,7 +95,9 @@ func (getFieldTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		}
 
 		fetchedAt := time.Now().UTC()
-		if cells := gridToCachedCells(field.SpreadsheetID, field.SheetID, data, fetchedAt); cells != nil {
+		if cells, cacheErr := gridToCachedCells(field.SpreadsheetID, field.SheetID, data, fetchedAt); cacheErr != nil {
+			return nil, getFieldOutput{}, fail(cacheErr, "the read returned cells without usable coordinates")
+		} else if cells != nil {
 			if err := deps.Store.CacheCells(ctx, cells); err != nil {
 				return nil, getFieldOutput{}, fail(err, "the read succeeded but the snapshot cache could not be updated")
 			}

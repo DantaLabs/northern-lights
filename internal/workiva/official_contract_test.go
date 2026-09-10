@@ -91,6 +91,16 @@ func TestSheetUpdateUsesOfficialPostUpdateAndNestedEditCells(t *testing.T) {
 	}
 }
 
+func TestOperationFixtureUsesUpdateResourceURL(t *testing.T) {
+	var operation operationResponse
+	if err := json.Unmarshal(loadFixture(t, "operation_completed.json"), &operation); err != nil {
+		t.Fatalf("decode operation fixture: %v", err)
+	}
+	if !strings.HasSuffix(operation.ResourceURL, "/update") {
+		t.Errorf("resourceUrl = %q, want /update", operation.ResourceURL)
+	}
+}
+
 func ioReadAll(r *http.Request) ([]byte, error) {
 	return io.ReadAll(r.Body)
 }

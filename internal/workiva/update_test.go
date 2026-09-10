@@ -77,6 +77,37 @@ func TestUpdateSheetFallsBackToLocationHeader(t *testing.T) {
 	}
 }
 
+func TestUpdateSheetHonorsInitialRetryAfterWithoutSharedState(t *testing.T) {
+	c, _ := setupFastClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "7")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = fmt.Fprint(w, `{"operationLocation":"http://x/operations/op-7"}`)
+	}))
+	var delays []time.Duration
+	c.sleep = func(ctx context.Context, d time.Duration) error {
+		delays = append(delays, d)
+		return nil
+	}
+
+	if _, err := c.UpdateSheet(context.Background(), "s-1", "sh-1", NewEditCellsUpdate([]CellEdit{{Column: 0, Row: 0, Value: 1}})); err != nil {
+		t.Fatalf("UpdateSheet: %v", err)
+	}
+	if len(delays) != 1 || delays[0] != 7*time.Second {
+		t.Fatalf("delays = %v, want one 7s delay", delays)
+	}
+
+	_, initial, err := c.UpdateSheetWithRetryAfter(context.Background(), "s-1", "sh-1", NewEditCellsUpdate([]CellEdit{{Column: 0, Row: 0, Value: 2}}))
+	if err != nil {
+		t.Fatalf("UpdateSheetWithRetryAfter: %v", err)
+	}
+	if initial != 7*time.Second {
+		t.Errorf("initial retry-after = %v, want 7s", initial)
+	}
+	if len(delays) != 1 {
+		t.Errorf("WithRetryAfter slept unexpectedly, delays = %v", delays)
+	}
+}
+
 func TestUpdateSheetSendsEditCellsPayload(t *testing.T) {
 	var body []byte
 	c, _ := setupFastClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {

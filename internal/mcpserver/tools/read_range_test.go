@@ -19,8 +19,8 @@ func TestReadRangeFetchesGridAndCachesCells(t *testing.T) {
 			return
 		}
 		gotRange = r.URL.Query().Get("$cellrange")
-		if got := r.URL.Query().Get("$fields"); got != "cells.value,cells.calculatedValue" {
-			t.Errorf("$fields = %q, want cells.value,cells.calculatedValue", got)
+		if got := r.URL.Query().Get("$fields"); got != "cells.value,cells.calculatedValue,range" {
+			t.Errorf("$fields = %q, want cells.value,cells.calculatedValue,range", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		if _, err := fmt.Fprint(w, `{
@@ -109,6 +109,69 @@ func TestReadRangeFetchesGridAndCachesCells(t *testing.T) {
 	}
 	if err := env.deps.Audit.Verify(context.Background()); err != nil {
 		t.Fatalf("audit chain invalid: %v", err)
+	}
+}
+
+func TestReadRangeCachesUnboundedRowsFromZeroOrigin(t *testing.T) {
+	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"data":{"range":{"startRow":null,"startColumn":0,"stopRow":null,"stopColumn":1},"cells":[[{"value":"A"},{"value":"B"}]]}}`)
+	}))
+
+	result := callTool(t, env.deps, ReadRange(), map[string]any{"spreadsheet_id": "sp-1", "sheet_id": "sh-1", "range": "A:B"})
+	if result.IsError {
+		t.Fatalf("tool returned error: %+v", result.Content)
+	}
+	cached, err := env.deps.Store.GetCachedCells(context.Background(), "sp-1", "sh-1", 0)
+	if err != nil {
+		t.Fatalf("GetCachedCells: %v", err)
+	}
+	byCell := map[string]string{}
+	for _, cell := range cached {
+		byCell[cell.Cell] = cell.Value
+	}
+	if byCell["A1"] != "A" || byCell["B1"] != "B" {
+		t.Errorf("cached cells = %v, want A1=A and B1=B", byCell)
+	}
+}
+
+func TestReadRangePreservesCoordinatesAcrossPages(t *testing.T) {
+	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Query().Get("$page") == "2" {
+			_, _ = fmt.Fprint(w, `{"data":{"range":{"startRow":4,"startColumn":1,"stopRow":4,"stopColumn":1},"cells":[[{"value":"page2"}]]}}`)
+			return
+		}
+		next := "http://" + r.Host + r.URL.Path + "?$page=2"
+		_, _ = fmt.Fprintf(w, `{"data":{"range":{"startRow":0,"startColumn":0,"stopRow":0,"stopColumn":0},"cells":[[{"value":"page1"}]]},"@nextLink":%q}`, next)
+	}))
+
+	result := callTool(t, env.deps, ReadRange(), map[string]any{"spreadsheet_id": "sp-1", "sheet_id": "sh-1", "range": "A1:B5"})
+	if result.IsError {
+		t.Fatalf("tool returned error: %+v", result.Content)
+	}
+	cached, err := env.deps.Store.GetCachedCells(context.Background(), "sp-1", "sh-1", 0)
+	if err != nil {
+		t.Fatalf("GetCachedCells: %v", err)
+	}
+	byCell := map[string]string{}
+	for _, cell := range cached {
+		byCell[cell.Cell] = cell.Value
+	}
+	if byCell["A1"] != "page1" || byCell["B5"] != "page2" || len(byCell) != 2 {
+		t.Errorf("cached cells = %v, want A1=page1 and B5=page2", byCell)
+	}
+}
+
+func TestReadRangeFailsWhenCellsHaveNoRangeMetadata(t *testing.T) {
+	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"data":{"cells":[[{"value":"uncertain"}]]}}`)
+	}))
+
+	result := callTool(t, env.deps, ReadRange(), map[string]any{"spreadsheet_id": "sp-1", "sheet_id": "sh-1", "range": "A1"})
+	if !result.IsError {
+		t.Fatal("expected missing range metadata error")
 	}
 }
 

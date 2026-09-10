@@ -103,35 +103,87 @@ func scalarText(value any) string {
 	return fmt.Sprintf("%v", value)
 }
 
-// gridToCachedCells converts a fetched SheetData grid into snapshot cache
-// entries keyed by A1 cell reference. It returns nil when the response
-// carries no range metadata, since cell addresses cannot be derived.
-func gridToCachedCells(spreadsheetID, sheetID string, data *workiva.SheetData, fetchedAt time.Time) []mapping.CellValue {
-	if data.Range == nil {
-		return nil
+// gridToCachedCells converts every fetched SheetData page into snapshot cache
+// entries keyed by A1 cell reference. Each page keeps its own official range
+// origin so pagination cannot shift later cells onto earlier rows.
+func gridToCachedCells(spreadsheetID, sheetID string, data *workiva.SheetData, fetchedAt time.Time) ([]mapping.CellValue, error) {
+	if data == nil {
+		return nil, fmt.Errorf("sheetdata is nil")
 	}
-	var out []mapping.CellValue
-	for rowIdx, row := range data.Cells {
-		for colIdx := range row {
-			ref, err := workiva.RangeToA1(workiva.Range{
-				StartRow: data.Range.StartRow + rowIdx,
-				StartCol: data.Range.StartCol + colIdx,
-				StopRow:  data.Range.StartRow + rowIdx,
-				StopCol:  data.Range.StartCol + colIdx,
-			})
-			if err != nil {
-				continue
+	pages := data.Pages
+	if len(pages) == 0 {
+		if data.Range == nil {
+			if len(data.Cells) == 0 {
+				return nil, nil
 			}
-			out = append(out, mapping.CellValue{
-				SpreadsheetID: spreadsheetID,
-				SheetID:       sheetID,
-				Cell:          ref,
-				Value:         cellText(row[colIdx]),
-				FetchedAt:     fetchedAt,
-			})
+			return nil, fmt.Errorf("sheetdata has cells but no range metadata")
+		}
+		pages = []workiva.SheetData{{Range: data.Range, Cells: data.Cells}}
+	}
+
+	var out []mapping.CellValue
+	for pageIdx, page := range pages {
+		if len(page.Cells) == 0 {
+			continue
+		}
+		if page.Range == nil {
+			return nil, fmt.Errorf("sheetdata page %d has cells but no range metadata", pageIdx+1)
+		}
+		startRow := page.Range.StartRow
+		if startRow < 0 {
+			startRow = 0
+		}
+		startCol := page.Range.StartCol
+		if startCol < 0 {
+			startCol = 0
+		}
+		for rowIdx, row := range page.Cells {
+			rowCoord, err := addCoordinate(startRow, rowIdx)
+			if err != nil {
+				return nil, fmt.Errorf("sheetdata page %d row %d: %w", pageIdx+1, rowIdx, err)
+			}
+			if page.Range.StopRow >= 0 && rowCoord > page.Range.StopRow {
+				return nil, fmt.Errorf("sheetdata page %d row %d exceeds range stop row", pageIdx+1, rowIdx)
+			}
+			for colIdx := range row {
+				colCoord, err := addCoordinate(startCol, colIdx)
+				if err != nil {
+					return nil, fmt.Errorf("sheetdata page %d column %d: %w", pageIdx+1, colIdx, err)
+				}
+				if page.Range.StopCol >= 0 && colCoord > page.Range.StopCol {
+					return nil, fmt.Errorf("sheetdata page %d column %d exceeds range stop column", pageIdx+1, colIdx)
+				}
+				ref, err := workiva.RangeToA1(workiva.Range{
+					StartRow: rowCoord,
+					StartCol: colCoord,
+					StopRow:  rowCoord,
+					StopCol:  colCoord,
+				})
+				if err != nil {
+					return nil, fmt.Errorf("sheetdata page %d cell %d,%d: %w", pageIdx+1, rowIdx, colIdx, err)
+				}
+				out = append(out, mapping.CellValue{
+					SpreadsheetID: spreadsheetID,
+					SheetID:       sheetID,
+					Cell:          ref,
+					Value:         cellText(row[colIdx]),
+					FetchedAt:     fetchedAt,
+				})
+			}
 		}
 	}
-	return out
+	return out, nil
+}
+
+func addCoordinate(base, offset int) (int, error) {
+	maxInt := int(^uint(0) >> 1)
+	if base < 0 {
+		base = 0
+	}
+	if offset < 0 || offset > maxInt-base {
+		return 0, fmt.Errorf("coordinate overflow")
+	}
+	return base + offset, nil
 }
 
 // valueFromCells joins the cached cells falling inside cellRange into a

@@ -154,32 +154,55 @@ func syncFields(ctx context.Context, deps mcpserver.Deps, in syncMappingInput, d
 	valueLetters = strings.TrimRight(valueLetters, "0123456789")
 
 	var names []string
-	dataStartRow := data.Range.StartRow
-	if dataStartRow < 0 {
-		dataStartRow = 0
+	pages := data.Pages
+	if len(pages) == 0 {
+		pages = []workiva.SheetData{*data}
 	}
-	for rowIdx, row := range data.Cells {
-		sheetRow := dataStartRow + rowIdx
-		if sheetRow < startRowIdx {
+	for _, page := range pages {
+		if len(page.Cells) == 0 {
 			continue
 		}
-		name := ""
-		if nameCol-data.Range.StartCol >= 0 && nameCol-data.Range.StartCol < len(row) {
-			name = normalizeFieldName(cellText(row[nameCol-data.Range.StartCol]))
+		if page.Range == nil {
+			return nil, failMsg("the mapper sheet returned a page without range metadata", "check that the sheet ID is correct")
 		}
-		if name == "" {
-			continue
+		dataStartRow := page.Range.StartRow
+		if dataStartRow < 0 {
+			dataStartRow = 0
 		}
-		field := mapping.Field{
-			SpreadsheetID: in.SpreadsheetID,
-			SheetID:       in.SheetID,
-			Name:          name,
-			CellRange:     valueLetters + strconv.Itoa(sheetRow+1),
+		dataStartCol := page.Range.StartCol
+		if dataStartCol < 0 {
+			dataStartCol = 0
 		}
-		if _, err := deps.Store.UpsertField(ctx, field); err != nil {
-			return nil, fail(err, "field "+name+" could not be stored")
+		nameOffset := nameCol - dataStartCol
+		for rowIdx, row := range page.Cells {
+			sheetRow, rowErr := addCoordinate(dataStartRow, rowIdx)
+			if rowErr != nil {
+				return nil, fail(rowErr, "the mapper sheet returned an unsafe row coordinate")
+			}
+			if sheetRow == int(^uint(0)>>1) {
+				return nil, failMsg("the mapper sheet returned an unsafe row coordinate", "check the sheet range metadata")
+			}
+			if sheetRow < startRowIdx {
+				continue
+			}
+			name := ""
+			if nameOffset >= 0 && nameOffset < len(row) {
+				name = normalizeFieldName(cellText(row[nameOffset]))
+			}
+			if name == "" {
+				continue
+			}
+			field := mapping.Field{
+				SpreadsheetID: in.SpreadsheetID,
+				SheetID:       in.SheetID,
+				Name:          name,
+				CellRange:     valueLetters + strconv.Itoa(sheetRow+1),
+			}
+			if _, err := deps.Store.UpsertField(ctx, field); err != nil {
+				return nil, fail(err, "field "+name+" could not be stored")
+			}
+			names = append(names, name)
 		}
-		names = append(names, name)
 	}
 
 	if _, err := deps.Audit.Append(ctx, audit.Entry{

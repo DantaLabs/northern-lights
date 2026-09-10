@@ -59,6 +59,48 @@ func TestDemoClientUpdateSheet(t *testing.T) {
 	}
 }
 
+func TestDemoClientUpdateReadbackMutatesFixture(t *testing.T) {
+	client := NewDemoClient(demoBaseURL(t))
+	if _, err := client.UpdateSheet(context.Background(), "demo-sp-energy-2026", "demo-sh-b3-energy", NewEditCellsUpdate([]CellEdit{{Column: 1, Row: 1, Value: "99999"}})); err != nil {
+		t.Fatalf("UpdateSheet: %v", err)
+	}
+
+	data, err := client.GetSheetData(context.Background(), "demo-sp-energy-2026", "demo-sh-b3-energy", "B2", []string{"cells.value"})
+	if err != nil {
+		t.Fatalf("GetSheetData read-back: %v", err)
+	}
+	if got := data.Cells[0][0].Value; got != "99999" {
+		t.Fatalf("read-back value = %v, want 99999", got)
+	}
+}
+
+func TestDemoTransportRejectsInvalidEditCells(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{"out of bounds", `{"editCells":{"cells":[{"column":99,"row":0,"value":"x"}]}}`},
+		{"non scalar", `{"editCells":{"cells":[{"column":0,"row":0,"value":{"nested":true}}]}}`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			transport := NewDemoTransport()
+			req, err := http.NewRequest(http.MethodPost, "https://api.eu.wdesk.com/spreadsheets/demo-sp-1/sheets/demo-sh-b3-energy/update", strings.NewReader(tc.body))
+			if err != nil {
+				t.Fatalf("NewRequest: %v", err)
+			}
+			resp, err := transport.RoundTrip(req)
+			if err != nil {
+				t.Fatalf("RoundTrip: %v", err)
+			}
+			_ = resp.Body.Close()
+			if resp.StatusCode != http.StatusBadRequest {
+				t.Errorf("status = %d, want 400", resp.StatusCode)
+			}
+		})
+	}
+}
+
 func TestDemoClientRangeValues(t *testing.T) {
 	client := NewDemoClient(demoBaseURL(t))
 	values, err := client.GetRangeValues(context.Background(), "demo-sp-1", "demo-sh-b3-energy", "A1:D6")

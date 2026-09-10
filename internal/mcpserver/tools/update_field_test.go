@@ -24,8 +24,8 @@ func writeMock(t *testing.T, edits *[][]byte) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/sheetdata"):
-			if got := r.URL.Query().Get("$fields"); got != "cells.value,cells.calculatedValue" {
-				t.Errorf("$fields = %q, want cells.value,cells.calculatedValue", got)
+			if got := r.URL.Query().Get("$fields"); got != "cells.value,cells.calculatedValue,range" {
+				t.Errorf("$fields = %q, want cells.value,cells.calculatedValue,range", got)
 			}
 			if _, err := fmt.Fprint(w, sheetdataBody); err != nil {
 				t.Errorf("write sheetdata response: %v", err)

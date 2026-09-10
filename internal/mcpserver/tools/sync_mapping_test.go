@@ -29,8 +29,8 @@ func syncMock(t *testing.T) http.HandlerFunc {
 			if got := r.URL.Query().Get("$cellrange"); got != "A:B" {
 				t.Errorf("$cellrange = %q, want A:B", got)
 			}
-			if got := r.URL.Query().Get("$fields"); got != "cells.value" {
-				t.Errorf("$fields = %q, want cells.value", got)
+			if got := r.URL.Query().Get("$fields"); got != "cells.value,range" {
+				t.Errorf("$fields = %q, want cells.value,range", got)
 			}
 			w.Header().Set("Content-Type", "application/json")
 			if _, err := fmt.Fprint(w, mapperSheetdataBody); err != nil {
@@ -128,6 +128,34 @@ func TestSyncMappingRecordsActorFromHeader(t *testing.T) {
 	}
 	if entries[0].Actor != "eu-operator@example.com" {
 		t.Errorf("audit actor = %q, want eu-operator@example.com", entries[0].Actor)
+	}
+}
+
+func TestSyncMappingPreservesPageRowOffsets(t *testing.T) {
+	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Query().Get("$page") == "2" {
+			_, _ = fmt.Fprint(w, `{"data":{"range":{"startRow":4,"startColumn":0,"stopRow":4,"stopColumn":1},"cells":[[{"value":"Second Field"},{"value":"2"}]]}}`)
+			return
+		}
+		next := "http://" + r.Host + r.URL.Path + "?$page=2"
+		_, _ = fmt.Fprintf(w, `{"data":{"range":{"startRow":null,"startColumn":0,"stopRow":1,"stopColumn":1},"cells":[[{"value":"Header"},{"value":"Value"}],[{"value":"First Field"},{"value":"1"}]]},"@nextLink":%q}`, next)
+	}))
+
+	result := callTool(t, env.deps, SyncMapping(), map[string]any{"spreadsheet_id": "sp-pages", "sheet_id": "sh-pages"})
+	if result.IsError {
+		t.Fatalf("sync returned error: %+v", result.Content)
+	}
+	first, err := env.deps.Store.GetField(context.Background(), "first_field")
+	if err != nil {
+		t.Fatalf("GetField first_field: %v", err)
+	}
+	second, err := env.deps.Store.GetField(context.Background(), "second_field")
+	if err != nil {
+		t.Fatalf("GetField second_field: %v", err)
+	}
+	if first == nil || first.CellRange != "B2" || second == nil || second.CellRange != "B5" {
+		t.Errorf("fields = %+v and %+v, want B2 and B5", first, second)
 	}
 }
 

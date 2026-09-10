@@ -38,7 +38,7 @@ func TestWaitOperationPollsUntilCompleted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WaitOperation: %v", err)
 	}
-	want := "https://api.eu.wdesk.com/spreadsheets/s-1/sheets/sh-1/data"
+	want := "https://api.eu.wdesk.com/spreadsheets/s-1/sheets/sh-1/update"
 	if resourceURL != want {
 		t.Errorf("resourceURL = %q, want %q", resourceURL, want)
 	}

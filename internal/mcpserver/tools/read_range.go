@@ -76,7 +76,9 @@ func (readRangeTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 			rows = append(rows, outRow)
 		}
 
-		if cells := gridToCachedCells(in.SpreadsheetID, in.SheetID, data, fetchedAt); cells != nil {
+		if cells, cacheErr := gridToCachedCells(in.SpreadsheetID, in.SheetID, data, fetchedAt); cacheErr != nil {
+			return nil, readRangeOutput{}, fail(cacheErr, "the read returned cells without usable coordinates")
+		} else if cells != nil {
 			if err := deps.Store.CacheCells(ctx, cells); err != nil {
 				return nil, readRangeOutput{}, fail(err, "the read succeeded but the snapshot cache could not be updated")
 			}

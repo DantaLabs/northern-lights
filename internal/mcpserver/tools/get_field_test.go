@@ -27,8 +27,8 @@ func TestGetFieldLiveReadCachesValue(t *testing.T) {
 		if got := r.URL.Query().Get("$cellrange"); got != "B3" {
 			t.Errorf("$cellrange = %q, want B3", got)
 		}
-		if got := r.URL.Query().Get("$fields"); got != "cells.value,cells.calculatedValue" {
-			t.Errorf("$fields = %q, want cells.value,cells.calculatedValue", got)
+		if got := r.URL.Query().Get("$fields"); got != "cells.value,cells.calculatedValue,range" {
+			t.Errorf("$fields = %q, want cells.value,cells.calculatedValue,range", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		if _, err := fmt.Fprint(w, sheetdataBody); err != nil {
