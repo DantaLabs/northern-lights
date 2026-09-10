@@ -186,26 +186,55 @@ func addCoordinate(base, offset int) (int, error) {
 	return base + offset, nil
 }
 
-// valueFromCells joins the cached cells falling inside cellRange into a
-// single display value. The boolean is false when no cached cell covers
-// the range.
+// maxCachedCells bounds the work needed to prove a bounded cache hit. Larger
+// ranges fall back to a live read rather than allocating unbounded state.
+const maxCachedCells uint64 = 100_000
+
+// valueFromCells joins a complete bounded cached range into one display
+// value. Cells are emitted in row-major order independent of storage order.
+// Unbounded ranges always fall back to a live read because completeness cannot
+// be proven from a finite snapshot.
 func valueFromCells(cells []mapping.CellValue, cellRange string) (string, bool) {
 	outer, err := workiva.A1ToRange(cellRange)
 	if err != nil {
 		return "", false
 	}
-	var parts []string
-	for _, c := range cells {
-		inner, err := workiva.A1ToRange(c.Cell)
-		if err != nil || !containsCell(outer, inner) {
-			continue
-		}
-		parts = append(parts, c.Value)
-	}
-	if len(parts) == 0 {
+	if outer.StartRow < 0 || outer.StartCol < 0 || outer.StopRow < 0 || outer.StopCol < 0 {
 		return "", false
 	}
-	return strings.Join(parts, ", "), true
+	rows := uint64(outer.StopRow-outer.StartRow) + 1
+	columns := uint64(outer.StopCol-outer.StartCol) + 1
+	if rows > maxCachedCells || columns > maxCachedCells || rows > maxCachedCells/columns {
+		return "", false
+	}
+
+	capacity := len(cells)
+	if max := int(rows * columns); capacity > max {
+		capacity = max
+	}
+	byCoordinate := make(map[[2]int]string, capacity)
+	for _, c := range cells {
+		inner, err := workiva.A1ToRange(c.Cell)
+		if err != nil || inner.StartRow != inner.StopRow || inner.StartCol != inner.StopCol ||
+			!containsCell(outer, inner) {
+			continue
+		}
+		byCoordinate[[2]int{inner.StartRow, inner.StartCol}] = c.Value
+	}
+
+	parts := make([]string, 0, int(rows*columns))
+	for rowOffset := uint64(0); rowOffset < rows; rowOffset++ {
+		row := outer.StartRow + int(rowOffset)
+		for columnOffset := uint64(0); columnOffset < columns; columnOffset++ {
+			column := outer.StartCol + int(columnOffset)
+			value, ok := byCoordinate[[2]int{row, column}]
+			if !ok {
+				return "", false
+			}
+			parts = append(parts, value)
+		}
+	}
+	return joinNonEmpty(parts), true
 }
 
 // containsCell reports whether the single-cell range inner lies inside

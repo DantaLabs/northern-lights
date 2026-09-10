@@ -2,8 +2,13 @@ package mapping
 
 import (
 	"context"
+	"database/sql"
+	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dantalabs/northern-lights/internal/sqlitedb"
+	_ "modernc.org/sqlite"
 )
 
 func openTestStore(t *testing.T) *Store {
@@ -318,5 +323,66 @@ func TestDeleteExpiredPendingWrites(t *testing.T) {
 	pw, err := s.ConsumePendingWrite(ctx, "fresh", 5*time.Minute)
 	if err != nil || pw == nil {
 		t.Errorf("fresh pending write missing after cleanup: pw=%v err=%v", pw, err)
+	}
+}
+
+func TestPendingWriteMigrationPreservesExistingRows(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "mapping.db")
+	db, err := sql.Open("sqlite", sqlitedb.SharedFileDSN(path))
+	if err != nil {
+		t.Fatalf("open pre-migration database: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	if err := sqlitedb.Migrate(ctx, db, "mapping", []string{migration0001, migration0002}); err != nil {
+		t.Fatalf("apply pre-migration schema: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO pending_writes
+		(token, field_id, field_name, value, created_at) VALUES (?, ?, ?, ?, ?)`,
+		"before-upgrade", 11, "legacy", "8", formatTime(time.Now().UTC())); err != nil {
+		t.Fatalf("insert pre-migration row: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatalf("close pre-migration database: %v", err)
+	}
+
+	store, err := Open(path)
+	if err != nil {
+		t.Fatalf("open upgraded database: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("close upgraded database: %v", err)
+		}
+	})
+	got, err := store.ConsumePendingWrite(ctx, "before-upgrade", 5*time.Minute)
+	if err != nil || got == nil {
+		t.Fatalf("consume preserved row: write=%+v err=%v", got, err)
+	}
+	if got.FieldID != 11 || got.FieldName != "legacy" || got.Value != "8" ||
+		got.SpreadsheetID != "" || got.SheetID != "" || got.CellRange != "" {
+		t.Errorf("preserved pending write = %+v, want legacy values and empty target defaults", got)
+	}
+}
+
+func TestPendingWriteTargetRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	want := PendingWrite{
+		Token: "targeted", FieldID: 9, FieldName: "revenue", Value: "42",
+		SpreadsheetID: "sp-1", SheetID: "sh-1", CellRange: "B3:C4",
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := s.CreatePendingWrite(ctx, want); err != nil {
+		t.Fatalf("CreatePendingWrite: %v", err)
+	}
+	got, err := s.ConsumePendingWrite(ctx, want.Token, 5*time.Minute)
+	if err != nil {
+		t.Fatalf("ConsumePendingWrite: %v", err)
+	}
+	if got == nil || got.FieldID != want.FieldID || got.FieldName != want.FieldName ||
+		got.Value != want.Value || got.SpreadsheetID != want.SpreadsheetID ||
+		got.SheetID != want.SheetID || got.CellRange != want.CellRange {
+		t.Fatalf("pending write = %+v, want target fields from %+v", got, want)
 	}
 }

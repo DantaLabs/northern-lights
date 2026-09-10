@@ -55,6 +55,15 @@ CREATE TABLE IF NOT EXISTS pending_writes (
 );
 `
 
+// migration0003 binds confirmation tokens to the exact mapped target. The
+// empty defaults keep rows created before this migration consumable and safe:
+// confirmation validation will reject them until they are restaged.
+const migration0003 = `
+ALTER TABLE pending_writes ADD COLUMN spreadsheet_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE pending_writes ADD COLUMN sheet_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE pending_writes ADD COLUMN cell_range TEXT NOT NULL DEFAULT '';
+`
+
 // ErrPendingWriteExpired is returned by ConsumePendingWrite when a pending
 // write exists but is older than the allowed age. The expired row is
 // deleted as part of the consume.
@@ -126,7 +135,7 @@ func Open(path string) (*Store, error) {
 	// SQLite allows one writer at a time; a single connection avoids
 	// SQLITE_BUSY errors on concurrent writes while keeping reads simple.
 	db.SetMaxOpenConns(1)
-	if migrateErr := sqlitedb.Migrate(context.Background(), db, "mapping", []string{migration0001, migration0002}); migrateErr != nil {
+	if migrateErr := sqlitedb.Migrate(context.Background(), db, "mapping", []string{migration0001, migration0002, migration0003}); migrateErr != nil {
 		if closeErr := db.Close(); closeErr != nil {
 			migrateErr = errors.Join(migrateErr, fmt.Errorf("mapping: close after migrate failure: %w", closeErr))
 		}
@@ -391,23 +400,29 @@ func (s *Store) GetCachedCells(ctx context.Context, spreadsheetID, sheetID strin
 // two-phase flow of workiva_update_field. Token is an opaque identifier
 // (a UUID) presented by the caller on the second call.
 type PendingWrite struct {
-	Token     string
-	FieldID   int64
-	FieldName string
-	Value     string
-	CreatedAt time.Time
+	Token         string
+	FieldID       int64
+	FieldName     string
+	Value         string
+	SpreadsheetID string
+	SheetID       string
+	CellRange     string
+	CreatedAt     time.Time
 }
 
 // CreatePendingWrite stores one staged write. Reusing a token replaces
 // the previous entry.
 func (s *Store) CreatePendingWrite(ctx context.Context, w PendingWrite) error {
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO pending_writes (token, field_id, field_name, value, created_at)
-		 VALUES (?, ?, ?, ?, ?)
+		`INSERT INTO pending_writes
+		 (token, field_id, field_name, value, spreadsheet_id, sheet_id, cell_range, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(token) DO UPDATE SET
 		   field_id = excluded.field_id, field_name = excluded.field_name,
-		   value = excluded.value, created_at = excluded.created_at`,
-		w.Token, w.FieldID, w.FieldName, w.Value, formatTime(w.CreatedAt))
+		   value = excluded.value, spreadsheet_id = excluded.spreadsheet_id,
+		   sheet_id = excluded.sheet_id, cell_range = excluded.cell_range,
+		   created_at = excluded.created_at`,
+		w.Token, w.FieldID, w.FieldName, w.Value, w.SpreadsheetID, w.SheetID, w.CellRange, formatTime(w.CreatedAt))
 	if err != nil {
 		return fmt.Errorf("mapping: create pending write: %w", err)
 	}
@@ -451,8 +466,9 @@ func (s *Store) ConsumePendingWrite(ctx context.Context, token string, maxAge ti
 		createdAt time.Time
 	)
 	err = tx.QueryRowContext(ctx,
-		`SELECT field_id, field_name, value, created_at FROM pending_writes WHERE token = ?`,
-		token).Scan(&w.FieldID, &w.FieldName, &w.Value, &createdAt)
+		`SELECT field_id, field_name, value, spreadsheet_id, sheet_id, cell_range, created_at
+		 FROM pending_writes WHERE token = ?`,
+		token).Scan(&w.FieldID, &w.FieldName, &w.Value, &w.SpreadsheetID, &w.SheetID, &w.CellRange, &createdAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

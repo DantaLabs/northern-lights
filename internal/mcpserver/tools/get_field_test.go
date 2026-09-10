@@ -103,6 +103,40 @@ func TestGetFieldServesFreshCacheWithoutAPICall(t *testing.T) {
 	}
 }
 
+func TestGetFieldTreatsPartialBoundedCacheAsMiss(t *testing.T) {
+	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/spreadsheets/sp-1/sheets/sh-1/sheetdata" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"data":{"range":{"startRow":2,"startColumn":1,"stopRow":3,"stopColumn":2},"cells":[[{"value":"1"},{"value":"2"}],[{"value":"3"},{"value":"4"}]]}}`)
+	}))
+	seedField(t, env)
+	if _, err := env.deps.Store.UpsertField(context.Background(), mapping.Field{
+		SpreadsheetID: "sp-1", SheetID: "sh-1", Name: "energy_block", CellRange: "B3:C4",
+	}); err != nil {
+		t.Fatalf("UpsertField: %v", err)
+	}
+	if err := env.deps.Store.CacheCells(context.Background(), []mapping.CellValue{{
+		SpreadsheetID: "sp-1", SheetID: "sh-1", Cell: "B3", Value: "old", FetchedAt: time.Now(),
+	}}); err != nil {
+		t.Fatalf("CacheCells: %v", err)
+	}
+
+	result := callTool(t, env.deps, GetField(), map[string]any{"name": "energy_block"})
+	if result.IsError {
+		t.Fatalf("tool returned error: %+v", result.Content)
+	}
+	content := structuredContent(t, result)
+	if content["source"] != "live" || content["value"] != "1, 2, 3, 4" {
+		t.Errorf("partial cache result = %v, want live value 1, 2, 3, 4", content)
+	}
+	if env.apiCalls.Load() != 1 {
+		t.Errorf("apiCalls = %d, want 1 after partial cache miss", env.apiCalls.Load())
+	}
+}
+
 func TestGetFieldRefreshesStaleCache(t *testing.T) {
 	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

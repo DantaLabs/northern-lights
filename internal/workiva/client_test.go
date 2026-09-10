@@ -552,7 +552,7 @@ func TestDoCallsLimiterOncePerAttempt(t *testing.T) {
 	}
 }
 
-func TestDoCapsRetryAfterAtThirtySeconds(t *testing.T) {
+func TestDoHonorsRetryAfterBeyondThirtySeconds(t *testing.T) {
 	c, _, _ := setupTestClient(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Retry-After", "120")
 		w.WriteHeader(http.StatusTooManyRequests)
@@ -573,7 +573,13 @@ func TestDoCapsRetryAfterAtThirtySeconds(t *testing.T) {
 	if !ok {
 		t.Fatal("sleep was not recorded")
 	}
-	if d != 30*time.Second {
-		t.Errorf("retry sleep = %v, want 30s", d)
+	if d != 120*time.Second {
+		t.Errorf("retry sleep = %v, want 120s from server", d)
+	}
+}
+
+func TestRetryAfterDelayRejectsOverflowWithoutDurationOverflow(t *testing.T) {
+	if got := retryAfterDelay("999999999999999999999999999999"); got != time.Second {
+		t.Errorf("overflow Retry-After delay = %v, want 1s fallback", got)
 	}
 }

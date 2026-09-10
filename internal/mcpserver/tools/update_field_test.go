@@ -222,6 +222,53 @@ func TestUpdateFieldRejectsUnknownToken(t *testing.T) {
 	}
 }
 
+func TestUpdateFieldRejectsConfirmationAfterMappingTargetChanges(t *testing.T) {
+	var edits [][]byte
+	env := newTestEnv(t, writeMock(t, &edits))
+	seedField(t, env)
+
+	stage := callTool(t, env.deps, UpdateField(), map[string]any{
+		"name": "scope2_energy_kwh", "value": "5678",
+	})
+	if stage.IsError {
+		t.Fatalf("stage returned error: %+v", stage.Content)
+	}
+	token := structuredContent(t, stage)["confirm_token"].(string)
+	original, err := env.deps.Store.GetField(context.Background(), "scope2_energy_kwh")
+	if err != nil || original == nil {
+		t.Fatalf("get original field: field=%+v err=%v", original, err)
+	}
+
+	mutated, err := env.deps.Store.UpsertField(context.Background(), mapping.Field{
+		ID: original.ID, SpreadsheetID: original.SpreadsheetID, SheetID: original.SheetID,
+		Name: original.Name, CellRange: "C3", FieldType: original.FieldType,
+		Aliases: original.Aliases, Description: original.Description,
+	})
+	if err != nil {
+		t.Fatalf("mutate mapping target: %v", err)
+	}
+	if mutated.ID != original.ID {
+		t.Fatalf("mapping row ID changed from %d to %d", original.ID, mutated.ID)
+	}
+
+	confirm := callTool(t, env.deps, UpdateField(), map[string]any{
+		"name": "scope2_energy_kwh", "value": "5678", "confirm_token": token,
+	})
+	if !confirm.IsError {
+		t.Fatal("confirmation with changed target unexpectedly succeeded")
+	}
+	if len(edits) != 0 {
+		t.Fatalf("changed-target confirmation POST calls = %d, want 0", len(edits))
+	}
+	rawContent, err := json.Marshal(confirm.Content)
+	if err != nil {
+		t.Fatalf("marshal changed-target error: %v", err)
+	}
+	if !strings.Contains(string(rawContent), "stage") {
+		t.Errorf("changed-target error = %s, want restage hint", rawContent)
+	}
+}
+
 func TestUpdateFieldSinglePhaseWhenConfirmationDisabled(t *testing.T) {
 	var edits [][]byte
 	env := newTestEnv(t, writeMock(t, &edits))

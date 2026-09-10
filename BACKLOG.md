@@ -44,9 +44,14 @@ Fixed and verified by tests:
 - ISSUE-009 confirm with a value different from the staged one fails
 - ISSUE-010 token fetch deduplicated with singleflight, no lock held
   across the network call
-- ISSUE-011 Retry-After capped at 30s
-- ISSUE-012 operation polling paced by the limiter; extra sleep only when
-  Retry-After exceeds the limiter interval
+- ISSUE-011 Retry-After honors valid non-negative integer seconds exactly;
+  malformed and duration-overflow values fall back safely
+- ISSUE-012 operation polling paced by the limiter; explicit sleep is used
+  only when Retry-After exceeds the limiter interval
+- Cache hits require every bounded mapped cell and assemble in row-major A1
+  order; unbounded mappings fall back to a live read
+- Confirmation tokens bind field ID, name, spreadsheet, sheet, and range;
+  changed mappings fail closed and require restaging
 - ISSUE-013 sheetdata pagination capped at 50 pages
 - ISSUE-014 demo mode generates a random API token per run
 - ISSUE-015 expired pending writes cleaned at startup

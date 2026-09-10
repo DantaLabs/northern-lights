@@ -114,6 +114,34 @@ func TestWaitOperationRespectsRetryAfter(t *testing.T) {
 	}
 }
 
+func TestWaitOperationDoesNotAddDefaultSleepWhenLimiterPacesPolls(t *testing.T) {
+	lim := &fakeWaitLimiter{}
+	c, _ := setupTestClientWithLimiter(t, tokenResponder(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/operations/op-1" && lim.Calls() == 1 {
+			w.Header().Set("Retry-After", "1")
+			_, _ = w.Write(loadFixture(t, "operation_started.json"))
+			return
+		}
+		_, _ = w.Write(loadFixture(t, "operation_completed.json"))
+	}), lim)
+
+	var sleeps []time.Duration
+	c.sleep = func(ctx context.Context, d time.Duration) error {
+		sleeps = append(sleeps, d)
+		return nil
+	}
+	if _, err := c.WaitOperation(context.Background(), "/operations/op-1"); err != nil {
+		t.Fatalf("WaitOperation: %v", err)
+	}
+	if got := lim.Calls(); got != 2 {
+		t.Errorf("limiter calls = %d, want one per poll", got)
+	}
+	if len(sleeps) != 0 {
+		t.Errorf("explicit sleeps = %v, want none for the limiter interval", sleeps)
+	}
+}
+
 func TestWaitOperationTimesOut(t *testing.T) {
 	orig := operationPollTimeout
 	operationPollTimeout = 100 * time.Millisecond

@@ -124,11 +124,14 @@ func stageWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, 
 
 	token := uuid.NewString()
 	if err := deps.Store.CreatePendingWrite(ctx, mapping.PendingWrite{
-		Token:     token,
-		FieldID:   field.ID,
-		FieldName: field.Name,
-		Value:     value,
-		CreatedAt: time.Now().UTC(),
+		Token:         token,
+		FieldID:       field.ID,
+		FieldName:     field.Name,
+		Value:         value,
+		SpreadsheetID: field.SpreadsheetID,
+		SheetID:       field.SheetID,
+		CellRange:     field.CellRange,
+		CreatedAt:     time.Now().UTC(),
 	}); err != nil {
 		return nil, updateFieldOutput{}, fail(err, "the write could not be staged for confirmation")
 	}
@@ -163,12 +166,14 @@ func executeConfirmedWrite(ctx context.Context, deps mcpserver.Deps, field *mapp
 		return nil, updateFieldOutput{}, fail(err, "the confirmation token could not be validated")
 	}
 
-	// The staged write targets the field it was created for; a mismatch
-	// means the caller shuffled arguments between the two calls.
-	if pending.FieldName != in.Name {
+	// Bind the one-use token to every approved target coordinate. Legacy rows
+	// have empty target columns and therefore fail closed here.
+	if pending.FieldID != field.ID || pending.FieldName != field.Name ||
+		pending.SpreadsheetID != field.SpreadsheetID || pending.SheetID != field.SheetID ||
+		pending.CellRange != field.CellRange {
 		return nil, updateFieldOutput{}, failMsg(
-			"confirm_token was staged for field "+pending.FieldName+", not "+in.Name,
-			"re-call with name "+pending.FieldName+" and value "+pending.Value+", or stage a new write")
+			"confirm_token target no longer matches the current mapping for "+field.Name,
+			"the mapping changed after approval; restage the write by calling workiva_update_field without confirm_token")
 	}
 
 	// The confirmed value must match what was previewed. Writing a
