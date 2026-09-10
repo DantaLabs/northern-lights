@@ -2,6 +2,7 @@ package workiva
 
 import (
 	"encoding/json"
+	"strconv"
 	"testing"
 )
 
@@ -51,10 +52,31 @@ func TestA1ToRangeInvalid(t *testing.T) {
 		"A:3",
 		"3:A",
 		"::",
+		"ZZZZZZZZZZZZZZ1",
+		"FXSHRXY1",
+		"A2147483649",
 	} {
 		if _, err := A1ToRange(in); err == nil {
 			t.Errorf("A1ToRange(%q) returned nil error, want error", in)
 		}
+	}
+}
+
+func TestA1ToRangeAcceptsMaximumInt32Coordinate(t *testing.T) {
+	got, err := A1ToRange("FXSHRXX2147483648")
+	if err != nil {
+		t.Fatalf("A1ToRange maximum coordinate: %v", err)
+	}
+	want := Range{StartRow: 2147483647, StartCol: 2147483647, StopRow: 2147483647, StopCol: 2147483647}
+	if got != want {
+		t.Errorf("maximum coordinate = %+v, want %+v", got, want)
+	}
+	back, err := RangeToA1(got)
+	if err != nil {
+		t.Fatalf("RangeToA1 maximum coordinate: %v", err)
+	}
+	if back != "FXSHRXX2147483648" {
+		t.Errorf("maximum coordinate round trip = %q", back)
 	}
 }
 
@@ -97,6 +119,19 @@ func TestRangeToA1Invalid(t *testing.T) {
 		{"rowStartAfterStop", Range{StartRow: 5, StartCol: 0, StopRow: 2, StopCol: 2}},
 		{"colStartAfterStop", Range{StartRow: 0, StartCol: 5, StopRow: 2, StopCol: 2}},
 		{"negativeBelowMinusOne", Range{StartRow: -2, StartCol: 0, StopRow: 2, StopCol: 2}},
+	}
+	if strconv.IntSize > 32 {
+		aboveInt32 := int64(2147483648)
+		tests = append(tests,
+			struct {
+				name string
+				in   Range
+			}{"rowAboveInt32", Range{StartRow: 0, StartCol: 0, StopRow: int(aboveInt32), StopCol: 0}},
+			struct {
+				name string
+				in   Range
+			}{"columnAboveInt32", Range{StartRow: 0, StartCol: 0, StopRow: 0, StopCol: int(aboveInt32)}},
+		)
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -142,6 +177,18 @@ func TestRangeUnmarshalPreservesBoundedZero(t *testing.T) {
 	want := Range{StartRow: 0, StartCol: 0, StopRow: 0, StopCol: 0}
 	if got != want {
 		t.Errorf("Range = %+v, want %+v", got, want)
+	}
+}
+
+func TestRangeUnmarshalRejectsCoordinateAboveInt32(t *testing.T) {
+	for _, raw := range []string{
+		`{"startColumn":0,"startRow":0,"stopColumn":2147483648,"stopRow":0}`,
+		`{"startColumn":0,"startRow":0,"stopColumn":0,"stopRow":2147483648}`,
+	} {
+		var got Range
+		if err := json.Unmarshal([]byte(raw), &got); err == nil {
+			t.Errorf("json.Unmarshal(%s) returned nil error, want coordinate range error", raw)
+		}
 	}
 }
 

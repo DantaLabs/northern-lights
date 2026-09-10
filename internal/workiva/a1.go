@@ -7,9 +7,15 @@ import (
 	"strings"
 )
 
-// unbounded marks a dimension of a Range that is left open, for example
-// the rows of a whole-column range such as "A:A".
-const unbounded = -1
+const (
+	// unbounded marks a dimension of a Range that is left open, for example
+	// the rows of a whole-column range such as "A:A".
+	unbounded = -1
+	// maxCoordinate matches the Workiva Range schema's int32 coordinates.
+	maxCoordinate = 1<<31 - 1
+	// maxA1Index is the largest one-based row or column accepted in A1 text.
+	maxA1Index = uint64(maxCoordinate) + 1
+)
 
 // Range identifies a rectangular block of cells using zero-based,
 // inclusive indexes, matching the Workiva Range object. A dimension set
@@ -39,6 +45,9 @@ func (r Range) MarshalJSON() ([]byte, error) {
 		if value < unbounded {
 			return nil, fmt.Errorf("range %s bound below -1", name)
 		}
+		if value > maxCoordinate {
+			return nil, fmt.Errorf("range %s bound exceeds int32 maximum", name)
+		}
 	}
 	return json.Marshal(rangeJSON{
 		StartRow: rangeBound(r.StartRow),
@@ -67,6 +76,9 @@ func (r *Range) UnmarshalJSON(data []byte) error {
 	} {
 		if value < unbounded {
 			return fmt.Errorf("range %s bound below -1", name)
+		}
+		if value > maxCoordinate {
+			return fmt.Errorf("range %s bound exceeds int32 maximum", name)
 		}
 	}
 	return nil
@@ -138,8 +150,16 @@ func A1ToRange(a1 string) (Range, error) {
 		return Range{StartRow: startRow, StartCol: startCol, StopRow: stopRow, StopCol: stopCol}, nil
 
 	case !leftCell && !rightCell && leftLetters != "" && rightLetters != "":
-		startCol := lettersToCol(leftLetters) - 1
-		stopCol := lettersToCol(rightLetters) - 1
+		startOneBased, err := lettersToCol(leftLetters)
+		if err != nil {
+			return Range{}, fmt.Errorf("a1: %q: %w", a1, err)
+		}
+		stopOneBased, err := lettersToCol(rightLetters)
+		if err != nil {
+			return Range{}, fmt.Errorf("a1: %q: %w", a1, err)
+		}
+		startCol := startOneBased
+		stopCol := stopOneBased
 		if startCol > stopCol {
 			return Range{}, fmt.Errorf("a1: %q: start column is after stop column", a1)
 		}
@@ -184,12 +204,12 @@ func RangeToA1(r Range) (string, error) {
 	case rowsOpen && colsOpen:
 		return "", fmt.Errorf("a1: fully unbounded range has no A1 representation")
 	case rowsOpen:
-		return colToLetters(r.StartCol+1) + ":" + colToLetters(r.StopCol+1), nil
+		return colToLetters(r.StartCol) + ":" + colToLetters(r.StopCol), nil
 	case colsOpen:
-		return strconv.Itoa(r.StartRow+1) + ":" + strconv.Itoa(r.StopRow+1), nil
+		return formatA1Row(r.StartRow) + ":" + formatA1Row(r.StopRow), nil
 	default:
-		start := colToLetters(r.StartCol+1) + strconv.Itoa(r.StartRow+1)
-		stop := colToLetters(r.StopCol+1) + strconv.Itoa(r.StopRow+1)
+		start := colToLetters(r.StartCol) + formatA1Row(r.StartRow)
+		stop := colToLetters(r.StopCol) + formatA1Row(r.StopRow)
 		if start == stop {
 			return start, nil
 		}
@@ -202,6 +222,9 @@ func RangeToA1(r Range) (string, error) {
 func validateDim(name string, start, stop int) error {
 	if start < unbounded || stop < unbounded {
 		return fmt.Errorf("a1: %s bound below -1", name)
+	}
+	if start > maxCoordinate || stop > maxCoordinate {
+		return fmt.Errorf("a1: %s bound exceeds int32 maximum", name)
 	}
 	if (start == unbounded) != (stop == unbounded) {
 		return fmt.Errorf("a1: %s bounds must both be set or both be -1", name)
@@ -247,36 +270,53 @@ func parseCellRef(s string) (col, row int, err error) {
 	if err != nil {
 		return 0, 0, fmt.Errorf("%q: %w", s, err)
 	}
-	return lettersToCol(letters) - 1, parsedRow, nil
+	parsedCol, err := lettersToCol(letters)
+	if err != nil {
+		return 0, 0, err
+	}
+	return parsedCol, parsedRow, nil
 }
 
 // parseRow converts a 1-indexed A1 row number into a zero-based index.
 func parseRow(digits string) (int, error) {
-	n, err := strconv.Atoi(digits)
-	if err != nil || n < 1 {
+	n, err := strconv.ParseUint(digits, 10, 64)
+	if err != nil || n < 1 || n > maxA1Index {
 		return 0, fmt.Errorf("row %q must be a positive integer", digits)
 	}
-	return n - 1, nil
+	return int(n - 1), nil
 }
 
-// lettersToCol converts 1-based column letters ("A" = 1, "AA" = 27) to
-// a number.
-func lettersToCol(letters string) int {
-	n := 0
+// lettersToCol converts column letters to a zero-based coordinate while
+// rejecting values outside Workiva's int32 range before multiplication can
+// overflow. The intermediate stays uint64 because the largest valid
+// one-based column does not fit in a 32-bit int.
+func lettersToCol(letters string) (int, error) {
+	var n uint64
 	for i := 0; i < len(letters); i++ {
-		n = n*26 + int(letters[i]-'A'+1)
+		digit := uint64(letters[i]-'A') + 1
+		if n > (maxA1Index-digit)/26 {
+			return 0, fmt.Errorf("column %q exceeds int32 coordinate maximum", letters)
+		}
+		n = n*26 + digit
 	}
-	return n
+	return int(n - 1), nil
 }
 
-// colToLetters is the inverse of lettersToCol: 1 becomes "A", 27
-// becomes "AA".
+// colToLetters is the inverse of lettersToCol: zero becomes "A" and 26
+// becomes "AA". Arithmetic stays unsigned so max int32 works on 32-bit.
 func colToLetters(col int) string {
+	n := uint64(col) + 1
 	var b []byte
-	for col > 0 {
-		col--
-		b = append([]byte{byte('A' + col%26)}, b...)
-		col /= 26
+	for n > 0 {
+		n--
+		b = append([]byte{byte('A' + n%26)}, b...)
+		n /= 26
 	}
 	return string(b)
+}
+
+// formatA1Row renders a zero-based row without overflowing 32-bit int at the
+// largest valid Workiva coordinate.
+func formatA1Row(row int) string {
+	return strconv.FormatUint(uint64(row)+1, 10)
 }
