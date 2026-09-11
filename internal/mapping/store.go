@@ -285,8 +285,21 @@ func escapeLike(s string) string {
 
 // SearchFields returns fields matching query, ranked: exact name match
 // first, then names containing the query, then alias matches last.
-// Wildcard characters in the query are matched literally.
+// Wildcard characters in the query are matched literally. If the raw phrase
+// does not match, a normalized snake_case form is tried so natural language
+// such as "scope 2 energy" can match synced names like scope_2_energy_kwh.
 func (s *Store) SearchFields(ctx context.Context, query string) (out []Field, err error) {
+	out, err = s.searchFieldsLike(ctx, query)
+	if err != nil || len(out) > 0 {
+		return out, err
+	}
+	if normalized := normalizeSearchKey(query); normalized != "" && normalized != query && strings.Contains(query, " ") {
+		return s.searchFieldsLike(ctx, normalized)
+	}
+	return out, nil
+}
+
+func (s *Store) searchFieldsLike(ctx context.Context, query string) (out []Field, err error) {
 	like := "%" + escapeLike(query) + "%"
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT `+fieldColumns+` FROM fields
@@ -317,6 +330,25 @@ func (s *Store) SearchFields(ctx context.Context, query string) (out []Field, er
 		return nil, fmt.Errorf("mapping: search fields %q: %w", query, err)
 	}
 	return out, nil
+}
+
+func normalizeSearchKey(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	var b strings.Builder
+	lastUnderscore := false
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			lastUnderscore = false
+		default:
+			if b.Len() > 0 && !lastUnderscore {
+				b.WriteByte('_')
+				lastUnderscore = true
+			}
+		}
+	}
+	return strings.Trim(b.String(), "_")
 }
 
 // CacheCells upserts cell values into the snapshot cache.

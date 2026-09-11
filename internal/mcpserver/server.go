@@ -69,9 +69,15 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 		server.AddReceivingMiddleware(auditMiddleware(deps.Audit, actorHeader))
 	}
 
+	streamableOpts := &mcp.StreamableHTTPOptions{}
+	if os.Getenv("NL_DISABLE_LOCALHOST_PROTECTION") == "true" {
+		// Public tunnels such as pinggy arrive with a non-localhost Host header.
+		// Bearer auth still gates /mcp; this only disables the SDK's DNS rebinding guard.
+		streamableOpts.DisableLocalhostProtection = true
+	}
 	mcpHandler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 		return server
-	}, nil)
+	}, streamableOpts)
 
 	mux := http.NewServeMux()
 	mux.Handle("/mcp", mcpHandler)
