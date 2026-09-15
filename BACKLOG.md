@@ -43,7 +43,13 @@ current documented single-user design.
 
 5. **Multi-user governance**: add authenticated identities, user/tenant-scoped
    mappings and confirmation tokens, RBAC, and a shared limiter before serving
-   multiple users, tenants, or replicas.
+   multiple users, tenants, or replicas. Live characterization proved that a
+   token staged by one actor can currently be consumed by another actor.
+
+6. **MCP sessions are process-local**: the Go SDK's default stateful session
+   map is not shared across replicas. Choose stateless mode or shared,
+   tenant-bound session storage before horizontal deployment, and validate
+   cross-replica continuation without sticky routing.
 
 ## Closed by adversarial review pass
 

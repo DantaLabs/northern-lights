@@ -471,6 +471,37 @@ func TestExpandCellEditsAllowsExactCap(t *testing.T) {
 	}
 }
 
+func TestUpdateFieldRejectsOverCapBeforeAnyWorkivaRequest(t *testing.T) {
+	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "unexpected Workiva request", http.StatusInternalServerError)
+	}))
+	env.deps.Cfg.RequireWriteConfirmation = false
+	seedField(t, env)
+	if _, err := env.deps.Store.UpsertField(context.Background(), mapping.Field{
+		SpreadsheetID: "sp-1", SheetID: "sh-1", Name: "scope2_energy_kwh",
+		CellRange: "A1:A100001", FieldType: "number",
+	}); err != nil {
+		t.Fatalf("UpsertField: %v", err)
+	}
+
+	result := callTool(t, env.deps, UpdateField(), map[string]any{
+		"name": "scope2_energy_kwh", "value": "x",
+	})
+	if !result.IsError {
+		t.Fatalf("100,001-cell tool write must fail, got %+v", result.StructuredContent)
+	}
+	rawContent, err := json.Marshal(result.Content)
+	if err != nil {
+		t.Fatalf("marshal tool error: %v", err)
+	}
+	if !strings.Contains(string(rawContent), "exceeds maximum of 100000 cells") {
+		t.Fatalf("unexpected tool error: %s", rawContent)
+	}
+	if got := env.apiCalls.Load(); got != 0 {
+		t.Fatalf("Workiva requests = %d, want 0", got)
+	}
+}
+
 func TestExpandCellEditsRejectsExpansionAboveCap(t *testing.T) {
 	_, err := expandCellEdits(workiva.Range{StartRow: 0, StartCol: 0, StopRow: 100000, StopCol: 0}, "x")
 	if err == nil {

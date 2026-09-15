@@ -19,7 +19,7 @@ Target: Workiva EU workspace, public Streamable HTTP MCP endpoint, post-MVP mult
 | Public HTTPS MCP transport and bearer auth | PASS | Cloudflare public tunnel accepted the Go MCP SDK client, discovered all 7 tools, and completed live Workiva discovery. Invalid bearer token returned HTTP 401. |
 | `X-NL-Actor` propagation | PASS FOR DIRECT MCP, FAIL FOR MULTI-USER SECURITY | Direct MCP calls wrote the supplied actor to the audit chain. The header is caller-controlled and is not tied to authenticated claims. |
 | Real Copilot Studio connector | BLOCKED | No authenticated Copilot Studio browser session was available. Tool discovery, Copilot auth behavior, dynamic actor propagation, and Copilot activity matching remain unvalidated. Proxy-shim need is still unknown. |
-| Multi-user and horizontal scaling | NOT IMPLEMENTED, NEGATIVE BASELINE CONFIRMED | One bearer key authorizes every caller. A token staged as `alice` was successfully consumed as `bob`; the write audit actor became `bob`. SQLite state and rate buckets are replica-local. |
+| Multi-user and horizontal scaling | NOT IMPLEMENTED, NEGATIVE BASELINE CONFIRMED | One bearer key authorizes every caller. A token staged as `alice` was successfully consumed as `bob`; the write audit actor became `bob`. SQLite state, rate buckets, and MCP sessions are replica-local. |
 | Audit integrity | PASS | Validation database ended with 46 audit rows, 4 write rows, 7 distinct actors, and `audit verify` reported an intact chain. |
 
 ## Findings
@@ -71,6 +71,7 @@ Status: Validated with one residual boundary limitation
 
 - 100,000 cells: exact boundary expansion test passes.
 - 100,001 cells: a mapping against the live disposable sheet returned `mapped write range exceeds maximum of 100000 cells` before reading or mutating the range.
+- A tool-level regression test now proves the 100,001-cell public write path emits zero Workiva API requests.
 - The sheet remained unchanged.
 
 A live write of exactly 100,000 cells was not sent because it would overwrite a large area merely to prove a local guard. If Workiva payload acceptance at that size is a release requirement, create a purpose-built blank 100,000-cell sheet and run the test in a scheduled sandbox window, then delete the sheet.
@@ -89,9 +90,9 @@ The mock suite validates 429 retry logic, but a controlled sandbox load test is 
 Severity: High for the Copilot milestone
 Status: Blocked on authenticated Copilot Studio access
 
-Through a public HTTPS tunnel, an MCP SDK client with `Authorization: Bearer <NL_API_KEY>` discovered all 7 tools and completed live Workiva discovery. An invalid token returned 401. This validates Northern Lights transport and middleware, not Copilot Studio behavior.
+Through a public HTTPS tunnel, an MCP SDK client authenticated with the configured bearer credential discovered all 7 tools and completed live Workiva discovery. An invalid token returned 401. This validates Northern Lights transport and middleware, not Copilot Studio behavior.
 
-Microsoft's current Copilot Studio documentation confirms Streamable HTTP, an MCP onboarding wizard, API-key authentication with a configurable header name, and OAuth 2.0 options. This makes a proxy unlikely to be necessary for static `Authorization` alone, provided the connection stores the full `Bearer <NL_API_KEY>` value. The documented API-key flow does not establish a trustworthy dynamic end-user identity. Source: <https://learn.microsoft.com/en-us/microsoft-copilot-studio/mcp-add-existing-server-to-agent>.
+Microsoft's current Copilot Studio documentation confirms Streamable HTTP, an MCP onboarding wizard, API-key authentication with a configurable header name, and OAuth 2.0 options. This makes a proxy unlikely to be necessary for static `Authorization` alone, provided the connection stores the literal `Bearer` prefix followed by the configured Northern Lights API key. Northern Lights currently requires that exact case-sensitive prefix and does not normalize surrounding whitespace. A connector that emits only the bare key will receive 401. The documented API-key flow does not establish a trustworthy dynamic end-user identity. Source: <https://learn.microsoft.com/en-us/microsoft-copilot-studio/mcp-add-existing-server-to-agent>.
 
 A real connector must still prove:
 
@@ -128,6 +129,15 @@ Horizontal mode needs:
 - Redis for shared rate budgets and optionally short-lived confirmation state.
 - PostgreSQL or another shared transactional store for tenant-scoped mappings, durable confirmations, snapshots, and audit evidence.
 - Per-tenant audit serialization or a transactional append design that preserves chain order across replicas.
+
+### NL-GOV-004, MCP sessions are process-local
+
+Severity: Critical before multi-replica rollout
+Status: Open
+
+The Go MCP SDK handler currently uses its default stateful session map without a shared event or session store. An initialization request routed to replica A can issue an `Mcp-Session-Id` that replica B does not recognize. A shared Redis limiter does not solve this transport-level affinity problem.
+
+Prefer stateless MCP mode if Copilot's request pattern does not require server-side session state. Otherwise add shared tenant-bound session storage, expiry, reconnect behavior, and load-balancer tests without sticky sessions.
 
 ## Test plan to close the remaining gates
 
@@ -170,7 +180,7 @@ Prerequisites:
 Tests:
 
 1. Add Northern Lights as a Model Context Protocol tool using Streamable HTTP.
-2. Configure API-key authentication to emit `Authorization: Bearer <NL_API_KEY>`.
+2. Configure API-key authentication so the `Authorization` header contains the literal `Bearer` prefix followed by the Northern Lights connection key.
 3. Verify all 7 exact tool names and their schemas appear in Copilot Studio.
 4. Run prompts for list, mapping sync, natural-language search, live read, staged write, confirmation, read-back, audit query, and restoration.
 5. Inspect the connector's outbound request or trusted ingress logs to determine whether `X-NL-Actor` can be dynamic. If Copilot only supports a static value, require an Entra-aware proxy.
@@ -200,12 +210,14 @@ Implementation sequence:
 5. Add RBAC permissions: `workiva.read`, `workiva.write.preview`, `workiva.write.confirm`, `mapping.sync`, `audit.read`, and `tenant.admin`.
 6. Replace `*ratelimit.Limiter` with an interface and a Redis implementation keyed by tenant, Workiva workspace, and category. Use one atomic server-time algorithm, such as GCRA or a Lua token bucket.
 7. Move mappings, durable pending writes, and audit state from local SQLite to shared PostgreSQL for horizontal mode. Keep SQLite only as an explicit single-replica profile.
-8. Serialize per-tenant audit appends with row locks or advisory locks so replicas cannot fork the hash chain.
-9. Define outage policy: fail closed for writes, confirmations, and authorization; optionally allow bounded stale reads only when policy explicitly permits it.
+8. Choose an explicit MCP session strategy. Prefer stateless mode when compatible; otherwise store tenant-bound sessions centrally with expiry and reconnect support.
+9. Serialize per-tenant audit appends with row locks or advisory locks so replicas cannot fork the hash chain.
+10. Define outage policy: fail closed for writes, confirmations, and authorization; optionally allow bounded stale reads only when policy explicitly permits it.
 
 Acceptance tests:
 
 - Two replicas behind a load balancer never exceed one shared workspace budget.
+- MCP initialization on replica A remains valid when the next session request reaches replica B without sticky routing.
 - 100 concurrent confirmation attempts produce exactly one mutation.
 - Alice cannot consume Bob's token.
 - Tenant A cannot list, search, read, write, or audit Tenant B resources.
