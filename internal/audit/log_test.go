@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -59,6 +60,33 @@ func TestAppendAndVerify(t *testing.T) {
 
 	if err := l.Verify(ctx); err != nil {
 		t.Fatalf("Verify returned error on intact chain: %v", err)
+	}
+}
+
+func TestConcurrentAppendsPreserveHashChain(t *testing.T) {
+	ctx := context.Background()
+	l := openTestLog(t)
+
+	const workers = 100
+	var wg sync.WaitGroup
+	errs := make(chan error, workers)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := l.Append(ctx, Entry{Actor: "load-test", Tool: "concurrent", Action: "call", Target: "audit"})
+			if err != nil {
+				errs <- err
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Errorf("Append: %v", err)
+	}
+	if err := l.Verify(ctx); err != nil {
+		t.Fatalf("Verify after concurrent appends: %v", err)
 	}
 }
 

@@ -2,7 +2,9 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
@@ -82,6 +84,102 @@ func TestAuditTrailFiltersByTarget(t *testing.T) {
 	}
 }
 
+func TestAuditTrailFiltersDeniedAndAmbiguousHistoricalEntriesBeforeLimit(t *testing.T) {
+	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }))
+	env.deps.Cfg.AllowedResources = map[string][]string{"sp-1": {"sh-1"}}
+	ctx := context.Background()
+	entries := []audit.Entry{
+		{Tool: "workiva_update_field", Action: "write", Target: "sp-1/sh-1/B3", BeforeJSON: `{"value":"safe-old"}`, AfterJSON: `{"value":"safe-new"}`, WorkivaOpURL: "/operations/safe"},
+		{Tool: "workiva_update_field", Action: "write", Target: "denied/sh-x/C9", BeforeJSON: `{"value":"secret-old"}`, AfterJSON: `{"value":"secret-new"}`, WorkivaOpURL: "/operations/secret"},
+		{Tool: "legacy", Target: "ambiguous-secret", AfterJSON: `{"field":"secret"}`},
+		{Tool: "health", Action: "ready"},
+	}
+	for _, entry := range entries {
+		if _, err := env.deps.Audit.Append(ctx, entry); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	result := callTool(t, env.deps, AuditTrail(), map[string]any{"limit": 2})
+	if result.IsError {
+		t.Fatalf("audit_trail error: %+v", result.Content)
+	}
+	content := structuredContent(t, result)
+	got := content["entries"].([]any)
+	if len(got) != 2 {
+		t.Fatalf("entries = %d, want 2 after authorization filtering", len(got))
+	}
+	encoded, _ := json.Marshal(got)
+	if strings.Contains(string(encoded), "secret") || strings.Contains(string(encoded), "denied") {
+		t.Fatalf("denied data leaked: %s", encoded)
+	}
+}
+
+func TestAuditTrailExplicitDeniedOrAmbiguousTargetReturnsNoEntries(t *testing.T) {
+	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }))
+	env.deps.Cfg.AllowedResources = map[string][]string{"sp-1": {"sh-1"}}
+	for _, target := range []string{"denied/sh-x/C9", "ambiguous-secret"} {
+		if _, err := env.deps.Audit.Append(context.Background(), audit.Entry{Target: target, AfterJSON: `{"value":"secret"}`}); err != nil {
+			t.Fatal(err)
+		}
+		result := callTool(t, env.deps, AuditTrail(), map[string]any{"target": target})
+		if result.IsError {
+			t.Fatalf("audit_trail error: %+v", result.Content)
+		}
+		if got := structuredContent(t, result)["count"]; got != float64(0) {
+			t.Fatalf("target %q count = %v, want 0", target, got)
+		}
+	}
+}
+
+func TestAuditTrailRejectsNonCanonicalRichEntries(t *testing.T) {
+	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }))
+	env.deps.Cfg.AllowedResources = map[string][]string{"sp-1": {"sh-1"}}
+	cases := []audit.Entry{
+		{Tool: "workiva_sync_mapping", Action: "sync", Target: "sp-1/sh-1/extra", AfterJSON: `{"value":"leak-sync-extra"}`},
+		{Tool: "workiva_read_range", Action: "read", Target: "sp-1/sh-1/B3/extra", AfterJSON: `{"value":"leak-read-extra"}`},
+		{Tool: "workiva_update_field", Action: "write", Target: "sp-1/sh-1/B3/extra", BeforeJSON: `{"value":"leak-write-before"}`, AfterJSON: `{"value":"leak-write-after"}`, WorkivaOpURL: "/operations/leak-write"},
+		{Tool: "workiva_sync_mapping", Action: "read", Target: "sp-1/sh-1", AfterJSON: `{"value":"leak-sync-action"}`},
+		{Tool: "workiva_read_range", Action: "write", Target: "sp-1/sh-1/B3", AfterJSON: `{"value":"leak-read-action"}`},
+		{Tool: "workiva_update_field", Action: "sync", Target: "sp-1/sh-1/B3", AfterJSON: `{"value":"leak-write-action"}`},
+		{Tool: "historical_tool", Action: "historical_action", Target: "sp-1/sh-1/B3", AfterJSON: `{"value":"leak-unknown"}`},
+		{Tool: "workiva_update_field", Action: "write", Target: "sp-1//B3", AfterJSON: `{"value":"leak-empty"}`},
+	}
+	for _, entry := range cases {
+		if _, err := env.deps.Audit.Append(context.Background(), entry); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := env.deps.Audit.Append(context.Background(), audit.Entry{
+		Tool: "workiva_update_field", Action: "write", Target: "sp-1/sh-1/B4", AfterJSON: `{"value":"visible"}`,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	result := callTool(t, env.deps, AuditTrail(), map[string]any{})
+	if result.IsError {
+		t.Fatalf("audit_trail error: %+v", result.Content)
+	}
+	encoded, _ := json.Marshal(structuredContent(t, result)["entries"])
+	if strings.Contains(string(encoded), "leak-") {
+		t.Fatalf("non-canonical audit data leaked through unrestricted query: %s", encoded)
+	}
+	if !strings.Contains(string(encoded), "visible") {
+		t.Fatalf("canonical authorized audit entry missing: %s", encoded)
+	}
+
+	for _, entry := range cases {
+		result := callTool(t, env.deps, AuditTrail(), map[string]any{"target": entry.Target})
+		if result.IsError {
+			t.Fatalf("audit_trail target %q error: %+v", entry.Target, result.Content)
+		}
+		encoded, _ := json.Marshal(structuredContent(t, result)["entries"])
+		if strings.Contains(string(encoded), "leak-") {
+			t.Fatalf("non-canonical audit data leaked through explicit target %q: %s", entry.Target, encoded)
+		}
+	}
+}
+
 func TestAuditTrailDefaultLimit(t *testing.T) {
 	env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
@@ -128,5 +226,34 @@ func TestAuditTrailCapsLimitAtOneHundred(t *testing.T) {
 	// middleware; the 500 limit is capped at 100 so everything shows.
 	if sc["count"] != float64(6) {
 		t.Errorf("count = %v, want 6 (5 seeded plus the logged call)", sc["count"])
+	}
+}
+
+func TestAuditTrailFindsAllowedBeyondTenThousandDeniedRows(t *testing.T) {
+	env := newTestEnv(t, tokenHandler(t, http.NotFound))
+	env.deps.Cfg.AllowedResources = map[string][]string{"sp-1": {"sh-1"}}
+	ctx := context.Background()
+	if _, err := env.deps.Audit.Append(ctx, audit.Entry{Tool: "workiva_read_range", Action: "read", Target: "sp-1/sh-1/B3", Actor: "older-allowed"}); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 10001; i++ {
+		e := audit.Entry{Tool: "workiva_read_range", Action: "read", Target: "denied/sh/B3", AfterJSON: "secret"}
+		if i%2 == 0 {
+			e.Target = "sp-1/sh-1/B3"
+			e.Action = "ambiguous"
+		}
+		if _, err := env.deps.Audit.Append(ctx, e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, target := range []string{"", "sp-1/sh-1/B3"} {
+		res := callTool(t, env.deps, AuditTrail(), map[string]any{"limit": 100, "target": target})
+		if res.IsError {
+			t.Fatal(res.Content)
+		}
+		data, _ := json.Marshal(structuredContent(t, res)["entries"])
+		if !strings.Contains(string(data), "older-allowed") || strings.Contains(string(data), "secret") || strings.Contains(string(data), "denied") {
+			t.Fatalf("results=%s", data)
+		}
 	}
 }

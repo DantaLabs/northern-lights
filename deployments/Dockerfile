@@ -29,4 +29,7 @@ ENV NL_DB_PATH=/data/northern-lights.db
 
 EXPOSE 8080
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["/workiva-mcp", "healthcheck", "-url", "http://127.0.0.1:8080/readyz"]
+
 ENTRYPOINT ["/workiva-mcp", "-config", "/data/config.yaml"]

@@ -165,11 +165,11 @@ func (u SheetUpdate) MarshalJSON() ([]byte, error) {
 func (c *Client) UpdateSheet(ctx context.Context, spreadsheetID, sheetID string, upd SheetUpdate) (string, error) {
 	operationURL, initialRetryAfter, err := c.UpdateSheetWithRetryAfter(ctx, spreadsheetID, sheetID, upd)
 	if err != nil {
-		return "", err
+		return operationURL, err
 	}
 	if initialRetryAfter > 0 {
 		if err := c.sleep(ctx, initialRetryAfter); err != nil {
-			return "", fmt.Errorf("update sheet initial retry-after: %w", err)
+			return operationURL, fmt.Errorf("update sheet initial retry-after: %w", err)
 		}
 	}
 	return operationURL, nil
@@ -188,8 +188,13 @@ func (c *Client) UpdateSheetWithRetryAfter(ctx context.Context, spreadsheetID, s
 		url.PathEscape(spreadsheetID), url.PathEscape(sheetID))
 	resp, err := c.Do(ctx, http.MethodPost, path, bytes.NewReader(payload), ratelimit.CategoryWrites)
 	if err != nil {
-		return "", 0, err
+		var apiErr *APIError
+		if errors.As(err, &apiErr) {
+			operationURL = apiErr.OperationURL
+		}
+		return operationURL, 0, err
 	}
+	operationURL = resp.Header.Get("Location")
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil {
 			err = errors.Join(err, fmt.Errorf("close update response: %w", closeErr))
@@ -199,9 +204,9 @@ func (c *Client) UpdateSheetWithRetryAfter(ctx context.Context, spreadsheetID, s
 	if resp.StatusCode != http.StatusAccepted {
 		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		if readErr != nil {
-			return "", 0, fmt.Errorf("read update error response body: %w", readErr)
+			return operationURL, 0, errors.Join(&APIError{StatusCode: resp.StatusCode, Body: string(body), OperationURL: operationURL}, fmt.Errorf("read update error response body: %w", readErr))
 		}
-		return "", 0, &APIError{StatusCode: resp.StatusCode, Body: string(body)}
+		return operationURL, 0, &APIError{StatusCode: resp.StatusCode, Body: string(body), OperationURL: resp.Header.Get("Location")}
 	}
 	initialRetryAfter = initialRetryAfterDelay(resp.Header.Get("Retry-After"))
 
@@ -209,7 +214,7 @@ func (c *Client) UpdateSheetWithRetryAfter(ctx context.Context, spreadsheetID, s
 		OperationLocation string `json:"operationLocation"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil && !errors.Is(err, io.EOF) {
-		return "", 0, fmt.Errorf("decode update response: %w", err)
+		return operationURL, initialRetryAfter, fmt.Errorf("decode update response: %w", err)
 	}
 	if res.OperationLocation == "" {
 		res.OperationLocation = resp.Header.Get("Location")

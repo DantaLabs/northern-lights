@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"log"
 	"strconv"
 	"strings"
 
@@ -38,10 +39,12 @@ type syncMappingInput struct {
 }
 
 type syncMappingOutput struct {
+	Status        string   `json:"status"`
 	SpreadsheetID string   `json:"spreadsheet_id"`
 	SheetID       string   `json:"sheet_id"`
 	FieldsCount   int      `json:"fields_count"`
 	Fields        []string `json:"fields"`
+	Message       string   `json:"message,omitempty"`
 }
 
 func (syncMappingTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
@@ -55,8 +58,11 @@ func (syncMappingTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		if deps.Client == nil {
 			return nil, syncMappingOutput{}, failMsg("Workiva client is not available", "server misconfiguration: check Workiva credentials")
 		}
+		if !resourceAllowed(deps, in.SpreadsheetID, in.SheetID) {
+			return nil, syncMappingOutput{}, denyResource(in.SpreadsheetID, in.SheetID)
+		}
 
-		actor := mcpserver.ActorFromRequest(req, mcpserver.DefaultActorHeader)
+		actor := mcpserver.ActorFromRequest(req, deps.ActorHeader)
 		nameCol, valueCol, startRowIdx, err := syncArgs(in)
 		if err != nil {
 			return nil, syncMappingOutput{}, err
@@ -78,17 +84,23 @@ func (syncMappingTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 			return nil, syncMappingOutput{}, failMsg("the mapper sheet returned no range metadata", "check that the sheet ID is correct")
 		}
 
-		names, err := syncFields(ctx, deps, in, data, nameCol, valueCol, startRowIdx, actor)
+		names, auditFailed, err := syncFields(ctx, deps, in, data, nameCol, valueCol, startRowIdx, actor)
 		if err != nil {
 			return nil, syncMappingOutput{}, err
 		}
 
-		return nil, syncMappingOutput{
+		out := syncMappingOutput{
+			Status:        "synced",
 			SpreadsheetID: in.SpreadsheetID,
 			SheetID:       in.SheetID,
 			FieldsCount:   len(names),
 			Fields:        names,
-		}, nil
+		}
+		if auditFailed {
+			out.Status = "synced_audit_failed"
+			out.Message = "Local mappings were updated, but the detailed audit record failed. Do not retry blindly. Reconcile using spreadsheet_id, sheet_id, fields_count, and fields."
+		}
+		return nil, out, nil
 	})
 }
 
@@ -130,30 +142,24 @@ func columnIndex(letters, def string) (int, error) {
 
 // syncFields upserts one field per data row and audits the sync. It
 // returns the upserted field names in sheet order.
-func syncFields(ctx context.Context, deps mcpserver.Deps, in syncMappingInput, data *workiva.SheetData, nameCol, valueCol, startRowIdx int, actor string) ([]string, error) {
+func syncFields(ctx context.Context, deps mcpserver.Deps, in syncMappingInput, data *workiva.SheetData, nameCol, valueCol, startRowIdx int, actor string) ([]string, bool, error) {
 	// Seed the spreadsheet and sheet rows so the mapping store stays
 	// internally consistent for later listing.
 	region := "eu"
 	if deps.Cfg != nil && deps.Cfg.Region != "" {
 		region = deps.Cfg.Region
 	}
-	if err := deps.Store.UpsertSpreadsheet(ctx, mapping.Spreadsheet{ID: in.SpreadsheetID, Region: region}); err != nil {
-		return nil, fail(err, "the spreadsheet row could not be recorded in the mapping store")
-	}
-	if err := deps.Store.UpsertSheet(ctx, mapping.Sheet{ID: in.SheetID, SpreadsheetID: in.SpreadsheetID}); err != nil {
-		return nil, fail(err, "the sheet row could not be recorded in the mapping store")
-	}
-
 	valueLetters, err := workiva.RangeToA1(workiva.Range{
 		StartRow: 0, StartCol: valueCol, StopRow: 0, StopCol: valueCol,
 	})
 	if err != nil {
-		return nil, fail(err, "the value column is not representable in A1 notation")
+		return nil, false, fail(err, "the value column is not representable in A1 notation")
 	}
 	// A single-cell range like "B1": strip the trailing row number.
 	valueLetters = strings.TrimRight(valueLetters, "0123456789")
 
 	var names []string
+	var fields []mapping.Field
 	pages := data.Pages
 	if len(pages) == 0 {
 		pages = []workiva.SheetData{*data}
@@ -163,7 +169,7 @@ func syncFields(ctx context.Context, deps mcpserver.Deps, in syncMappingInput, d
 			continue
 		}
 		if page.Range == nil {
-			return nil, failMsg("the mapper sheet returned a page without range metadata", "check that the sheet ID is correct")
+			return nil, false, failMsg("the mapper sheet returned a page without range metadata", "check that the sheet ID is correct")
 		}
 		dataStartRow := page.Range.StartRow
 		if dataStartRow < 0 {
@@ -177,10 +183,10 @@ func syncFields(ctx context.Context, deps mcpserver.Deps, in syncMappingInput, d
 		for rowIdx, row := range page.Cells {
 			sheetRow, rowErr := addCoordinate(dataStartRow, rowIdx)
 			if rowErr != nil {
-				return nil, fail(rowErr, "the mapper sheet returned an unsafe row coordinate")
+				return nil, false, fail(rowErr, "the mapper sheet returned an unsafe row coordinate")
 			}
 			if sheetRow == int(^uint(0)>>1) {
-				return nil, failMsg("the mapper sheet returned an unsafe row coordinate", "check the sheet range metadata")
+				return nil, false, failMsg("the mapper sheet returned an unsafe row coordinate", "check the sheet range metadata")
 			}
 			if sheetRow < startRowIdx {
 				continue
@@ -198,11 +204,14 @@ func syncFields(ctx context.Context, deps mcpserver.Deps, in syncMappingInput, d
 				Name:          name,
 				CellRange:     valueLetters + strconv.Itoa(sheetRow+1),
 			}
-			if _, err := deps.Store.UpsertField(ctx, field); err != nil {
-				return nil, fail(err, "field "+name+" could not be stored")
-			}
+			fields = append(fields, field)
 			names = append(names, name)
 		}
+	}
+	if err := deps.Store.SyncMapping(ctx,
+		mapping.Spreadsheet{ID: in.SpreadsheetID, Region: region},
+		mapping.Sheet{ID: in.SheetID, SpreadsheetID: in.SpreadsheetID}, fields); err != nil {
+		return nil, false, fail(err, "the complete mapping sync could not be stored; no changes from this sync were committed")
 	}
 
 	if _, err := deps.Audit.Append(ctx, audit.Entry{
@@ -212,9 +221,10 @@ func syncFields(ctx context.Context, deps mcpserver.Deps, in syncMappingInput, d
 		Target:    in.SpreadsheetID + "/" + in.SheetID,
 		AfterJSON: `{"fields_count":` + strconv.Itoa(len(names)) + `}`,
 	}); err != nil {
-		return nil, fail(err, "the sync could not be recorded in the audit trail")
+		log.Printf("AUDIT RECOVERY REQUIRED: mappings updated for %s/%s but rich audit append failed: %v", in.SpreadsheetID, in.SheetID, err)
+		return names, true, nil
 	}
-	return names, nil
+	return names, false, nil
 }
 
 // normalizeFieldName converts a human-readable label into the

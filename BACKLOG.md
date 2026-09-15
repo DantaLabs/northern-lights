@@ -16,12 +16,19 @@
    Copilot connectors can send a static Authorization header. Verify against
    a real Copilot Studio MCP connector; may need a proxy shim.
 
+   External acceptance also requires verifying tool discovery, actor-header
+   propagation, and matching Copilot/Workiva activity traces with real access.
+
 4. **Rate limits are process-local** (adversarial review ISSUE-017): the
    token-bucket limiter lives in the server process, so multiple replicas
    each get their own budget while Workiva enforces workspace-wide limits.
    Single-replica deployments are unaffected. Horizontal scaling needs a
    shared limiter (e.g. Redis) or per-replica budget division. Documented
    here as a known limitation.
+
+5. **Multi-user governance**: add authenticated identities, user/tenant-scoped
+   mappings and confirmation tokens, RBAC, and a shared limiter before serving
+   multiple users, tenants, or replicas.
 
 ## Closed by adversarial review pass
 

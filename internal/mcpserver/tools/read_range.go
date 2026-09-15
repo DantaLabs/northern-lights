@@ -49,12 +49,15 @@ func (readRangeTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "workiva_read_range",
 		Description: readRangeDescription,
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in readRangeInput) (*mcp.CallToolResult, readRangeOutput, error) {
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in readRangeInput) (*mcp.CallToolResult, readRangeOutput, error) {
 		if err := requireDeps(deps, true, true); err != nil {
 			return nil, readRangeOutput{}, err
 		}
 		if deps.Client == nil {
 			return nil, readRangeOutput{}, failMsg("Workiva client is not available", "server misconfiguration: check Workiva credentials")
+		}
+		if !resourceAllowed(deps, in.SpreadsheetID, in.SheetID) {
+			return nil, readRangeOutput{}, denyResource(in.SpreadsheetID, in.SheetID)
 		}
 		if _, err := workiva.A1ToRange(in.Range); err != nil {
 			return nil, readRangeOutput{}, fail(err, "use A1 notation such as B3 or B3:D10")
@@ -86,6 +89,7 @@ func (readRangeTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 
 		target := fmt.Sprintf("%s/%s/%s", in.SpreadsheetID, in.SheetID, in.Range)
 		if _, err := deps.Audit.Append(ctx, audit.Entry{
+			Actor:  mcpserver.ActorFromRequest(req, deps.ActorHeader),
 			Tool:   "workiva_read_range",
 			Action: "read",
 			Target: target,

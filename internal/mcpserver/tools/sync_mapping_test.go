@@ -8,6 +8,46 @@ import (
 	"testing"
 )
 
+func TestSyncMappingReportsCompletedMutationWhenAuditFails(t *testing.T) {
+	var env testEnv
+	base := syncMock(t)
+	env = newTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/sheetdata") {
+			if err := env.deps.Audit.Close(); err != nil {
+				t.Errorf("close audit: %v", err)
+			}
+		}
+		base(w, r)
+	})
+	result := callTool(t, env.deps, SyncMapping(), map[string]any{"spreadsheet_id": "sp-9", "sheet_id": "sh-9"})
+	if result.IsError {
+		t.Fatalf("completed sync returned error: %+v", result.Content)
+	}
+	sc := structuredContent(t, result)
+	if sc["status"] != "synced_audit_failed" || sc["fields_count"] != float64(2) || sc["spreadsheet_id"] != "sp-9" || sc["sheet_id"] != "sh-9" {
+		t.Fatalf("recovery result = %#v", sc)
+	}
+	if !strings.Contains(strings.ToLower(sc["message"].(string)), "do not retry") {
+		t.Fatalf("message = %q", sc["message"])
+	}
+	field, err := env.deps.Store.GetField(context.Background(), "scope_2_energy_kwh")
+	if err != nil || field == nil {
+		t.Fatalf("mapping side effect missing: field=%+v err=%v", field, err)
+	}
+}
+
+func TestSyncMappingUsesCustomActorHeader(t *testing.T) {
+	env := newTestEnv(t, syncMock(t))
+	result := callToolWithCustomActorHeader(t, env.deps, SyncMapping(), "X-Verified-Actor", "verified@example.com", map[string]any{"spreadsheet_id": "sp-9", "sheet_id": "sh-9"})
+	if result.IsError {
+		t.Fatalf("sync returned error: %+v", result.Content)
+	}
+	entries, err := env.deps.Audit.Recent(context.Background(), 10, "")
+	if err != nil || len(entries) != 2 || entries[0].Actor != "verified@example.com" || entries[1].Actor != "verified@example.com" {
+		t.Fatalf("entries=%+v err=%v", entries, err)
+	}
+}
+
 // mapperSheetdataBody is a two-column sheet: a header row plus two data
 // rows and one row with an empty name that must be skipped.
 const mapperSheetdataBody = `{
@@ -119,7 +159,7 @@ func TestSyncMappingRecordsActorFromHeader(t *testing.T) {
 		t.Fatalf("sync returned error: %+v", result.Content)
 	}
 
-	entries, err := env.deps.Audit.Recent(context.Background(), 10, "sp-9/sh-9")
+	entries, err := env.deps.Audit.Recent(context.Background(), 10, "")
 	if err != nil {
 		t.Fatalf("Audit.Recent: %v", err)
 	}

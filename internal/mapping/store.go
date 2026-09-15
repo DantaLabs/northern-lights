@@ -128,6 +128,9 @@ type Store struct {
 // File-backed databases enable WAL and a busy timeout so the store can
 // share one file with the audit log.
 func Open(path string) (*Store, error) {
+	if err := sqlitedb.PreparePrivateDatabase(path); err != nil {
+		return nil, fmt.Errorf("mapping: %w", err)
+	}
 	db, err := sql.Open("sqlite", sqlitedb.SharedFileDSN(path))
 	if err != nil {
 		return nil, fmt.Errorf("mapping: open %q: %w", path, err)
@@ -147,6 +150,11 @@ func Open(path string) (*Store, error) {
 // Close releases the underlying database handle.
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+// Ping verifies that the mapping database is reachable.
+func (s *Store) Ping(ctx context.Context) error {
+	return s.db.PingContext(ctx)
 }
 
 // UpsertSpreadsheet inserts or updates a spreadsheet by ID.
@@ -250,6 +258,35 @@ func (s *Store) UpsertField(ctx context.Context, f Field) (Field, error) {
 		}
 	}
 	return f, nil
+}
+
+// SyncMapping atomically upserts the spreadsheet, sheet, and complete field
+// batch produced by one mapping sync.
+func (s *Store) SyncMapping(ctx context.Context, sp Spreadsheet, sh Sheet, fields []Field) (err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("mapping: begin sync: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+	if _, err = tx.ExecContext(ctx, `INSERT INTO spreadsheets (id, name, region, synced_at) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, region=excluded.region, synced_at=excluded.synced_at`, sp.ID, sp.Name, sp.Region, formatTime(sp.SyncedAt)); err != nil {
+		return fmt.Errorf("mapping: sync spreadsheet %q: %w", sp.ID, err)
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO sheets (id, spreadsheet_id, name) VALUES (?, ?, ?) ON CONFLICT(id, spreadsheet_id) DO UPDATE SET name=excluded.name`, sh.ID, sh.SpreadsheetID, sh.Name); err != nil {
+		return fmt.Errorf("mapping: sync sheet %q: %w", sh.ID, err)
+	}
+	for _, f := range fields {
+		if _, err = tx.ExecContext(ctx, `INSERT INTO fields (spreadsheet_id, sheet_id, name, aliases, cell_range, field_type, description) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(spreadsheet_id, sheet_id, name) DO UPDATE SET aliases=excluded.aliases, cell_range=excluded.cell_range, field_type=excluded.field_type, description=excluded.description, updated_at=CURRENT_TIMESTAMP`, f.SpreadsheetID, f.SheetID, f.Name, f.Aliases, f.CellRange, f.FieldType, f.Description); err != nil {
+			return fmt.Errorf("mapping: sync field %q: %w", f.Name, err)
+		}
+	}
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("mapping: commit sync: %w", err)
+	}
+	return nil
 }
 
 const fieldColumns = `id, spreadsheet_id, sheet_id, name, aliases, cell_range, field_type, description`

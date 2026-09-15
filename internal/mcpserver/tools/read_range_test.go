@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
+	"github.com/dantalabs/northern-lights/internal/mcpserver"
 )
 
 func TestReadRangeFetchesGridAndCachesCells(t *testing.T) {
@@ -208,4 +210,36 @@ func exportAudit(t *testing.T, log *audit.Log) []audit.Entry {
 		entries = append(entries, e)
 	}
 	return entries
+}
+
+func TestReadRangeActorVisibleUnderAllowlist(t *testing.T) {
+	for _, tc := range []struct{ header, actor, want string }{
+		{"X-NL-Actor", "reader@example.com", "reader@example.com"},
+		{"X-Verified-Actor", "custom@example.com", "custom@example.com"},
+		{"X-Verified-Actor", strings.Repeat("a", 200), mcpserver.DefaultActor},
+		{"X-NL-Actor", "", mcpserver.DefaultActor},
+	} {
+		t.Run(tc.header+tc.want, func(t *testing.T) {
+			env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) { _, _ = fmt.Fprint(w, sheetdataBody) }))
+			env.deps.Cfg.AllowedResources = map[string][]string{"sp-1": {"sh-1"}}
+			res := callToolWithCustomActorHeader(t, env.deps, ReadRange(), tc.header, tc.actor, map[string]any{"spreadsheet_id": "sp-1", "sheet_id": "sh-1", "range": "B3"})
+			if res.IsError {
+				t.Fatal(res.Content)
+			}
+			for _, e := range exportAudit(t, env.deps.Audit) {
+				if e.Tool == "workiva_read_range" && e.Actor != tc.want {
+					t.Errorf("action %s actor=%q want %q", e.Action, e.Actor, tc.want)
+				}
+			}
+			res = callTool(t, env.deps, AuditTrail(), map[string]any{"target": "sp-1/sh-1/B3"})
+			entries := structuredContent(t, res)["entries"].([]any)
+			if len(entries) != 1 {
+				t.Fatalf("entries=%v", entries)
+			}
+			e := entries[0].(map[string]any)
+			if e["actor"] != tc.want || e["action"] != "read" {
+				t.Fatalf("entry=%v", e)
+			}
+		})
+	}
 }

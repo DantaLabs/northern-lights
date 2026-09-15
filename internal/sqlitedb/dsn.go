@@ -2,7 +2,10 @@
 // this project.
 package sqlitedb
 
-import "strings"
+import (
+	"net/url"
+	"strings"
+)
 
 // SharedFileDSN returns the DSN for opening path. File-backed databases
 // get WAL journaling and a 5 second busy timeout so that several handles
@@ -12,5 +15,7 @@ func SharedFileDSN(path string) string {
 	if path == ":memory:" || strings.HasPrefix(path, "file:") {
 		return path
 	}
-	return "file:" + path + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
+	// Escape the entire filename so SQLite decodes it literally, including
+	// percent escapes and platform-specific path separators.
+	return "file:" + url.PathEscape(path) + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
 }

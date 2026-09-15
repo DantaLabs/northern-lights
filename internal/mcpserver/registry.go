@@ -23,6 +23,9 @@ type Deps struct {
 	Store  *mapping.Store
 	Audit  *audit.Log
 	Cfg    *config.Config
+	// ActorHeader is populated by New before tools are bound so middleware
+	// and rich mutation audit entries use the same identity source.
+	ActorHeader string
 }
 
 // Tool is one MCP tool, decoupled from the SDK transport. A tool owns its

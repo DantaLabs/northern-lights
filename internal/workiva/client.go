@@ -25,8 +25,9 @@ const maxAttempts = 5
 // APIError describes a terminal non-2xx response from the Workiva API
 // after all retries are exhausted.
 type APIError struct {
-	StatusCode int
-	Body       string
+	StatusCode   int
+	Body         string
+	OperationURL string
 }
 
 func (e *APIError) Error() string {
@@ -148,7 +149,7 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader, ca
 		if resp.StatusCode == http.StatusUnauthorized && !retried401 {
 			retried401 = true
 			if err := drainAndClose(resp); err != nil {
-				return nil, fmt.Errorf("drain response before retry: %w", err)
+				return nil, errors.Join(&APIError{StatusCode: resp.StatusCode, OperationURL: resp.Header.Get("Location")}, fmt.Errorf("drain response before retry: %w", err))
 			}
 			c.tokens.Invalidate()
 			token = ""
@@ -157,16 +158,16 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader, ca
 		if resp.StatusCode == http.StatusTooManyRequests && attempt < maxAttempts {
 			delay := retryAfterDelay(resp.Header.Get("Retry-After"))
 			if err := drainAndClose(resp); err != nil {
-				return nil, fmt.Errorf("drain response before retry: %w", err)
+				return nil, errors.Join(&APIError{StatusCode: resp.StatusCode, OperationURL: resp.Header.Get("Location")}, fmt.Errorf("drain response before retry: %w", err))
 			}
 			if err := c.sleep(ctx, delay); err != nil {
-				return nil, err
+				return nil, errors.Join(&APIError{StatusCode: resp.StatusCode, OperationURL: resp.Header.Get("Location")}, err)
 			}
 			continue
 		}
 		if isRetryableServerError(resp.StatusCode) && attempt < maxAttempts && isIdempotent(method) {
 			if err := drainAndClose(resp); err != nil {
-				return nil, fmt.Errorf("drain response before retry: %w", err)
+				return nil, errors.Join(&APIError{StatusCode: resp.StatusCode, OperationURL: resp.Header.Get("Location")}, fmt.Errorf("drain response before retry: %w", err))
 			}
 			if err := c.sleep(ctx, backoff(attempt)); err != nil {
 				return nil, err
@@ -192,10 +193,10 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader, ca
 func errorResponse(resp *http.Response) (*http.Response, error) {
 	body, readErr := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	closeErr := resp.Body.Close()
+	apiErr := &APIError{StatusCode: resp.StatusCode, Body: string(body), OperationURL: resp.Header.Get("Location")}
 	if readErr != nil {
-		return nil, fmt.Errorf("read error response body (status %d): %w", resp.StatusCode, readErr)
+		return nil, errors.Join(apiErr, fmt.Errorf("read error response body: %w", readErr), closeErr)
 	}
-	apiErr := &APIError{StatusCode: resp.StatusCode, Body: string(body)}
 	if closeErr != nil {
 		return nil, errors.Join(apiErr, fmt.Errorf("close error response body (status %d): %w", resp.StatusCode, closeErr))
 	}
@@ -234,7 +235,7 @@ func initialRetryAfterDelay(header string) time.Duration {
 
 // isIdempotent reports whether method is safe to retry after the request
 // may have reached the server. Only GET and HEAD are idempotent here;
-// PATCH/POST/PUT are retried only on 429 (the request was rejected).
+// PATCH/POST/PUT are retried only on explicit 401/429 responses (non-acceptance).
 func isIdempotent(method string) bool {
 	switch method {
 	case http.MethodGet, http.MethodHead:
