@@ -18,8 +18,33 @@ type Spreadsheet struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
 	Template bool   `json:"template"`
-	Created  string `json:"created"`
-	Modified string `json:"modified"`
+	Created  string `json:"-"`
+	Modified string `json:"-"`
+}
+
+// UnmarshalJSON decodes the 2026-01-01 discovery metadata. Workiva wraps
+// created and modified timestamps in {"dateTime":"..."} objects.
+func (s *Spreadsheet) UnmarshalJSON(data []byte) error {
+	var wire struct {
+		ID       string `json:"id"`
+		Name     string `json:"name"`
+		Template bool   `json:"template"`
+		Created  struct {
+			DateTime string `json:"dateTime"`
+		} `json:"created"`
+		Modified struct {
+			DateTime string `json:"dateTime"`
+		} `json:"modified"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	s.ID = wire.ID
+	s.Name = wire.Name
+	s.Template = wire.Template
+	s.Created = wire.Created.DateTime
+	s.Modified = wire.Modified.DateTime
+	return nil
 }
 
 // Sheet is a Workiva sheet returned by the discovery API.

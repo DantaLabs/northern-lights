@@ -2,13 +2,28 @@
 
 ## Open
 
-1. **Live Workiva sandbox validation**: run the client against a real
-   Workiva workspace with suitable credentials to validate permissions,
-   rate-limit behaviour, and operation polling. The 2026-01-01 request and
-   response contracts, including field paths, scalar values, range bounds,
-   nested updates, and operation delays, are covered by
-   official-document-shaped tests. Mapped writes also enforce a 100,000-cell
-   local expansion cap that should be exercised against representative files.
+Validation evidence and the remaining acceptance plan are recorded in
+[`docs/validation/LIVE_VALIDATION_2026-09-15.md`](docs/validation/LIVE_VALIDATION_2026-09-15.md).
+Commit `26b136f` was not previously live-validated. The 2026-09-15 pass found
+and fixed a live spreadsheet-discovery timestamp contract mismatch, then
+validated EU discovery, reads, mapping sync, confirmed writes, operation
+polling, read-back, restoration, the local 100,000-cell boundary, public HTTPS
+MCP transport, bearer rejection, actor propagation, and audit-chain integrity.
+
+Still open from that pass: controlled provider-side 429 validation, a real
+Copilot Studio connector/activity trace, a genuinely read-only Workiva grant,
+and all multi-user/horizontal governance. The multi-user negative baseline also
+proved that one actor can consume another actor's confirmation token under the
+current documented single-user design.
+
+1. **Live Workiva sandbox validation, partial**: live EU OAuth, discovery,
+   narrow reads, mapping sync, confirmed writes, operation polling, read-back,
+   restoration, and cap rejection are validated. Remaining: validate a truly
+   read-only grant, capture a provider-side 429 and recovery, and decide whether
+   a destructive exact-100,000-cell API write is required. The 2026-01-01
+   request and response contracts, including field paths, scalar values, range
+   bounds, nested updates, and operation delays, are covered by
+   official-document-shaped tests.
 2. **Documents API out of scope for MVP**: Workiva Documents (prose editing)
    intentionally deferred to v0.2.
 

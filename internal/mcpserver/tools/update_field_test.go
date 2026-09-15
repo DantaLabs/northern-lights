@@ -458,6 +458,19 @@ func TestUpdateFieldRefreshesSnapshotCache(t *testing.T) {
 	}
 }
 
+func TestExpandCellEditsAllowsExactCap(t *testing.T) {
+	edits, err := expandCellEdits(workiva.Range{StartRow: 0, StartCol: 0, StopRow: 99999, StopCol: 0}, "x")
+	if err != nil {
+		t.Fatalf("exact 100,000-cell expansion returned error: %v", err)
+	}
+	if len(edits) != 100000 {
+		t.Fatalf("edit count = %d, want 100000", len(edits))
+	}
+	if edits[0].Row != 0 || edits[0].Column != 0 || edits[len(edits)-1].Row != 99999 || edits[len(edits)-1].Column != 0 {
+		t.Fatalf("unexpected boundary edits: first=%+v last=%+v", edits[0], edits[len(edits)-1])
+	}
+}
+
 func TestExpandCellEditsRejectsExpansionAboveCap(t *testing.T) {
 	_, err := expandCellEdits(workiva.Range{StartRow: 0, StartCol: 0, StopRow: 100000, StopCol: 0}, "x")
 	if err == nil {

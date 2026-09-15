@@ -25,18 +25,28 @@ export NL_WORKIVA_CLIENT_SECRET="your-workiva-client-secret"
 The server listens on port 8080 by default and serves the MCP endpoint
 at `/mcp`.
 
-## 2. Create a Custom Connector in Copilot Studio
+## 2. Add the MCP server in Copilot Studio
 
-1. Open Copilot Studio, navigate to your copilot.
-2. Go to **Settings > Channels > Custom connectors** (or **Plugins**).
-3. Select **Add a connector > Custom**.
-4. Set the connection type to **Streamable HTTP**.
-5. Enter your server URL: `https://your-domain/mcp` (or
-   `http://localhost:8080/mcp` for local testing).
-6. Under authentication, choose **API Key** and enter your `NL_API_KEY`
-   value as a Bearer token in the Authorization header.
-7. Save the connector. Copilot Studio will call `tools/list` and discover
-   all seven Northern Lights tools automatically.
+Use the current MCP onboarding wizard:
+
+1. Open the agent and go to **Tools**.
+2. Select **Add a tool > New tool > Model Context Protocol**.
+3. Enter a clear server name and description.
+4. Set the server URL to the public HTTPS Streamable HTTP endpoint,
+   `https://your-domain/mcp`. Copilot Studio cannot reach localhost.
+5. Select **API key**, then **Header**.
+6. Set the header name to `Authorization`.
+7. When creating the connection, provide the full value
+   `Bearer <NL_API_KEY>`, not the Workiva client secret.
+8. Create the connection and add the MCP server to the agent. Copilot Studio
+   should discover all seven Northern Lights tools automatically.
+
+Microsoft also supports OAuth 2.0 for MCP servers. Use OAuth rather than the
+shared API key before multi-user rollout so Northern Lights can validate a
+per-user identity instead of trusting `X-NL-Actor` metadata.
+
+Current Microsoft procedure:
+<https://learn.microsoft.com/en-us/microsoft-copilot-studio/mcp-add-existing-server-to-agent>
 
 ## 3. Configure the Conversation Start Prompt
 
