@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -57,10 +58,59 @@ func (auditTrailTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 			limit = auditTrailMaxLimit
 		}
 
-		entries, err := deps.Audit.Recent(ctx, limit, in.Target)
-		if err != nil {
-			return nil, auditTrailOutput{}, fail(err, "the audit trail could not be read")
+		const pageSize = 256
+		filtered := make([]audit.Entry, 0, limit)
+		var before int64
+		for len(filtered) < limit {
+			if err := ctx.Err(); err != nil {
+				return nil, auditTrailOutput{}, fail(err, "the audit trail could not be read")
+			}
+			entries, err := deps.Audit.RecentPage(ctx, pageSize, in.Target, before)
+			if err != nil {
+				return nil, auditTrailOutput{}, fail(err, "the audit trail could not be read")
+			}
+			for _, entry := range entries {
+				if auditEntryAllowed(deps, entry) {
+					filtered = append(filtered, entry)
+					if len(filtered) == limit {
+						break
+					}
+				}
+			}
+			if len(entries) < pageSize {
+				break
+			}
+			before = entries[len(entries)-1].Seq
 		}
-		return nil, auditTrailOutput{Count: len(entries), Entries: entries}, nil
+		return nil, auditTrailOutput{Count: len(filtered), Entries: filtered}, nil
 	})
+}
+
+func auditEntryAllowed(deps mcpserver.Deps, entry audit.Entry) bool {
+	if deps.Cfg == nil || deps.Cfg.AllowedResources == nil {
+		return true
+	}
+	rich := entry.Target != "" || entry.BeforeJSON != "" || entry.AfterJSON != "" || entry.WorkivaOpURL != ""
+	if !rich {
+		return true
+	}
+	parts := strings.Split(entry.Target, "/")
+	wantParts := 0
+	switch {
+	case entry.Tool == "workiva_sync_mapping" && entry.Action == "sync":
+		wantParts = 2
+	case entry.Tool == "workiva_read_range" && entry.Action == "read":
+		wantParts = 3
+	case entry.Tool == "workiva_update_field" && entry.Action == "write":
+		wantParts = 3
+	}
+	if len(parts) != wantParts {
+		return false
+	}
+	for _, part := range parts {
+		if part == "" {
+			return false
+		}
+	}
+	return deps.Cfg.ResourceAllowed(parts[0], parts[1])
 }

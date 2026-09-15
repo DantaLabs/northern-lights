@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -63,8 +64,9 @@ type Entry struct {
 
 // Log wraps the SQLite handle holding the audit chain.
 type Log struct {
-	db     *sql.DB
-	ownsDB bool
+	db       *sql.DB
+	ownsDB   bool
+	appendMu sync.Mutex
 }
 
 // Open opens (creating if needed) the SQLite database at path and applies
@@ -72,6 +74,9 @@ type Log struct {
 // the handle; Close releases it. File-backed databases enable WAL and a
 // busy timeout so this log can share one file with the mapping store.
 func Open(path string) (*Log, error) {
+	if err := sqlitedb.PreparePrivateDatabase(path); err != nil {
+		return nil, fmt.Errorf("audit: %w", err)
+	}
 	db, err := sql.Open("sqlite", sqlitedb.SharedFileDSN(path))
 	if err != nil {
 		return nil, fmt.Errorf("audit: open %q: %w", path, err)
@@ -109,6 +114,11 @@ func (l *Log) Close() error {
 	return l.db.Close()
 }
 
+// Ping verifies that the audit database is reachable.
+func (l *Log) Ping(ctx context.Context) error {
+	return l.db.PingContext(ctx)
+}
+
 func entryHash(prevHash, ts, actor, tool, action, target, before, after, opURL string) string {
 	sum := sha256.Sum256([]byte(prevHash + ts + actor + tool + action + target + before + after + opURL))
 	return hex.EncodeToString(sum[:])
@@ -117,6 +127,9 @@ func entryHash(prevHash, ts, actor, tool, action, target, before, after, opURL s
 // Append records an entry and extends the hash chain. It fills in Ts (when
 // zero), Seq, PrevHash, and Hash on the returned copy.
 func (l *Log) Append(ctx context.Context, e Entry) (Entry, error) {
+	l.appendMu.Lock()
+	defer l.appendMu.Unlock()
+
 	ts := e.Ts
 	if ts.IsZero() {
 		ts = time.Now().UTC()
@@ -247,15 +260,22 @@ func scanEntry(rows interface {
 // empty only entries with that exact target (for example a spreadsheet,
 // sheet, and range such as "ss-1/sh-1/B3") are returned. A non-positive
 // limit behaves like 20.
-func (l *Log) Recent(ctx context.Context, limit int, target string) (out []Entry, err error) {
+func (l *Log) Recent(ctx context.Context, limit int, target string) ([]Entry, error) {
+	return l.RecentPage(ctx, limit, target, 0)
+}
+
+// RecentPage returns at most limit entries in descending sequence order,
+// optionally matching target. A positive before excludes that sequence and
+// newer entries; zero starts at the newest entry.
+func (l *Log) RecentPage(ctx context.Context, limit int, target string, before int64) (out []Entry, err error) {
 	if limit <= 0 {
 		limit = 20
 	}
 	rows, err := l.db.QueryContext(ctx,
 		`SELECT `+auditColumns+` FROM audit_log
-		 WHERE ? = '' OR target = ?
+		 WHERE (? = '' OR target = ?) AND (? = 0 OR seq < ?)
 		 ORDER BY seq DESC LIMIT ?`,
-		target, target, limit)
+		target, target, before, before, limit)
 	if err != nil {
 		return nil, fmt.Errorf("audit: recent: %w", err)
 	}

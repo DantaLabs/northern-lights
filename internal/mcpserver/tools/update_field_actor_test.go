@@ -64,6 +64,34 @@ func callToolWithActor(t *testing.T, deps mcpserver.Deps, tool mcpserver.Tool, a
 	return result
 }
 
+func callToolWithCustomActorHeader(t *testing.T, deps mcpserver.Deps, tool mcpserver.Tool, header, actor string, args map[string]any) *mcp.CallToolResult {
+	t.Helper()
+	reg := mcpserver.NewRegistry()
+	reg.Register(tool)
+	handler, err := mcpserver.New(deps, reg, &mcpserver.Options{APIToken: "test-token", ActorHeader: header})
+	if err != nil {
+		t.Fatalf("mcpserver.New: %v", err)
+	}
+	srv := httptest.NewServer(handler)
+	t.Cleanup(srv.Close)
+	httpClient := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		req.Header.Set("Authorization", "Bearer test-token")
+		req.Header.Set(header, actor)
+		return http.DefaultTransport.RoundTrip(req)
+	})}
+	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "dev"}, nil)
+	session, err := client.Connect(context.Background(), &mcp.StreamableClientTransport{Endpoint: srv.URL + "/mcp", HTTPClient: httpClient}, nil)
+	if err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: tool.Name(), Arguments: args})
+	if err != nil {
+		t.Fatalf("CallTool: %v", err)
+	}
+	return result
+}
+
 // TestUpdateFieldActorFromHeader verifies the X-NL-Actor identity lands on
 // the write audit entry instead of the hardcoded default.
 func TestUpdateFieldActorFromHeader(t *testing.T) {
@@ -89,6 +117,32 @@ func TestUpdateFieldActorFromHeader(t *testing.T) {
 	}
 	if entries[0].Actor != "samuel@vadian.dev" {
 		t.Errorf("audit actor = %q, want samuel@vadian.dev", entries[0].Actor)
+	}
+}
+
+func TestUpdateFieldCustomActorHeaderIsConsistent(t *testing.T) {
+	var edits [][]byte
+	env := newTestEnv(t, writeMock(t, &edits))
+	env.deps.Cfg.RequireWriteConfirmation = false
+	seedField(t, env)
+
+	res := callToolWithCustomActorHeader(t, env.deps, UpdateField(), "X-Verified-Actor", "verified@example.com", map[string]any{
+		"name": "scope2_energy_kwh", "value": "321",
+	})
+	if res.IsError {
+		t.Fatalf("write returned error: %+v", res.Content)
+	}
+	entries, err := env.deps.Audit.Recent(context.Background(), 10, "")
+	if err != nil {
+		t.Fatalf("Audit.Recent: %v", err)
+	}
+	if len(entries) < 2 {
+		t.Fatalf("audit entries = %d, want call and write", len(entries))
+	}
+	for _, entry := range entries[:2] {
+		if entry.Actor != "verified@example.com" {
+			t.Fatalf("audit actor = %q, want verified@example.com", entry.Actor)
+		}
 	}
 }
 

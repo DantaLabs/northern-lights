@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -49,6 +51,46 @@ func writeMock(t *testing.T, edits *[][]byte) http.HandlerFunc {
 			http.NotFound(w, r)
 		}
 	})
+}
+
+func TestCompletedWriteWithAuditFailureMustNotInviteRetry(t *testing.T) {
+	var edits [][]byte
+	base := writeMock(t, &edits)
+	var env testEnv
+	var closeOnce sync.Once
+	env = newTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/operations/") {
+			closeOnce.Do(func() {
+				if err := env.deps.Audit.Close(); err != nil {
+					t.Errorf("close audit log: %v", err)
+				}
+			})
+		}
+		base(w, r)
+	})
+	env.deps.Cfg.RequireWriteConfirmation = false
+	seedField(t, env)
+
+	result := callTool(t, env.deps, UpdateField(), map[string]any{
+		"name": "scope2_energy_kwh", "value": "777",
+	})
+	if result.IsError {
+		t.Fatalf("completed external write returned MCP error: %+v", result.Content)
+	}
+	content := structuredContent(t, result)
+	if content["status"] != "written_audit_failed" {
+		t.Fatalf("status = %v, want written_audit_failed", content["status"])
+	}
+	message, _ := content["message"].(string)
+	if !strings.Contains(strings.ToLower(message), "do not retry") {
+		t.Fatalf("message = %q, want explicit do not retry instruction", message)
+	}
+	if content["workiva_op_url"] == "" {
+		t.Fatal("workiva_op_url missing from reconciliation response")
+	}
+	if len(edits) != 1 {
+		t.Fatalf("Workiva writes = %d, want 1", len(edits))
+	}
 }
 
 func TestUpdateFieldTwoPhaseFlow(t *testing.T) {
@@ -428,5 +470,117 @@ func TestExpandCellEditsRejectsOverflowSizedRange(t *testing.T) {
 	_, err := expandCellEdits(workiva.Range{StartRow: 0, StartCol: 0, StopRow: maxInt, StopCol: 1}, "x")
 	if err == nil {
 		t.Fatal("expected overflow-sized range to be rejected")
+	}
+}
+
+func TestUpdateFieldClassifiesMutationOutcomesWithoutRetry(t *testing.T) {
+	for _, tc := range []struct {
+		name, pollBody, wantStatus string
+		malformed                  bool
+		postStatus                 int
+		closeSubmit                bool
+	}{
+		{name: "accepted malformed body", malformed: true, postStatus: http.StatusAccepted, wantStatus: "write_outcome_unknown"},
+		{name: "definite HTTP rejection", postStatus: http.StatusBadRequest, wantStatus: "write_rejected"},
+		{name: "ambiguous submission transport failure", closeSubmit: true, wantStatus: "write_outcome_unknown"},
+		{name: "accepted then poll decoding failure", postStatus: http.StatusAccepted, pollBody: `{`, wantStatus: "write_outcome_unknown"},
+		{name: "terminal operation failure", postStatus: http.StatusAccepted, pollBody: `{"id":"op-1","status":"failed","error":{"message":"invalid edit"}}`, wantStatus: "write_failed"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mutations atomic.Int32
+			env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/sheetdata"):
+					_, _ = fmt.Fprint(w, sheetdataBody)
+				case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/update"):
+					mutations.Add(1)
+					if tc.closeSubmit {
+						panic(http.ErrAbortHandler)
+					}
+					w.Header().Set("Location", "/operations/op-1")
+					w.WriteHeader(tc.postStatus)
+					if tc.malformed {
+						_, _ = fmt.Fprint(w, "{")
+						return
+					}
+					if tc.postStatus == http.StatusAccepted {
+						_, _ = fmt.Fprint(w, `{"operationLocation":"/operations/op-1"}`)
+					}
+				case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/operations/"):
+					_, _ = fmt.Fprint(w, tc.pollBody)
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			env.deps.Cfg.RequireWriteConfirmation = false
+			seedField(t, env)
+			result := callTool(t, env.deps, UpdateField(), map[string]any{"name": "scope2_energy_kwh", "value": "new"})
+			if result.IsError {
+				t.Fatalf("expected reconciliation output, got MCP error: %+v", result.Content)
+			}
+			got := structuredContent(t, result)
+			if got["status"] != tc.wantStatus {
+				t.Fatalf("status = %v, want %s", got["status"], tc.wantStatus)
+			}
+			if got["spreadsheet_id"] != "sp-1" || got["sheet_id"] != "sh-1" || got["range"] != "B3" || got["before"] != "1234" || got["after_preview"] != "new" {
+				t.Fatalf("incomplete reconciliation output: %#v", got)
+			}
+			if tc.postStatus == http.StatusAccepted && got["workiva_op_url"] != "/operations/op-1" {
+				t.Fatalf("operation URL = %v", got["workiva_op_url"])
+			}
+			if mutations.Load() != 1 {
+				t.Fatalf("mutation requests = %d, want 1", mutations.Load())
+			}
+		})
+	}
+}
+
+func TestUpdateFieldTreatsServerErrorsAsUnknownWithoutRetry(t *testing.T) {
+	for _, status := range []int{
+		http.StatusInternalServerError,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+		http.StatusGatewayTimeout,
+	} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			var mutations atomic.Int32
+			env := newTestEnv(t, tokenHandler(t, func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/sheetdata"):
+					_, _ = fmt.Fprint(w, sheetdataBody)
+				case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/update"):
+					mutations.Add(1)
+					w.Header().Set("Location", "/operations/server-error")
+					w.WriteHeader(status)
+					_, _ = fmt.Fprint(w, `{"message":"server failure"}`)
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			env.deps.Cfg.RequireWriteConfirmation = false
+			seedField(t, env)
+
+			result := callTool(t, env.deps, UpdateField(), map[string]any{"name": "scope2_energy_kwh", "value": "new"})
+			if result.IsError {
+				t.Fatalf("expected reconciliation output, got MCP error: %+v", result.Content)
+			}
+			got := structuredContent(t, result)
+			if got["status"] != "write_outcome_unknown" {
+				t.Fatalf("status = %v, want write_outcome_unknown", got["status"])
+			}
+			if got["spreadsheet_id"] != "sp-1" || got["sheet_id"] != "sh-1" || got["range"] != "B3" || got["before"] != "1234" || got["after_preview"] != "new" {
+				t.Fatalf("incomplete reconciliation output: %#v", got)
+			}
+			if got["workiva_op_url"] != "/operations/server-error" {
+				t.Fatalf("operation URL = %v, want response Location", got["workiva_op_url"])
+			}
+			message, _ := got["message"].(string)
+			if !strings.Contains(strings.ToLower(message), "do not retry") {
+				t.Fatalf("message = %q, want explicit do not retry guidance", message)
+			}
+			if mutations.Load() != 1 {
+				t.Fatalf("mutation requests = %d, want exactly 1", mutations.Load())
+			}
+		})
 	}
 }

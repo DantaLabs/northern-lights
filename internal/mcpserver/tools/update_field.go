@@ -71,7 +71,7 @@ func (updateFieldTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 			return nil, updateFieldOutput{}, err
 		}
 
-		actor := mcpserver.ActorFromRequest(req, mcpserver.DefaultActorHeader)
+		actor := mcpserver.ActorFromRequest(req, deps.ActorHeader)
 
 		field, err := resolveField(ctx, deps, in.Name)
 		if err != nil {
@@ -104,6 +104,9 @@ func resolveField(ctx context.Context, deps mcpserver.Deps, name string) (*mappi
 	if field == nil {
 		return nil, failMsg("no field named "+name,
 			"run workiva_search_fields with the natural-language phrase to find the right field name")
+	}
+	if !resourceAllowed(deps, field.SpreadsheetID, field.SheetID) {
+		return nil, denyResource(field.SpreadsheetID, field.SheetID)
 	}
 	return field, nil
 }
@@ -153,6 +156,9 @@ func stageWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, 
 // executeConfirmedWrite is phase 2: consume the single-use token and run
 // the staged write.
 func executeConfirmedWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, in updateFieldInput, actor string) (*mcp.CallToolResult, updateFieldOutput, error) {
+	if !resourceAllowed(deps, field.SpreadsheetID, field.SheetID) {
+		return nil, updateFieldOutput{}, denyResource(field.SpreadsheetID, field.SheetID)
+	}
 	pending, err := deps.Store.ConsumePendingWrite(ctx, in.ConfirmToken, pendingWriteTTL)
 	if err == nil && pending == nil {
 		return nil, updateFieldOutput{}, failMsg("unknown or already used confirm_token "+in.ConfirmToken,
@@ -211,20 +217,30 @@ func executeWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field
 	opURL, initialRetryAfter, err := deps.Client.UpdateSheetWithRetryAfter(ctx, field.SpreadsheetID, field.SheetID,
 		workiva.NewEditCellsUpdate(edits))
 	if err != nil {
-		return nil, updateFieldOutput{}, fail(err, "Workiva rejected the write; check the value and the field mapping")
+		status := "write_outcome_unknown"
+		message := "The mutation request may have been accepted. Do not retry. Reconcile the target and intended value in Workiva file history."
+		var apiErr *workiva.APIError
+		if errors.As(err, &apiErr) {
+			opURL = apiErr.OperationURL
+			if apiErr.StatusCode == 400 {
+				status = "write_rejected"
+				message = "Workiva rejected the mutation request before acceptance. Correct the request before retrying."
+			}
+		}
+		return nil, writeReconciliationOutput(field, before, value, opURL, status, message+" Cause: "+err.Error()), nil
 	}
 	if _, err := deps.Client.WaitOperationWithInitialRetryAfter(ctx, opURL, initialRetryAfter); err != nil {
-		return nil, updateFieldOutput{}, fail(err, "the write operation did not complete; check Workiva file history before retrying")
+		status := "write_outcome_unknown"
+		message := "Workiva accepted the mutation, but its final outcome is unknown. Do not retry. Reconcile using workiva_op_url and Workiva file history."
+		var failed *workiva.OperationFailedError
+		if errors.As(err, &failed) {
+			status = "write_failed"
+			message = "Workiva reported a terminal failed operation. The write did not complete; inspect workiva_op_url before correcting and retrying."
+		}
+		return nil, writeReconciliationOutput(field, before, value, opURL, status, message+" Cause: "+err.Error()), nil
 	}
 
-	if err := auditWrite(ctx, deps, actor, field, before, value, opURL); err != nil {
-		return nil, updateFieldOutput{}, err
-	}
-	if err := refreshCacheAfterWrite(ctx, deps, field, rng, value); err != nil {
-		log.Printf("cache refresh after Workiva write for %s failed: %v", field.Name, err)
-	}
-
-	return nil, updateFieldOutput{
+	out := updateFieldOutput{
 		Status:        "written",
 		Field:         field.Name,
 		SpreadsheetID: field.SpreadsheetID,
@@ -233,7 +249,26 @@ func executeWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field
 		Before:        before,
 		After:         value,
 		WorkivaOpURL:  opURL,
-	}, nil
+	}
+
+	auditErr := auditWrite(ctx, deps, actor, field, before, value, opURL)
+	if err := refreshCacheAfterWrite(ctx, deps, field, rng, value); err != nil {
+		log.Printf("cache refresh after Workiva write for %s failed: %v", field.Name, err)
+	}
+	if auditErr != nil {
+		log.Printf("AUDIT RECOVERY REQUIRED: Workiva write completed for %s at %s but rich audit append failed: %v", field.Name, opURL, auditErr)
+		out.Status = "written_audit_failed"
+		out.Message = "Workiva write completed, but the detailed audit record failed. Do not retry this write. Reconcile it using workiva_op_url and Workiva file history."
+		return nil, out, nil
+	}
+
+	return nil, out, nil
+}
+
+func writeReconciliationOutput(field *mapping.Field, before, intended, opURL, status, message string) updateFieldOutput {
+	return updateFieldOutput{Status: status, Field: field.Name, SpreadsheetID: field.SpreadsheetID,
+		SheetID: field.SheetID, Range: field.CellRange, Before: before, AfterPreview: intended,
+		WorkivaOpURL: opURL, Message: message}
 }
 
 // readFieldValue fetches the field's current display value live from

@@ -209,6 +209,23 @@ func TestSearchFieldsNoMatch(t *testing.T) {
 	}
 }
 
+func TestSearchFieldsNaturalLanguageMatchesSyncedSnakeCase(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if _, err := s.UpsertField(ctx, Field{SpreadsheetID: "ss-1", SheetID: "sh-1", Name: "scope_2_energy_kwh", CellRange: "B3"}); err != nil {
+		t.Fatalf("UpsertField: %v", err)
+	}
+
+	got, err := s.SearchFields(ctx, "scope 2 energy")
+	if err != nil {
+		t.Fatalf("SearchFields returned error: %v", err)
+	}
+	if len(got) == 0 || got[0].Name != "scope_2_energy_kwh" {
+		t.Fatalf("SearchFields = %+v, want scope_2_energy_kwh", got)
+	}
+}
+
 func TestCacheCellsRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

@@ -58,6 +58,9 @@ func (getFieldTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 			return nil, getFieldOutput{}, failMsg("no field named "+in.Name,
 				"run workiva_search_fields with the natural-language phrase to find the right field name")
 		}
+		if !resourceAllowed(deps, field.SpreadsheetID, field.SheetID) {
+			return nil, getFieldOutput{}, denyResource(field.SpreadsheetID, field.SheetID)
+		}
 
 		out := getFieldOutput{
 			Name:          field.Name,

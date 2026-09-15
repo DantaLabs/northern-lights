@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -63,6 +65,102 @@ func TestRequestWithoutBearerTokenRejected(t *testing.T) {
 			}
 			if resp.StatusCode != http.StatusUnauthorized {
 				t.Fatalf("status = %d, want 401", resp.StatusCode)
+			}
+		})
+	}
+}
+
+func TestHealthEndpointsDoNotRequireBearerToken(t *testing.T) {
+	deps := testDeps(t)
+	handler, err := New(deps, NewRegistry(), &Options{APIToken: "test-token"})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	for _, tc := range []struct {
+		path string
+		body string
+	}{
+		{path: "/healthz", body: "ok\n"},
+		{path: "/readyz", body: "ready\n"},
+	} {
+		t.Run(tc.path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			res := httptest.NewRecorder()
+			handler.ServeHTTP(res, req)
+			if res.Code != http.StatusOK {
+				t.Fatalf("status = %d, want 200", res.Code)
+			}
+			if res.Body.String() != tc.body {
+				t.Fatalf("body = %q, want %q", res.Body.String(), tc.body)
+			}
+			if got := res.Header().Get("Cache-Control"); got != "no-store" {
+				t.Fatalf("Cache-Control = %q, want no-store", got)
+			}
+		})
+	}
+}
+
+func TestReadinessFailsWithoutStores(t *testing.T) {
+	handler, err := New(Deps{}, NewRegistry(), &Options{APIToken: "test-token"})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	if res.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", res.Code)
+	}
+	if res.Body.String() != "not ready\n" {
+		t.Fatalf("body = %q, want generic readiness failure", res.Body.String())
+	}
+}
+
+func TestReadinessFailsWithClosedStores(t *testing.T) {
+	deps := testDeps(t)
+	if err := deps.Store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := deps.Audit.Close(); err != nil {
+		t.Fatal(err)
+	}
+	handler, err := New(deps, NewRegistry(), &Options{APIToken: "test-token"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+	if res.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", res.Code)
+	}
+}
+
+func TestLocalhostProtectionCanOnlyBeDisabledExplicitly(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		disabled      bool
+		wantForbidden bool
+	}{
+		{name: "protected", wantForbidden: true},
+		{name: "explicitly disabled", disabled: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, err := New(testDeps(t), NewRegistry(), &Options{APIToken: "test-token", DisableLocalhostProtection: tc.disabled})
+			if err != nil {
+				t.Fatal(err)
+			}
+			req := httptest.NewRequest(http.MethodPost, "http://public.example/mcp", strings.NewReader(`{}`))
+			req.Host = "public.example"
+			req = req.WithContext(context.WithValue(req.Context(), http.LocalAddrContextKey, &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8080}))
+			req.Header.Set("Authorization", "Bearer test-token")
+			res := httptest.NewRecorder()
+			handler.ServeHTTP(res, req)
+			if tc.wantForbidden && res.Code != http.StatusForbidden {
+				t.Fatalf("status=%d, want 403", res.Code)
+			}
+			if !tc.wantForbidden && res.Code == http.StatusForbidden {
+				t.Fatalf("status=%d, protection still enabled", res.Code)
 			}
 		})
 	}
@@ -195,4 +293,37 @@ func exportEntries(t *testing.T, log *audit.Log) []audit.Entry {
 		entries = append(entries, e)
 	}
 	return entries
+}
+
+func TestReadinessChecksEachLocalDependency(t *testing.T) {
+	for _, state := range []string{"nil mapping", "nil audit", "closed mapping", "closed audit"} {
+		t.Run(state, func(t *testing.T) {
+			deps := testDeps(t)
+			switch state {
+			case "nil mapping":
+				deps.Store = nil
+			case "nil audit":
+				deps.Audit = nil
+			case "closed mapping":
+				if err := deps.Store.Close(); err != nil {
+					t.Fatal(err)
+				}
+			case "closed audit":
+				if err := deps.Audit.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			handler, err := New(deps, NewRegistry(), &Options{APIToken: "test-token"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for path, want := range map[string]int{"/readyz": 503, "/healthz": 200} {
+				res := httptest.NewRecorder()
+				handler.ServeHTTP(res, httptest.NewRequest(http.MethodGet, path, nil))
+				if res.Code != want {
+					t.Fatalf("%s status=%d, want %d", path, res.Code, want)
+				}
+			}
+		})
+	}
 }

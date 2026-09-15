@@ -10,4 +10,10 @@ services:
       - ./data:/data
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "/workiva-mcp", "healthcheck", "-url", "http://127.0.0.1:8080/readyz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
     restart: unless-stopped

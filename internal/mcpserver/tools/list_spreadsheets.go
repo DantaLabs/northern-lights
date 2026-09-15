@@ -74,6 +74,9 @@ func (listSpreadsheetsTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		}
 		out := make([]spreadsheetEntry, 0, len(spreadsheets))
 		for _, sp := range spreadsheets {
+			if deps.Cfg != nil && !deps.Cfg.SpreadsheetAllowed(sp.ID) {
+				continue
+			}
 			entry := spreadsheetEntry{
 				ID:     sp.ID,
 				Name:   sp.Name,
@@ -84,6 +87,9 @@ func (listSpreadsheetsTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 				entry.SyncedAt = sp.SyncedAt.UTC().Format(time.RFC3339)
 			}
 			for _, sh := range sp.Sheets {
+				if !resourceAllowed(deps, sp.ID, sh.ID) {
+					continue
+				}
 				entry.Sheets = append(entry.Sheets, listSheetsOutput{ID: sh.ID, Name: sh.Name})
 			}
 			out = append(out, entry)
@@ -99,6 +105,9 @@ func liveSpreadsheetEntries(ctx context.Context, deps mcpserver.Deps, spreadshee
 	}
 	out := make([]spreadsheetEntry, 0, len(spreadsheets))
 	for _, sp := range spreadsheets {
+		if deps.Cfg != nil && !deps.Cfg.SpreadsheetAllowed(sp.ID) {
+			continue
+		}
 		entry := spreadsheetEntry{
 			ID:     sp.ID,
 			Name:   sp.Name,
@@ -112,6 +121,9 @@ func liveSpreadsheetEntries(ctx context.Context, deps mcpserver.Deps, spreadshee
 				return nil, fmt.Errorf("list sheets for spreadsheet %q: %w", sp.ID, err)
 			}
 			for _, sh := range sheets {
+				if !resourceAllowed(deps, sp.ID, sh.ID) {
+					continue
+				}
 				entry.Sheets = append(entry.Sheets, listSheetsOutput{ID: sh.ID, Name: sh.Name})
 			}
 		}

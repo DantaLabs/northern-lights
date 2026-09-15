@@ -64,6 +64,9 @@ func (searchFieldsTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		ttl := cacheTTL(deps)
 		entries := make([]searchFieldsEntry, 0, len(fields))
 		for _, f := range fields {
+			if !resourceAllowed(deps, f.SpreadsheetID, f.SheetID) {
+				continue
+			}
 			entry := searchFieldsEntry{
 				Name:          f.Name,
 				SpreadsheetID: f.SpreadsheetID,

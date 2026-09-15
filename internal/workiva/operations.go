@@ -27,6 +27,14 @@ type operationError struct {
 	Message string `json:"message"`
 }
 
+// OperationFailedError means Workiva reported a documented terminal failed
+// status, so the mutation outcome is definite rather than unknown.
+type OperationFailedError struct{ ID, Message string }
+
+func (e *OperationFailedError) Error() string {
+	return fmt.Sprintf("operation %s failed: %s", e.ID, e.Message)
+}
+
 // WaitOperation polls an async operation URL until the operation
 // completes and returns the resourceUrl of the mutated resource.
 // Polling honors the Retry-After response header (defaulting to one
@@ -77,7 +85,7 @@ func (c *Client) WaitOperationWithInitialRetryAfter(ctx context.Context, opURL s
 			if op.Error != nil && op.Error.Message != "" {
 				msg = op.Error.Message
 			}
-			return "", fmt.Errorf("operation %s failed: %s", op.ID, msg)
+			return "", &OperationFailedError{ID: op.ID, Message: msg}
 		}
 
 		// The limiter (1 request/sec for operations) already paces polls;

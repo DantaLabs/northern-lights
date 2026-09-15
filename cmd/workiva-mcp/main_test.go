@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
+	"gopkg.in/yaml.v3"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +18,88 @@ import (
 
 	"github.com/dantalabs/northern-lights/internal/audit"
 )
+
+func TestDeploymentsUseBinaryReadinessHealthcheck(t *testing.T) {
+	dockerfile, err := os.ReadFile("../../deployments/Dockerfile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["/workiva-mcp", "healthcheck", "-url", "http://127.0.0.1:8080/readyz"]`
+	if !strings.Contains(string(dockerfile), want) {
+		t.Fatalf("Dockerfile lacks exact executable healthcheck:\n%s", want)
+	}
+	var compose struct {
+		Services map[string]struct {
+			Healthcheck struct {
+				Test []string `yaml:"test"`
+			} `yaml:"healthcheck"`
+		} `yaml:"services"`
+	}
+	data, err := os.ReadFile("../../deployments/docker-compose.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.Unmarshal(data, &compose); err != nil {
+		t.Fatalf("parse compose: %v", err)
+	}
+	got := compose.Services["workiva-mcp"].Healthcheck.Test
+	wantCommand := []string{"CMD", "/workiva-mcp", "healthcheck", "-url", "http://127.0.0.1:8080/readyz"}
+	if !reflect.DeepEqual(got, wantCommand) {
+		t.Fatalf("compose healthcheck = %#v, want %#v", got, wantCommand)
+	}
+}
+
+func TestDockerignoreExcludesSensitiveAndGeneratedContext(t *testing.T) {
+	data, err := os.ReadFile("../../.dockerignore")
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := map[string]bool{}
+	for _, line := range strings.Split(string(data), "\n") {
+		lines[strings.TrimSpace(line)] = true
+	}
+	for _, pattern := range []string{".git", "**/.env", "**/.env.*", "**/*.db", "**/*.db-wal", "**/*.db-shm", "deployments/data", "bin", "dist", "build"} {
+		if !lines[pattern] {
+			t.Errorf(".dockerignore missing required pattern %q", pattern)
+		}
+	}
+}
+
+func TestCheckHealthRequiresSuccessStatus(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		status  int
+		wantErr bool
+	}{
+		{name: "ready", status: http.StatusOK},
+		{name: "not ready", status: http.StatusServiceUnavailable, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+			}))
+			t.Cleanup(srv.Close)
+			err := checkHealth(context.Background(), srv.Client(), srv.URL)
+			if tc.wantErr && err == nil {
+				t.Fatal("checkHealth returned nil error")
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("checkHealth: %v", err)
+			}
+		})
+	}
+}
+
+func TestCheckHealthPropagatesTransportError(t *testing.T) {
+	want := errors.New("transport failed")
+	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, want
+	})}
+	if err := checkHealth(context.Background(), client, "http://health.invalid"); !errors.Is(err, want) {
+		t.Fatalf("checkHealth error = %v, want wrapped transport error", err)
+	}
+}
 
 func TestDemoModeEndToEnd(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "demo.db")

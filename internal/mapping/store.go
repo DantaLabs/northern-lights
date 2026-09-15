@@ -128,6 +128,9 @@ type Store struct {
 // File-backed databases enable WAL and a busy timeout so the store can
 // share one file with the audit log.
 func Open(path string) (*Store, error) {
+	if err := sqlitedb.PreparePrivateDatabase(path); err != nil {
+		return nil, fmt.Errorf("mapping: %w", err)
+	}
 	db, err := sql.Open("sqlite", sqlitedb.SharedFileDSN(path))
 	if err != nil {
 		return nil, fmt.Errorf("mapping: open %q: %w", path, err)
@@ -147,6 +150,11 @@ func Open(path string) (*Store, error) {
 // Close releases the underlying database handle.
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+// Ping verifies that the mapping database is reachable.
+func (s *Store) Ping(ctx context.Context) error {
+	return s.db.PingContext(ctx)
 }
 
 // UpsertSpreadsheet inserts or updates a spreadsheet by ID.
@@ -252,6 +260,35 @@ func (s *Store) UpsertField(ctx context.Context, f Field) (Field, error) {
 	return f, nil
 }
 
+// SyncMapping atomically upserts the spreadsheet, sheet, and complete field
+// batch produced by one mapping sync.
+func (s *Store) SyncMapping(ctx context.Context, sp Spreadsheet, sh Sheet, fields []Field) (err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("mapping: begin sync: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+	if _, err = tx.ExecContext(ctx, `INSERT INTO spreadsheets (id, name, region, synced_at) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, region=excluded.region, synced_at=excluded.synced_at`, sp.ID, sp.Name, sp.Region, formatTime(sp.SyncedAt)); err != nil {
+		return fmt.Errorf("mapping: sync spreadsheet %q: %w", sp.ID, err)
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO sheets (id, spreadsheet_id, name) VALUES (?, ?, ?) ON CONFLICT(id, spreadsheet_id) DO UPDATE SET name=excluded.name`, sh.ID, sh.SpreadsheetID, sh.Name); err != nil {
+		return fmt.Errorf("mapping: sync sheet %q: %w", sh.ID, err)
+	}
+	for _, f := range fields {
+		if _, err = tx.ExecContext(ctx, `INSERT INTO fields (spreadsheet_id, sheet_id, name, aliases, cell_range, field_type, description) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(spreadsheet_id, sheet_id, name) DO UPDATE SET aliases=excluded.aliases, cell_range=excluded.cell_range, field_type=excluded.field_type, description=excluded.description, updated_at=CURRENT_TIMESTAMP`, f.SpreadsheetID, f.SheetID, f.Name, f.Aliases, f.CellRange, f.FieldType, f.Description); err != nil {
+			return fmt.Errorf("mapping: sync field %q: %w", f.Name, err)
+		}
+	}
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("mapping: commit sync: %w", err)
+	}
+	return nil
+}
+
 const fieldColumns = `id, spreadsheet_id, sheet_id, name, aliases, cell_range, field_type, description`
 
 func scanField(rows interface {
@@ -285,8 +322,21 @@ func escapeLike(s string) string {
 
 // SearchFields returns fields matching query, ranked: exact name match
 // first, then names containing the query, then alias matches last.
-// Wildcard characters in the query are matched literally.
+// Wildcard characters in the query are matched literally. If the raw phrase
+// does not match, a normalized snake_case form is tried so natural language
+// such as "scope 2 energy" can match synced names like scope_2_energy_kwh.
 func (s *Store) SearchFields(ctx context.Context, query string) (out []Field, err error) {
+	out, err = s.searchFieldsLike(ctx, query)
+	if err != nil || len(out) > 0 {
+		return out, err
+	}
+	if normalized := normalizeSearchKey(query); normalized != "" && normalized != query && strings.Contains(query, " ") {
+		return s.searchFieldsLike(ctx, normalized)
+	}
+	return out, nil
+}
+
+func (s *Store) searchFieldsLike(ctx context.Context, query string) (out []Field, err error) {
 	like := "%" + escapeLike(query) + "%"
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT `+fieldColumns+` FROM fields
@@ -317,6 +367,25 @@ func (s *Store) SearchFields(ctx context.Context, query string) (out []Field, er
 		return nil, fmt.Errorf("mapping: search fields %q: %w", query, err)
 	}
 	return out, nil
+}
+
+func normalizeSearchKey(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	var b strings.Builder
+	lastUnderscore := false
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			lastUnderscore = false
+		default:
+			if b.Len() > 0 && !lastUnderscore {
+				b.WriteByte('_')
+				lastUnderscore = true
+			}
+		}
+	}
+	return strings.Trim(b.String(), "_")
 }
 
 // CacheCells upserts cell values into the snapshot cache.

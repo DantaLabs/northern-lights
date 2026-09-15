@@ -72,6 +72,14 @@ func cacheTTL(deps mcpserver.Deps) time.Duration {
 	return deps.Cfg.ReadCacheTTL
 }
 
+func resourceAllowed(deps mcpserver.Deps, spreadsheetID, sheetID string) bool {
+	return deps.Cfg == nil || deps.Cfg.ResourceAllowed(spreadsheetID, sheetID)
+}
+
+func denyResource(spreadsheetID, sheetID string) error {
+	return failMsg("resource is not allowed by policy", "ask the operator to update allowed_resources")
+}
+
 // cellText renders one cell for display. Formula detection applies only to
 // string values beginning with "="; other scalar values pass through safely.
 func cellText(c workiva.Cell) string {

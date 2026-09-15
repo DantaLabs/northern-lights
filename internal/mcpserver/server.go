@@ -35,6 +35,9 @@ type Options struct {
 	// Version is the server implementation version reported to MCP
 	// clients. Defaults to "dev".
 	Version string
+	// DisableLocalhostProtection permits non-localhost Host headers. It is
+	// intended only when a trusted HTTPS ingress cannot preserve localhost.
+	DisableLocalhostProtection bool
 }
 
 // New builds the MCP HTTP handler: an SDK server with every registered
@@ -51,6 +54,7 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 	if actorHeader == "" {
 		actorHeader = DefaultActorHeader
 	}
+	deps.ActorHeader = actorHeader
 	version := opts.Version
 	if version == "" {
 		version = "dev"
@@ -69,14 +73,36 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 		server.AddReceivingMiddleware(auditMiddleware(deps.Audit, actorHeader))
 	}
 
+	streamableOpts := &mcp.StreamableHTTPOptions{}
+	if opts.DisableLocalhostProtection {
+		// Public tunnels such as pinggy arrive with a non-localhost Host header.
+		// Bearer auth still gates /mcp; this only disables the SDK's DNS rebinding guard.
+		streamableOpts.DisableLocalhostProtection = true
+	}
 	mcpHandler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 		return server
-	}, nil)
+	}, streamableOpts)
 
 	mux := http.NewServeMux()
-	mux.Handle("/mcp", mcpHandler)
+	mux.Handle("/mcp", bearerAuthHandler(opts.APIToken, mcpHandler))
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok\n"))
+	})
+	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		if deps.Store == nil || deps.Audit == nil || deps.Store.Ping(r.Context()) != nil || deps.Audit.Ping(r.Context()) != nil {
+			http.Error(w, "not ready", http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ready\n"))
+	})
 
-	return bearerAuthHandler(opts.APIToken, mux), nil
+	return mux, nil
 }
 
 // auditMiddleware appends one audit entry per tools/call request. Tool
@@ -127,6 +153,9 @@ func sanitizeActor(v string) string {
 // ActorFromRequest extracts the sanitized caller identity from the
 // X-NL-Actor request header, falling back to DefaultActor.
 func ActorFromRequest(req mcp.Request, actorHeader string) string {
+	if actorHeader == "" {
+		actorHeader = DefaultActorHeader
+	}
 	if extra := req.GetExtra(); extra != nil {
 		if v := extra.Header.Get(actorHeader); v != "" {
 			return sanitizeActor(v)

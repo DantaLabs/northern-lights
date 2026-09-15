@@ -28,6 +28,13 @@ Scopes are configured by your Workiva workspace administrator.
   the audit log. Protect it like any sensitive data store.
 - No outbound traffic except to the Workiva API and its identity
   service. No telemetry, analytics, or phone-home behaviour.
+- `X-NL-Actor` is best-effort attribution supplied by the MCP caller. Treat it
+  as trusted identity only when an authenticated ingress overwrites it.
+- `NL_DISABLE_LOCALHOST_PROTECTION=true` disables the MCP SDK's DNS-rebinding
+  and Host-header protection. Use it only behind trusted authenticated HTTPS
+  ingress that validates the host and cannot preserve a localhost Host header.
+- The current security and storage model supports a single tenant and a single
+  replica. It does not isolate users or coordinate rate limits across replicas.
 
 ## Reporting vulnerabilities
 

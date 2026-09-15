@@ -9,6 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -42,6 +43,9 @@ func main() {
 func run() error {
 	if isAuditInvocation(os.Args[1:]) {
 		return runAudit(os.Args[2:], os.Stdout)
+	}
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		return runHealthcheck(os.Args[2:])
 	}
 
 	configPath := flag.String("config", "", "path to YAML config file (optional; NL_ env vars override)")
@@ -89,6 +93,34 @@ func run() error {
 		}
 		return err
 	}
+}
+
+func runHealthcheck(args []string) error {
+	fs := flag.NewFlagSet("healthcheck", flag.ContinueOnError)
+	endpoint := fs.String("url", "http://127.0.0.1:8080/readyz", "readiness URL")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return checkHealth(ctx, &http.Client{Timeout: 5 * time.Second}, *endpoint)
+}
+
+func checkHealth(ctx context.Context, client *http.Client, endpoint string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return fmt.Errorf("healthcheck request: %w", err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("healthcheck request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("healthcheck status %d", resp.StatusCode)
+	}
+	return nil
 }
 
 // buildServer loads configuration, opens the store and audit log, builds
@@ -231,7 +263,11 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		Store:  store,
 		Audit:  auditLog,
 		Cfg:    cfg,
-	}, registry, &mcpserver.Options{APIToken: apiToken, Version: version})
+	}, registry, &mcpserver.Options{
+		APIToken:                   apiToken,
+		Version:                    version,
+		DisableLocalhostProtection: cfg.DisableLocalhostProtection,
+	})
 	if err != nil {
 		cleanup()
 		return nil, nil, nil, err

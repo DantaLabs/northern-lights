@@ -71,6 +71,16 @@ or identity service and the MCP client.
    limited to 100,000 cells before it is sent to Workiva. This conservative
    cap prevents excessive memory use while supporting useful reporting ranges.
 
+6. **Deployment boundary.** The supported configuration is one tenant and one
+   replica. Actor headers are best-effort attribution unless a trusted,
+   authenticated ingress supplies and overwrites them. Multi-user isolation
+   and shared rate limiting are future work.
+
+7. **Resource governance.** An optional spreadsheet/sheet allowlist filters
+   discovery and local mapping/cache output and rejects reads, syncs, staging,
+   and confirmed writes before Workiva access. Missing policy preserves legacy
+   grant-wide access; configured policy fails closed outside its entries.
+
 ## 5. Data flows
 
 | Data | Source | Destination | Retention |
@@ -87,7 +97,33 @@ or identity service and the MCP client.
   confirm token, ensuring a human or the LLM explicitly approves each
   mutation.
 - Successful Workiva field updates include before and after values in their
-  mutation audit record; an audit append failure is returned to the caller.
+  mutation audit record. Completed writes and mapping syncs whose rich audit
+  append fails return `written_audit_failed` or `synced_audit_failed` with
+  reconciliation metadata and an explicit instruction not to retry blindly.
+- `workiva_update_field` exposes the following outcome contract:
+
+  | Status | Certainty and reconciliation metadata | Retry or restaging guidance |
+  |---|---|---|
+  | `awaiting_confirmation` | No mutation was submitted; exact target, `before`, intended `after_preview`, and single-use `confirm_token` are returned. | Safe to abandon; confirm after approval or restage for a new preview. |
+  | `written` | Workiva reported completion; exact target, `before`, `after`, and `workiva_op_url` are returned. | Do not retry; restage only for a new intentional change. |
+  | `written_audit_failed` | Workiva reported completion but the rich local audit append failed; exact target, `before`, `after`, and `workiva_op_url` are returned. | Do not retry or restage the same mutation; reconcile in Workiva history and preserve separate evidence. |
+  | `write_rejected` | The HTTP response establishes non-acceptance; exact target, `before`, intended `after_preview`, and an operation URL if available are returned. | Correct the request and restage before retrying. |
+  | `write_outcome_unknown` | Submission or polling did not establish the result and the mutation may have taken effect; exact target, `before`, intended `after_preview`, and `workiva_op_url` when known are returned. | Do not retry or restage until the target and operation are reconciled in Workiva. |
+  | `write_failed` | Workiva accepted the request and reported a terminal failed operation; exact target, `before`, intended `after_preview`, and `workiva_op_url` are returned. | Inspect and reconcile the failure, correct the cause, then restage. |
+
+  A terminal `write_failed` operation is distinct from
+  `write_outcome_unknown`: the latter means a submission or poll failure left
+  acceptance or completion uncertain. HTTP 5xx responses therefore remain
+  unknown and carry explicit do-not-retry guidance.
 - The audit log is verifiable: changing a stored row or deleting a row with a
   successor breaks the hash chain, and `audit verify` reports the first
   corrupted sequence number.
+
+### Mutation retry and reconciliation policy
+
+POST mutations retry only after explicit Workiva 401 or 429 responses. Under
+the Workiva contract these responses establish non-acceptance, so token refresh
+or waiting for Retry-After followed by resubmission cannot duplicate an accepted
+mutation. Transport failures, 5xx responses, and uncertainty after acceptance
+never trigger a second POST. Known operation URLs are retained on response
+decoding, body read/close, and initial wait failures for reconciliation.
