@@ -247,7 +247,9 @@ func TestListSpreadsheetsDecodesMetadataAndFollowsNextLink(t *testing.T) {
 		paths = append(paths, r.URL.RequestURI())
 		w.Header().Set("Content-Type", "application/json")
 		if r.URL.Path == "/spreadsheets" && r.URL.Query().Get("page") == "" {
-			if _, err := fmt.Fprintf(w, `{"data":[{"id":"sp-1","name":"Report","template":true,"created":"2026-01-01T00:00:00Z","modified":"2026-01-02T00:00:00Z"}],"@nextLink":%q}`, "http://"+r.Host+"/spreadsheets?page=2"); err != nil {
+			// The live Workiva 2026-01-01 API wraps timestamps in metadata
+			// objects rather than returning bare timestamp strings.
+			if _, err := fmt.Fprintf(w, `{"data":[{"id":"sp-1","name":"Report","template":true,"created":{"dateTime":"2026-01-01T00:00:00Z"},"modified":{"dateTime":"2026-01-02T00:00:00Z"}}],"@nextLink":%q}`, "http://"+r.Host+"/spreadsheets?page=2"); err != nil {
 				t.Errorf("write spreadsheets response: %v", err)
 			}
 		} else if r.URL.Path == "/spreadsheets" && r.URL.Query().Get("page") == "2" {
