@@ -371,7 +371,7 @@ func TestDebugHeaderLoggerRedactsAuthorization(t *testing.T) {
 		t.Fatalf("downstream handler did not receive the full body: %q", seenBody)
 	}
 	// sha256("secret123") starts with fcf730b6.
-	for _, want := range []string{"request_id=", "mcp_method=tools/call", "status=204", `error=""`, `user_agent="copilot-test/1.0"`, "key_sha256=fcf730b6", "User-Agent", `prefix="Bearer "`, "len=16", "Authorization", "Traceparent", "nl-actor=\"user@example.com\"", "traceparent=\"00-trace-span-01\"", "x-ms-correlation-id=\"corr-1\""} {
+	for _, want := range []string{"request_id=", "mcp_method=tools/call", "status=204", `error=""`, `user_agent="copilot-test/1.0"`, "key_sha256=fcf730b6", "User-Agent", "scheme=bearer", "len=16", "Authorization", "Traceparent", "nl-actor=\"user@example.com\"", "traceparent=\"00-trace-span-01\"", "x-ms-correlation-id=\"corr-1\""} {
 		if !strings.Contains(line, want) {
 			t.Errorf("log line lacks %q: %s", want, line)
 		}
@@ -485,6 +485,29 @@ func TestActorHeaderPrecedence(t *testing.T) {
 				t.Fatalf("audited actor = %q, want %q", got, tc.wantActor)
 			}
 		})
+	}
+}
+
+// TestDebugHeaderLoggerNeverLogsRawKeyCharacters covers a connector that
+// sends the raw key: no leading characters of it may reach the log.
+func TestDebugHeaderLoggerNeverLogsRawKeyCharacters(t *testing.T) {
+	for _, tc := range []struct{ header, scheme string }{
+		{"rawsecretvalue", "scheme=raw"},
+		{"bearer rawsecretvalue", "scheme=bearer"},
+		{"Basic rawsecretvalue", "scheme=other"},
+	} {
+		var buf bytes.Buffer
+		h := debugHeaderLogger(log.New(&buf, "", 0), http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+		req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader("{}"))
+		req.Header.Set("Authorization", tc.header)
+		h.ServeHTTP(httptest.NewRecorder(), req)
+		line := buf.String()
+		if strings.Contains(line, "rawsec") {
+			t.Fatalf("%q: log contains key characters: %s", tc.header, line)
+		}
+		if !strings.Contains(line, tc.scheme) || !strings.Contains(line, "key_sha256=") {
+			t.Fatalf("%q: log lacks %s or fingerprint: %s", tc.header, tc.scheme, line)
+		}
 	}
 }
 

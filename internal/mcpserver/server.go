@@ -316,15 +316,24 @@ const debugHeadersEnv = "NL_DEBUG_HEADERS"
 
 // debugHeaderLogger logs, for each request, a fresh request ID, every
 // incoming header name (values omitted), whether Authorization is present
-// with its first 7 characters and total length (never the key itself), the
+// with its scheme (bearer, raw or other), total length and an 8-character
+// SHA-256 fingerprint of the key (never any characters of the key), the
 // actor headers, and the tracing headers used to match Copilot activity
-// traces. The 7-character prefix is what distinguishes "Bearer " from a raw
-// key, so only enable this on a test server.
+// traces. Only enable this on a test server.
 func debugHeaderLogger(logger *log2.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authInfo, keyHash := "absent", "-"
 		if auth := r.Header.Get("Authorization"); auth != "" {
-			authInfo = fmt.Sprintf("present prefix=%q len=%d", auth[:min(7, len(auth))], len(auth))
+			// No characters of the value are logged: a connector that sends the
+			// raw key would otherwise expose the start of the key.
+			scheme := "raw"
+			if strings.Contains(strings.TrimSpace(auth), " ") {
+				scheme = "other"
+				if f := strings.Fields(auth); strings.EqualFold(f[0], "Bearer") {
+					scheme = "bearer"
+				}
+			}
+			authInfo = fmt.Sprintf("present scheme=%s len=%d", scheme, len(auth))
 			if key, ok := authorizationKey(auth); ok {
 				keyHash = keyFingerprint(key)
 			}
