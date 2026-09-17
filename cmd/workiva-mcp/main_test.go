@@ -17,6 +17,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
+	"github.com/dantalabs/northern-lights/internal/mcpserver"
 )
 
 func TestDeploymentsUseBinaryReadinessHealthcheck(t *testing.T) {
@@ -306,6 +307,7 @@ func bearerHTTPClient(token string) *http.Client {
 		Timeout: 30 * time.Second,
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			req.Header.Set("Authorization", "Bearer "+token)
+			req.Header.Set(mcpserver.ActorHeader, "demo-tester@example.com")
 			return http.DefaultTransport.RoundTrip(req)
 		}),
 	}

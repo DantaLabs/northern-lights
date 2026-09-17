@@ -19,13 +19,26 @@ import (
 	"github.com/dantalabs/northern-lights/internal/audit"
 )
 
-// DefaultActorHeader is the HTTP header carrying the calling user's identity
-// (for example a Copilot user UPN) when the fronting connector supplies one.
-// When absent, audit entries are attributed to DefaultActor.
+// ActorHeader is the primary HTTP header carrying the calling user's
+// identity (for example a Copilot user UPN) when the fronting connector
+// supplies one. It is lowercase and has no "X-" prefix because Copilot
+// Studio MCP connectors cannot send "X-" headers.
+//
+// TESTING ONLY. The value is asserted by whoever holds the API key and is
+// not verified by Northern Lights. For customer deployments the actor must
+// come from the OAuth token, never from a request header.
+const ActorHeader = "nl-actor"
+
+// DefaultActorHeader is the fallback actor header, consulted only when
+// ActorHeader is absent. Options.ActorHeader overrides the fallback name.
 const DefaultActorHeader = "X-NL-Actor"
 
-// DefaultActor is the audit actor when no actor header is present.
-const DefaultActor = "copilot"
+// DefaultActor is recorded on read operations when no valid actor header is
+// present. Write operations are refused instead (see auditMiddleware).
+const DefaultActor = "unknown"
+
+// maxActorLen bounds the recorded actor identity.
+const maxActorLen = 256
 
 // Options configures New. APIToken is required: an empty token refuses
 // startup rather than serving an unauthenticated endpoint.
@@ -129,13 +142,18 @@ var writeTools = map[string]bool{
 func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
 	return func(next mcp.MethodHandler) mcp.MethodHandler {
 		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
-			if method == "tools/call" {
-				tool, err := recordToolCall(ctx, log, actorHeader, req)
-				if err != nil {
-					log2.Printf("AUDIT FAILURE: could not record call to %q: %v", tool, err)
-					if writeTools[tool] {
-						return nil, fmt.Errorf("audit log unavailable, refusing unaudited write via %s: %w", tool, err)
-					}
+			params, ok := req.GetParams().(*mcp.CallToolParamsRaw)
+			if method != "tools/call" || !ok || params == nil {
+				return next(ctx, method, req)
+			}
+			actor := ActorFromRequest(req, actorHeader)
+			if writeTools[params.Name] && actor == DefaultActor {
+				return nil, fmt.Errorf("%s requires the %s header identifying the calling user; refusing unattributed write", params.Name, ActorHeader)
+			}
+			if err := recordToolCall(ctx, log, actor, params); err != nil {
+				log2.Printf("AUDIT FAILURE: could not record call to %q: %v", params.Name, err)
+				if writeTools[params.Name] {
+					return nil, fmt.Errorf("audit log unavailable, refusing unaudited write via %s: %w", params.Name, err)
 				}
 			}
 			return next(ctx, method, req)
@@ -144,47 +162,46 @@ func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
 }
 
 // sanitizeActor trims and validates an actor identity string. The identity
-// is asserted by the authenticated MCP client (the bearer token holder) and
-// is not independently verified; it is recorded for audit attribution only.
-// Overlong or control-character values fall back to DefaultActor.
+// is asserted by the authenticated MCP client (the API key holder) and is
+// not independently verified; it is recorded for audit attribution only.
+// Empty, overlong or control-character values are rejected as "".
 func sanitizeActor(v string) string {
 	v = strings.TrimSpace(v)
-	if v == "" || len(v) > 128 {
-		return DefaultActor
+	if v == "" || len(v) > maxActorLen {
+		return ""
 	}
 	for _, r := range v {
 		if r < 0x20 || r == 0x7f {
-			return DefaultActor
+			return ""
 		}
 	}
 	return v
 }
 
-// ActorFromRequest extracts the sanitized caller identity from the
-// X-NL-Actor request header, falling back to DefaultActor.
+// ActorFromRequest extracts the sanitized caller identity from the nl-actor
+// request header, then from the fallback header (X-NL-Actor unless
+// overridden), and returns DefaultActor when neither carries a valid value.
 func ActorFromRequest(req mcp.Request, actorHeader string) string {
 	if actorHeader == "" {
 		actorHeader = DefaultActorHeader
 	}
-	if extra := req.GetExtra(); extra != nil {
-		if v := extra.Header.Get(actorHeader); v != "" {
-			return sanitizeActor(v)
+	extra := req.GetExtra()
+	if extra == nil {
+		return DefaultActor
+	}
+	for _, name := range []string{ActorHeader, actorHeader} {
+		if v := sanitizeActor(extra.Header.Get(name)); v != "" {
+			return v
 		}
 	}
 	return DefaultActor
 }
 
-// recordToolCall appends one audit entry per tools/call request and returns
-// the tool name plus any append error. Tool names are recorded as both the
-// tool and the target when no more specific target can be derived from the
-// arguments; tools that perform Workiva mutations append their own richer
-// entries with before/after values.
-func recordToolCall(ctx context.Context, log *audit.Log, actorHeader string, req mcp.Request) (string, error) {
-	params, ok := req.GetParams().(*mcp.CallToolParamsRaw)
-	if !ok || params == nil {
-		return "", nil
-	}
-	actor := ActorFromRequest(req, actorHeader)
+// recordToolCall appends one audit entry per tools/call request. Tool names
+// are recorded as both the tool and the target when no more specific target
+// can be derived from the arguments; tools that perform Workiva mutations
+// append their own richer entries with before/after values.
+func recordToolCall(ctx context.Context, log *audit.Log, actor string, params *mcp.CallToolParamsRaw) error {
 	target := params.Name
 	if t := targetFromArguments(params.Arguments); t != "" {
 		target = t
@@ -195,7 +212,7 @@ func recordToolCall(ctx context.Context, log *audit.Log, actorHeader string, req
 		Action: "call",
 		Target: target,
 	})
-	return params.Name, err
+	return err
 }
 
 // targetFromArguments extracts a best-effort audit target from raw tool

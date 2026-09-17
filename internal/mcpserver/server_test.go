@@ -401,3 +401,71 @@ func TestDebugHeaderLoggingOnlyWithFlag(t *testing.T) {
 		})
 	}
 }
+
+// TestActorHeaderPrecedence covers nl-actor only, X-NL-Actor only, both
+// (nl-actor wins), and neither on a read (recorded as unknown) and on a
+// write (refused before the tool runs).
+func TestActorHeaderPrecedence(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		headers   map[string]string
+		tool      string
+		wantActor string
+		wantErr   bool
+	}{
+		{name: "nl-actor only", headers: map[string]string{ActorHeader: "a@example.com"}, tool: "echo", wantActor: "a@example.com"},
+		{name: "X-NL-Actor only", headers: map[string]string{DefaultActorHeader: "b@example.com"}, tool: "echo", wantActor: "b@example.com"},
+		{name: "both, nl-actor wins", headers: map[string]string{ActorHeader: "a@example.com", DefaultActorHeader: "b@example.com"}, tool: "echo", wantActor: "a@example.com"},
+		{name: "neither on read", headers: nil, tool: "echo", wantActor: DefaultActor},
+		{name: "neither on write", headers: nil, tool: "workiva_update_field", wantErr: true},
+		{name: "control character on write", headers: map[string]string{ActorHeader: "bad\tactor"}, tool: "workiva_update_field", wantErr: true},
+		{name: "overlong on read", headers: map[string]string{ActorHeader: strings.Repeat("a", maxActorLen+1)}, tool: "echo", wantActor: DefaultActor},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			deps := testDeps(t)
+			called := false
+			reg := NewRegistry()
+			reg.Register(echoTool{})
+			reg.Register(fakeWriteTool{called: &called})
+			handler, err := New(deps, reg, &Options{APIToken: "test-token"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			srv := httptest.NewServer(handler)
+			t.Cleanup(srv.Close)
+
+			headers := map[string]string{"Authorization": "Bearer test-token"}
+			for k, v := range tc.headers {
+				headers[k] = v
+			}
+			ctx := context.Background()
+			session, err := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "dev"}, nil).Connect(ctx,
+				&mcp.StreamableClientTransport{Endpoint: srv.URL + "/mcp", HTTPClient: clientWithHeaders(headers)}, nil)
+			if err != nil {
+				t.Fatalf("Connect: %v", err)
+			}
+			t.Cleanup(func() { _ = session.Close() })
+
+			_, err = session.CallTool(ctx, &mcp.CallToolParams{Name: tc.tool, Arguments: map[string]any{"message": "x", "name": "f", "value": "1"}})
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("write without actor succeeded")
+				}
+				if called {
+					t.Fatal("write tool executed without actor")
+				}
+				if n := len(exportEntries(t, deps.Audit)); n != 0 {
+					t.Fatalf("audit entries = %d, want none for a refused write", n)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("CallTool: %v", err)
+			}
+			entries := exportEntries(t, deps.Audit)
+			if got := entries[len(entries)-1].Actor; got != tc.wantActor {
+				t.Fatalf("audited actor = %q, want %q", got, tc.wantActor)
+			}
+		})
+	}
+}

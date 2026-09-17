@@ -59,7 +59,7 @@ func TestUnauditedWriteRefused(t *testing.T) {
 	client := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "dev"}, nil)
 	session, err := client.Connect(ctx, &mcp.StreamableClientTransport{
 		Endpoint:   srv.URL + "/mcp",
-		HTTPClient: bearerClient("test-token"),
+		HTTPClient: clientWithHeaders(map[string]string{"Authorization": "Bearer test-token", ActorHeader: "writer@example.com"}),
 	}, nil)
 	if err != nil {
 		t.Fatalf("Connect: %v", err)

@@ -178,30 +178,46 @@ func TestUpdateFieldRejectsMismatchedValue(t *testing.T) {
 	}
 }
 
-// TestSanitizeActorViaHeader covers the header validation rules through the
-// public middleware path: invalid identities fall back to the default actor.
-func TestSanitizeActorViaHeader(t *testing.T) {
+// TestOverlongActorRefusesWrite covers the header validation rules through
+// the public middleware path: an invalid identity on a write is refused
+// before the tool runs, and nothing reaches Workiva or the audit log.
+func TestOverlongActorRefusesWrite(t *testing.T) {
 	var edits [][]byte
 	env := newTestEnv(t, writeMock(t, &edits))
 	env.deps.Cfg.RequireWriteConfirmation = false
 	seedField(t, env)
 
-	res := callToolWithActor(t, env.deps, UpdateField(), strings.Repeat("a", 200), map[string]any{
-		"name":  "scope2_energy_kwh",
-		"value": "42",
-	})
-	if res.IsError {
-		t.Fatalf("write returned error: %+v", res.Content)
+	reg := mcpserver.NewRegistry()
+	reg.Register(UpdateField())
+	handler, err := mcpserver.New(env.deps, reg, &mcpserver.Options{APIToken: "test-token"})
+	if err != nil {
+		t.Fatalf("mcpserver.New: %v", err)
 	}
+	srv := httptest.NewServer(handler)
+	t.Cleanup(srv.Close)
+	ctx := context.Background()
+	session, err := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "dev"}, nil).Connect(ctx, &mcp.StreamableClientTransport{
+		Endpoint:   srv.URL + "/mcp",
+		HTTPClient: headerClient("test-token", strings.Repeat("a", 257)),
+	}, nil)
+	if err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
 
-	entries, err := env.deps.Audit.Recent(context.Background(), 10, "sp-1/sh-1/B3")
+	if _, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "workiva_update_field", Arguments: map[string]any{
+		"name": "scope2_energy_kwh", "value": "42",
+	}}); err == nil {
+		t.Fatal("write with an overlong actor succeeded")
+	}
+	if len(edits) != 0 {
+		t.Fatalf("Workiva received %d edits, want 0", len(edits))
+	}
+	entries, err := env.deps.Audit.Recent(ctx, 10, "")
 	if err != nil {
 		t.Fatalf("Audit.Recent: %v", err)
 	}
-	if len(entries) == 0 {
-		t.Fatal("no audit entry for the write")
-	}
-	if entries[0].Actor != mcpserver.DefaultActor {
-		t.Errorf("audit actor = %q, want fallback %q for overlong header", entries[0].Actor, mcpserver.DefaultActor)
+	if len(entries) != 0 {
+		t.Fatalf("audit entries = %d, want 0", len(entries))
 	}
 }
