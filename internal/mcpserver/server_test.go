@@ -26,7 +26,10 @@ func TestNewRequiresAPIToken(t *testing.T) {
 	}
 }
 
-func TestRequestWithoutBearerTokenRejected(t *testing.T) {
+// TestAuthorizationHeaderShapes covers the accepted and rejected forms of
+// the Authorization header. Accepted requests reach the MCP handler, which
+// answers a bare "{}" with a non-401 status; that is all this test needs.
+func TestAuthorizationHeaderShapes(t *testing.T) {
 	deps := testDeps(t)
 	handler, err := New(deps, NewRegistry(), &Options{APIToken: "test-token"})
 	if err != nil {
@@ -36,21 +39,27 @@ func TestRequestWithoutBearerTokenRejected(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	for _, tc := range []struct {
-		name   string
-		header string
+		name    string
+		header  *string
+		want401 bool
 	}{
-		{"no header", ""},
-		{"wrong token", "Bearer wrong"},
-		{"not bearer scheme", "Basic dGVzdA=="},
-		{"bare token without scheme", "test-token"},
+		{name: "bearer scheme", header: ptr("Bearer test-token")},
+		{name: "bearer scheme case-insensitive", header: ptr("bEaReR test-token")},
+		{name: "raw key without scheme", header: ptr("test-token")},
+		{name: "double bearer", header: ptr("Bearer Bearer test-token"), want401: true},
+		{name: "empty value", header: ptr(""), want401: true},
+		{name: "missing header", header: nil, want401: true},
+		{name: "other scheme", header: ptr("Basic dGVzdA=="), want401: true},
+		{name: "wrong key", header: ptr("Bearer wrong"), want401: true},
+		{name: "raw wrong key", header: ptr("wrong"), want401: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost, srv.URL+"/mcp", bytes.NewReader([]byte("{}")))
 			if err != nil {
 				t.Fatalf("NewRequest: %v", err)
 			}
-			if tc.header != "" {
-				req.Header.Set("Authorization", tc.header)
+			if tc.header != nil {
+				req.Header.Set("Authorization", *tc.header)
 			}
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
@@ -58,18 +67,20 @@ func TestRequestWithoutBearerTokenRejected(t *testing.T) {
 			}
 			t.Cleanup(func() {
 				if err := resp.Body.Close(); err != nil {
-					t.Errorf("close unauthorized response: %v", err)
+					t.Errorf("close response: %v", err)
 				}
 			})
 			if _, err := io.Copy(io.Discard, resp.Body); err != nil {
-				t.Fatalf("read unauthorized response: %v", err)
+				t.Fatalf("read response: %v", err)
 			}
-			if resp.StatusCode != http.StatusUnauthorized {
-				t.Fatalf("status = %d, want 401", resp.StatusCode)
+			if got := resp.StatusCode == http.StatusUnauthorized; got != tc.want401 {
+				t.Fatalf("status = %d, want 401=%v", resp.StatusCode, tc.want401)
 			}
 		})
 	}
 }
+
+func ptr(s string) *string { return &s }
 
 func TestHealthEndpointsDoNotRequireBearerToken(t *testing.T) {
 	deps := testDeps(t)

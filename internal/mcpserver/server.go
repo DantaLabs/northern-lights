@@ -241,16 +241,38 @@ func debugHeaderLogger(logger *log2.Logger, next http.Handler) http.Handler {
 	})
 }
 
-// bearerAuthHandler gates every request behind a bearer token compared in
-// constant time. The 401 body is plain text so accidental hits from browsers
-// are self-explanatory.
+// authorizationKey extracts the candidate key from an Authorization header
+// value. Accepted: "Bearer <key>" with the scheme matched case-insensitively,
+// and "<key>" alone in case the Copilot Studio connector sends the raw
+// value. Rejected: an empty value, "Bearer Bearer <key>", and any other
+// scheme. The returned key still has to be compared against the configured
+// one; this function only decides whether the shape is acceptable.
+func authorizationKey(header string) (string, bool) {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return "", false
+	}
+	scheme, rest, hasScheme := strings.Cut(header, " ")
+	if !hasScheme {
+		return header, true
+	}
+	rest = strings.TrimSpace(rest)
+	if !strings.EqualFold(scheme, "Bearer") || rest == "" || strings.HasPrefix(strings.ToLower(rest), "bearer ") {
+		return "", false
+	}
+	return rest, true
+}
+
+// bearerAuthHandler gates every request behind the API key compared in
+// constant time (see authorizationKey for the accepted header shapes). A
+// rejected request is answered here and never reaches the MCP server, so
+// no Workiva call can result from it. The 401 body is plain text so
+// accidental hits from browsers are self-explanatory.
 func bearerAuthHandler(token string, next http.Handler) http.Handler {
 	expected := []byte(token)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		const prefix = "Bearer "
-		auth := r.Header.Get("Authorization")
-		if !strings.HasPrefix(auth, prefix) ||
-			subtle.ConstantTimeCompare([]byte(auth[len(prefix):]), expected) != 1 {
+		key, ok := authorizationKey(r.Header.Get("Authorization"))
+		if !ok || subtle.ConstantTimeCompare([]byte(key), expected) != 1 {
 			w.Header().Set("WWW-Authenticate", `Bearer realm="northern-lights"`)
 			http.Error(w, "unauthorized: missing or invalid bearer token", http.StatusUnauthorized)
 			return
