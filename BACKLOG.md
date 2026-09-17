@@ -22,11 +22,13 @@ validated EU discovery, reads, mapping sync, confirmed writes, operation
 polling, read-back, restoration, the local 100,000-cell boundary, public HTTPS
 MCP transport, bearer rejection, actor propagation, and audit-chain integrity.
 
-Still open from that pass: controlled provider-side 429 validation, a real
-Copilot Studio connector/activity trace, a genuinely read-only Workiva grant,
-and all multi-user/horizontal governance. The multi-user negative baseline also
-proved that one actor can consume another actor's confirmation token under the
-current documented single-user design.
+Still open from that pass: controlled provider-side 429 validation, a genuinely
+read-only Workiva grant, and all multi-user/horizontal governance. The
+multi-user negative baseline also proved that one actor can consume another
+actor's confirmation token under the current documented single-user design.
+
+The Copilot Studio integration and auth milestone ran on 2026-09-17 (see item
+3). Four of its five checks passed; the second-user check is pending.
 
 1. **Live Workiva sandbox validation, partial**: live EU OAuth, discovery,
    narrow reads, mapping sync, confirmed writes, operation polling, read-back,
@@ -39,12 +41,50 @@ current documented single-user design.
 2. **Documents API out of scope for MVP**: Workiva Documents (prose editing)
    intentionally deferred to v0.2.
 
-3. **Copilot Studio auth header support**: bearer token middleware assumes
-   Copilot connectors can send a static Authorization header. Verify against
-   a real Copilot Studio MCP connector; may need a proxy shim.
+3. **Copilot Studio integration, partial**: validated 2026-09-17 in the
+   Developer environment `dev-as-d9867869` with a custom connector, agent
+   "Northern Lights test" (standard harness) and maker credentials, over a
+   Cloudflare Quick Tunnel. Setup and checks are in
+   [`docs/copilot-studio-test-runbook.md`](docs/copilot-studio-test-runbook.md).
 
-   External acceptance also requires verifying tool discovery, actor-header
-   propagation, and matching Copilot/Workiva activity traces with real access.
+   Passed:
+   - Authenticated MCP connector, discovery of all 7 tools and schemas. The
+     schema test found nothing to fix.
+   - Key flow: Copilot Studio sent the key both with and without `Bearer `.
+     The server accepts both and rejects other shapes with 401 before any
+     Workiva call. No proxy shim is needed.
+   - Write test on `scope_2_energy_kwh` (800, 12345, 800): 7 `nl_audit_id`
+     values matched audit records; the two confirmed writes carry Workiva
+     operations `a78a0b68-d397-40f7-a2a5-367338dc8e4a` and
+     `6c87e2d0-ae03-4f40-866b-6aa646583189`. Audit chain intact.
+   - Trace matching at time level: Application Insights showed 15 successful
+     Northern Lights calls (16:05 to 16:17 UTC) that line up by time, tool and
+     user with the audit log.
+
+   Remaining:
+   - **Second-user actor check**: `nl-actor` carried `System.User.Email` on
+     every call, but only one user was tested. Developer environments are
+     owner-only, so this moves to the Sandbox phase.
+   - **Exact trace matching (optional)**: Application Insights does not store
+     tool outputs, so `nl_audit_id` never appears there. Record `traceparent`
+     (already visible in the debug log) on the audit row to join Copilot
+     activity to audit records exactly instead of by time.
+   - **Stable public ingress**: the Quick Tunnel was deregistered by Cloudflare
+     after under 8 hours ("Tunnel not found"). The agent then answered from
+     other knowledge sources without reaching the server. Use a named tunnel or
+     real hosting for the Sandbox phase, and turn off web search and general
+     knowledge on test agents so tool outages are visible.
+   - **Unexplained update calls**: two `workiva_update_field` calls at 16:14
+     UTC (`b692c4e9-fc71-47a7-a1b4-e08dc05a5b3f`,
+     `362ebfeb-425c-417f-b493-21ed997ad830`) wrote nothing between the write
+     and the restore. Check their results in the Copilot activity view.
+   - **Runbook update**: fold the first-run findings into the runbook. Create
+     the agent as "Agente (Estándar)", not the GitHub Copilot harness (uses
+     Copilot Credits, cannot be changed later). Enter `nl-actor` as the formula
+     `=System.User.Email`, not text. Set tool credentials to maker mode
+     (`connectionProperties: mode: Maker`); invoker mode stalls on "Let's get
+     you connected first". The connector creator must build the agent. Step 3
+     should accept a raw key as well as `Bearer `.
 
 4. **Rate limits are process-local** (adversarial review ISSUE-017): the
    token-bucket limiter lives in the server process, so multiple replicas
@@ -56,12 +96,25 @@ current documented single-user design.
 5. **Multi-user governance**: add authenticated identities, user/tenant-scoped
    mappings and confirmation tokens, RBAC, and a shared limiter before serving
    multiple users, tenants, or replicas. Live characterization proved that a
-   token staged by one actor can currently be consumed by another actor.
+   token staged by one actor can currently be consumed by another actor. The
+   `nl-actor` header is a test-only identity asserted by the key holder; for
+   customers the actor must come from the OAuth (Entra ID) token.
 
 6. **MCP sessions are process-local**: the Go SDK's default stateful session
    map is not shared across replicas. Choose stateless mode or shared,
    tenant-bound session storage before horizontal deployment, and validate
    cross-replica continuation without sticky routing.
+
+7. **Debug log shows the start of a raw key**: with `NL_DEBUG_HEADERS=1` the
+   line logs the first 7 characters of `Authorization`. Copilot Studio can send
+   the raw key, so those characters are key material. Log only whether the
+   value starts with `Bearer ` plus its length and the 8-character SHA-256
+   fingerprint, which is already logged.
+
+8. **Rotate the test API key**: the current `NL_API_KEY` value was found in
+   plain text in four local agent session logs from 2026-09-14 and 15 (Codex
+   and Hermes), outside `deployments/.env`. Rotate it after the Copilot Studio
+   tests and remove those log copies.
 
 ## Closed by adversarial review pass
 
@@ -69,13 +122,32 @@ current documented single-user design.
    invalidates the cached token and retries once with a freshly fetched token
    after a 401 response. Repeated 401 responses return `APIError{401}`.
 
+## Closed by the Copilot Studio milestone (2026-09-17)
+
+- Redacted `/mcp` diagnostics behind `NL_DEBUG_HEADERS=1`: JSON-RPC method,
+  status and error text, User-Agent, header names, key length and fingerprint,
+  actor and tracing headers. Never the key or the request body.
+- Authorization accepts `Bearer <key>` (any case) or the raw key; empty,
+  double-`Bearer` and other schemes return 401 before the MCP handler.
+- Actor read from `nl-actor`, falling back to `X-NL-Actor`; trimmed, 256-char
+  cap, control characters rejected. Writes (preview and confirm) are refused
+  without an actor; reads record `unknown`.
+- `nl_audit_id` in every tool result (structured content and first text
+  block), stored on the audit row as `audit_id` and included in the hash chain.
+- Schema test fails on `$ref`, array-valued `type`, numeric exclusive bounds,
+  or a tool count other than 7; warns on enums.
+- `POST /mcp` answers `application/json` (no SSE); `GET /mcp` returns 405.
+- Connector OpenAPI file, `traces.kql`, `scripts/verify-mcp.sh` and the test
+  runbook added under `deployments/copilot-studio/`, `scripts/` and `docs/`.
+
 ## Disposition of the 2026-09-08 adversarial review (ADVERSARIAL_REVIEW.md)
 
 Fixed and verified by tests:
 
 - ISSUE-001 demo values endpoint returned data on parse error -> 400 now
 - ISSUE-002 PATCH/POST/PUT no longer retried on 5xx/transport (429 only)
-- ISSUE-003 write audit entries record the X-NL-Actor identity
+- ISSUE-003 write audit entries record the caller identity (now `nl-actor`,
+  falling back to `X-NL-Actor`)
 - ISSUE-004 workiva_op_url is part of the audit hash chain (both paths)
 - ISSUE-005 rate limiter Wait runs once per retry attempt
 - ISSUE-006 audit append failures logged loudly; write tools refused when
@@ -96,7 +168,8 @@ Fixed and verified by tests:
 - ISSUE-014 demo mode generates a random API token per run
 - ISSUE-015 expired pending writes cleaned at startup
 - ISSUE-016 schema_migrations table tracks applied versions per app
-- ISSUE-018 actor header sanitized (trim, 128-char cap, control chars)
+- ISSUE-018 actor header sanitized (trim, control chars; cap raised to 256
+  chars on 2026-09-17)
 - ISSUE-019 CI runs golangci-lint
 - ISSUE-020 repository published: github.com/DantaLabs/northern-lights
 
