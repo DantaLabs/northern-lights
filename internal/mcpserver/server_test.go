@@ -345,10 +345,14 @@ func TestReadinessChecksEachLocalDependency(t *testing.T) {
 // prefix/length, but never the key itself.
 func TestDebugHeaderLoggerRedactsAuthorization(t *testing.T) {
 	var buf bytes.Buffer
-	h := debugHeaderLogger(log.New(&buf, "", log.LstdFlags), http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	var seenBody string
+	h := debugHeaderLogger(log.New(&buf, "", log.LstdFlags), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		seenBody = string(b)
 		w.WriteHeader(http.StatusNoContent)
 	}))
-	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(
+		`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"echo","arguments":{"message":"body-secret"}}}`))
 	req.Header.Set("Authorization", "Bearer secret123")
 	req.Header.Set("nl-actor", "user@example.com")
 	req.Header.Set("traceparent", "00-trace-span-01")
@@ -359,7 +363,13 @@ func TestDebugHeaderLoggerRedactsAuthorization(t *testing.T) {
 	if strings.Contains(line, "secret123") {
 		t.Fatalf("log line leaks the key: %s", line)
 	}
-	for _, want := range []string{"request_id=", `prefix="Bearer "`, "len=16", "Authorization", "Traceparent", "nl-actor=\"user@example.com\"", "traceparent=\"00-trace-span-01\"", "x-ms-correlation-id=\"corr-1\""} {
+	if strings.Contains(line, "body-secret") {
+		t.Fatalf("log line leaks the request body: %s", line)
+	}
+	if !strings.Contains(seenBody, "body-secret") {
+		t.Fatalf("downstream handler did not receive the full body: %q", seenBody)
+	}
+	for _, want := range []string{"request_id=", "mcp_method=tools/call", `prefix="Bearer "`, "len=16", "Authorization", "Traceparent", "nl-actor=\"user@example.com\"", "traceparent=\"00-trace-span-01\"", "x-ms-correlation-id=\"corr-1\""} {
 		if !strings.Contains(line, want) {
 			t.Errorf("log line lacks %q: %s", want, line)
 		}
@@ -467,5 +477,28 @@ func TestActorHeaderPrecedence(t *testing.T) {
 				t.Fatalf("audited actor = %q, want %q", got, tc.wantActor)
 			}
 		})
+	}
+}
+
+func TestPeekJSONRPCMethod(t *testing.T) {
+	for _, tc := range []struct{ body, want string }{
+		{`{"jsonrpc":"2.0","id":1,"method":"initialize"}`, "initialize"},
+		{`{"jsonrpc":"2.0","method":"notifications/initialized"}`, "notifications/initialized"},
+		{`[{"jsonrpc":"2.0","id":1,"method":"tools/list"}]`, "batch"},
+		{`not json`, "unknown"},
+		{`{"jsonrpc":"2.0","id":1}`, "unknown"},
+		{strings.Repeat("x", maxPeekBody+1), "unread"},
+	} {
+		req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(tc.body))
+		if got := peekJSONRPCMethod(req); got != tc.want {
+			t.Errorf("body %.20q: method = %q, want %q", tc.body, got, tc.want)
+		}
+		rest, _ := io.ReadAll(req.Body)
+		if string(rest) != tc.body {
+			t.Errorf("body %.20q: not restored for the next handler", tc.body)
+		}
+	}
+	if got := peekJSONRPCMethod(httptest.NewRequest(http.MethodGet, "/mcp", nil)); got != "-" {
+		t.Errorf("GET: method = %q, want -", got)
 	}
 }

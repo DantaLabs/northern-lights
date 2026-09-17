@@ -1,11 +1,13 @@
 package mcpserver
 
 import (
+	"bytes"
 	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	log2 "log"
 	"maps"
 	"net/http"
@@ -321,8 +323,8 @@ func debugHeaderLogger(logger *log2.Logger, next http.Handler) http.Handler {
 		if auth := r.Header.Get("Authorization"); auth != "" {
 			authInfo = fmt.Sprintf("present prefix=%q len=%d", auth[:min(7, len(auth))], len(auth))
 		}
-		logger.Printf("nl-debug-headers request_id=%s method=%s header_names=%v authorization=%s nl-actor=%q x-nl-actor=%q traceparent=%q x-ms-client-request-id=%q x-ms-correlation-id=%q",
-			uuid.NewString(), r.Method, slices.Sorted(maps.Keys(r.Header)), authInfo,
+		logger.Printf("nl-debug-headers request_id=%s method=%s mcp_method=%s header_names=%v authorization=%s nl-actor=%q x-nl-actor=%q traceparent=%q x-ms-client-request-id=%q x-ms-correlation-id=%q",
+			uuid.NewString(), r.Method, peekJSONRPCMethod(r), slices.Sorted(maps.Keys(r.Header)), authInfo,
 			r.Header.Get("nl-actor"), r.Header.Get("X-NL-Actor"),
 			r.Header.Get("traceparent"), r.Header.Get("x-ms-client-request-id"), r.Header.Get("x-ms-correlation-id"))
 		next.ServeHTTP(w, r)
@@ -349,6 +351,42 @@ func authorizationKey(header string) (string, bool) {
 		return "", false
 	}
 	return rest, true
+}
+
+// maxPeekBody bounds how much of a request body the debug logger buffers to
+// find the JSON-RPC method. Larger bodies are logged as "unread".
+const maxPeekBody = 1 << 20
+
+// peekJSONRPCMethod returns the JSON-RPC method of a POST body without
+// logging the body: only the top-level "method" field is decoded, and the
+// body is put back for the MCP handler. A batch array is reported as
+// "batch", anything unparsable as "unknown".
+func peekJSONRPCMethod(r *http.Request) string {
+	if r.Method != http.MethodPost || r.Body == nil {
+		return "-"
+	}
+	data, err := io.ReadAll(io.LimitReader(r.Body, maxPeekBody+1))
+	_ = r.Body.Close()
+	if err != nil {
+		return "unread"
+	}
+	r.Body = io.NopCloser(bytes.NewReader(data))
+	if len(data) > maxPeekBody {
+		return "unread"
+	}
+	var msg struct {
+		Method string `json:"method"`
+	}
+	if err := json.Unmarshal(data, &msg); err != nil {
+		if bytes.HasPrefix(bytes.TrimSpace(data), []byte("[")) {
+			return "batch"
+		}
+		return "unknown"
+	}
+	if msg.Method == "" {
+		return "unknown"
+	}
+	return msg.Method
 }
 
 // bearerAuthHandler gates every request behind the API key compared in
