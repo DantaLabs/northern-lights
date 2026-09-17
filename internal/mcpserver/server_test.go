@@ -354,6 +354,7 @@ func TestDebugHeaderLoggerRedactsAuthorization(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(
 		`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"echo","arguments":{"message":"body-secret"}}}`))
 	req.Header.Set("Authorization", "Bearer secret123")
+	req.Header.Set("User-Agent", "copilot-test/1.0")
 	req.Header.Set("nl-actor", "user@example.com")
 	req.Header.Set("traceparent", "00-trace-span-01")
 	req.Header.Set("x-ms-correlation-id", "corr-1")
@@ -369,7 +370,8 @@ func TestDebugHeaderLoggerRedactsAuthorization(t *testing.T) {
 	if !strings.Contains(seenBody, "body-secret") {
 		t.Fatalf("downstream handler did not receive the full body: %q", seenBody)
 	}
-	for _, want := range []string{"request_id=", "mcp_method=tools/call", "status=204", `error=""`, `prefix="Bearer "`, "len=16", "Authorization", "Traceparent", "nl-actor=\"user@example.com\"", "traceparent=\"00-trace-span-01\"", "x-ms-correlation-id=\"corr-1\""} {
+	// sha256("secret123") starts with fcf730b6.
+	for _, want := range []string{"request_id=", "mcp_method=tools/call", "status=204", `error=""`, `user_agent="copilot-test/1.0"`, "key_sha256=fcf730b6", "User-Agent", `prefix="Bearer "`, "len=16", "Authorization", "Traceparent", "nl-actor=\"user@example.com\"", "traceparent=\"00-trace-span-01\"", "x-ms-correlation-id=\"corr-1\""} {
 		if !strings.Contains(line, want) {
 			t.Errorf("log line lacks %q: %s", want, line)
 		}
@@ -402,6 +404,9 @@ func TestDebugHeaderLoggingOnlyWithFlag(t *testing.T) {
 			req.Header.Set("Authorization", "Bearer secret123") // wrong key: 401
 			handler.ServeHTTP(httptest.NewRecorder(), req)
 			got := buf.String()
+			if tc.wantLog && !strings.Contains(got, "configured key_sha256="+keyFingerprint("test-token")) {
+				t.Fatalf("startup line lacks the configured key fingerprint: %q", got)
+			}
 			if tc.wantLog && !strings.Contains(got, `status=401 error="unauthorized: missing or invalid bearer token"`) {
 				t.Fatalf("debug line lacks status and error text: %q", got)
 			}

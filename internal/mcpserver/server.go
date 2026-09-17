@@ -3,7 +3,9 @@ package mcpserver
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -110,6 +112,7 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 		// Outside auth on purpose: a 401 from a malformed connector key is
 		// exactly the request Sam needs to see during Copilot Studio testing.
 		mcpEndpoint = debugHeaderLogger(log2.Default(), mcpEndpoint)
+		log2.Printf("nl-debug-headers configured key_sha256=%s (compare with key_sha256 on request lines)", keyFingerprint(opts.APIToken))
 	}
 
 	mux := http.NewServeMux()
@@ -319,18 +322,28 @@ const debugHeadersEnv = "NL_DEBUG_HEADERS"
 // key, so only enable this on a test server.
 func debugHeaderLogger(logger *log2.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authInfo := "absent"
+		authInfo, keyHash := "absent", "-"
 		if auth := r.Header.Get("Authorization"); auth != "" {
 			authInfo = fmt.Sprintf("present prefix=%q len=%d", auth[:min(7, len(auth))], len(auth))
+			if key, ok := authorizationKey(auth); ok {
+				keyHash = keyFingerprint(key)
+			}
 		}
 		mcpMethod := peekJSONRPCMethod(r) // before the handler consumes the body
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
-		logger.Printf("nl-debug-headers request_id=%s method=%s mcp_method=%s status=%d error=%q header_names=%v authorization=%s nl-actor=%q x-nl-actor=%q traceparent=%q x-ms-client-request-id=%q x-ms-correlation-id=%q",
-			uuid.NewString(), r.Method, mcpMethod, rec.status, rec.errorText(), slices.Sorted(maps.Keys(r.Header)), authInfo,
+		logger.Printf("nl-debug-headers request_id=%s method=%s mcp_method=%s status=%d error=%q user_agent=%q header_names=%v authorization=%s key_sha256=%s nl-actor=%q x-nl-actor=%q traceparent=%q x-ms-client-request-id=%q x-ms-correlation-id=%q",
+			uuid.NewString(), r.Method, mcpMethod, rec.status, rec.errorText(), r.UserAgent(), slices.Sorted(maps.Keys(r.Header)), authInfo, keyHash,
 			r.Header.Get("nl-actor"), r.Header.Get("X-NL-Actor"),
 			r.Header.Get("traceparent"), r.Header.Get("x-ms-client-request-id"), r.Header.Get("x-ms-correlation-id"))
 	})
+}
+
+// keyFingerprint returns the first 8 hex characters of SHA-256(key), enough
+// to tell two keys apart in a log without exposing either.
+func keyFingerprint(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])[:8]
 }
 
 // maxErrorText caps the response text kept for the debug line.
