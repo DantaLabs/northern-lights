@@ -150,15 +150,75 @@ func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
 			if writeTools[params.Name] && actor == DefaultActor {
 				return nil, fmt.Errorf("%s requires the %s header identifying the calling user; refusing unattributed write", params.Name, ActorHeader)
 			}
-			if err := recordToolCall(ctx, log, actor, params); err != nil {
+			auditID := uuid.NewString()
+			ctx = context.WithValue(ctx, auditIDKey{}, auditID)
+			if err := recordToolCall(ctx, log, actor, auditID, params); err != nil {
 				log2.Printf("AUDIT FAILURE: could not record call to %q: %v", params.Name, err)
 				if writeTools[params.Name] {
 					return nil, fmt.Errorf("audit log unavailable, refusing unaudited write via %s: %w", params.Name, err)
 				}
 			}
-			return next(ctx, method, req)
+			res, err := next(ctx, method, req)
+			if r, ok := res.(*mcp.CallToolResult); ok && r != nil {
+				attachAuditID(r, auditID)
+			}
+			return res, err
 		}
 	}
+}
+
+// auditIDKey is the context key under which the per-call audit ID travels
+// from the middleware to tool handlers.
+type auditIDKey struct{}
+
+// AuditIDFromContext returns the audit ID of the tools/call being handled,
+// or "" outside a tool call. Tools that append their own rich audit entries
+// (writes, syncs, reads) set it on those entries so every record produced
+// by one call shares the nl_audit_id returned to the client.
+func AuditIDFromContext(ctx context.Context) string {
+	id, _ := ctx.Value(auditIDKey{}).(string)
+	return id
+}
+
+// attachAuditID puts nl_audit_id into the structured content and the first
+// text content block of a tool result, so it is visible in Copilot Studio's
+// activity view and can be matched to the audit log.
+func attachAuditID(res *mcp.CallToolResult, id string) {
+	res.StructuredContent = withAuditID(res.StructuredContent, id)
+	if len(res.Content) == 0 {
+		res.Content = []mcp.Content{&mcp.TextContent{Text: string(res.StructuredContent.(json.RawMessage))}}
+		return
+	}
+	text, ok := res.Content[0].(*mcp.TextContent)
+	if !ok {
+		res.Content = append([]mcp.Content{&mcp.TextContent{Text: string(withAuditID(nil, id))}}, res.Content...)
+		return
+	}
+	var obj map[string]any
+	if json.Unmarshal([]byte(text.Text), &obj) == nil && obj != nil {
+		text.Text = string(withAuditID(obj, id))
+		return
+	}
+	text.Text += "\nnl_audit_id: " + id
+}
+
+// withAuditID re-encodes v with nl_audit_id added. A nil v becomes an
+// object holding only the ID; a non-object v is kept under "result".
+func withAuditID(v any, id string) json.RawMessage {
+	obj := map[string]any{}
+	if v != nil {
+		b, err := json.Marshal(v)
+		if err != nil || json.Unmarshal(b, &obj) != nil || obj == nil {
+			obj = map[string]any{"result": v}
+		}
+	}
+	obj["nl_audit_id"] = id
+	b, err := json.Marshal(obj)
+	if err != nil {
+		// Only reachable with an unmarshalable v; keep the ID at least.
+		return json.RawMessage(`{"nl_audit_id":"` + id + `"}`)
+	}
+	return b
 }
 
 // sanitizeActor trims and validates an actor identity string. The identity
@@ -201,16 +261,17 @@ func ActorFromRequest(req mcp.Request, actorHeader string) string {
 // are recorded as both the tool and the target when no more specific target
 // can be derived from the arguments; tools that perform Workiva mutations
 // append their own richer entries with before/after values.
-func recordToolCall(ctx context.Context, log *audit.Log, actor string, params *mcp.CallToolParamsRaw) error {
+func recordToolCall(ctx context.Context, log *audit.Log, actor, auditID string, params *mcp.CallToolParamsRaw) error {
 	target := params.Name
 	if t := targetFromArguments(params.Arguments); t != "" {
 		target = t
 	}
 	_, err := log.Append(ctx, audit.Entry{
-		Actor:  actor,
-		Tool:   params.Name,
-		Action: "call",
-		Target: target,
+		Actor:   actor,
+		Tool:    params.Name,
+		Action:  "call",
+		Target:  target,
+		AuditID: auditID,
 	})
 	return err
 }

@@ -37,8 +37,11 @@ type auditTrailInput struct {
 }
 
 type auditTrailOutput struct {
-	Count   int           `json:"count"`
-	Entries []audit.Entry `json:"entries"`
+	// NLAuditID is filled by the server middleware with the audit ID of this
+	// call; declared here so the advertised output schema allows it.
+	NLAuditID string        `json:"nl_audit_id,omitempty"`
+	Count     int           `json:"count"`
+	Entries   []audit.Entry `json:"entries"`
 }
 
 func (auditTrailTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {

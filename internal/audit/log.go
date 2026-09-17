@@ -46,6 +46,15 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 `
 
+// migration0002 adds the per-call audit ID returned to MCP clients as
+// nl_audit_id, so a Copilot activity trace can be matched to its row. It is
+// part of the hash input; rows written before this migration have an empty
+// ID and keep their original hash.
+const migration0002 = `ALTER TABLE audit_log ADD COLUMN audit_id TEXT;`
+
+// migrations lists every audit schema migration in order.
+var migrations = []string{migration0001, migration0002}
+
 // Entry is one audit log record. Seq, Ts, PrevHash, and Hash are assigned by
 // Append; the caller supplies the semantic fields.
 type Entry struct {
@@ -58,6 +67,7 @@ type Entry struct {
 	BeforeJSON   string    `json:"before_json,omitempty"`
 	AfterJSON    string    `json:"after_json,omitempty"`
 	WorkivaOpURL string    `json:"workiva_op_url,omitempty"`
+	AuditID      string    `json:"audit_id,omitempty"`
 	PrevHash     string    `json:"prev_hash"`
 	Hash         string    `json:"hash"`
 }
@@ -84,7 +94,7 @@ func Open(path string) (*Log, error) {
 	// Single connection: appends are serialized and SQLite never sees
 	// concurrent writers.
 	db.SetMaxOpenConns(1)
-	if migrateErr := sqlitedb.Migrate(context.Background(), db, "audit", []string{migration0001}); migrateErr != nil {
+	if migrateErr := sqlitedb.Migrate(context.Background(), db, "audit", migrations); migrateErr != nil {
 		if closeErr := db.Close(); closeErr != nil {
 			migrateErr = errors.Join(migrateErr, fmt.Errorf("audit: close after migrate failure: %w", closeErr))
 		}
@@ -98,7 +108,7 @@ func Open(path string) (*Log, error) {
 // Log is a no-op. Useful when the audit log shares one database (and one
 // transaction) with the mapping store.
 func NewWithDB(db *sql.DB) (*Log, error) {
-	if err := sqlitedb.Migrate(context.Background(), db, "audit", []string{migration0001}); err != nil {
+	if err := sqlitedb.Migrate(context.Background(), db, "audit", migrations); err != nil {
 		return nil, fmt.Errorf("audit: migrate: %w", err)
 	}
 	return &Log{db: db}, nil
@@ -119,8 +129,8 @@ func (l *Log) Ping(ctx context.Context) error {
 	return l.db.PingContext(ctx)
 }
 
-func entryHash(prevHash, ts, actor, tool, action, target, before, after, opURL string) string {
-	sum := sha256.Sum256([]byte(prevHash + ts + actor + tool + action + target + before + after + opURL))
+func entryHash(prevHash, ts, actor, tool, action, target, before, after, opURL, auditID string) string {
+	sum := sha256.Sum256([]byte(prevHash + ts + actor + tool + action + target + before + after + opURL + auditID))
 	return hex.EncodeToString(sum[:])
 }
 
@@ -144,11 +154,11 @@ func (l *Log) Append(ctx context.Context, e Entry) (Entry, error) {
 		prev = genesisHash
 	}
 
-	hash := entryHash(prev, tsStr, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL)
+	hash := entryHash(prev, tsStr, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, e.AuditID)
 	res, err := l.db.ExecContext(ctx,
-		`INSERT INTO audit_log (ts, actor, tool, action, target, before_json, after_json, workiva_op_url, prev_hash, hash)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		tsStr, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, prev, hash)
+		`INSERT INTO audit_log (ts, actor, tool, action, target, before_json, after_json, workiva_op_url, audit_id, prev_hash, hash)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		tsStr, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, e.AuditID, prev, hash)
 	if err != nil {
 		return Entry{}, fmt.Errorf("audit: append: %w", err)
 	}
@@ -196,26 +206,27 @@ func normalizeTs(v any) (string, error) {
 	}
 }
 
-const auditColumns = `seq, ts, actor, tool, action, target, before_json, after_json, workiva_op_url, prev_hash, hash`
+const auditColumns = `seq, ts, actor, tool, action, target, before_json, after_json, workiva_op_url, audit_id, prev_hash, hash`
 
 // scanEntry reads one audit row from an active cursor.
 func scanEntry(rows interface {
 	Scan(dest ...any) error
 }) (Entry, error) {
 	var (
-		e      Entry
-		tsRaw  any
-		before sql.NullString
-		after  sql.NullString
-		opURL  sql.NullString
-		actor  sql.NullString
-		tool   sql.NullString
-		action sql.NullString
-		target sql.NullString
-		prev   sql.NullString
-		hash   sql.NullString
+		e       Entry
+		tsRaw   any
+		before  sql.NullString
+		after   sql.NullString
+		opURL   sql.NullString
+		auditID sql.NullString
+		actor   sql.NullString
+		tool    sql.NullString
+		action  sql.NullString
+		target  sql.NullString
+		prev    sql.NullString
+		hash    sql.NullString
 	)
-	err := rows.Scan(&e.Seq, &tsRaw, &actor, &tool, &action, &target, &before, &after, &opURL, &prev, &hash)
+	err := rows.Scan(&e.Seq, &tsRaw, &actor, &tool, &action, &target, &before, &after, &opURL, &auditID, &prev, &hash)
 	if err != nil {
 		return Entry{}, err
 	}
@@ -246,6 +257,9 @@ func scanEntry(rows interface {
 	}
 	if opURL.Valid {
 		e.WorkivaOpURL = opURL.String
+	}
+	if auditID.Valid {
+		e.AuditID = auditID.String
 	}
 	if prev.Valid {
 		e.PrevHash = prev.String
@@ -316,19 +330,20 @@ func (l *Log) Verify(ctx context.Context) (err error) {
 	expectedPrev := genesisHash
 	for rows.Next() {
 		var (
-			e      Entry
-			tsRaw  any
-			before sql.NullString
-			after  sql.NullString
-			opURL  sql.NullString
-			actor  sql.NullString
-			tool   sql.NullString
-			action sql.NullString
-			target sql.NullString
-			prev   sql.NullString
-			hash   sql.NullString
+			e       Entry
+			tsRaw   any
+			before  sql.NullString
+			after   sql.NullString
+			opURL   sql.NullString
+			auditID sql.NullString
+			actor   sql.NullString
+			tool    sql.NullString
+			action  sql.NullString
+			target  sql.NullString
+			prev    sql.NullString
+			hash    sql.NullString
 		)
-		if err := rows.Scan(&e.Seq, &tsRaw, &actor, &tool, &action, &target, &before, &after, &opURL, &prev, &hash); err != nil {
+		if err := rows.Scan(&e.Seq, &tsRaw, &actor, &tool, &action, &target, &before, &after, &opURL, &auditID, &prev, &hash); err != nil {
 			return fmt.Errorf("audit: verify: scan row: %w", err)
 		}
 		ts, err := normalizeTs(tsRaw)
@@ -356,11 +371,14 @@ func (l *Log) Verify(ctx context.Context) (err error) {
 		if opURL.Valid {
 			e.WorkivaOpURL = opURL.String
 		}
+		if auditID.Valid {
+			e.AuditID = auditID.String
+		}
 
 		if !prev.Valid || prev.String != expectedPrev {
 			return fmt.Errorf("audit: chain broken at seq %d: prev_hash = %q, want %q", e.Seq, prev.String, expectedPrev)
 		}
-		want := entryHash(prev.String, ts, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL)
+		want := entryHash(prev.String, ts, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, e.AuditID)
 		if !hash.Valid || hash.String != want {
 			return fmt.Errorf("audit: chain broken at seq %d: stored hash %q, recomputed %q", e.Seq, hash.String, want)
 		}
@@ -394,6 +412,7 @@ func (l *Log) Export(w io.Writer) (err error) {
 			before,
 			after,
 			opURL,
+			auditID,
 			actor,
 			tool,
 			action,
@@ -401,7 +420,7 @@ func (l *Log) Export(w io.Writer) (err error) {
 			prev,
 			hash sql.NullString
 		)
-		if err := rows.Scan(&e.Seq, &tsRaw, &actor, &tool, &action, &target, &before, &after, &opURL, &prev, &hash); err != nil {
+		if err := rows.Scan(&e.Seq, &tsRaw, &actor, &tool, &action, &target, &before, &after, &opURL, &auditID, &prev, &hash); err != nil {
 			return fmt.Errorf("audit: export: scan row: %w", err)
 		}
 		ts, err := normalizeTs(tsRaw)
@@ -431,6 +450,9 @@ func (l *Log) Export(w io.Writer) (err error) {
 		}
 		if opURL.Valid {
 			e.WorkivaOpURL = opURL.String
+		}
+		if auditID.Valid {
+			e.AuditID = auditID.String
 		}
 		if prev.Valid {
 			e.PrevHash = prev.String

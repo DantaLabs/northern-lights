@@ -49,6 +49,9 @@ type updateFieldInput struct {
 }
 
 type updateFieldOutput struct {
+	// NLAuditID is filled by the server middleware with the audit ID of this
+	// call; declared here so the advertised output schema allows it.
+	NLAuditID     string `json:"nl_audit_id,omitempty"`
 	Status        string `json:"status"`
 	ConfirmToken  string `json:"confirm_token,omitempty"`
 	Field         string `json:"field"`
@@ -306,6 +309,7 @@ func auditWrite(ctx context.Context, deps mcpserver.Deps, actor string, field *m
 		BeforeJSON:   string(b),
 		AfterJSON:    string(a),
 		WorkivaOpURL: opURL,
+		AuditID:      mcpserver.AuditIDFromContext(ctx),
 	}); err != nil {
 		return fail(err, "the write succeeded but could not be recorded in the audit trail")
 	}

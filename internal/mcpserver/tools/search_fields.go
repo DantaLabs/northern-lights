@@ -41,7 +41,10 @@ type searchFieldsEntry struct {
 }
 
 type searchFieldsOutput struct {
-	Fields []searchFieldsEntry `json:"fields"`
+	// NLAuditID is filled by the server middleware with the audit ID of this
+	// call; declared here so the advertised output schema allows it.
+	NLAuditID string              `json:"nl_audit_id,omitempty"`
+	Fields    []searchFieldsEntry `json:"fields"`
 }
 
 func (searchFieldsTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
