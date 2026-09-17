@@ -10,17 +10,36 @@ them makes the test fail in a way that looks like a server problem.
 
 ## Before you start
 
-- [ ] Northern Lights is running on port 8090 with `NL_DEBUG_HEADERS=1` and
-      `NL_DISABLE_LOCALHOST_PROTECTION=true` (the tunnel host is not
-      localhost). `scripts/verify-mcp.sh` passes against
-      `http://localhost:8090/mcp`.
-- [ ] `cloudflared tunnel --url http://localhost:8090` is running and its log
-      shows the `https://<random>.trycloudflare.com` URL. `verify-mcp.sh`
-      passes against `https://<random>.trycloudflare.com/mcp`.
-- [ ] `deployments/copilot-studio/northern-lights-connector.local.yaml`
-      exists (git-ignored) and its `host` is the current tunnel hostname.
-      The committed `northern-lights-connector.yaml` keeps
-      `YOUR_TUNNEL_HOST`; never commit a real host.
+Start a session from the repo root:
+
+```
+scripts/test-session.sh start
+```
+
+It refuses to start if port 8090 is busy, `deployments/.env` is missing or
+`~/.cloudflared/config.yaml` exists. It then builds the server, starts it on
+8090 with `NL_DEBUG_HEADERS=1`, starts a Quick Tunnel, writes the git-ignored
+`deployments/copilot-studio/northern-lights-connector.local.yaml` with the
+real host, and runs `scripts/verify-mcp.sh` locally and through the tunnel.
+
+- [ ] Pass: `start` ends with "Ready." and prints the MCP URL, the connector
+      Host and the `configured key_sha256` fingerprint.
+- [ ] If the printed Host differs from the one in the Copilot Studio
+      connector, follow "If the tunnel URL changes" below.
+
+During the session:
+
+- `scripts/test-session.sh status` shows the processes, the URL, tunnel
+  health, and warns if Cloudflare dropped the tunnel.
+- `scripts/test-session.sh requests 10` lists the redacted `/mcp` requests
+  of the last 10 minutes: JSON-RPC method, status, key scheme and length,
+  whether the key fingerprint matches, User-Agent, `nl-actor` and error.
+- Audit records: `bin/workiva-mcp audit export -db ./northern-lights.db`,
+  and `bin/workiva-mcp audit verify -db ./northern-lights.db` for the chain.
+
+When done: `scripts/test-session.sh stop`. The committed
+`northern-lights-connector.yaml` keeps `YOUR_TUNNEL_HOST`; never commit a real
+host.
 
 Quick Tunnel limits: no SSE (the server answers POST with JSON and refuses
 GET with 405 for this reason), at most 200 requests in flight, no uptime
@@ -28,17 +47,17 @@ guarantee, and a new random URL on every restart.
 
 Cloudflare can also drop a Quick Tunnel while `cloudflared` keeps running.
 On 2026-09-17 it was deregistered after under 8 hours, and the log filled
-with `Tunnel not found`. Before each session, confirm the tunnel with
-`curl https://<random>.trycloudflare.com/healthz` (expect 200). If it fails,
-restart `cloudflared` and follow the section below.
+with `Tunnel not found`. Run `scripts/test-session.sh status` before each
+test prompt. If it warns or health is not 200, run `stop`, then `start`, and
+follow the section below.
 
-### If `cloudflared` restarts
+### If the tunnel URL changes
 
 The URL changes. Update the host in the custom connector (Power Apps,
 Custom connectors, Edit, General, Host), save the connector, then remove
 the Northern Lights tool from the agent and add it again. Connector changes
-take effect only after the tool is re-added. Also regenerate the
-`.local.yaml` copy so it matches.
+take effect only after the tool is re-added. `start` already rewrote the
+`.local.yaml` copy.
 
 A dead tunnel is easy to miss from the chat. If the agent has web search or
 general knowledge turned on, it answers from those sources instead of
@@ -87,13 +106,12 @@ reporting a tool error. Turn both off on the test agent.
       file; `X-` header names do not work with MCP connectors, which is why
       the header is `nl-actor`.
 - [ ] In the test chat, ask the agent to list the Workiva spreadsheets.
-- [ ] Pass: the server log (`nl-debug-headers` lines) shows a
-      `tools/call` with status 200, `authorization=present` with the key's
-      length (with or without a `Bearer ` prefix), `key_sha256` equal to the
-      `configured key_sha256` printed at startup, and `nl-actor` equal to the
-      signed-in user's email. The tool result shows an `nl_audit_id`.
-      A `key_sha256` that differs from the configured one means the
-      connection holds the wrong key, whatever the status.
+- [ ] Pass: `scripts/test-session.sh requests 10` shows a `tools/call` with
+      status 200, key `match` = yes (the connection holds the configured
+      key; `bearer` and `raw` schemes are both fine), and `nl-actor` equal to
+      the signed-in user's email. The tool result shows an `nl_audit_id`.
+      `match` = NO means the connection holds the wrong key, whatever the
+      status.
 - [ ] Decision: no proxy is needed if the header arrives in either accepted
       format. A proxy is needed only if `Authorization` is absent or
       mangled in the log.
@@ -149,6 +167,7 @@ Required setup from steps 1 to 3 there.
 ## Hand back
 
 Report: the tunnel URL used, which boxes passed, the actors seen in the log,
-and whether a proxy is needed. Leave `cloudflared` running; stopping it
-changes the URL, and the connector Host must then be updated and the tool
-re-added to the agent.
+and whether a proxy is needed. Keep the session running while testing
+continues; stopping the tunnel changes the URL, and the connector Host must
+then be updated and the tool re-added to the agent. Run
+`scripts/test-session.sh stop` when the test is over.

@@ -100,13 +100,7 @@ The Copilot Studio integration and auth milestone ran on 2026-09-17 (see item
    tenant-bound session storage before horizontal deployment, and validate
    cross-replica continuation without sticky routing.
 
-7. **Debug log shows the start of a raw key**: with `NL_DEBUG_HEADERS=1` the
-   line logs the first 7 characters of `Authorization`. Copilot Studio can send
-   the raw key, so those characters are key material. Log only whether the
-   value starts with `Bearer ` plus its length and the 8-character SHA-256
-   fingerprint, which is already logged.
-
-8. **Rotate the test API key**: the current `NL_API_KEY` value was found in
+7. **Rotate the test API key**: the current `NL_API_KEY` value was found in
    plain text in four local agent session logs from 2026-09-14 and 15 (Codex
    and Hermes), outside `deployments/.env`. Rotate it after the Copilot Studio
    tests and remove those log copies.
@@ -120,8 +114,13 @@ The Copilot Studio integration and auth milestone ran on 2026-09-17 (see item
 ## Closed by the Copilot Studio milestone (2026-09-17)
 
 - Redacted `/mcp` diagnostics behind `NL_DEBUG_HEADERS=1`: JSON-RPC method,
-  status and error text, User-Agent, header names, key length and fingerprint,
-  actor and tracing headers. Never the key or the request body.
+  status and error text, User-Agent, header names, key scheme, length and
+  8-character SHA-256 fingerprint, actor and tracing headers. No characters
+  of the key and never the request body. (An earlier version logged the first
+  7 characters, which exposed the start of raw keys; fixed.)
+- `scripts/test-session.sh start|status|requests|stop` runs a full local test
+  session: server, Quick Tunnel, local connector copy, verification, and a
+  redacted request table.
 - Authorization accepts `Bearer <key>` (any case) or the raw key; empty,
   double-`Bearer` and other schemes return 401 before the MCP handler.
 - Actor read from `nl-actor`, falling back to `X-NL-Actor`; trimmed, 256-char
