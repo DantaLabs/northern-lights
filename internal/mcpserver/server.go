@@ -7,10 +7,13 @@ import (
 	"errors"
 	"fmt"
 	log2 "log"
+	"maps"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
@@ -83,8 +86,15 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 		return server
 	}, streamableOpts)
 
+	var mcpEndpoint http.Handler = bearerAuthHandler(opts.APIToken, mcpHandler)
+	if os.Getenv(debugHeadersEnv) == "1" {
+		// Outside auth on purpose: a 401 from a malformed connector key is
+		// exactly the request Sam needs to see during Copilot Studio testing.
+		mcpEndpoint = debugHeaderLogger(log2.Default(), mcpEndpoint)
+	}
+
 	mux := http.NewServeMux()
-	mux.Handle("/mcp", bearerAuthHandler(opts.APIToken, mcpHandler))
+	mux.Handle("/mcp", mcpEndpoint)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -205,6 +215,30 @@ func targetFromArguments(raw json.RawMessage) string {
 		}
 	}
 	return ""
+}
+
+// debugHeadersEnv, when set to "1", enables one redacted log line per /mcp
+// request for connector diagnostics (Copilot Studio integration testing).
+const debugHeadersEnv = "NL_DEBUG_HEADERS"
+
+// debugHeaderLogger logs, for each request, a fresh request ID, every
+// incoming header name (values omitted), whether Authorization is present
+// with its first 7 characters and total length (never the key itself), the
+// actor headers, and the tracing headers used to match Copilot activity
+// traces. The 7-character prefix is what distinguishes "Bearer " from a raw
+// key, so only enable this on a test server.
+func debugHeaderLogger(logger *log2.Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authInfo := "absent"
+		if auth := r.Header.Get("Authorization"); auth != "" {
+			authInfo = fmt.Sprintf("present prefix=%q len=%d", auth[:min(7, len(auth))], len(auth))
+		}
+		logger.Printf("nl-debug-headers request_id=%s method=%s header_names=%v authorization=%s nl-actor=%q x-nl-actor=%q traceparent=%q x-ms-client-request-id=%q x-ms-correlation-id=%q",
+			uuid.NewString(), r.Method, slices.Sorted(maps.Keys(r.Header)), authInfo,
+			r.Header.Get("nl-actor"), r.Header.Get("X-NL-Actor"),
+			r.Header.Get("traceparent"), r.Header.Get("x-ms-client-request-id"), r.Header.Get("x-ms-correlation-id"))
+		next.ServeHTTP(w, r)
+	})
 }
 
 // bearerAuthHandler gates every request behind a bearer token compared in

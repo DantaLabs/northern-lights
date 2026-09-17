@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -323,6 +324,68 @@ func TestReadinessChecksEachLocalDependency(t *testing.T) {
 				if res.Code != want {
 					t.Fatalf("%s status=%d, want %d", path, res.Code, want)
 				}
+			}
+		})
+	}
+}
+
+// TestDebugHeaderLoggerRedactsAuthorization checks the diagnostic line
+// carries header names, actor and tracing values, and the Authorization
+// prefix/length, but never the key itself.
+func TestDebugHeaderLoggerRedactsAuthorization(t *testing.T) {
+	var buf bytes.Buffer
+	h := debugHeaderLogger(log.New(&buf, "", log.LstdFlags), http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
+	req.Header.Set("Authorization", "Bearer secret123")
+	req.Header.Set("nl-actor", "user@example.com")
+	req.Header.Set("traceparent", "00-trace-span-01")
+	req.Header.Set("x-ms-correlation-id", "corr-1")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	line := buf.String()
+	if strings.Contains(line, "secret123") {
+		t.Fatalf("log line leaks the key: %s", line)
+	}
+	for _, want := range []string{"request_id=", `prefix="Bearer "`, "len=16", "Authorization", "Traceparent", "nl-actor=\"user@example.com\"", "traceparent=\"00-trace-span-01\"", "x-ms-correlation-id=\"corr-1\""} {
+		if !strings.Contains(line, want) {
+			t.Errorf("log line lacks %q: %s", want, line)
+		}
+	}
+}
+
+// TestDebugHeaderLoggingOnlyWithFlag verifies New wires the logger only
+// when NL_DEBUG_HEADERS=1, and that the wired logger stays redacted.
+func TestDebugHeaderLoggingOnlyWithFlag(t *testing.T) {
+	var buf bytes.Buffer
+	prev := log.Writer()
+	log.SetOutput(&buf)
+	t.Cleanup(func() { log.SetOutput(prev) })
+
+	for _, tc := range []struct {
+		flag    string
+		wantLog bool
+	}{
+		{flag: "", wantLog: false},
+		{flag: "1", wantLog: true},
+	} {
+		t.Run("flag="+tc.flag, func(t *testing.T) {
+			buf.Reset()
+			t.Setenv(debugHeadersEnv, tc.flag)
+			handler, err := New(testDeps(t), NewRegistry(), &Options{APIToken: "test-token"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader("{}"))
+			req.Header.Set("Authorization", "Bearer secret123")
+			handler.ServeHTTP(httptest.NewRecorder(), req)
+			got := buf.String()
+			if strings.Contains(got, "nl-debug-headers") != tc.wantLog {
+				t.Fatalf("debug line logged=%v, want %v: %q", !tc.wantLog, tc.wantLog, got)
+			}
+			if strings.Contains(got, "secret123") {
+				t.Fatalf("log leaks the key: %q", got)
 			}
 		})
 	}
