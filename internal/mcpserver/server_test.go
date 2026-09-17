@@ -369,7 +369,7 @@ func TestDebugHeaderLoggerRedactsAuthorization(t *testing.T) {
 	if !strings.Contains(seenBody, "body-secret") {
 		t.Fatalf("downstream handler did not receive the full body: %q", seenBody)
 	}
-	for _, want := range []string{"request_id=", "mcp_method=tools/call", `prefix="Bearer "`, "len=16", "Authorization", "Traceparent", "nl-actor=\"user@example.com\"", "traceparent=\"00-trace-span-01\"", "x-ms-correlation-id=\"corr-1\""} {
+	for _, want := range []string{"request_id=", "mcp_method=tools/call", "status=204", `error=""`, `prefix="Bearer "`, "len=16", "Authorization", "Traceparent", "nl-actor=\"user@example.com\"", "traceparent=\"00-trace-span-01\"", "x-ms-correlation-id=\"corr-1\""} {
 		if !strings.Contains(line, want) {
 			t.Errorf("log line lacks %q: %s", want, line)
 		}
@@ -399,9 +399,12 @@ func TestDebugHeaderLoggingOnlyWithFlag(t *testing.T) {
 				t.Fatal(err)
 			}
 			req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader("{}"))
-			req.Header.Set("Authorization", "Bearer secret123")
+			req.Header.Set("Authorization", "Bearer secret123") // wrong key: 401
 			handler.ServeHTTP(httptest.NewRecorder(), req)
 			got := buf.String()
+			if tc.wantLog && !strings.Contains(got, `status=401 error="unauthorized: missing or invalid bearer token"`) {
+				t.Fatalf("debug line lacks status and error text: %q", got)
+			}
 			if strings.Contains(got, "nl-debug-headers") != tc.wantLog {
 				t.Fatalf("debug line logged=%v, want %v: %q", !tc.wantLog, tc.wantLog, got)
 			}

@@ -323,12 +323,42 @@ func debugHeaderLogger(logger *log2.Logger, next http.Handler) http.Handler {
 		if auth := r.Header.Get("Authorization"); auth != "" {
 			authInfo = fmt.Sprintf("present prefix=%q len=%d", auth[:min(7, len(auth))], len(auth))
 		}
-		logger.Printf("nl-debug-headers request_id=%s method=%s mcp_method=%s header_names=%v authorization=%s nl-actor=%q x-nl-actor=%q traceparent=%q x-ms-client-request-id=%q x-ms-correlation-id=%q",
-			uuid.NewString(), r.Method, peekJSONRPCMethod(r), slices.Sorted(maps.Keys(r.Header)), authInfo,
+		mcpMethod := peekJSONRPCMethod(r) // before the handler consumes the body
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rec, r)
+		logger.Printf("nl-debug-headers request_id=%s method=%s mcp_method=%s status=%d error=%q header_names=%v authorization=%s nl-actor=%q x-nl-actor=%q traceparent=%q x-ms-client-request-id=%q x-ms-correlation-id=%q",
+			uuid.NewString(), r.Method, mcpMethod, rec.status, rec.errorText(), slices.Sorted(maps.Keys(r.Header)), authInfo,
 			r.Header.Get("nl-actor"), r.Header.Get("X-NL-Actor"),
 			r.Header.Get("traceparent"), r.Header.Get("x-ms-client-request-id"), r.Header.Get("x-ms-correlation-id"))
-		next.ServeHTTP(w, r)
 	})
+}
+
+// maxErrorText caps the response text kept for the debug line.
+const maxErrorText = 200
+
+// statusRecorder captures the response status and, for responses other
+// than 200 and 202, the start of the server's own response text so the
+// debug line can name the error. Successful bodies are never kept.
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+	errBuf []byte
+}
+
+func (s *statusRecorder) WriteHeader(code int) {
+	s.status = code
+	s.ResponseWriter.WriteHeader(code)
+}
+
+func (s *statusRecorder) Write(b []byte) (int, error) {
+	if s.status != http.StatusOK && s.status != http.StatusAccepted && len(s.errBuf) < maxErrorText {
+		s.errBuf = append(s.errBuf, b[:min(len(b), maxErrorText-len(s.errBuf))]...)
+	}
+	return s.ResponseWriter.Write(b)
+}
+
+func (s *statusRecorder) errorText() string {
+	return strings.TrimSpace(string(s.errBuf))
 }
 
 // authorizationKey extracts the candidate key from an Authorization header
