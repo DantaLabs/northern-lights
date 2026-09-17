@@ -37,7 +37,7 @@ post() {
   body=$(cat "$work/body")
   local sid
   sid=$(awk 'tolower($1)=="mcp-session-id:" {print $2}' "$work/headers" | tr -d '\r' | tail -1)
-  [ -n "$sid" ] && session=$sid
+  if [ -n "$sid" ]; then session=$sid; fi
 }
 
 check() { # check <description> <condition-exit-code>
@@ -47,7 +47,7 @@ check() { # check <description> <condition-exit-code>
 post "$work/auth" '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"verify-mcp","version":"1"}}}'
 check "initialize returns 200 (got $status)" "$([ "$status" = 200 ]; echo $?)"
 check "initialize answers application/json, not SSE (got ${ctype:-none})" "$([[ "$ctype" == application/json* ]]; echo $?)"
-[ -n "$session" ] && echo "INFO: server issued Mcp-Session-Id (kept for the session)"
+if [ -n "$session" ]; then echo "INFO: server issued Mcp-Session-Id (kept for the session)"; fi
 
 post "$work/auth" '{"jsonrpc":"2.0","method":"notifications/initialized"}'
 check "notifications/initialized returns 202 (got $status)" "$([ "$status" = 202 ]; echo $?)"
