@@ -251,15 +251,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	workivaBackend := workivaprovider.NewRouter(client)
 
 	registry := mcpserver.NewRegistry()
-	for _, tool := range []mcpserver.Tool{
-		tools.ListSpreadsheets(),
-		tools.ReadRange(),
-		tools.SearchFields(),
-		tools.GetField(),
-		tools.UpdateField(),
-		tools.SyncMapping(),
-		tools.AuditTrail(),
-	} {
+	for _, tool := range tools.All() {
 		registry.Register(tool)
 	}
 
