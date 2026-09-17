@@ -89,7 +89,11 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 		server.AddReceivingMiddleware(auditMiddleware(deps.Audit, actorHeader))
 	}
 
-	streamableOpts := &mcp.StreamableHTTPOptions{}
+	// JSONResponse: answer POST /mcp with application/json instead of SSE.
+	// The public URL for Copilot Studio testing is a Cloudflare Quick
+	// Tunnel, which does not carry Server-Sent Events; the MCP Streamable
+	// HTTP spec allows either format.
+	streamableOpts := &mcp.StreamableHTTPOptions{JSONResponse: true}
 	if opts.DisableLocalhostProtection {
 		// Public tunnels such as pinggy arrive with a non-localhost Host header.
 		// Bearer auth still gates /mcp; this only disables the SDK's DNS rebinding guard.
@@ -108,6 +112,12 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 
 	mux := http.NewServeMux()
 	mux.Handle("/mcp", mcpEndpoint)
+	// No server-initiated SSE stream is offered (the spec permits 405 here),
+	// and a tunnel could not carry one anyway.
+	mux.HandleFunc("GET /mcp", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Allow", "POST, DELETE")
+		http.Error(w, "Method Not Allowed: this server offers no SSE stream", http.StatusMethodNotAllowed)
+	})
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
