@@ -44,7 +44,9 @@ The Copilot Studio integration and auth milestone ran on 2026-09-17 (see item
 3. **Copilot Studio integration, partial**: validated 2026-09-17 in the
    Developer environment `dev-as-d9867869` with a custom connector, agent
    "Northern Lights test" (standard harness) and maker credentials, over a
-   Cloudflare Quick Tunnel. Setup and checks are in
+   Cloudflare Quick Tunnel. Setup rules learned on the first run (standard
+   agent, `nl-actor` as a formula, maker credentials, connector creator builds
+   the agent) are in
    [`docs/copilot-studio-test-runbook.md`](docs/copilot-studio-test-runbook.md).
 
    Passed:
@@ -78,13 +80,6 @@ The Copilot Studio integration and auth milestone ran on 2026-09-17 (see item
      UTC (`b692c4e9-fc71-47a7-a1b4-e08dc05a5b3f`,
      `362ebfeb-425c-417f-b493-21ed997ad830`) wrote nothing between the write
      and the restore. Check their results in the Copilot activity view.
-   - **Runbook update**: fold the first-run findings into the runbook. Create
-     the agent as "Agente (Estándar)", not the GitHub Copilot harness (uses
-     Copilot Credits, cannot be changed later). Enter `nl-actor` as the formula
-     `=System.User.Email`, not text. Set tool credentials to maker mode
-     (`connectionProperties: mode: Maker`); invoker mode stalls on "Let's get
-     you connected first". The connector creator must build the agent. Step 3
-     should accept a raw key as well as `Bearer `.
 
 4. **Rate limits are process-local** (adversarial review ISSUE-017): the
    token-bucket limiter lives in the server process, so multiple replicas
