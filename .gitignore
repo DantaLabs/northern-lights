@@ -5,3 +5,5 @@ bin/
 *.db-wal
 .env
 deployments/.env
+deployments/copilot-studio/*.local.yaml
+deployments/copilot-studio/*.local.log
