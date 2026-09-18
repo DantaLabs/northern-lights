@@ -2,6 +2,18 @@
 
 ## Open
 
+0. **Official Workiva MCP readiness, Northern Lights remains primary**:
+   preserve the existing seven Northern Lights tools and REST implementation as
+   the default. The provider boundary in `internal/workivaprovider` permits read
+   and write capabilities to be replaced independently without changing public
+   tool schemas, mapping, confirmation, or audit behavior. Do not enable an
+   official-MCP route until its live contracts, identity, residency, errors,
+   audit correlation, rollback, and operational advantage pass the gates in
+   [`docs/WORKIVA_PROVIDER_STRATEGY.md`](docs/WORKIVA_PROVIDER_STRATEGY.md).
+   The authenticated EU gateway exposed its tool catalog, but `list_workspaces`
+   returned `access denied: this user is not enabled for the MCP gateway`.
+   Workiva must enable the test user before official-provider live acceptance.
+
 Validation evidence and the remaining acceptance plan are recorded in
 [`docs/validation/LIVE_VALIDATION_2026-09-15.md`](docs/validation/LIVE_VALIDATION_2026-09-15.md).
 Commit `26b136f` was not previously live-validated. The 2026-09-15 pass found

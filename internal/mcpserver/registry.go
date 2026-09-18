@@ -12,14 +12,14 @@ import (
 	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/config"
 	"github.com/dantalabs/northern-lights/internal/mapping"
-	"github.com/dantalabs/northern-lights/internal/workiva"
+	"github.com/dantalabs/northern-lights/internal/workivaprovider"
 )
 
 // Deps bundles the services available to tools. Fields may be nil in tests
 // that do not need them; tools should fail gracefully with a clear error
 // rather than panic when a dependency they require is missing.
 type Deps struct {
-	Client *workiva.Client
+	Client workivaprovider.Backend
 	Store  *mapping.Store
 	Audit  *audit.Log
 	Cfg    *config.Config
