@@ -26,6 +26,7 @@ import (
 	"github.com/dantalabs/northern-lights/internal/mcpserver/tools"
 	"github.com/dantalabs/northern-lights/internal/ratelimit"
 	"github.com/dantalabs/northern-lights/internal/workiva"
+	"github.com/dantalabs/northern-lights/internal/workivaprovider"
 )
 
 // version is set at build time via -ldflags.
@@ -244,6 +245,10 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		tokens := workiva.NewTokenProvider(baseURL, cfg.WorkivaClientID, cfg.WorkivaClientSecret, "file:read file:write", httpClient)
 		client = workiva.NewClient(baseURL, tokens, ratelimit.NewLimiter(), httpClient)
 	}
+	// Keep Northern Lights' proven REST implementation primary. The provider
+	// router is the transport seam for selectively adopting Workiva's official
+	// MCP capabilities later without changing our public tools or governance.
+	workivaBackend := workivaprovider.NewRouter(client)
 
 	registry := mcpserver.NewRegistry()
 	for _, tool := range []mcpserver.Tool{
@@ -259,7 +264,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	}
 
 	handler, err := mcpserver.New(mcpserver.Deps{
-		Client: client,
+		Client: workivaBackend,
 		Store:  store,
 		Audit:  auditLog,
 		Cfg:    cfg,
