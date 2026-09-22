@@ -107,7 +107,7 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 		return server
 	}, streamableOpts)
 
-	var mcpEndpoint http.Handler = bearerAuthHandler(opts.APIToken, mcpHandler)
+	mcpEndpoint := bearerAuthHandler(opts.APIToken, mcpHandler)
 	if os.Getenv(debugHeadersEnv) == "1" {
 		// Outside auth on purpose: a 401 from a malformed connector key is
 		// exactly the request Sam needs to see during Copilot Studio testing.
