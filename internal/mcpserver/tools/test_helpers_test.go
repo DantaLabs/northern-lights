@@ -131,10 +131,13 @@ func structuredContent(t *testing.T, result *mcp.CallToolResult) map[string]any 
 	return content
 }
 
+// bearerHTTPClient sends the bearer token plus a default nl-actor, since
+// write tools refuse calls without an actor.
 func bearerHTTPClient(token string) *http.Client {
 	return &http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			req.Header.Set("Authorization", "Bearer "+token)
+			req.Header.Set(mcpserver.ActorHeader, "tester@example.com")
 			return http.DefaultTransport.RoundTrip(req)
 		}),
 	}

@@ -39,6 +39,9 @@ type syncMappingInput struct {
 }
 
 type syncMappingOutput struct {
+	// NLAuditID is filled by the server middleware with the audit ID of this
+	// call; declared here so the advertised output schema allows it.
+	NLAuditID     string   `json:"nl_audit_id,omitempty"`
 	Status        string   `json:"status"`
 	SpreadsheetID string   `json:"spreadsheet_id"`
 	SheetID       string   `json:"sheet_id"`
@@ -220,6 +223,7 @@ func syncFields(ctx context.Context, deps mcpserver.Deps, in syncMappingInput, d
 		Action:    "sync",
 		Target:    in.SpreadsheetID + "/" + in.SheetID,
 		AfterJSON: `{"fields_count":` + strconv.Itoa(len(names)) + `}`,
+		AuditID:   mcpserver.AuditIDFromContext(ctx),
 	}); err != nil {
 		log.Printf("AUDIT RECOVERY REQUIRED: mappings updated for %s/%s but rich audit append failed: %v", in.SpreadsheetID, in.SheetID, err)
 		return names, true, nil

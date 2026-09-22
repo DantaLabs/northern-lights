@@ -216,7 +216,7 @@ func TestReadRangeActorVisibleUnderAllowlist(t *testing.T) {
 	for _, tc := range []struct{ header, actor, want string }{
 		{"X-NL-Actor", "reader@example.com", "reader@example.com"},
 		{"X-Verified-Actor", "custom@example.com", "custom@example.com"},
-		{"X-Verified-Actor", strings.Repeat("a", 200), mcpserver.DefaultActor},
+		{"X-Verified-Actor", strings.Repeat("a", 257), mcpserver.DefaultActor},
 		{"X-NL-Actor", "", mcpserver.DefaultActor},
 	} {
 		t.Run(tc.header+tc.want, func(t *testing.T) {

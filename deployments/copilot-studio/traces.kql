@@ -1,0 +1,9 @@
+// Copilot Studio test-chat events for the last hour (Application Insights,
+// Logs). Test-chat events carry designMode = "True". Match each tool call's
+// nl_audit_id against the Northern Lights audit log:
+//   ./bin/workiva-mcp audit export -db ./northern-lights.db | grep <nl_audit_id>
+customEvents
+| where timestamp > ago(1h)
+| where tostring(customDimensions['designMode']) == "True"
+| project timestamp, name, customDimensions
+| order by timestamp asc

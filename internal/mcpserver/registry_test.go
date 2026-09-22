@@ -148,9 +148,17 @@ func TestRegistryListAndCall(t *testing.T) {
 // bearerClient returns an HTTP client that attaches the bearer token to
 // every request, as an MCP client configured with static API-key auth would.
 func bearerClient(token string) *http.Client {
+	return clientWithHeaders(map[string]string{"Authorization": "Bearer " + token})
+}
+
+// clientWithHeaders returns an HTTP client that sets the given headers on
+// every request.
+func clientWithHeaders(headers map[string]string) *http.Client {
 	return &http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			req.Header.Set("Authorization", "Bearer "+token)
+			for k, v := range headers {
+				req.Header.Set(k, v)
+			}
 			return http.DefaultTransport.RoundTrip(req)
 		}),
 	}

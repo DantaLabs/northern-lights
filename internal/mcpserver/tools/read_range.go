@@ -38,6 +38,9 @@ type readRangeInput struct {
 }
 
 type readRangeOutput struct {
+	// NLAuditID is filled by the server middleware with the audit ID of this
+	// call; declared here so the advertised output schema allows it.
+	NLAuditID     string     `json:"nl_audit_id,omitempty"`
 	SpreadsheetID string     `json:"spreadsheet_id"`
 	SheetID       string     `json:"sheet_id"`
 	Range         string     `json:"range"`
@@ -89,10 +92,11 @@ func (readRangeTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 
 		target := fmt.Sprintf("%s/%s/%s", in.SpreadsheetID, in.SheetID, in.Range)
 		if _, err := deps.Audit.Append(ctx, audit.Entry{
-			Actor:  mcpserver.ActorFromRequest(req, deps.ActorHeader),
-			Tool:   "workiva_read_range",
-			Action: "read",
-			Target: target,
+			Actor:   mcpserver.ActorFromRequest(req, deps.ActorHeader),
+			Tool:    "workiva_read_range",
+			Action:  "read",
+			Target:  target,
+			AuditID: mcpserver.AuditIDFromContext(ctx),
 		}); err != nil {
 			return nil, readRangeOutput{}, fail(err, "the read succeeded but could not be audited")
 		}

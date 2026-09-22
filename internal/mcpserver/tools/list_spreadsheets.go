@@ -45,6 +45,9 @@ type spreadsheetEntry struct {
 }
 
 type listSpreadsheetsOutput struct {
+	// NLAuditID is filled by the server middleware with the audit ID of this
+	// call; declared here so the advertised output schema allows it.
+	NLAuditID    string             `json:"nl_audit_id,omitempty"`
 	Spreadsheets []spreadsheetEntry `json:"spreadsheets"`
 }
 

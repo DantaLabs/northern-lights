@@ -29,6 +29,9 @@ type getFieldInput struct {
 }
 
 type getFieldOutput struct {
+	// NLAuditID is filled by the server middleware with the audit ID of this
+	// call; declared here so the advertised output schema allows it.
+	NLAuditID     string    `json:"nl_audit_id,omitempty"`
 	Name          string    `json:"name"`
 	SpreadsheetID string    `json:"spreadsheet_id"`
 	SheetID       string    `json:"sheet_id"`
