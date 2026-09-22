@@ -30,6 +30,11 @@ actor's confirmation token under the current documented single-user design.
 The Copilot Studio integration and auth milestone ran on 2026-09-17 (see item
 3). Four of its five checks passed; the second-user check is pending.
 
+The Azure enterprise deployment milestone ran on 2026-09-18 (see item 8). It
+replaced the disposable Quick Tunnel with a stable Azure Container Apps
+endpoint and passed its live write round-trip. This entry closes the "stable
+public ingress" gap from item 3.
+
 1. **Live Workiva sandbox validation, partial**: live EU OAuth, discovery,
    narrow reads, mapping sync, confirmed writes, operation polling, read-back,
    restoration, and cap rejection are validated. Remaining: validate a truly
@@ -100,10 +105,56 @@ The Copilot Studio integration and auth milestone ran on 2026-09-17 (see item
    tenant-bound session storage before horizontal deployment, and validate
    cross-replica continuation without sticky routing.
 
-7. **Rotate the test API key**: the current `NL_API_KEY` value was found in
-   plain text in four local agent session logs from 2026-09-14 and 15 (Codex
-   and Hermes), outside `deployments/.env`. Rotate it after the Copilot Studio
-   tests and remove those log copies.
+7. **Rotate the test API key, partial**: `NL_API_KEY` was rotated 2026-09-22.
+   New value lives in `deployments/.env`, Key Vault `kv-nl-70cff1d0`, and the
+   Container App secret (revision `--rot1754`); the old key now returns 401 and
+   the full verify suite passes with the new key. Still open: the old value
+   remains in plain text in four local agent session logs from 2026-09-14/15
+   (Codex and Hermes) — remove those log copies. `NL_DEBUG_HEADERS=1` is still
+   enabled on the live Container App; disable it after the Sandbox acceptance
+   run (it is useful for the two-user trace). Workiva client secret rotation
+   is a separate Workiva-side step (regenerate the API grant secret, update
+   Key Vault + Container App secret).
+
+8. **Azure enterprise deployment, partial** (2026-09-18, previously
+   unrecorded): provisioned in subscription `Azure subscription 1`, resource
+   group `WorkivaTest`, Japan East: Container Registry
+   `northernlights70cff1d0`, Container Apps environment
+   `cae-northern-lights-test`, single-replica Container App
+   `ca-northern-lights` (image `northern-lights:test-fc065f5`, system-assigned
+   managed identity), Key Vault `kv-nl-70cff1d0` holding `nl-api-key`,
+   `nl-workiva-client-id`, `nl-workiva-client-secret` (mirrored as Container
+   App secrets), storage account `stnl70cff1d0`, Log Analytics workspace,
+   Application Insights `WorkivaMCP`. Stable endpoint:
+   `https://ca-northern-lights.braveriver-d67a1a27.japaneast.azurecontainerapps.io/mcp`.
+   Passed: `/healthz` and `/readyz` 200, unauthenticated `/mcp` 401, 7-tool
+   discovery, live Workiva discovery, and a full write round-trip
+   (`0 -> 987654 -> 0`) with two Workiva operation IDs and intact audit chain.
+   Re-verified healthy 2026-09-22. Remaining: run the full Copilot Studio
+   acceptance against this endpoint from the new Sandbox, reconcile the two
+   unexplained `workiva_update_field` calls from 2026-09-17, then rotate
+   credentials and disable debug logging (item 7).
+
+9. **Power Platform Sandbox created** (2026-09-22, operator-side):
+   `northern-lights-sandbox` (`e6e63f00-6b6a-eef0-a8a1-aa33522d53b0`), type
+   Sandbox, region Japan, Dataverse Yes, state Ready, agent
+   `Workiva_Sandbox_Test` created inside it. Billing plan `TestWorkiva` now
+   lists `Northern-Lights-Sandbox` as a target. Both Microsoft users are in
+   the environment and the agent was shared. Remaining: fix second-user actor
+   propagation and complete acceptance.
+
+10. **Copilot Sandbox two-user read test, closed with root cause**
+    (2026-09-22): Sigmundus@ (agent owner) called the server with
+    `nl-actor=Sigmundus@SicMundusInc.onmicrosoft.com`, HTTP 200. Sigmundo@
+    (second user) received the Workiva spreadsheet list through the same
+    shared maker connection, HTTP 200, but `nl-actor` was empty on every
+    request. Root cause identified by the operator: sigmundo@ has no
+    Microsoft 365 license, hence no mailbox, so `System.User.Email` evaluates
+    empty in Power Fx. Verdict: shared-connectivity PASS, two-user
+    attribution EXPLAINED-NOT-PROVEN. For unlicensed users the tool input
+    needs a fallback identity expression (for example `System.User.Id` or
+    `System.User.PrincipalName`) or Entra-backed principals (item 5). No
+    production multi-user claim is made.
 
 ## Closed by adversarial review pass
 

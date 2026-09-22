@@ -9,3 +9,6 @@ deployments/copilot-studio/*.local.yaml
 deployments/copilot-studio/*.local.log
 deployments/copilot-studio/*.local.pid
 deployments/copilot-studio/*.local.log.prev
+
+# Windows download metadata
+*.Zone.Identifier
