@@ -65,7 +65,7 @@ func (syncMappingTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 			return nil, syncMappingOutput{}, denyResource(in.SpreadsheetID, in.SheetID)
 		}
 
-		actor := mcpserver.ActorFromRequest(req, deps.ActorHeader)
+		actor := mcpserver.ActorFromContextOrRequest(ctx, req, deps.ActorHeader)
 		nameCol, valueCol, startRowIdx, err := syncArgs(in)
 		if err != nil {
 			return nil, syncMappingOutput{}, err

@@ -74,7 +74,7 @@ func (updateFieldTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 			return nil, updateFieldOutput{}, err
 		}
 
-		actor := mcpserver.ActorFromRequest(req, deps.ActorHeader)
+		actor := mcpserver.ActorFromContextOrRequest(ctx, req, deps.ActorHeader)
 
 		field, err := resolveField(ctx, deps, in.Name)
 		if err != nil {

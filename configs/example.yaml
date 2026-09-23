@@ -4,6 +4,14 @@
 # the mapping store at startup. Loading is idempotent: restarting the
 # server re-applies the same upserts without creating duplicates.
 #
+# Authentication is deployment configuration, not mapping data. The default is
+# NL_AUTH_MODE=api_key with NL_API_KEY set. For the single-tenant Entra mode,
+# configure NL_AUTH_MODE=entra plus the NL_ENTRA_* environment variables
+# documented in README.md; do not put tenant IDs, client IDs, or tokens here.
+# Tenant and audience values must be GUIDs. Set
+# NL_ENTRA_AUDIENCE="<API-client-ID-GUID>", while OAuth clients request
+# api://<API-client-ID>/<scope>; the API manifest must emit v2 access tokens.
+#
 # region is optional; it defaults to the server config region (eu).
 region: eu
 spreadsheets:

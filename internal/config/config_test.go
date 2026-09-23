@@ -3,9 +3,15 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/dantalabs/northern-lights/internal/identity"
 )
+
+const documentedEntraAudience = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 // configEnvKeys are the environment variables Load consults. Tests clear
 // them so the host environment cannot leak into assertions.
@@ -20,6 +26,245 @@ var configEnvKeys = []string{
 	"NL_WORKIVA_CLIENT_ID",
 	"NL_WORKIVA_CLIENT_SECRET",
 	"NL_DEMO_MODE",
+	"NL_AUTH_MODE",
+	"NL_ENTRA_TENANT_ID",
+	"NL_ENTRA_AUTHORITY",
+	"NL_ENTRA_AUDIENCE",
+	"NL_ENTRA_ALLOW_SUBJECT_FALLBACK",
+	"NL_ENTRA_SCOPE_PERMISSIONS",
+	"NL_ENTRA_ROLE_PERMISSIONS",
+	"NL_ENTRA_APP_CLIENT_PERMISSIONS",
+}
+
+func TestAuthModeDefaultsToAPIKey(t *testing.T) {
+	clearEnv(t)
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AuthMode != AuthModeAPIKey {
+		t.Fatalf("AuthMode = %q, want %q", cfg.AuthMode, AuthModeAPIKey)
+	}
+}
+
+func TestEntraConfigurationLoadsFromEnvironment(t *testing.T) {
+	clearEnv(t)
+	setValidEntraEnv(t)
+	t.Setenv("NL_ENTRA_ALLOW_SUBJECT_FALLBACK", "true")
+	cfg, err := Load(writeYAML(t, "auth_mode: api_key\n"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.AuthMode != AuthModeEntra {
+		t.Fatalf("AuthMode = %q, want entra env override", cfg.AuthMode)
+	}
+	if !cfg.EntraAllowSubjectFallback {
+		t.Fatal("subject fallback env flag was not loaded")
+	}
+	if cfg.EntraAudience != documentedEntraAudience {
+		t.Fatalf("EntraAudience = %q, want exact documented API client ID %q", cfg.EntraAudience, documentedEntraAudience)
+	}
+	wantScopes := map[string][]identity.Permission{"nl.read": {identity.PermissionWorkivaRead}}
+	if !reflect.DeepEqual(cfg.EntraScopePermissions, wantScopes) {
+		t.Fatalf("scope permissions = %#v, want %#v", cfg.EntraScopePermissions, wantScopes)
+	}
+	verifierConfig := cfg.EntraVerifierConfig()
+	if verifierConfig.TenantID != cfg.EntraTenantID || verifierConfig.Audience != cfg.EntraAudience || verifierConfig.Authority != cfg.EntraAuthority {
+		t.Fatalf("verifier config = %#v", verifierConfig)
+	}
+}
+
+func TestApplicationClientPermissionKeysAreCanonicalized(t *testing.T) {
+	clearEnv(t)
+	setValidEntraEnv(t)
+	t.Setenv("NL_ENTRA_ROLE_PERMISSIONS", `{"nl.reader":["workiva.read"]}`)
+	t.Setenv("NL_ENTRA_APP_CLIENT_PERMISSIONS", `{"{AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE}":["workiva.read"]}`)
+
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	const canonicalClientID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	want := map[string][]identity.Permission{canonicalClientID: {identity.PermissionWorkivaRead}}
+	if !reflect.DeepEqual(cfg.EntraAppClientPermissions, want) {
+		t.Fatalf("application client permissions = %#v, want %#v", cfg.EntraAppClientPermissions, want)
+	}
+
+	permissions, err := cfg.EntraVerifierConfig().Policy.PermissionsFor(identity.Principal{
+		TokenType:          identity.TokenTypeApplication,
+		AuthorizedClientID: canonicalClientID,
+		Roles:              []string{"nl.reader"},
+	})
+	if err != nil {
+		t.Fatalf("canonical client policy lookup: %v", err)
+	}
+	if !reflect.DeepEqual(permissions, []identity.Permission{identity.PermissionWorkivaRead}) {
+		t.Fatalf("permissions = %#v, want workiva.read", permissions)
+	}
+}
+
+func TestEntraGUIDConfigurationIsCanonicalized(t *testing.T) {
+	tests := []struct {
+		name          string
+		tenantID      string
+		audience      string
+		wantTenantID  string
+		wantAudience  string
+		wantAuthority string
+	}{
+		{
+			name:          "uppercase",
+			tenantID:      "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+			audience:      "FFFFFFFF-AAAA-BBBB-CCCC-DDDDDDDDDDDD",
+			wantTenantID:  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+			wantAudience:  "ffffffff-aaaa-bbbb-cccc-dddddddddddd",
+			wantAuthority: "https://login.microsoftonline.com/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0",
+		},
+		{
+			name:          "braced",
+			tenantID:      "{AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE}",
+			audience:      "{FFFFFFFF-AAAA-BBBB-CCCC-DDDDDDDDDDDD}",
+			wantTenantID:  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+			wantAudience:  "ffffffff-aaaa-bbbb-cccc-dddddddddddd",
+			wantAuthority: "https://login.microsoftonline.com/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/v2.0",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			clearEnv(t)
+			setValidEntraEnv(t)
+			t.Setenv("NL_ENTRA_TENANT_ID", tc.tenantID)
+			t.Setenv("NL_ENTRA_AUTHORITY", tc.wantAuthority)
+			t.Setenv("NL_ENTRA_AUDIENCE", tc.audience)
+
+			cfg, err := Load("")
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			if cfg.EntraTenantID != tc.wantTenantID {
+				t.Errorf("EntraTenantID = %q, want %q", cfg.EntraTenantID, tc.wantTenantID)
+			}
+			if cfg.EntraAudience != tc.wantAudience {
+				t.Errorf("EntraAudience = %q, want %q", cfg.EntraAudience, tc.wantAudience)
+			}
+
+			verifierConfig := cfg.EntraVerifierConfig()
+			if verifierConfig.TenantID != tc.wantTenantID {
+				t.Errorf("verifier TenantID = %q, want %q", verifierConfig.TenantID, tc.wantTenantID)
+			}
+			if verifierConfig.Audience != tc.wantAudience {
+				t.Errorf("verifier Audience = %q, want %q", verifierConfig.Audience, tc.wantAudience)
+			}
+		})
+	}
+}
+
+func TestEntraAudienceMustBeGUID(t *testing.T) {
+	for _, audience := range []string{"not-a-guid", "api://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"} {
+		t.Run(audience, func(t *testing.T) {
+			clearEnv(t)
+			setValidEntraEnv(t)
+			t.Setenv("NL_ENTRA_AUDIENCE", audience)
+
+			_, err := Load("")
+			if err == nil {
+				t.Fatal("Load succeeded; want fail-closed audience error")
+			}
+			if !strings.HasPrefix(err.Error(), "invalid NL_ENTRA_AUDIENCE: ") {
+				t.Fatalf("Load error = %q, want invalid NL_ENTRA_AUDIENCE prefix", err)
+			}
+		})
+	}
+}
+
+func TestEntraAuthorityRejectsNoncanonicalTenantPath(t *testing.T) {
+	clearEnv(t)
+	setValidEntraEnv(t)
+	t.Setenv("NL_ENTRA_TENANT_ID", "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE")
+	t.Setenv("NL_ENTRA_AUTHORITY", "https://login.microsoftonline.com/AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE/v2.0")
+
+	_, err := Load("")
+	if err == nil {
+		t.Fatal("Load succeeded; want fail-closed canonical-authority error")
+	}
+	const want = "NL_ENTRA_AUTHORITY must name the configured tenant's v2.0 issuer exactly"
+	if err.Error() != want {
+		t.Fatalf("Load error = %q, want %q", err, want)
+	}
+}
+
+func TestEntraConfigurationFailsClosed(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(t *testing.T)
+	}{
+		{name: "missing tenant", mutate: func(t *testing.T) { t.Setenv("NL_ENTRA_TENANT_ID", "") }},
+		{name: "missing authority", mutate: func(t *testing.T) { t.Setenv("NL_ENTRA_AUTHORITY", "") }},
+		{name: "missing audience", mutate: func(t *testing.T) { t.Setenv("NL_ENTRA_AUDIENCE", "") }},
+		{name: "missing authorization mapping", mutate: func(t *testing.T) { t.Setenv("NL_ENTRA_SCOPE_PERMISSIONS", "") }},
+		{name: "personal account tenant", mutate: func(t *testing.T) {
+			t.Setenv("NL_ENTRA_TENANT_ID", identity.PersonalMicrosoftAccountTenantID)
+			t.Setenv("NL_ENTRA_AUTHORITY", "https://login.microsoftonline.com/"+identity.PersonalMicrosoftAccountTenantID+"/v2.0")
+		}},
+		{name: "non Microsoft authority", mutate: func(t *testing.T) { t.Setenv("NL_ENTRA_AUTHORITY", "https://issuer.example/tenant/v2.0") }},
+		{name: "http authority", mutate: func(t *testing.T) {
+			t.Setenv("NL_ENTRA_AUTHORITY", "http://login.microsoftonline.com/11111111-1111-1111-1111-111111111111/v2.0")
+		}},
+		{name: "authority tenant mismatch", mutate: func(t *testing.T) {
+			t.Setenv("NL_ENTRA_AUTHORITY", "https://login.microsoftonline.com/99999999-9999-9999-9999-999999999999/v2.0")
+		}},
+		{name: "unknown permission", mutate: func(t *testing.T) { t.Setenv("NL_ENTRA_SCOPE_PERMISSIONS", `{"nl.read":["workiva.superuser"]}`) }},
+		{name: "role mapping without client policy", mutate: func(t *testing.T) {
+			t.Setenv("NL_ENTRA_SCOPE_PERMISSIONS", "")
+			t.Setenv("NL_ENTRA_ROLE_PERMISSIONS", `{"nl.reader":["workiva.read"]}`)
+		}},
+		{name: "client policy without role mapping", mutate: func(t *testing.T) {
+			t.Setenv("NL_ENTRA_APP_CLIENT_PERMISSIONS", `{"33333333-3333-3333-3333-333333333333":["workiva.read"]}`)
+		}},
+		{name: "client policy without role overlap", mutate: func(t *testing.T) {
+			t.Setenv("NL_ENTRA_ROLE_PERMISSIONS", `{"nl.reader":["workiva.read"]}`)
+			t.Setenv("NL_ENTRA_APP_CLIENT_PERMISSIONS", `{"33333333-3333-3333-3333-333333333333":["audit.read"]}`)
+		}},
+		{name: "malformed subject fallback", mutate: func(t *testing.T) { t.Setenv("NL_ENTRA_ALLOW_SUBJECT_FALLBACK", "sometimes") }},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			clearEnv(t)
+			setValidEntraEnv(t)
+			tc.mutate(t)
+			if _, err := Load(""); err == nil {
+				t.Fatal("Load succeeded; want fail-closed error")
+			}
+		})
+	}
+}
+
+func TestUnknownAuthModeAndPartialEntraSettingsFail(t *testing.T) {
+	t.Run("unknown auth mode", func(t *testing.T) {
+		clearEnv(t)
+		t.Setenv("NL_AUTH_MODE", "oauth")
+		if _, err := Load(""); err == nil {
+			t.Fatal("unknown auth mode accepted")
+		}
+	})
+	t.Run("partial settings in api key mode", func(t *testing.T) {
+		clearEnv(t)
+		t.Setenv("NL_ENTRA_AUDIENCE", documentedEntraAudience)
+		if _, err := Load(""); err == nil {
+			t.Fatal("partial Entra settings accepted in api_key mode")
+		}
+	})
+}
+
+func setValidEntraEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("NL_AUTH_MODE", "entra")
+	t.Setenv("NL_ENTRA_TENANT_ID", "11111111-1111-1111-1111-111111111111")
+	t.Setenv("NL_ENTRA_AUTHORITY", "https://login.microsoftonline.com/11111111-1111-1111-1111-111111111111/v2.0")
+	t.Setenv("NL_ENTRA_AUDIENCE", documentedEntraAudience)
+	t.Setenv("NL_ENTRA_SCOPE_PERMISSIONS", `{"nl.read":["workiva.read"]}`)
 }
 
 func TestAllowedResourcesYAMLAndJSONEnv(t *testing.T) {

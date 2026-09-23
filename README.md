@@ -45,13 +45,101 @@ synthetic. Connect any MCP client to `http://localhost:8080/mcp` to explore.
 
 ## Runtime configuration
 
-YAML supports `region`, `db_path`, `listen_addr`, `read_cache_ttl`,
+YAML supports `auth_mode`, `region`, `db_path`, `listen_addr`, `read_cache_ttl`,
 `require_write_confirmation`, `disable_localhost_protection`, and
 `allowed_resources`. Environment overrides are `NL_REGION`, `NL_DB_PATH`,
 `NL_LISTEN_ADDR`, `NL_READ_CACHE_TTL`, `NL_REQUIRE_WRITE_CONFIRMATION`,
 `NL_DISABLE_LOCALHOST_PROTECTION`, and `NL_ALLOWED_RESOURCES`, plus the
 environment-only credentials `NL_API_KEY`, `NL_WORKIVA_CLIENT_ID`, and
-`NL_WORKIVA_CLIENT_SECRET`, and `NL_DEMO_MODE`.
+`NL_WORKIVA_CLIENT_SECRET`, and `NL_DEMO_MODE`. `NL_AUTH_MODE` overrides YAML
+and defaults to `api_key`.
+
+### Entra authentication and permissions
+
+`auth_mode: api_key` preserves the Phase 1 shared-key behavior. `auth_mode: entra`
+validates a single tenant's Microsoft Entra access tokens through OIDC
+discovery and cached JWKS rotation. Entra identity and authorization settings
+are environment-only and startup fails if they are partial or unsafe:
+
+```bash
+export NL_AUTH_MODE=entra
+export NL_ENTRA_TENANT_ID="<tenant-guid>"
+export NL_ENTRA_AUTHORITY="https://login.microsoftonline.com/<tenant-guid>/v2.0"
+export NL_ENTRA_AUDIENCE="<API-client-ID-GUID>"
+export NL_ENTRA_SCOPE_PERMISSIONS='{"NorthernLights.Read":["workiva.read"]}'
+
+# Leave these unset for delegated-only deployments. Configure both only after
+# a real app-only token for this API proves that it contains idtyp: app:
+export NL_ENTRA_ROLE_PERMISSIONS='{"NorthernLights.Reader":["workiva.read"]}'
+export NL_ENTRA_APP_CLIENT_PERMISSIONS='{"<authorized-client-guid>":["workiva.read"]}'
+```
+
+Set the API app registration manifest's `requestedAccessTokenVersion` to `2`;
+Northern Lights requires the tenant-specific `/v2.0` issuer. OAuth clients
+request a delegated scope as `api://<API-client-ID>/<scope>` (or the API's
+`api://<API-client-ID>/.default` grant where appropriate), but that scope
+identifier is not the token audience configured above. For a v2 access token,
+Entra emits the API application's client-ID GUID in `aud`, so
+`NL_ENTRA_AUDIENCE` must be that GUID. Northern Lights compares `aud` exactly
+and does not translate an `api://` Application ID URI into a GUID.
+`NL_ENTRA_TENANT_ID` and `NL_ENTRA_AUDIENCE` must both be UUIDs and are stored
+in lowercase hyphenated form. `NL_ENTRA_AUTHORITY` must already contain that
+canonical tenant path exactly; a differently cased or otherwise noncanonical
+path is rejected rather than rewritten.
+
+For app-only support, merge this claim object into the API/resource app
+registration manifest's existing `optionalClaims.accessToken` array. Preserve
+every existing optional claim; do not replace the array with only this entry:
+
+```json
+{
+  "optionalClaims": {
+    "accessToken": [
+      {
+        "name": "idtyp",
+        "source": null,
+        "essential": false,
+        "additionalProperties": []
+      }
+    ]
+  }
+}
+```
+
+Microsoft documents `idtyp` as the most accurate distinction between an app
+token and an app-plus-user token and emits `app` for app-only tokens. Access
+token optional claims must be configured on the resource/API registration
+that owns the token. See Microsoft's
+[Optional claims reference](https://learn.microsoft.com/en-us/entra/identity-platform/optional-claims-reference)
+and [claims-validation guidance](https://learn.microsoft.com/en-us/entra/identity-platform/claims-validation).
+Delegated-only deployments do not need `NL_ENTRA_ROLE_PERMISSIONS` or
+`NL_ENTRA_APP_CLIENT_PERMISSIONS`. Do not enable app-only mappings until a real
+access token issued for this API has been inspected and proves `idtyp` is
+exactly `app`; this repository has not completed that live acceptance gate.
+
+The complete permission vocabulary is `workiva.read`,
+`workiva.write.preview`, `workiva.write.confirm`, `mapping.sync`, `audit.read`,
+and `tenant.admin`. Delegated tokens receive permissions only through `scp`;
+app-only tokens additionally require `idtyp` to be exactly `app` and receive
+permissions only through the intersection of `roles` and the explicit
+authorized-client policy. Entra mode accepts only `Bearer` access tokens and
+never falls back to `NL_API_KEY` after JWT failure.
+
+Entra-mode Streamable HTTP is intentionally stateless in Wave 1. It neither
+issues nor relies on `Mcp-Session-Id`; every request revalidates the bearer
+token and its permissions. API-key mode retains its existing stateful MCP
+session behavior for compatibility. Stateful Entra sessions must not be
+enabled unless a future shared, tenant-bound session store passes
+cross-principal and cross-replica acceptance testing.
+
+Signature, RS256 algorithm, key ID/key, exact issuer and audience, `exp`,
+`nbf`, tenant, `sub`, and immutable object identity are validated before MCP
+execution. Audit identity is `<tid>/<oid>`; email, UPN,
+`preferred_username`, `unique_name`, `nl-actor`, and `X-NL-Actor` are never
+authorization inputs. `NL_ENTRA_ALLOW_SUBJECT_FALLBACK=true` explicitly permits
+the documented `<tid>/sub:<sub>` fallback when `oid` is unavailable; it is off
+by default. Health and readiness probes remain anonymous and disclose no
+identity configuration.
 
 The optional resource policy is a map from spreadsheet IDs to allowed sheet
 IDs. Use `*` to permit every sheet in one spreadsheet:
@@ -89,7 +177,9 @@ API connectivity. This separate live smoke procedure has not been run here.
 The container probe runs `/workiva-mcp healthcheck -url http://127.0.0.1:8080/readyz`;
 if the listen address changes, update the probe URL and port mapping together.
 
-The supported deployment boundary is one tenant and one replica.
+The supported deployment boundary remains one tenant and one replica. Wave 1
+adds trusted principals and tool authorization, but tenant-scoped database
+records and actor-bound confirmation tokens are deferred to Phase 2 Wave 2.
 
 ## Tool catalog
 
