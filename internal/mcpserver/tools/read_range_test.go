@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
@@ -77,7 +78,7 @@ func TestReadRangeFetchesGridAndCachesCells(t *testing.T) {
 
 	// Fetched cells must be cached so later reads can be served from the
 	// snapshot store.
-	cached, err := env.deps.Store.GetCachedCells(context.Background(), "sp-1", "sh-1", 0)
+	cached, err := env.deps.Store.GetCachedCells(context.Background(), "sp-1", "sh-1", time.Minute)
 	if err != nil {
 		t.Fatalf("GetCachedCells: %v", err)
 	}
@@ -124,7 +125,7 @@ func TestReadRangeCachesUnboundedRowsFromZeroOrigin(t *testing.T) {
 	if result.IsError {
 		t.Fatalf("tool returned error: %+v", result.Content)
 	}
-	cached, err := env.deps.Store.GetCachedCells(context.Background(), "sp-1", "sh-1", 0)
+	cached, err := env.deps.Store.GetCachedCells(context.Background(), "sp-1", "sh-1", time.Minute)
 	if err != nil {
 		t.Fatalf("GetCachedCells: %v", err)
 	}
@@ -152,7 +153,7 @@ func TestReadRangePreservesCoordinatesAcrossPages(t *testing.T) {
 	if result.IsError {
 		t.Fatalf("tool returned error: %+v", result.Content)
 	}
-	cached, err := env.deps.Store.GetCachedCells(context.Background(), "sp-1", "sh-1", 0)
+	cached, err := env.deps.Store.GetCachedCells(context.Background(), "sp-1", "sh-1", time.Minute)
 	if err != nil {
 		t.Fatalf("GetCachedCells: %v", err)
 	}

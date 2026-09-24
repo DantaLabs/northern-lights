@@ -332,6 +332,10 @@ Remaining risks and acceptance limits:
   tenant chain is undetectable, and an entire chain made only of v1 rows can be
   relabeled wholesale as documented above.
 
+## Wave 2 PR CI follow-up (2026-09-24)
+
+- The first PR #8 `test` run failed in `TestReadRangeCachesUnboundedRowsFromZeroOrigin`: `GetCachedCells(..., 0)` occasionally missed the snapshot when the call crossed a one-second storage timestamp boundary. Three read-range tests and one get-field cache assertion now query a one-minute fresh window, which matches their intent and avoids clock-boundary flakiness. The failing CI run is the RED evidence. The focused repeated test, full race suite, 32-bit tests/build, vet, and lint passed locally after the change; remote PR CI must pass before acceptance.
+
 ## Disposition of the 2026-09-08 adversarial review (ADVERSARIAL_REVIEW.md)
 
 Fixed and verified by tests:
