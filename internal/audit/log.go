@@ -15,11 +15,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
 
+	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/sqlitedb"
 )
 
@@ -52,14 +54,40 @@ CREATE TABLE IF NOT EXISTS audit_log (
 // ID and keep their original hash.
 const migration0002 = `ALTER TABLE audit_log ADD COLUMN audit_id TEXT;`
 
+// migration0003 adds trusted tenant ownership and a hash version while
+// preserving the bytes and hashes of pre-tenant rows.
+var migration0003 = `
+CREATE TABLE audit_log_v3 (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+  tenant_id TEXT NOT NULL,
+  hash_version INTEGER NOT NULL,
+  actor TEXT,
+  tool TEXT, action TEXT,
+  target TEXT,
+  before_json TEXT, after_json TEXT,
+  workiva_op_url TEXT,
+  audit_id TEXT,
+  prev_hash TEXT, hash TEXT
+);
+INSERT INTO audit_log_v3
+  (seq, ts, tenant_id, hash_version, actor, tool, action, target, before_json, after_json, workiva_op_url, audit_id, prev_hash, hash)
+SELECT seq, ts, '` + identity.LegacyTenantID + `', 1, actor, tool, action, target, before_json, after_json, workiva_op_url, audit_id, prev_hash, hash
+FROM audit_log;
+DROP TABLE audit_log;
+ALTER TABLE audit_log_v3 RENAME TO audit_log;
+CREATE INDEX idx_audit_tenant_seq ON audit_log (tenant_id, seq);
+`
+
 // migrations lists every audit schema migration in order.
-var migrations = []string{migration0001, migration0002}
+var migrations = []string{migration0001, migration0002, migration0003}
 
 // Entry is one audit log record. Seq, Ts, PrevHash, and Hash are assigned by
 // Append; the caller supplies the semantic fields.
 type Entry struct {
 	Seq          int64     `json:"seq"`
 	Ts           time.Time `json:"ts"`
+	TenantID     string    `json:"tenant_id"`
 	Actor        string    `json:"actor"`
 	Tool         string    `json:"tool"`
 	Action       string    `json:"action"`
@@ -70,6 +98,7 @@ type Entry struct {
 	AuditID      string    `json:"audit_id,omitempty"`
 	PrevHash     string    `json:"prev_hash"`
 	Hash         string    `json:"hash"`
+	HashVersion  int       `json:"hash_version"`
 }
 
 // Log wraps the SQLite handle holding the audit chain.
@@ -134,6 +163,11 @@ func entryHash(prevHash, ts, actor, tool, action, target, before, after, opURL, 
 	return hex.EncodeToString(sum[:])
 }
 
+func tenantEntryHash(prevHash, tenant, ts, actor, tool, action, target, before, after, opURL, auditID string) string {
+	sum := sha256.Sum256([]byte(strings.Join([]string{prevHash, tenant, ts, actor, tool, action, target, before, after, opURL, auditID}, "\x00")))
+	return hex.EncodeToString(sum[:])
+}
+
 // Append records an entry and extends the hash chain. It fills in Ts (when
 // zero), Seq, PrevHash, and Hash on the returned copy.
 func (l *Log) Append(ctx context.Context, e Entry) (Entry, error) {
@@ -145,8 +179,9 @@ func (l *Log) Append(ctx context.Context, e Entry) (Entry, error) {
 		ts = time.Now().UTC()
 	}
 	tsStr := ts.UTC().Format(timeFormat)
+	tenant := identity.StorageTenant(ctx)
 
-	prev, err := l.latestHash(ctx)
+	prev, err := l.latestHash(ctx, tenant)
 	if err != nil {
 		return Entry{}, err
 	}
@@ -154,16 +189,19 @@ func (l *Log) Append(ctx context.Context, e Entry) (Entry, error) {
 		prev = genesisHash
 	}
 
-	hash := entryHash(prev, tsStr, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, e.AuditID)
+	const hashVersion = 2
+	hash := tenantEntryHash(prev, tenant, tsStr, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, e.AuditID)
 	res, err := l.db.ExecContext(ctx,
-		`INSERT INTO audit_log (ts, actor, tool, action, target, before_json, after_json, workiva_op_url, audit_id, prev_hash, hash)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		tsStr, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, e.AuditID, prev, hash)
+		`INSERT INTO audit_log (ts, tenant_id, hash_version, actor, tool, action, target, before_json, after_json, workiva_op_url, audit_id, prev_hash, hash)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		tsStr, tenant, hashVersion, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, e.AuditID, prev, hash)
 	if err != nil {
 		return Entry{}, fmt.Errorf("audit: append: %w", err)
 	}
 
 	e.Ts = ts.UTC()
+	e.TenantID = tenant
+	e.HashVersion = hashVersion
 	e.PrevHash = prev
 	e.Hash = hash
 	if id, err := res.LastInsertId(); err == nil {
@@ -174,9 +212,9 @@ func (l *Log) Append(ctx context.Context, e Entry) (Entry, error) {
 
 // latestHash returns the hash of the most recent row, or "" for an empty
 // log.
-func (l *Log) latestHash(ctx context.Context) (string, error) {
+func (l *Log) latestHash(ctx context.Context, tenant string) (string, error) {
 	var h sql.NullString
-	err := l.db.QueryRowContext(ctx, `SELECT hash FROM audit_log ORDER BY seq DESC LIMIT 1`).Scan(&h)
+	err := l.db.QueryRowContext(ctx, `SELECT hash FROM audit_log WHERE tenant_id = ? ORDER BY seq DESC LIMIT 1`, tenant).Scan(&h)
 	if err == sql.ErrNoRows {
 		return "", nil
 	}
@@ -206,7 +244,7 @@ func normalizeTs(v any) (string, error) {
 	}
 }
 
-const auditColumns = `seq, ts, actor, tool, action, target, before_json, after_json, workiva_op_url, audit_id, prev_hash, hash`
+const auditColumns = `seq, ts, tenant_id, hash_version, actor, tool, action, target, before_json, after_json, workiva_op_url, audit_id, prev_hash, hash`
 
 // scanEntry reads one audit row from an active cursor.
 func scanEntry(rows interface {
@@ -226,7 +264,7 @@ func scanEntry(rows interface {
 		prev    sql.NullString
 		hash    sql.NullString
 	)
-	err := rows.Scan(&e.Seq, &tsRaw, &actor, &tool, &action, &target, &before, &after, &opURL, &auditID, &prev, &hash)
+	err := rows.Scan(&e.Seq, &tsRaw, &e.TenantID, &e.HashVersion, &actor, &tool, &action, &target, &before, &after, &opURL, &auditID, &prev, &hash)
 	if err != nil {
 		return Entry{}, err
 	}
@@ -285,11 +323,12 @@ func (l *Log) RecentPage(ctx context.Context, limit int, target string, before i
 	if limit <= 0 {
 		limit = 20
 	}
+	tenant := identity.StorageTenant(ctx)
 	rows, err := l.db.QueryContext(ctx,
 		`SELECT `+auditColumns+` FROM audit_log
-		 WHERE (? = '' OR target = ?) AND (? = 0 OR seq < ?)
+		 WHERE tenant_id = ? AND (? = '' OR target = ?) AND (? = 0 OR seq < ?)
 		 ORDER BY seq DESC LIMIT ?`,
-		target, target, before, before, limit)
+		tenant, target, target, before, before, limit)
 	if err != nil {
 		return nil, fmt.Errorf("audit: recent: %w", err)
 	}
@@ -327,7 +366,7 @@ func (l *Log) Verify(ctx context.Context) (err error) {
 		}
 	}()
 
-	expectedPrev := genesisHash
+	expectedPrev := make(map[string]string)
 	for rows.Next() {
 		var (
 			e       Entry
@@ -343,7 +382,7 @@ func (l *Log) Verify(ctx context.Context) (err error) {
 			prev    sql.NullString
 			hash    sql.NullString
 		)
-		if err := rows.Scan(&e.Seq, &tsRaw, &actor, &tool, &action, &target, &before, &after, &opURL, &auditID, &prev, &hash); err != nil {
+		if err := rows.Scan(&e.Seq, &tsRaw, &e.TenantID, &e.HashVersion, &actor, &tool, &action, &target, &before, &after, &opURL, &auditID, &prev, &hash); err != nil {
 			return fmt.Errorf("audit: verify: scan row: %w", err)
 		}
 		ts, err := normalizeTs(tsRaw)
@@ -375,14 +414,26 @@ func (l *Log) Verify(ctx context.Context) (err error) {
 			e.AuditID = auditID.String
 		}
 
-		if !prev.Valid || prev.String != expectedPrev {
-			return fmt.Errorf("audit: chain broken at seq %d: prev_hash = %q, want %q", e.Seq, prev.String, expectedPrev)
+		wantPrev := expectedPrev[e.TenantID]
+		if wantPrev == "" {
+			wantPrev = genesisHash
 		}
-		want := entryHash(prev.String, ts, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, e.AuditID)
+		if !prev.Valid || prev.String != wantPrev {
+			return fmt.Errorf("audit: chain broken at seq %d: prev_hash = %q, want %q", e.Seq, prev.String, wantPrev)
+		}
+		var want string
+		switch e.HashVersion {
+		case 1:
+			want = entryHash(prev.String, ts, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, e.AuditID)
+		case 2:
+			want = tenantEntryHash(prev.String, e.TenantID, ts, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, e.AuditID)
+		default:
+			return fmt.Errorf("audit: chain broken at seq %d: unsupported hash version %d", e.Seq, e.HashVersion)
+		}
 		if !hash.Valid || hash.String != want {
 			return fmt.Errorf("audit: chain broken at seq %d: stored hash %q, recomputed %q", e.Seq, hash.String, want)
 		}
-		expectedPrev = hash.String
+		expectedPrev[e.TenantID] = hash.String
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("audit: verify: %w", err)
@@ -420,7 +471,7 @@ func (l *Log) Export(w io.Writer) (err error) {
 			prev,
 			hash sql.NullString
 		)
-		if err := rows.Scan(&e.Seq, &tsRaw, &actor, &tool, &action, &target, &before, &after, &opURL, &auditID, &prev, &hash); err != nil {
+		if err := rows.Scan(&e.Seq, &tsRaw, &e.TenantID, &e.HashVersion, &actor, &tool, &action, &target, &before, &after, &opURL, &auditID, &prev, &hash); err != nil {
 			return fmt.Errorf("audit: export: scan row: %w", err)
 		}
 		ts, err := normalizeTs(tsRaw)

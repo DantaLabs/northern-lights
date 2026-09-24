@@ -3,10 +3,12 @@ package mapping
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/sqlitedb"
 	_ "modernc.org/sqlite"
 )
@@ -321,8 +323,8 @@ func TestDeleteExpiredPendingWrites(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	old := PendingWrite{Token: "old", FieldID: 1, FieldName: "f1", Value: "1", CreatedAt: time.Now().Add(-time.Hour)}
-	fresh := PendingWrite{Token: "fresh", FieldID: 2, FieldName: "f2", Value: "2", CreatedAt: time.Now()}
+	old := PendingWrite{Token: "old", Actor: "a", RequiredPermission: "p", FieldID: 1, FieldName: "f1", Value: "1", CreatedAt: time.Now().Add(-time.Hour)}
+	fresh := PendingWrite{Token: "fresh", Actor: "a", RequiredPermission: "p", FieldID: 2, FieldName: "f2", Value: "2", CreatedAt: time.Now()}
 	if err := s.CreatePendingWrite(ctx, old); err != nil {
 		t.Fatalf("CreatePendingWrite old: %v", err)
 	}
@@ -337,13 +339,13 @@ func TestDeleteExpiredPendingWrites(t *testing.T) {
 	if n != 1 {
 		t.Errorf("deleted %d rows, want 1", n)
 	}
-	pw, err := s.ConsumePendingWrite(ctx, "fresh", 5*time.Minute)
+	pw, err := s.ConsumePendingWriteFor(ctx, "fresh", "a", "p", 5*time.Minute)
 	if err != nil || pw == nil {
 		t.Errorf("fresh pending write missing after cleanup: pw=%v err=%v", pw, err)
 	}
 }
 
-func TestPendingWriteMigrationPreservesExistingRows(t *testing.T) {
+func TestPendingWriteMigrationPreservesRowsButFailsClosed(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "mapping.db")
 	db, err := sql.Open("sqlite", sqlitedb.SharedFileDSN(path))
@@ -372,13 +374,42 @@ func TestPendingWriteMigrationPreservesExistingRows(t *testing.T) {
 			t.Errorf("close upgraded database: %v", err)
 		}
 	})
-	got, err := store.ConsumePendingWrite(ctx, "before-upgrade", 5*time.Minute)
-	if err != nil || got == nil {
-		t.Fatalf("consume preserved row: write=%+v err=%v", got, err)
+
+	// The migrated row carries no actor/permission bindings, so every consume
+	// path must fail closed: neither the tool's real bindings nor empty
+	// legacy bindings may release it. The write must be restaged instead.
+	if got, err := store.ConsumePendingWriteFor(ctx, "before-upgrade", "legacy-actor",
+		string(identity.PermissionWorkivaWriteConfirm), 5*time.Minute); got != nil || !errors.Is(err, ErrPendingWriteBindingMismatch) {
+		t.Fatalf("migrated row consumed with tool bindings: got=%+v err=%v", got, err)
 	}
-	if got.FieldID != 11 || got.FieldName != "legacy" || got.Value != "8" ||
-		got.SpreadsheetID != "" || got.SheetID != "" || got.CellRange != "" {
-		t.Errorf("preserved pending write = %+v, want legacy values and empty target defaults", got)
+	if got, err := store.ConsumePendingWriteFor(ctx, "before-upgrade", "", "", 5*time.Minute); got != nil || !errors.Is(err, ErrPendingWriteBindingMismatch) {
+		t.Fatalf("migrated row consumed with empty legacy bindings: got=%+v err=%v", got, err)
+	}
+
+	// The migration still preserves the row data; only consumability changed.
+	var (
+		fieldID                 int64
+		fieldName, value        string
+		spreadsheet, sheet, rng string
+	)
+	if err := store.db.QueryRow(`SELECT field_id, field_name, value, spreadsheet_id, sheet_id, cell_range
+		FROM pending_writes WHERE token_digest = ?`, tokenDigest("before-upgrade")).
+		Scan(&fieldID, &fieldName, &value, &spreadsheet, &sheet, &rng); err != nil {
+		t.Fatalf("preserved row lookup: %v", err)
+	}
+	if fieldID != 11 || fieldName != "legacy" || value != "8" ||
+		spreadsheet != "" || sheet != "" || rng != "" {
+		t.Errorf("preserved row = (%d, %q, %q, %q, %q, %q), want legacy values and empty target defaults",
+			fieldID, fieldName, value, spreadsheet, sheet, rng)
+	}
+
+	// An unconsumable migrated row still expires and is cleaned up.
+	if _, err := store.db.Exec(`UPDATE pending_writes SET expires_at = ? WHERE token_digest = ?`,
+		formatTime(time.Now().Add(-time.Minute)), tokenDigest("before-upgrade")); err != nil {
+		t.Fatalf("expire migrated row: %v", err)
+	}
+	if n, err := store.DeleteExpiredPendingWrites(ctx, 5*time.Minute); err != nil || n != 1 {
+		t.Fatalf("expired migrated row cleanup deleted %d rows, err=%v, want 1", n, err)
 	}
 }
 
@@ -386,14 +417,15 @@ func TestPendingWriteTargetRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 	want := PendingWrite{
-		Token: "targeted", FieldID: 9, FieldName: "revenue", Value: "42",
+		Token: "targeted", Actor: "a", RequiredPermission: "p",
+		FieldID: 9, FieldName: "revenue", Value: "42",
 		SpreadsheetID: "sp-1", SheetID: "sh-1", CellRange: "B3:C4",
 		CreatedAt: time.Now().UTC(),
 	}
 	if err := s.CreatePendingWrite(ctx, want); err != nil {
 		t.Fatalf("CreatePendingWrite: %v", err)
 	}
-	got, err := s.ConsumePendingWrite(ctx, want.Token, 5*time.Minute)
+	got, err := s.ConsumePendingWriteFor(ctx, want.Token, want.Actor, want.RequiredPermission, 5*time.Minute)
 	if err != nil {
 		t.Fatalf("ConsumePendingWrite: %v", err)
 	}

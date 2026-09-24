@@ -177,9 +177,22 @@ API connectivity. This separate live smoke procedure has not been run here.
 The container probe runs `/workiva-mcp healthcheck -url http://127.0.0.1:8080/readyz`;
 if the listen address changes, update the probe URL and port mapping together.
 
-The supported deployment boundary remains one tenant and one replica. Wave 1
-adds trusted principals and tool authorization, but tenant-scoped database
-records and actor-bound confirmation tokens are deferred to Phase 2 Wave 2.
+The supported deployment boundary remains one replica. Phase 2 Wave 2 is
+implemented locally: mappings, snapshots, pending writes, and MCP audit reads
+are scoped by the verified Entra `tid`; direct Workiva resources must already
+be owned by that tenant; and mapping sync may claim only a globally unowned
+allowed resource. API-key requests and pre-Wave-2 rows are isolated under the
+explicit `legacy-api-key` tenant and retain Phase 1 behavior.
+
+Confirmation tokens are generated from 32 random bytes and only their SHA-256
+digests are persisted. Each staged write is bound to its tenant, authenticated
+actor, `workiva.write.confirm` permission, exact field and Workiva coordinates,
+exact value and value digest, creation time, and expiry. Confirmation rechecks
+all bindings and consumes the digest atomically before one Workiva mutation.
+These guarantees have passed local tests, including 100 concurrent confirms,
+but have not been exercised against a live Entra/Copilot connection. SQLite,
+rate limits, audit ordering, and confirmation state remain process-local;
+multi-replica operation requires the Wave 3 shared-state work.
 
 ## Tool catalog
 

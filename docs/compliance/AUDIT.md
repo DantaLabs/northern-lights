@@ -2,19 +2,31 @@
 
 ## Design
 
-The audit log is an application-level append-only SQLite table with a
-SHA-256 hash chain. Each row hashes the previous row's hash along with its
-own fields. Modifying any row, or deleting a row that has a successor, breaks
-the chain at that sequence number. Deleting only the final row is not
-detectable by the chain verifier.
+The audit log is an application-level append-only SQLite table with one
+SHA-256 hash chain per tenant. Tenant chains may be interleaved by global
+sequence number; each row links to the previous row for its own tenant.
+Modifying any row, or deleting a row that has a same-tenant successor, breaks
+that tenant chain at the affected sequence number. Deleting only the final row
+of a tenant chain is not detectable by the chain verifier.
 
 ```
-row N: hash = sha256(row[N-1].hash || ts || actor || tool || action || target || before || after || workiva_op_url)
-row 0: hash = sha256("GENESIS" || ts || actor || tool || action || target || before || after || workiva_op_url)
+tenant row N: hash = sha256(previous_tenant_hash || tenant_id || ts || actor || tool || action || target || before || after || workiva_op_url || audit_id)
+tenant row 0: hash = sha256("GENESIS" || tenant_id || ts || actor || tool || action || target || before || after || workiva_op_url || audit_id)
 ```
 
 The hash uses the stored datetime format (`2006-01-02 15:04:05` UTC),
 not the RFC 3339 representation, so the chain is stable across reads.
+Rows migrated from the pre-tenant schema retain and verify their original v1
+hashes under `legacy-api-key`; new rows use the tenant-bound v2 hash.
+
+Known limitation: the v1 hash predates tenant binding, so `tenant_id` is not
+hash-protected on any migrated v1 row. An attacker can relabel an entire
+all-v1 chain wholesale to another tenant without detection: its internal
+`prev_hash` links still agree and none of its hashes cover the tenant. A
+partial relabel of an all-v1 chain splits those links across tenant chains and
+fails verification. Every v2 row binds its tenant into the hash; relabeling a
+v2 row fails hash verification, and leaving a v2 successor behind while
+relabeling its v1 prefix breaks that tenant chain's `prev_hash` link.
 
 ## What is logged
 
@@ -22,7 +34,9 @@ not the RFC 3339 representation, so the chain is stable across reads.
 |---|---|
 | seq | Auto-incrementing sequence number |
 | ts | UTC timestamp |
-| actor | Who triggered the action (`X-NL-Actor` header, or `copilot` by default) |
+| tenant_id | Verified Entra `tid`, or `legacy-api-key` in API-key mode |
+| hash_version | `1` for migrated pre-tenant rows; `2` for tenant-bound rows |
+| actor | Verified Entra audit actor, or the sanitized API-key actor header |
 | tool | The MCP tool name (e.g. `workiva_update_field`) |
 | action | What happened (`call`, `read`, `write`, `sync`, `init`) |
 | target | Identifier (e.g. `spreadsheetId/sheetId/B3:D10` or field name) |
@@ -36,8 +50,10 @@ not the RFC 3339 representation, so the chain is stable across reads.
 ./workiva-mcp audit verify -db /path/to/northern-lights.db
 ```
 
-Exit code 0 means the chain is intact. Non-zero exit with the first
-broken sequence number means tampering was detected.
+Verify walks the entire `audit_log` table in sequence order and recomputes
+every row of every tenant chain in a single pass; it is not limited to one
+tenant. Exit code 0 means every tenant chain is intact. Non-zero exit with
+the first broken sequence number means tampering was detected.
 
 ## Exporting for auditors
 
@@ -45,8 +61,9 @@ broken sequence number means tampering was detected.
 ./workiva-mcp audit export -db /path/to/northern-lights.db -format jsonl
 ```
 
-One JSON object per line, suitable for ingestion into SIEM systems,
-compliance dashboards, or archival.
+Export likewise spans all tenant chains: every row of the table is emitted
+in sequence order, one JSON object per line, suitable for ingestion into
+SIEM systems, compliance dashboards, or archival.
 
 ## Retention guidance
 
@@ -76,6 +93,15 @@ The update tool's complete outcome and reconciliation contract is:
 from `write_outcome_unknown`, where either submission or polling failed to
 prove whether the write took effect. HTTP 5xx responses are treated as
 unknown because they do not establish non-acceptance.
+
+Confirmation consumption happens before the final Workiva write: presenting a
+valid `confirm_token` spends it, and only then does the tool re-read the live
+value and submit the mutation. If the write fails after consumption but
+before the mutation is submitted (for example the live before-value read
+fails), the tool returns an error that explicitly states the confirmation
+token was consumed and that the write must be restaged. The token cannot be
+reused; re-presenting it is rejected as unknown. Restage with a fresh
+preview call to obtain a new token.
 
 If a Workiva update completes but its rich audit append fails, the tool returns
 `written_audit_failed` with the exact target, before/after values, and

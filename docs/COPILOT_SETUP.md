@@ -103,8 +103,11 @@ tenant-bound session store has passed cross-user and cross-replica acceptance.
 
 This repository change has not been accepted against a live Entra app
 registration or a live Copilot OAuth connection. Complete those live gates
-before claiming production multi-user acceptance. Tenant-scoped stored data and
-actor-bound confirmation tokens remain separate Wave 2 work.
+before claiming production multi-user acceptance. Wave 2 tenant-scoped local
+state, resource ownership checks, and actor/permission/target/value-bound
+hashed confirmation tokens are implemented and locally tested. The runtime is
+still single-replica: shared confirmation state, audit ordering, mappings, and
+rate limiting remain Wave 3 work.
 
 Current Microsoft procedure:
 <https://learn.microsoft.com/en-us/microsoft-copilot-studio/mcp-add-existing-server-to-agent>

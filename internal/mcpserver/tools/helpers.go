@@ -5,11 +5,13 @@
 package tools
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/mapping"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 	"github.com/dantalabs/northern-lights/internal/workiva"
@@ -78,6 +80,41 @@ func resourceAllowed(deps mcpserver.Deps, spreadsheetID, sheetID string) bool {
 
 func denyResource(spreadsheetID, sheetID string) error {
 	return failMsg("resource is not allowed by policy", "ask the operator to update allowed_resources")
+}
+
+// requireTenantOwnedResource enforces Entra ownership without revealing
+// whether a denied resource is foreign-owned or globally unknown. API-key
+// compatibility stays isolated in the legacy tenant and retains Phase 1
+// direct-resource behavior.
+func requireTenantOwnedResource(ctx context.Context, deps mcpserver.Deps, spreadsheetID, sheetID string) error {
+	if _, ok := identity.PrincipalFromContext(ctx); !ok {
+		return nil
+	}
+	owned, _, err := deps.Store.ResourceOwnership(ctx, spreadsheetID, sheetID)
+	if err != nil {
+		return fail(err, "the resource ownership policy could not be checked")
+	}
+	if !owned {
+		return failMsg("resource is not available to this tenant", "use workiva_list_spreadsheets to find an available resource")
+	}
+	return nil
+}
+
+// requireTenantSyncableResource permits an Entra tenant to update its own
+// mapping or claim a globally unowned resource. A foreign-owned resource is
+// denied with the same response as any unavailable resource.
+func requireTenantSyncableResource(ctx context.Context, deps mcpserver.Deps, spreadsheetID, sheetID string) error {
+	if _, ok := identity.PrincipalFromContext(ctx); !ok {
+		return nil
+	}
+	owned, foreign, err := deps.Store.ResourceOwnership(ctx, spreadsheetID, sheetID)
+	if err != nil {
+		return fail(err, "the resource ownership policy could not be checked")
+	}
+	if !owned && foreign {
+		return failMsg("resource is not available to this tenant", "use workiva_list_spreadsheets to find an available resource")
+	}
+	return nil
 }
 
 // cellText renders one cell for display. Formula detection applies only to
