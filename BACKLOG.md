@@ -93,17 +93,51 @@ public ingress" gap from item 3.
    shared limiter (e.g. Redis) or per-replica budget division. Documented
    here as a known limitation.
 
-5. **Multi-user governance**: add authenticated identities, user/tenant-scoped
-   mappings and confirmation tokens, RBAC, and a shared limiter before serving
-   multiple users, tenants, or replicas. Live characterization proved that a
-   token staged by one actor can currently be consumed by another actor. The
-   `nl-actor` header is a test-only identity asserted by the key holder; for
-   customers the actor must come from the OAuth (Entra ID) token.
+5. **Multi-user governance, Wave 1 implemented locally; live and later waves
+   remain open**: the code now has explicit `api_key` and single-tenant `entra`
+   modes, OIDC discovery/cached JWKS validation, immutable `tid`/`oid`
+   principals, delegated-scope and explicit app-role/client authorization, the
+   six-permission vocabulary, per-tool enforcement, trusted audit actors, and
+   fail-closed 401/403 paths. API-key mode remains the default. This has not
+   been validated with a live Entra app registration or Copilot OAuth
+   connection. The Wave 1 v2 contract requires the API manifest's
+   `requestedAccessTokenVersion` to be `2` and
+   `NL_ENTRA_AUDIENCE="<API-client-ID-GUID>"`. Clients request scopes as
+   `api://<API-client-ID>/<scope>`, while the server exactly validates the GUID
+   that Entra emits in the v2 token's `aud`; it does not normalize the scope URI
+   into an audience. Tenant and audience UUIDs are canonicalized, while the
+   authority must already use the canonical tenant path. The Wave 1 app-only
+   deployment contract is implemented and documented: the API manifest must
+   add `idtyp` to `optionalClaims.accessToken` without discarding existing
+   optional claims, and role/client policy variables stay unset for
+   delegated-only deployments. App-only access must remain disabled until a
+   real token issued for the API proves `idtyp=app`; that is a live acceptance
+   gate and has not been completed here. Wave 2 must still tenant-scope
+   mappings, snapshots, audit rows, and confirmations and bind confirmation
+   tokens to the authenticated principal. Live characterization proved that
+   the current persisted token model allows a token staged by one actor to be
+   consumed by another, so Entra mode is not yet a claim of complete multi-user
+   isolation. Wave 3 must still add shared state and a shared limiter before
+   multiple replicas.
 
-6. **MCP sessions are process-local**: the Go SDK's default stateful session
-   map is not shared across replicas. Choose stateless mode or shared,
-   tenant-bound session storage before horizontal deployment, and validate
-   cross-replica continuation without sticky routing.
+6. **Stateful MCP sessions are process-local**: Wave 1 Entra mode is
+   intentionally stateless and does not issue or rely on `Mcp-Session-Id`;
+   API-key compatibility mode retains the Go SDK's stateful session map. Do not
+   enable stateful Entra sessions until shared, tenant-bound session storage
+   passes cross-principal and cross-replica acceptance without sticky routing.
+
+   The final independent Wave 1 security review found no Blocking or Important
+   findings. Its remaining non-blocking hardening items are intentionally open:
+   add a committed JSON-RPC batch authorization regression test or reject batch
+   arrays at the HTTP pre-check (the SDK middleware already denies every
+   unauthorized batch element before tool execution and audits it, but returns
+   HTTP 200 with a JSON-RPC error); add inbound `/mcp` rate limiting or JWKS
+   refresh debouncing to limit pre-auth key-fetch amplification; document that
+   `tenant.admin` is reserved and currently grants no tool capability; strip any
+   configured custom actor header in Entra mode as defense in depth; and ensure
+   deployments never set `MCPGODEBUG=allowsessionsinstateless=1`. These do not
+   weaken the clean Wave 1 authorization verdict, but remain explicit follow-up
+   work before broad production exposure.
 
 7. **Rotate the test API key, partial**: `NL_API_KEY` was rotated 2026-09-22.
    New value lives in `deployments/.env`, Key Vault `kv-nl-70cff1d0`, and the

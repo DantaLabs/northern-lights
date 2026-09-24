@@ -21,6 +21,7 @@ import (
 	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/bootstrap"
 	"github.com/dantalabs/northern-lights/internal/config"
+	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/mapping"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 	"github.com/dantalabs/northern-lights/internal/mcpserver/tools"
@@ -134,16 +135,27 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		return nil, nil, nil, fmt.Errorf("load config: %w", err)
 	}
 
-	apiToken, err := mcpserver.EnvAPIToken()
-	if err != nil {
-		if !cfg.DemoMode {
-			return nil, nil, nil, err
+	apiToken := ""
+	if cfg.AuthMode == config.AuthModeAPIKey {
+		apiToken, err = mcpserver.EnvAPIToken()
+		if err != nil {
+			if !cfg.DemoMode {
+				return nil, nil, nil, err
+			}
+			// In demo mode, generate a random token per run and print it so the
+			// operator can connect. A hardcoded demo token would let anyone
+			// reach a demo server exposed on a network.
+			apiToken = randomToken()
+			log.Printf("demo mode API token: %s", apiToken)
 		}
-		// In demo mode, generate a random token per run and print it so the
-		// operator can connect. A hardcoded demo token would let anyone
-		// reach a demo server exposed on a network.
-		apiToken = randomToken()
-		log.Printf("demo mode API token: %s", apiToken)
+	}
+
+	authOptions, err := buildAuthOptions(context.Background(), cfg, apiToken,
+		func(ctx context.Context, verifierConfig identity.EntraVerifierConfig, client *http.Client) (identity.TokenVerifier, error) {
+			return identity.NewDiscoveredEntraVerifier(ctx, verifierConfig, client)
+		})
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	if cfg.DemoMode {
@@ -255,20 +267,43 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		registry.Register(tool)
 	}
 
+	authOptions.Version = version
+	authOptions.DisableLocalhostProtection = cfg.DisableLocalhostProtection
 	handler, err := mcpserver.New(mcpserver.Deps{
 		Client: workivaBackend,
 		Store:  store,
 		Audit:  auditLog,
 		Cfg:    cfg,
-	}, registry, &mcpserver.Options{
-		APIToken:                   apiToken,
-		Version:                    version,
-		DisableLocalhostProtection: cfg.DisableLocalhostProtection,
-	})
+	}, registry, &authOptions)
 	if err != nil {
 		cleanup()
 		return nil, nil, nil, err
 	}
 
 	return cfg, handler, cleanup, nil
+}
+
+type entraVerifierFactory func(context.Context, identity.EntraVerifierConfig, *http.Client) (identity.TokenVerifier, error)
+
+func buildAuthOptions(ctx context.Context, cfg *config.Config, apiToken string, factory entraVerifierFactory) (mcpserver.Options, error) {
+	mode := cfg.AuthMode
+	if mode == "" {
+		mode = config.AuthModeAPIKey
+	}
+	switch mode {
+	case config.AuthModeAPIKey:
+		return mcpserver.Options{AuthMode: mode, APIToken: apiToken}, nil
+	case config.AuthModeEntra:
+		if factory == nil {
+			return mcpserver.Options{}, errors.New("initialize Entra verifier: verifier factory is unavailable")
+		}
+		client := &http.Client{Timeout: identity.DiscoveryHTTPTimeout}
+		verifier, err := factory(ctx, cfg.EntraVerifierConfig(), client)
+		if err != nil {
+			return mcpserver.Options{}, fmt.Errorf("initialize Entra verifier: %w", err)
+		}
+		return mcpserver.Options{AuthMode: mode, TokenVerifier: verifier}, nil
+	default:
+		return mcpserver.Options{}, fmt.Errorf("unsupported auth mode %q", mode)
+	}
 }

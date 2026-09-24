@@ -21,6 +21,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
+	"github.com/dantalabs/northern-lights/internal/config"
+	"github.com/dantalabs/northern-lights/internal/identity"
 )
 
 // ActorHeader is the primary HTTP header carrying the calling user's
@@ -44,12 +46,16 @@ const DefaultActor = "unknown"
 // maxActorLen bounds the recorded actor identity.
 const maxActorLen = 256
 
-// Options configures New. APIToken is required: an empty token refuses
-// startup rather than serving an unauthenticated endpoint.
+// Options configures New. API-key mode requires APIToken; Entra mode requires
+// TokenVerifier. Missing authentication configuration always refuses startup.
 type Options struct {
+	// AuthMode defaults to api_key for Phase 1 compatibility.
+	AuthMode config.AuthMode
 	// APIToken is the bearer token clients must present. Sourced from the
-	// NL_API_KEY environment variable by cmd/workiva-mcp.
+	// NL_API_KEY environment variable by cmd/workiva-mcp in api_key mode.
 	APIToken string
+	// TokenVerifier is required in entra mode and validates access tokens.
+	TokenVerifier identity.TokenVerifier
 	// ActorHeader overrides DefaultActorHeader.
 	ActorHeader string
 	// Version is the server implementation version reported to MCP
@@ -60,15 +66,28 @@ type Options struct {
 	DisableLocalhostProtection bool
 }
 
-// New builds the MCP HTTP handler: an SDK server with every registered
-// tool bound, an audit middleware recording each tools/call, and bearer
-// auth in front of the /mcp streamable HTTP endpoint.
+// New builds the MCP HTTP handler: an SDK server with every registered tool
+// bound, audit and authorization middleware around tools/call, and the selected
+// bearer authentication mode in front of the /mcp streamable HTTP endpoint.
 func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 	if opts == nil {
 		opts = &Options{}
 	}
-	if opts.APIToken == "" {
-		return nil, errors.New("mcpserver: APIToken is required; set the NL_API_KEY environment variable")
+	authMode := opts.AuthMode
+	if authMode == "" {
+		authMode = config.AuthModeAPIKey
+	}
+	switch authMode {
+	case config.AuthModeAPIKey:
+		if opts.APIToken == "" {
+			return nil, errors.New("mcpserver: APIToken is required; set the NL_API_KEY environment variable")
+		}
+	case config.AuthModeEntra:
+		if opts.TokenVerifier == nil {
+			return nil, errors.New("mcpserver: TokenVerifier is required in entra mode")
+		}
+	default:
+		return nil, fmt.Errorf("mcpserver: unsupported auth mode %q", authMode)
 	}
 	actorHeader := opts.ActorHeader
 	if actorHeader == "" {
@@ -89,7 +108,13 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 		return nil, err
 	}
 
-	if deps.Audit != nil {
+	if authMode == config.AuthModeEntra {
+		middlewares := []mcp.Middleware{authorizationMiddleware(deps.Audit, confirmationRequired(deps))}
+		if deps.Audit != nil {
+			middlewares = append(middlewares, auditMiddleware(deps.Audit, actorHeader))
+		}
+		server.AddReceivingMiddleware(middlewares...)
+	} else if deps.Audit != nil {
 		server.AddReceivingMiddleware(auditMiddleware(deps.Audit, actorHeader))
 	}
 
@@ -97,7 +122,10 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 	// The public URL for Copilot Studio testing is a Cloudflare Quick
 	// Tunnel, which does not carry Server-Sent Events; the MCP Streamable
 	// HTTP spec allows either format.
-	streamableOpts := &mcp.StreamableHTTPOptions{JSONResponse: true}
+	streamableOpts := &mcp.StreamableHTTPOptions{
+		JSONResponse: true,
+		Stateless:    authMode == config.AuthModeEntra,
+	}
 	if opts.DisableLocalhostProtection {
 		// Public tunnels such as pinggy arrive with a non-localhost Host header.
 		// Bearer auth still gates /mcp; this only disables the SDK's DNS rebinding guard.
@@ -107,12 +135,22 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 		return server
 	}, streamableOpts)
 
-	mcpEndpoint := bearerAuthHandler(opts.APIToken, mcpHandler)
+	var mcpEndpoint http.Handler
+	if authMode == config.AuthModeEntra {
+		mcpEndpoint = entraAuthHandler(opts.TokenVerifier,
+			authorizationHTTPHandler(deps.Audit, confirmationRequired(deps), mcpHandler))
+	} else {
+		mcpEndpoint = bearerAuthHandler(opts.APIToken, mcpHandler)
+	}
 	if os.Getenv(debugHeadersEnv) == "1" {
 		// Outside auth on purpose: a 401 from a malformed connector key is
 		// exactly the request Sam needs to see during Copilot Studio testing.
 		mcpEndpoint = debugHeaderLogger(log2.Default(), mcpEndpoint)
-		log2.Printf("nl-debug-headers configured key_sha256=%s (compare with key_sha256 on request lines)", keyFingerprint(opts.APIToken))
+		if authMode == config.AuthModeAPIKey {
+			log2.Printf("nl-debug-headers configured key_sha256=%s (compare with key_sha256 on request lines)", keyFingerprint(opts.APIToken))
+		} else {
+			log2.Printf("nl-debug-headers configured auth_mode=entra")
+		}
 	}
 
 	mux := http.NewServeMux()
@@ -161,7 +199,7 @@ func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
 			if method != "tools/call" || !ok || params == nil {
 				return next(ctx, method, req)
 			}
-			actor := ActorFromRequest(req, actorHeader)
+			actor := ActorFromContextOrRequest(ctx, req, actorHeader)
 			if writeTools[params.Name] && actor == DefaultActor {
 				return nil, fmt.Errorf("%s requires the %s header identifying the calling user; refusing unattributed write", params.Name, ActorHeader)
 			}
@@ -270,6 +308,18 @@ func ActorFromRequest(req mcp.Request, actorHeader string) string {
 		}
 	}
 	return DefaultActor
+}
+
+// ActorFromContextOrRequest prefers a verified immutable Entra actor and uses
+// caller-supplied actor headers only in legacy API-key mode.
+func ActorFromContextOrRequest(ctx context.Context, req mcp.Request, actorHeader string) string {
+	if principal, ok := identity.PrincipalFromContext(ctx); ok {
+		if actor := principal.AuditActor(); actor != "" {
+			return actor
+		}
+		return DefaultActor
+	}
+	return ActorFromRequest(req, actorHeader)
 }
 
 // recordToolCall appends one audit entry per tools/call request. Tool names
@@ -405,8 +455,8 @@ func authorizationKey(header string) (string, bool) {
 	return rest, true
 }
 
-// maxPeekBody bounds how much of a request body the debug logger buffers to
-// find the JSON-RPC method. Larger bodies are logged as "unread".
+// maxPeekBody bounds how much of a request body middleware buffers while
+// inspecting the JSON-RPC method. The authz handler rejects larger bodies.
 const maxPeekBody = 1 << 20
 
 // peekJSONRPCMethod returns the JSON-RPC method of a POST body without
@@ -441,6 +491,177 @@ func peekJSONRPCMethod(r *http.Request) string {
 	return msg.Method
 }
 
+func confirmationRequired(deps Deps) bool {
+	return deps.Cfg == nil || deps.Cfg.RequireWriteConfirmation
+}
+
+// requiredPermission returns the minimum permission for one builtin tool call.
+// A no-token update is a preview only while confirmation is enabled; otherwise
+// it is a direct mutation and requires confirm permission.
+func requiredPermission(tool string, arguments json.RawMessage, requireConfirmation bool) (identity.Permission, error) {
+	switch tool {
+	case "workiva_list_spreadsheets", "workiva_read_range", "workiva_search_fields", "workiva_get_field":
+		return identity.PermissionWorkivaRead, nil
+	case "workiva_update_field":
+		if !requireConfirmation {
+			return identity.PermissionWorkivaWriteConfirm, nil
+		}
+		var input struct {
+			ConfirmToken string `json:"confirm_token"`
+		}
+		if len(arguments) > 0 {
+			if err := json.Unmarshal(arguments, &input); err != nil {
+				return "", errors.New("authorization: malformed update arguments")
+			}
+		}
+		if input.ConfirmToken != "" {
+			return identity.PermissionWorkivaWriteConfirm, nil
+		}
+		return identity.PermissionWorkivaWritePreview, nil
+	case "workiva_sync_mapping":
+		return identity.PermissionMappingSync, nil
+	case "workiva_audit_trail":
+		return identity.PermissionAuditRead, nil
+	default:
+		return "", fmt.Errorf("authorization: tool %q has no permission mapping", tool)
+	}
+}
+
+func authorizationError(permission identity.Permission) error {
+	return fmt.Errorf("authorization denied: permission %s is required", permission)
+}
+
+func recordAuthorizationDenial(ctx context.Context, log *audit.Log, principal identity.Principal, params *mcp.CallToolParamsRaw) {
+	if log == nil || params == nil {
+		return
+	}
+	target := params.Name
+	if extracted := targetFromArguments(params.Arguments); extracted != "" {
+		target = extracted
+	}
+	if _, err := log.Append(ctx, audit.Entry{
+		Actor:  principal.AuditActor(),
+		Tool:   params.Name,
+		Action: "authorization_denied",
+		Target: target,
+	}); err != nil {
+		log2.Printf("AUDIT FAILURE: could not record authorization denial for %q: %v", params.Name, err)
+	}
+}
+
+func authorizationMiddleware(log *audit.Log, requireConfirmation bool) mcp.Middleware {
+	return func(next mcp.MethodHandler) mcp.MethodHandler {
+		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
+			params, ok := req.GetParams().(*mcp.CallToolParamsRaw)
+			if method != "tools/call" || !ok || params == nil {
+				return next(ctx, method, req)
+			}
+			principal, ok := identity.PrincipalFromContext(ctx)
+			if !ok {
+				return nil, errors.New("authorization denied: trusted principal is missing")
+			}
+			permission, err := requiredPermission(params.Name, params.Arguments, requireConfirmation)
+			if err != nil {
+				recordAuthorizationDenial(ctx, log, principal, params)
+				return nil, err
+			}
+			if !principal.HasPermission(permission) {
+				recordAuthorizationDenial(ctx, log, principal, params)
+				return nil, authorizationError(permission)
+			}
+			return next(ctx, method, req)
+		}
+	}
+}
+
+type jsonRPCRequest struct {
+	Method string `json:"method"`
+	Params struct {
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
+	} `json:"params"`
+}
+
+// authorizationHTTPHandler gives authenticated-but-forbidden calls an HTTP
+// 403 before the MCP dispatcher or any Workiva handler can run. The MCP
+// middleware repeats the check as a transport-independent defense.
+func authorizationHTTPHandler(log *audit.Log, requireConfirmation bool, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.Body == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		data, err := io.ReadAll(io.LimitReader(r.Body, maxPeekBody+1))
+		_ = r.Body.Close()
+		if err != nil {
+			w.Header().Set("Cache-Control", "no-store")
+			http.Error(w, "bad request: failed to read request body", http.StatusBadRequest)
+			return
+		}
+		if len(data) > maxPeekBody {
+			w.Header().Set("Cache-Control", "no-store")
+			http.Error(w, fmt.Sprintf("request body exceeds %d bytes", maxPeekBody), http.StatusRequestEntityTooLarge)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewReader(data))
+		var message jsonRPCRequest
+		if json.Unmarshal(data, &message) != nil || message.Method != "tools/call" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		principal, ok := identity.PrincipalFromContext(r.Context())
+		if !ok {
+			w.Header().Set("Cache-Control", "no-store")
+			w.Header().Set("WWW-Authenticate", `Bearer realm="northern-lights"`)
+			http.Error(w, "unauthorized: trusted principal is missing", http.StatusUnauthorized)
+			return
+		}
+		permission, permissionErr := requiredPermission(message.Params.Name, message.Params.Arguments, requireConfirmation)
+		if permissionErr == nil && principal.HasPermission(permission) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		params := &mcp.CallToolParamsRaw{Name: message.Params.Name, Arguments: message.Params.Arguments}
+		recordAuthorizationDenial(r.Context(), log, principal, params)
+		w.Header().Set("Cache-Control", "no-store")
+		if permissionErr != nil {
+			http.Error(w, "forbidden: tool is not authorized", http.StatusForbidden)
+			return
+		}
+		http.Error(w, "forbidden: required permission is not granted", http.StatusForbidden)
+	})
+}
+
+func bearerToken(header string) (string, bool) {
+	fields := strings.Fields(header)
+	if len(fields) != 2 || !strings.EqualFold(fields[0], "Bearer") || strings.EqualFold(fields[1], "Bearer") {
+		return "", false
+	}
+	return fields[1], true
+}
+
+func entraAuthHandler(verifier identity.TokenVerifier, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, ok := bearerToken(r.Header.Get("Authorization"))
+		if !ok {
+			w.Header().Set("Cache-Control", "no-store")
+			w.Header().Set("WWW-Authenticate", `Bearer realm="northern-lights"`)
+			http.Error(w, "unauthorized: missing or invalid bearer token", http.StatusUnauthorized)
+			return
+		}
+		principal, err := verifier.Verify(r.Context(), raw)
+		if err != nil {
+			w.Header().Set("Cache-Control", "no-store")
+			w.Header().Set("WWW-Authenticate", `Bearer realm="northern-lights"`)
+			http.Error(w, "unauthorized: bearer token validation failed", http.StatusUnauthorized)
+			return
+		}
+		r.Header.Del(ActorHeader)
+		r.Header.Del(DefaultActorHeader)
+		next.ServeHTTP(w, r.WithContext(identity.ContextWithPrincipal(r.Context(), principal)))
+	})
+}
+
 // bearerAuthHandler gates every request behind the API key compared in
 // constant time (see authorizationKey for the accepted header shapes). A
 // rejected request is answered here and never reaches the MCP server, so
@@ -451,6 +672,7 @@ func bearerAuthHandler(token string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key, ok := authorizationKey(r.Header.Get("Authorization"))
 		if !ok || subtle.ConstantTimeCompare([]byte(key), expected) != 1 {
+			w.Header().Set("Cache-Control", "no-store")
 			w.Header().Set("WWW-Authenticate", `Bearer realm="northern-lights"`)
 			http.Error(w, "unauthorized: missing or invalid bearer token", http.StatusUnauthorized)
 			return

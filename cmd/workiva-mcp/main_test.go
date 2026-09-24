@@ -17,8 +17,70 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
+	"github.com/dantalabs/northern-lights/internal/config"
+	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 )
+
+func TestBuildAuthOptionsPreservesAPIKeyMode(t *testing.T) {
+	factoryCalled := false
+	opts, err := buildAuthOptions(context.Background(), &config.Config{AuthMode: config.AuthModeAPIKey}, "phase-one-key",
+		func(context.Context, identity.EntraVerifierConfig, *http.Client) (identity.TokenVerifier, error) {
+			factoryCalled = true
+			return nil, errors.New("must not run")
+		})
+	if err != nil {
+		t.Fatalf("buildAuthOptions: %v", err)
+	}
+	if factoryCalled || opts.AuthMode != config.AuthModeAPIKey || opts.APIToken != "phase-one-key" || opts.TokenVerifier != nil {
+		t.Fatalf("api-key options = %#v factoryCalled=%v", opts, factoryCalled)
+	}
+}
+
+func TestBuildAuthOptionsCreatesBoundedEntraVerifier(t *testing.T) {
+	cfg := &config.Config{
+		AuthMode:       config.AuthModeEntra,
+		EntraTenantID:  "11111111-1111-1111-1111-111111111111",
+		EntraAuthority: "https://login.microsoftonline.com/11111111-1111-1111-1111-111111111111/v2.0",
+		EntraAudience:  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}
+	wantVerifier := toolVerifierForMain{}
+	factoryCalled := false
+	opts, err := buildAuthOptions(context.Background(), cfg, "legacy-key-must-be-ignored",
+		func(_ context.Context, got identity.EntraVerifierConfig, client *http.Client) (identity.TokenVerifier, error) {
+			factoryCalled = true
+			if got.TenantID != cfg.EntraTenantID || got.Authority != cfg.EntraAuthority || got.Audience != cfg.EntraAudience {
+				t.Fatalf("verifier config = %#v", got)
+			}
+			if client == nil || client.Timeout <= 0 {
+				t.Fatalf("discovery client has unbounded timeout: %#v", client)
+			}
+			return wantVerifier, nil
+		})
+	if err != nil {
+		t.Fatalf("buildAuthOptions: %v", err)
+	}
+	if !factoryCalled || opts.AuthMode != config.AuthModeEntra || opts.APIToken != "" || opts.TokenVerifier == nil {
+		t.Fatalf("entra options = %#v factoryCalled=%v", opts, factoryCalled)
+	}
+}
+
+func TestBuildAuthOptionsFailsStartupWhenDiscoveryFails(t *testing.T) {
+	want := errors.New("discovery unavailable")
+	_, err := buildAuthOptions(context.Background(), &config.Config{AuthMode: config.AuthModeEntra}, "",
+		func(context.Context, identity.EntraVerifierConfig, *http.Client) (identity.TokenVerifier, error) {
+			return nil, want
+		})
+	if !errors.Is(err, want) {
+		t.Fatalf("error = %v, want discovery failure", err)
+	}
+}
+
+type toolVerifierForMain struct{}
+
+func (toolVerifierForMain) Verify(context.Context, string) (identity.Principal, error) {
+	return identity.Principal{}, nil
+}
 
 func TestDeploymentsUseBinaryReadinessHealthcheck(t *testing.T) {
 	dockerfile, err := os.ReadFile("../../deployments/Dockerfile")

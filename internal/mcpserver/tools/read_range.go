@@ -92,7 +92,7 @@ func (readRangeTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 
 		target := fmt.Sprintf("%s/%s/%s", in.SpreadsheetID, in.SheetID, in.Range)
 		if _, err := deps.Audit.Append(ctx, audit.Entry{
-			Actor:   mcpserver.ActorFromRequest(req, deps.ActorHeader),
+			Actor:   mcpserver.ActorFromContextOrRequest(ctx, req, deps.ActorHeader),
 			Tool:    "workiva_read_range",
 			Action:  "read",
 			Target:  target,
