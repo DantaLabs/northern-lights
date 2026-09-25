@@ -45,6 +45,9 @@ func TestAuditTrailReturnsNewestFirstWithLimit(t *testing.T) {
 	}
 	first, _ := entries[0].(map[string]any)
 	second, _ := entries[1].(map[string]any)
+	if first["hash_version"] != float64(2) || second["hash_version"] != float64(2) {
+		t.Fatalf("MCP audit entries omit v2 hash_version: first=%v second=%v", first, second)
+	}
 	if first["seq"].(float64) <= second["seq"].(float64) {
 		t.Errorf("entries not newest first: seq %v then %v", first["seq"], second["seq"])
 	}

@@ -44,6 +44,17 @@ func TestSubjectFallbackAuditActorIsExplicit(t *testing.T) {
 	}
 }
 
+func TestStorageTenantComesOnlyFromVerifiedPrincipal(t *testing.T) {
+	tenantID := "11111111-1111-1111-1111-111111111111"
+	ctx := ContextWithPrincipal(context.Background(), Principal{TenantID: tenantID})
+	if got := StorageTenant(ctx); got != tenantID {
+		t.Fatalf("StorageTenant(verified principal) = %q, want %q", got, tenantID)
+	}
+	if got := StorageTenant(context.Background()); got != LegacyTenantID {
+		t.Fatalf("StorageTenant(API-key context) = %q, want legacy tenant %q", got, LegacyTenantID)
+	}
+}
+
 func TestPermissionValuesAreExact(t *testing.T) {
 	got := AllPermissions()
 	want := []Permission{

@@ -71,10 +71,12 @@ or identity service and the MCP client.
    limited to 100,000 cells before it is sent to Workiva. This conservative
    cap prevents excessive memory use while supporting useful reporting ranges.
 
-6. **Deployment boundary.** The supported configuration is one tenant and one
-   replica. Actor headers are best-effort attribution unless a trusted,
-   authenticated ingress supplies and overwrites them. Multi-user isolation
-   and shared rate limiting are future work.
+6. **Deployment boundary.** The supported configuration is one replica.
+   Entra requests use only the verified `tid` and immutable audit actor for
+   tenant/principal identity; API-key requests use the explicit legacy tenant
+   and a sanitized non-empty actor header for writes. Tenant isolation and
+   actor-bound confirmations are implemented in local SQLite. Shared state,
+   cross-replica audit ordering, and shared rate limiting are future work.
 
 7. **Resource governance.** An optional spreadsheet/sheet allowlist filters
    discovery and local mapping/cache output and rejects reads, syncs, staging,
@@ -90,12 +92,15 @@ or identity service and the MCP client.
 | Field mappings | YAML config or `workiva_sync_mapping` tool | SQLite (mapping tables) | Until manually deleted |
 | Cell values | Workiva sheetdata endpoint | SQLite (snapshots table) | Overwritten on each read, controlled by `read_cache_ttl` |
 | Audit entries | Tool-call and mutation audit records | SQLite (audit_log table) | Default 10-year guidance, operator-managed |
+| Pending writes | SHA-256 confirmation-token digest plus tenant, actor, permission, target, value digest, and expiry bindings | SQLite (pending_writes table) | Until atomic consumption or expiry cleanup |
 
 ## 6. Human oversight measures
 
 - `RequireWriteConfirmation` (default true): writes require a two-phase
   confirm token, ensuring a human or the LLM explicitly approves each
-  mutation.
+  mutation. Tokens contain 32 random bytes; raw tokens are not persisted.
+  Confirmation revalidates the current tenant, actor, permission, mapping,
+  exact staged value/digest, and expiry before atomically consuming the row.
 - Successful Workiva field updates include before and after values in their
   mutation audit record. Completed writes and mapping syncs whose rich audit
   append fails return `written_audit_failed` or `synced_audit_failed` with

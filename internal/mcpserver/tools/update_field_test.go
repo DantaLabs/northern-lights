@@ -183,6 +183,71 @@ func TestUpdateFieldTwoPhaseFlow(t *testing.T) {
 	}
 }
 
+func TestUpdateFieldReportsBurnedTokenWhenPreWriteReadFails(t *testing.T) {
+	var edits [][]byte
+	var failReads atomic.Bool
+	base := writeMock(t, &edits)
+	env := newTestEnv(t, func(w http.ResponseWriter, r *http.Request) {
+		if failReads.Load() && r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/sheetdata") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = fmt.Fprint(w, `{"message":"sheetdata unavailable"}`)
+			return
+		}
+		base(w, r)
+	})
+	seedField(t, env)
+
+	stage := callTool(t, env.deps, UpdateField(), map[string]any{
+		"name": "scope2_energy_kwh", "value": "5678",
+	})
+	if stage.IsError {
+		t.Fatalf("phase 1 returned error: %+v", stage.Content)
+	}
+	token := structuredContent(t, stage)["confirm_token"].(string)
+
+	// The live before-value read fails after the token is consumed but before
+	// any mutation is submitted.
+	failReads.Store(true)
+	exec := callTool(t, env.deps, UpdateField(), map[string]any{
+		"name": "scope2_energy_kwh", "value": "5678", "confirm_token": token,
+	})
+	if !exec.IsError {
+		t.Fatalf("expected tool error when the pre-write read fails, got %+v", exec.StructuredContent)
+	}
+	payload, err := json.Marshal(exec.Content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lower := strings.ToLower(string(payload))
+	if !strings.Contains(lower, "consumed") || !strings.Contains(lower, "restage") {
+		t.Fatalf("error = %s, want explicit notice that the confirmation token was consumed and the write must be restaged", payload)
+	}
+	if len(edits) != 0 {
+		t.Fatalf("POST calls = %d, want 0 (no mutation was submitted)", len(edits))
+	}
+
+	// The token really is gone: a retry reports an unknown token rather than
+	// executing the staged write.
+	failReads.Store(false)
+	retry := callTool(t, env.deps, UpdateField(), map[string]any{
+		"name": "scope2_energy_kwh", "value": "5678", "confirm_token": token,
+	})
+	if !retry.IsError {
+		t.Fatal("expected error when re-presenting the burned token")
+	}
+	retryPayload, err := json.Marshal(retry.Content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(retryPayload), "unknown") {
+		t.Fatalf("retry error = %s, want unknown-token rejection proving the token was consumed", retryPayload)
+	}
+	if len(edits) != 0 {
+		t.Fatalf("POST calls = %d, want 0 after retry", len(edits))
+	}
+}
+
 func TestUpdateFieldRejectsTokenReplay(t *testing.T) {
 	var edits [][]byte
 	env := newTestEnv(t, writeMock(t, &edits))

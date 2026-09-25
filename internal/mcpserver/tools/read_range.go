@@ -62,6 +62,9 @@ func (readRangeTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		if !resourceAllowed(deps, in.SpreadsheetID, in.SheetID) {
 			return nil, readRangeOutput{}, denyResource(in.SpreadsheetID, in.SheetID)
 		}
+		if err := requireTenantOwnedResource(ctx, deps, in.SpreadsheetID, in.SheetID); err != nil {
+			return nil, readRangeOutput{}, err
+		}
 		if _, err := workiva.A1ToRange(in.Range); err != nil {
 			return nil, readRangeOutput{}, fail(err, "use A1 notation such as B3 or B3:D10")
 		}

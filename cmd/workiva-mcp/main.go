@@ -134,6 +134,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("load config: %w", err)
 	}
+	storageCtx := storageContextForConfig(cfg)
 
 	apiToken := ""
 	if cfg.AuthMode == config.AuthModeAPIKey {
@@ -182,7 +183,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	// from the built-in demo fixture when running in demo mode.
 	path := mappingsPath
 	if cfg.DemoMode {
-		if err := bootstrap.LoadDemoMappings(context.Background(), store); err != nil {
+		if err := bootstrap.LoadDemoMappings(storageCtx, store); err != nil {
 			if err := store.Close(); err != nil {
 				log.Printf("close mapping store: %v", err)
 			}
@@ -197,7 +198,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 			}
 		}
 		if path != "" {
-			if err := bootstrap.LoadMappings(context.Background(), path, store); err != nil {
+			if err := bootstrap.LoadMappings(storageCtx, path, store); err != nil {
 				if err := store.Close(); err != nil {
 					log.Printf("close mapping store: %v", err)
 				}
@@ -215,8 +216,10 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		return nil, nil, nil, fmt.Errorf("open audit log: %w", err)
 	}
 
-	// Drop staged write confirmations left over from previous runs.
-	if n, err := store.DeleteExpiredPendingWrites(context.Background(), 5*time.Minute); err != nil {
+	// Drop staged write confirmations left over from previous runs. The
+	// janitor runs before any tenant context exists, so it sweeps every
+	// tenant's expired rows.
+	if n, err := store.DeleteExpiredPendingWritesGlobal(storageCtx, 5*time.Minute); err != nil {
 		log.Printf("pending write cleanup failed: %v", err)
 	} else if n > 0 {
 		log.Printf("cleaned up %d expired pending writes", n)
@@ -232,7 +235,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	}
 
 	if cfg.DemoMode {
-		if _, err := auditLog.Append(context.Background(), audit.Entry{
+		if _, err := auditLog.Append(storageCtx, audit.Entry{
 			Actor:  "setup",
 			Tool:   "system",
 			Action: "init",
@@ -281,6 +284,17 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	}
 
 	return cfg, handler, cleanup, nil
+}
+
+// storageContextForConfig supplies startup/bootstrap work with the same
+// trusted tenant boundary used by requests. API-key mode deliberately has no
+// principal and therefore resolves to the explicit legacy tenant.
+func storageContextForConfig(cfg *config.Config) context.Context {
+	ctx := context.Background()
+	if cfg != nil && cfg.AuthMode == config.AuthModeEntra {
+		return identity.ContextWithPrincipal(ctx, identity.Principal{TenantID: cfg.EntraTenantID})
+	}
+	return ctx
 }
 
 type entraVerifierFactory func(context.Context, identity.EntraVerifierConfig, *http.Client) (identity.TokenVerifier, error)

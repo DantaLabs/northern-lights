@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -16,6 +17,11 @@ import (
 
 // syncMappingTool implements workiva_sync_mapping.
 type syncMappingTool struct{}
+
+// syncMappingClaimMu closes the single-replica check/read/claim race: a
+// second tenant cannot observe a resource as unowned while the first tenant's
+// onboarding read is in flight.
+var syncMappingClaimMu sync.Mutex
 
 // SyncMapping returns the workiva_sync_mapping tool.
 func SyncMapping() mcpserver.Tool { return syncMappingTool{} }
@@ -63,6 +69,11 @@ func (syncMappingTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		}
 		if !resourceAllowed(deps, in.SpreadsheetID, in.SheetID) {
 			return nil, syncMappingOutput{}, denyResource(in.SpreadsheetID, in.SheetID)
+		}
+		syncMappingClaimMu.Lock()
+		defer syncMappingClaimMu.Unlock()
+		if err := requireTenantSyncableResource(ctx, deps, in.SpreadsheetID, in.SheetID); err != nil {
+			return nil, syncMappingOutput{}, err
 		}
 
 		actor := mcpserver.ActorFromContextOrRequest(ctx, req, deps.ActorHeader)

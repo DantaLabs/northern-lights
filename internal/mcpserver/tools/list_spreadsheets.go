@@ -7,6 +7,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 	"github.com/dantalabs/northern-lights/internal/workiva"
 )
@@ -106,9 +107,28 @@ func liveSpreadsheetEntries(ctx context.Context, deps mcpserver.Deps, spreadshee
 	if deps.Cfg != nil {
 		region = deps.Cfg.Region
 	}
+	var tenantSheets map[string]map[string]bool
+	if _, ok := identity.PrincipalFromContext(ctx); ok {
+		mapped, err := deps.Store.ListSpreadsheets(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list tenant-owned mappings: %w", err)
+		}
+		tenantSheets = make(map[string]map[string]bool, len(mapped))
+		for _, sp := range mapped {
+			sheets := make(map[string]bool, len(sp.Sheets))
+			for _, sh := range sp.Sheets {
+				sheets[sh.ID] = true
+			}
+			tenantSheets[sp.ID] = sheets
+		}
+	}
 	out := make([]spreadsheetEntry, 0, len(spreadsheets))
 	for _, sp := range spreadsheets {
 		if deps.Cfg != nil && !deps.Cfg.SpreadsheetAllowed(sp.ID) {
+			continue
+		}
+		ownedSheets, tenantScoped := tenantSheets[sp.ID]
+		if tenantSheets != nil && !tenantScoped {
 			continue
 		}
 		entry := spreadsheetEntry{
@@ -125,6 +145,9 @@ func liveSpreadsheetEntries(ctx context.Context, deps mcpserver.Deps, spreadshee
 			}
 			for _, sh := range sheets {
 				if !resourceAllowed(deps, sp.ID, sh.ID) {
+					continue
+				}
+				if tenantSheets != nil && !ownedSheets[sh.ID] {
 					continue
 				}
 				entry.Sheets = append(entry.Sheets, listSheetsOutput{ID: sh.ID, Name: sh.Name})

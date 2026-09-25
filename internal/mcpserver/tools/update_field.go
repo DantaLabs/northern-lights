@@ -2,16 +2,18 @@ package tools
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
+	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/mapping"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 	"github.com/dantalabs/northern-lights/internal/workiva"
@@ -93,7 +95,7 @@ func (updateFieldTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		}
 
 		// Phase 1: stage the write and return a confirmation token.
-		return stageWrite(ctx, deps, field, in.Value)
+		return stageWrite(ctx, deps, field, in.Value, actor)
 	})
 }
 
@@ -122,22 +124,29 @@ func confirmationRequired(deps mcpserver.Deps) bool {
 
 // stageWrite is phase 1: read the current value live, persist a pending
 // write, and return the confirmation token with a before/after preview.
-func stageWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, value string) (*mcp.CallToolResult, updateFieldOutput, error) {
+func stageWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, value, actor string) (*mcp.CallToolResult, updateFieldOutput, error) {
 	before, err := readFieldValue(ctx, deps, field)
 	if err != nil {
 		return nil, updateFieldOutput{}, err
 	}
 
-	token := uuid.NewString()
+	token, err := newConfirmationToken()
+	if err != nil {
+		return nil, updateFieldOutput{}, fail(err, "a secure confirmation token could not be generated")
+	}
+	now := time.Now().UTC()
 	if err := deps.Store.CreatePendingWrite(ctx, mapping.PendingWrite{
-		Token:         token,
-		FieldID:       field.ID,
-		FieldName:     field.Name,
-		Value:         value,
-		SpreadsheetID: field.SpreadsheetID,
-		SheetID:       field.SheetID,
-		CellRange:     field.CellRange,
-		CreatedAt:     time.Now().UTC(),
+		Token:              token,
+		Actor:              actor,
+		RequiredPermission: string(identity.PermissionWorkivaWriteConfirm),
+		FieldID:            field.ID,
+		FieldName:          field.Name,
+		Value:              value,
+		SpreadsheetID:      field.SpreadsheetID,
+		SheetID:            field.SheetID,
+		CellRange:          field.CellRange,
+		CreatedAt:          now,
+		ExpiresAt:          now.Add(pendingWriteTTL),
 	}); err != nil {
 		return nil, updateFieldOutput{}, fail(err, "the write could not be staged for confirmation")
 	}
@@ -156,27 +165,50 @@ func stageWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, 
 	}, nil
 }
 
+func newConfirmationToken() (string, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("generate confirmation token: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(raw), nil
+}
+
 // executeConfirmedWrite is phase 2: consume the single-use token and run
 // the staged write.
 func executeConfirmedWrite(ctx context.Context, deps mcpserver.Deps, field *mapping.Field, in updateFieldInput, actor string) (*mcp.CallToolResult, updateFieldOutput, error) {
 	if !resourceAllowed(deps, field.SpreadsheetID, field.SheetID) {
 		return nil, updateFieldOutput{}, denyResource(field.SpreadsheetID, field.SheetID)
 	}
-	pending, err := deps.Store.ConsumePendingWrite(ctx, in.ConfirmToken, pendingWriteTTL)
+	const requiredPermission = identity.PermissionWorkivaWriteConfirm
+	if principal, ok := identity.PrincipalFromContext(ctx); ok && !principal.HasPermission(requiredPermission) {
+		return nil, updateFieldOutput{}, failMsg("confirmation permission is no longer granted", "ask an administrator to restore workiva.write.confirm or restage after authorization is restored")
+	}
+	if actor == "" || actor == mcpserver.DefaultActor {
+		return nil, updateFieldOutput{}, failMsg("confirmation requires an authenticated actor", "authenticate again and restage the write")
+	}
+	pending, err := deps.Store.ConsumePendingWriteFor(ctx, in.ConfirmToken, actor, string(requiredPermission), pendingWriteTTL)
 	if err == nil && pending == nil {
-		return nil, updateFieldOutput{}, failMsg("unknown or already used confirm_token "+in.ConfirmToken,
+		return nil, updateFieldOutput{}, failMsg("unknown, foreign, or already used confirm_token",
 			"stage the write again by calling workiva_update_field without confirm_token")
 	}
 	if errors.Is(err, mapping.ErrPendingWriteExpired) {
 		return nil, updateFieldOutput{}, failMsg("confirm_token expired (older than 5 minutes)",
 			"stage the write again by calling workiva_update_field without confirm_token")
 	}
+	if errors.Is(err, mapping.ErrPendingWriteBindingMismatch) {
+		return nil, updateFieldOutput{}, failMsg("confirm_token is not valid for the current actor or permission", "use the same authenticated actor that staged the write")
+	}
+	if errors.Is(err, mapping.ErrPendingWriteIntegrity) {
+		return nil, updateFieldOutput{}, failMsg("confirm_token failed its staged-value integrity check", "restage the write and investigate local database integrity")
+	}
 	if err != nil {
 		return nil, updateFieldOutput{}, fail(err, "the confirmation token could not be validated")
 	}
 
 	// Bind the one-use token to every approved target coordinate. Legacy rows
-	// have empty target columns and therefore fail closed here.
+	// staged before the binding schema carry no actor/permission bindings and
+	// already failed closed in ConsumePendingWriteFor; a row whose stored
+	// target no longer matches the current mapping fails closed here.
 	if pending.FieldID != field.ID || pending.FieldName != field.Name ||
 		pending.SpreadsheetID != field.SpreadsheetID || pending.SheetID != field.SheetID ||
 		pending.CellRange != field.CellRange {
@@ -194,7 +226,29 @@ func executeConfirmedWrite(ctx context.Context, deps mcpserver.Deps, field *mapp
 			"re-call with the staged value, or stage a new write by calling workiva_update_field without confirm_token")
 	}
 
-	return executeWrite(ctx, deps, field, pending.Value, actor)
+	// The token is already consumed at this point. Every error executeWrite
+	// returns happens before the mutation is submitted to Workiva
+	// (post-submission outcomes come back as reconciliation outputs, not
+	// errors), so the caller must be told the token is spent.
+	result, out, err := executeWrite(ctx, deps, field, pending.Value, actor)
+	if err != nil {
+		return nil, out, burnedTokenError(err)
+	}
+	return result, out, nil
+}
+
+// burnedTokenError wraps a pre-submission write failure so the caller learns
+// the single-use confirmation token was consumed and the write must be
+// restaged; silently burning the token would strand the approval.
+func burnedTokenError(err error) error {
+	msg := err.Error()
+	var te toolError
+	if errors.As(err, &te) {
+		msg = te.msg
+	}
+	return failMsg(
+		"the write failed before the mutation was submitted to Workiva, and the confirmation token was consumed: "+msg,
+		"the token is single use and is already spent; restage the write by calling workiva_update_field without confirm_token")
 }
 
 // executeWrite sends the batched editCells update, polls the async

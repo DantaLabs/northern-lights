@@ -93,7 +93,7 @@ public ingress" gap from item 3.
    shared limiter (e.g. Redis) or per-replica budget division. Documented
    here as a known limitation.
 
-5. **Multi-user governance, Wave 1 implemented locally; live and later waves
+5. **Multi-user governance, Waves 1 and 2 implemented locally; live and Wave 3
    remain open**: the code now has explicit `api_key` and single-tenant `entra`
    modes, OIDC discovery/cached JWKS validation, immutable `tid`/`oid`
    principals, delegated-scope and explicit app-role/client authorization, the
@@ -112,13 +112,19 @@ public ingress" gap from item 3.
    optional claims, and role/client policy variables stay unset for
    delegated-only deployments. App-only access must remain disabled until a
    real token issued for the API proves `idtyp=app`; that is a live acceptance
-   gate and has not been completed here. Wave 2 must still tenant-scope
-   mappings, snapshots, audit rows, and confirmations and bind confirmation
-   tokens to the authenticated principal. Live characterization proved that
-   the current persisted token model allows a token staged by one actor to be
-   consumed by another, so Entra mode is not yet a claim of complete multi-user
-   isolation. Wave 3 must still add shared state and a shared limiter before
-   multiple replicas.
+   gate and has not been completed here. Wave 2 now transactionally migrates
+   mappings, snapshots, pending writes, and audit rows into tenant-scoped
+   storage; preserves old rows under `legacy-api-key`; enforces mapped resource
+   ownership before direct Workiva calls; and stores only SHA-256 digests of
+   32-byte random confirmation tokens bound to tenant, immutable actor,
+   permission, exact mapping target, exact value/digest, and expiry. Local
+   tests prove that a different actor cannot consume the token, permission
+   removal invalidates it without consumption, tenant audit reads are scoped
+   before resource filtering, and 100 concurrent confirms cause one consume
+   and one mutation. This is local evidence only: no live Entra/Copilot or
+   Azure deployment acceptance was run for Wave 2. Wave 3 must still add shared
+   mappings, confirmation state, audit ordering, sessions where needed, and a
+   shared limiter before multiple replicas; no multi-replica claim is made.
 
 6. **Stateful MCP sessions are process-local**: Wave 1 Entra mode is
    intentionally stateless and does not issue or rely on `Mcp-Session-Id`;
@@ -218,6 +224,117 @@ public ingress" gap from item 3.
 - `POST /mcp` answers `application/json` (no SSE); `GET /mcp` returns 405.
 - Connector OpenAPI file, `traces.kql`, `scripts/verify-mcp.sh` and the test
   runbook added under `deployments/copilot-studio/`, `scripts/` and `docs/`.
+
+## Disposition of the Phase 2 Wave 2 independent review (2026-09-24)
+
+Fixed and verified by tests (strict TDD: failing test observed first):
+
+- IMPORTANT-1 (legacy consume bypass): the unbound `ConsumePendingWrite`
+  wrapper was removed; `ConsumePendingWriteFor` now fails closed with
+  `ErrPendingWriteBindingMismatch` on any row stored without actor/permission
+  bindings, so migrated pre-Wave-2 rows can never be consumed and must be
+  restaged. `TestPendingWriteMigrationPreservesRowsButFailsClosed` proves the
+  migrated row is unconsumable with both tool and empty bindings, keeps its
+  data, and still expires.
+- MINOR-2 (raw-token forensic residue): superseded by the final fresh-review
+  resolution below. The initial `VACUUM`-only fix was incomplete because the
+  version-5 marker committed before the scrub and no truncating WAL checkpoint
+  was required.
+- MINOR-3 (startup janitor single-tenant): the startup janitor now calls the
+  tenant-agnostic `DeleteExpiredPendingWritesGlobal`; the per-tenant
+  `DeleteExpiredPendingWrites` remains for tenant-scoped callers.
+  `TestDeleteExpiredPendingWritesGlobalSpansTenants` proves expired rows from
+  two tenants are both removed while an unexpired row survives.
+- MINOR-4 (spreadsheet-level ownership): `ResourceOwnership` now also unions
+  `spreadsheets`, so a spreadsheets-only row asserts ownership.
+  `TestResourceOwnershipSpreadsheetRowAloneAssertsOwnership` (store level)
+  and `TestEntraSyncDeniedWhenOnlySpreadsheetRowIsForeign` (tool level, zero
+  Workiva calls) cover it.
+- MINOR-5 (silent token burn): when a consumed token's write fails before the
+  mutation is submitted to Workiva, the returned error explicitly states the
+  confirmation token was consumed and the write must be restaged.
+  `TestUpdateFieldReportsBurnedTokenWhenPreWriteReadFails` asserts the
+  message, zero mutation calls, and that re-presenting the burned token is
+  rejected as unknown.
+- MINOR-6 (docs): `docs/compliance/AUDIT.md` now documents that verify/export
+  span all tenant chains, the complete migrated-v1 relabeling limitation (as
+  corrected by the final fresh review below), and that confirmation
+  consumption precedes the final Workiva write so a pre-write failure burns
+  the token and requires restaging.
+- MINOR-7 (test gaps): `TestForeignTenantConfirmationFailsAndLeavesOwnersTokenIntact`
+  proves a foreign-tenant confirmation attempt fails with zero Workiva calls
+  and leaves the owner's token intact and usable by the owner.
+
+Residual risks, still open:
+
+- Wave 2 has no live validation: no live Entra/Copilot or Azure deployment
+  acceptance was run; all evidence is local tests.
+- Exactly-once consumption and sync-claim guarantees hold for a single
+  replica only; Wave 3 shared state is required before horizontal scaling.
+- In API-key mode the actor header is caller-asserted, not
+  identity-verified; only Entra mode binds the actor to a verified
+  principal.
+- Migrations are tested against synthetic pre-Wave-2 schemas built in tests,
+  not against a production database backup.
+- The concurrent-confirm exactly-once test
+  (`TestOneHundredConcurrentConfirmsCauseOneMutation`) exercises
+  `executeConfirmedWrite` directly, not the tool's registered handler with
+  middleware; the middleware path (auth, actor extraction, audit wrapping)
+  is not under that concurrency test.
+
+## Disposition of the Phase 2 final fresh review (2026-09-24)
+
+Fixed and verified by focused RED-to-GREEN tests:
+
+- IMPORTANT/P2 (crash-safe pending-write forensic purge): version 5 now marks
+  only the transactional raw-token-to-digest schema rewrite. A separate
+  version-6 scrub-completion marker is inserted only after both `VACUUM` and
+  `PRAGMA wal_checkpoint(TRUNCATE)` succeed. A busy checkpoint fails startup
+  with version 6 absent, so the next `Open` retries. The marker write happens
+  after truncation and contains no raw token bytes. The flow is additive:
+  migrated pending-write data and the version-5 marker remain intact.
+  `TestPendingWriteScrubRetriesVersion5DatabaseAndMarksCompletion` reconstructs
+  a legitimate version-5/no-6 crash state, proves the scrub occurs, inspects
+  the database, WAL, and SHM for raw bytes while the store remains open, and
+  proves a clean idempotent reopen. `TestPendingWriteScrubCheckpointBusyLeavesMarkerAbsentAndRetries`
+  holds a real WAL reader open, observes startup failure and an absent marker,
+  then proves successful retry. `TestPendingWriteVersion5CollisionRollsBackDataAndMarker`
+  proves a version-5 collision preserves the original row and records neither
+  marker; `TestPendingWriteScrubMarksMemoryDatabase` covers in-memory startup.
+- IMPORTANT/P2 (audit export hash version): `audit.Entry.HashVersion` is now an
+  exported `json:"hash_version"` field used by every append, scan, verification
+  switch, JSONL export, and MCP audit-trail payload. A migrated v1 row followed
+  by a new v2 row exports exact values `1` and `2`, and the mixed chain still
+  verifies. The MCP field is additive and is covered by the focused audit-tool
+  payload test.
+- MINOR (silent double-consume defense): `ConsumePendingWriteFor` now requires
+  `RowsAffected()==1` before committing and returning a write. A real SQLite
+  trigger forces a zero-row DELETE; the focused test proves consumption fails,
+  returns no write, and leaves the row intact. The existing 100-way concurrent
+  confirm test remains the end-to-end single-mutation coverage.
+- MINOR (v1 relabeling documentation): `docs/compliance/AUDIT.md` now states
+  that any entire all-v1 chain can be relabeled wholesale without detection,
+  partial relabels break chain integrity, and v2 rows bind tenant identity.
+
+Remaining risks and acceptance limits:
+
+- No live Entra, Copilot Studio, Workiva, Azure deployment, or production-data
+  migration acceptance was performed; evidence remains local and synthetic.
+- No multi-replica acceptance was performed or is claimed. Mapping state,
+  confirmation consumption, audit ordering, sessions where needed, and rate
+  limits remain process-local until Wave 3 supplies shared coordination.
+- The failure-path test forces a genuine busy truncating checkpoint with an
+  open WAL reader. It does not inject disk-full or I/O failure during
+  `VACUUM`, or a failure of the final version-6 marker insert; the reconstructed
+  durable version-5/no-6 state covers retry after interruption between the
+  schema commit and scrub completion.
+- The hash chain still cannot prove completeness: deleting the final row of a
+  tenant chain is undetectable, and an entire chain made only of v1 rows can be
+  relabeled wholesale as documented above.
+
+## Wave 2 PR CI follow-up (2026-09-24)
+
+- The first PR #8 `test` run failed in `TestReadRangeCachesUnboundedRowsFromZeroOrigin`: `GetCachedCells(..., 0)` occasionally missed the snapshot when the call crossed a one-second storage timestamp boundary. Three read-range tests and one get-field cache assertion now query a one-minute fresh window, which matches their intent and avoids clock-boundary flakiness. The failing CI run is the RED evidence. The focused repeated test, full race suite, 32-bit tests/build, vet, and lint passed locally after the change; remote PR CI must pass before acceptance.
 
 ## Disposition of the 2026-09-08 adversarial review (ADVERSARIAL_REVIEW.md)
 

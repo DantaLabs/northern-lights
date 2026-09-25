@@ -12,6 +12,11 @@ type TokenType string
 const (
 	TokenTypeDelegated   TokenType = "delegated"
 	TokenTypeApplication TokenType = "application"
+
+	// LegacyTenantID owns API-key requests and rows created before tenant
+	// isolation. Entra tenant IDs are canonical UUIDs, so this value cannot
+	// collide with a verified Entra tenant.
+	LegacyTenantID = "legacy-api-key"
 )
 
 // Permission is one Northern Lights authorization capability.
@@ -96,6 +101,16 @@ func PrincipalFromContext(ctx context.Context) (Principal, bool) {
 		return Principal{}, false
 	}
 	return clonePrincipal(p), true
+}
+
+// StorageTenant returns the only tenant identifier storage layers may trust.
+// Verified Entra middleware supplies Principal.TenantID; contexts without a
+// principal are explicit API-key/legacy operations.
+func StorageTenant(ctx context.Context) string {
+	if p, ok := PrincipalFromContext(ctx); ok && p.TenantID != "" {
+		return p.TenantID
+	}
+	return LegacyTenantID
 }
 
 func clonePrincipal(p Principal) Principal {

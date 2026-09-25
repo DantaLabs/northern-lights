@@ -59,7 +59,7 @@ func TestGetFieldLiveReadCachesValue(t *testing.T) {
 		t.Errorf("description = %v", content["description"])
 	}
 
-	cached, err := env.deps.Store.GetCachedCells(context.Background(), "sp-1", "sh-1", 0)
+	cached, err := env.deps.Store.GetCachedCells(context.Background(), "sp-1", "sh-1", time.Minute)
 	if err != nil {
 		t.Fatalf("GetCachedCells: %v", err)
 	}

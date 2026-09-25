@@ -364,6 +364,16 @@ func TestDemoModeWithoutAPIKey(t *testing.T) {
 	}
 }
 
+func TestStorageContextForConfiguredAuthenticationMode(t *testing.T) {
+	const tenant = "11111111-1111-1111-1111-111111111111"
+	if got := identity.StorageTenant(storageContextForConfig(&config.Config{AuthMode: config.AuthModeEntra, EntraTenantID: tenant})); got != tenant {
+		t.Fatalf("Entra startup tenant = %q, want %q", got, tenant)
+	}
+	if got := identity.StorageTenant(storageContextForConfig(&config.Config{AuthMode: config.AuthModeAPIKey})); got != identity.LegacyTenantID {
+		t.Fatalf("API-key startup tenant = %q, want %q", got, identity.LegacyTenantID)
+	}
+}
+
 func bearerHTTPClient(token string) *http.Client {
 	return &http.Client{
 		Timeout: 30 * time.Second,
