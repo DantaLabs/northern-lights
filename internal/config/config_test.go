@@ -22,6 +22,8 @@ var configEnvKeys = []string{
 	"NL_READ_CACHE_TTL",
 	"NL_REQUIRE_WRITE_CONFIRMATION",
 	"NL_DISABLE_LOCALHOST_PROTECTION",
+	"NL_ASSURANCE_ENABLED",
+	"NL_ASSURANCE_BUNDLE_PUBLIC_KEY",
 	"NL_ALLOWED_RESOURCES",
 	"NL_WORKIVA_CLIENT_ID",
 	"NL_WORKIVA_CLIENT_SECRET",
@@ -44,6 +46,22 @@ func TestAuthModeDefaultsToAPIKey(t *testing.T) {
 	}
 	if cfg.AuthMode != AuthModeAPIKey {
 		t.Fatalf("AuthMode = %q, want %q", cfg.AuthMode, AuthModeAPIKey)
+	}
+}
+
+func TestAssuranceFeatureRequiresValidPublicKey(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("NL_ASSURANCE_ENABLED", "true")
+	if _, err := Load(""); err == nil {
+		t.Fatal("assurance enabled without public key succeeded")
+	}
+	t.Setenv("NL_ASSURANCE_BUNDLE_PUBLIC_KEY", strings.Repeat("ab", 32))
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("Load assurance config: %v", err)
+	}
+	if !cfg.AssuranceEnabled || cfg.AssuranceBundlePublicKey != strings.Repeat("ab", 32) {
+		t.Fatalf("assurance config = %#v", cfg)
 	}
 }
 

@@ -1,0 +1,697 @@
+package assurance
+
+import (
+	"bytes"
+	"context"
+	"crypto/ed25519"
+	"database/sql"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"sort"
+	"strings"
+	"time"
+
+	"gopkg.in/yaml.v3"
+
+	"github.com/dantalabs/northern-lights/internal/identity"
+)
+
+const supportedBundleSchemaVersion = 1
+
+const (
+	maxBundleBytes       = 4 << 20
+	maxBundleIDLength    = 128
+	maxReportIDLength    = 128
+	maxNameLength        = 256
+	maxDescriptionLength = 4096
+	maxOwnerLength       = 128
+	maxPeriodKeyLength   = 128
+	maxPeriodLabelLength = 256
+	maxFieldIDLength     = 128
+	maxResourceIDLength  = 128
+	maxLocatorLength     = 512
+	maxUnitLength        = 128
+	maxScaleLength       = 64
+	maxTimezoneLength    = 64
+	maxReferenceLength   = 128
+	maxExportProfiles    = 32
+	maxFieldCount        = 1000
+	maxPeriodCount       = 100
+	maxPrecision         = 38
+	maxRevision          = 1_000_000
+)
+
+// Bundle is the signed tenant-bound provisioning unit. It intentionally has no
+// provider credentials or runtime secrets.
+type Bundle struct {
+	SchemaVersion int              `json:"schema_version" yaml:"schema_version"`
+	BundleID      string           `json:"bundle_id" yaml:"bundle_id"`
+	BundleVersion int              `json:"bundle_version" yaml:"bundle_version"`
+	TenantID      string           `json:"tenant_id" yaml:"tenant_id"`
+	Reports       []ReportRevision `json:"reports" yaml:"reports"`
+}
+
+// ReportRevision is one immutable server-owned report definition revision.
+type ReportRevision struct {
+	ReportID            string            `json:"report_id" yaml:"report_id"`
+	Revision            int               `json:"revision" yaml:"revision"`
+	Name                string            `json:"name" yaml:"name"`
+	Description         string            `json:"description,omitempty" yaml:"description,omitempty"`
+	Owner               string            `json:"owner" yaml:"owner"`
+	Status              string            `json:"status" yaml:"status"`
+	RetentionClass      string            `json:"retention_class" yaml:"retention_class"`
+	ResourcePolicyHash  string            `json:"resource_policy_hash" yaml:"resource_policy_hash"`
+	RuleSetID           string            `json:"rule_set_id,omitempty" yaml:"rule_set_id,omitempty"`
+	MaterialityPolicyID string            `json:"materiality_policy_id,omitempty" yaml:"materiality_policy_id,omitempty"`
+	ExportProfiles      []string          `json:"export_profiles,omitempty" yaml:"export_profiles,omitempty"`
+	EffectiveFrom       string            `json:"effective_from,omitempty" yaml:"effective_from,omitempty"`
+	EffectiveTo         string            `json:"effective_to,omitempty" yaml:"effective_to,omitempty"`
+	Periods             []Period          `json:"periods" yaml:"periods"`
+	Fields              []FieldDefinition `json:"fields" yaml:"fields"`
+	ContentHash         string            `json:"content_hash,omitempty" yaml:"content_hash,omitempty"`
+}
+
+// ValidatedBundle carries canonical signed bytes into the staging API.
+type ValidatedBundle struct {
+	Bundle        Bundle
+	CanonicalJSON []byte
+	Signature     []byte
+	ContentHash   string
+}
+
+// ValidateBundle strictly parses JSON or YAML, validates all references and
+// bounds, verifies tenant binding and detached Ed25519 signature, and returns
+// canonical JSON suitable for atomic staging.
+func ValidateBundle(raw, signature []byte, expectedTenant string, publicKey ed25519.PublicKey) (*ValidatedBundle, error) {
+	if len(raw) == 0 || len(raw) > maxBundleBytes {
+		return nil, domainError("bundle_bounds_invalid", fmt.Sprintf("bundle must be between 1 and %d bytes", maxBundleBytes))
+	}
+	if len(publicKey) != ed25519.PublicKeySize {
+		return nil, domainError("bundle_key_invalid", "configured Ed25519 public key is invalid")
+	}
+	bundle, err := decodeStrictBundle(raw)
+	if err != nil {
+		return nil, wrapError("bundle_malformed", "bundle is not strict versioned YAML/JSON", err)
+	}
+	// Signatures cover the operator-authored semantic bundle. Derived report
+	// hashes are populated only after verification and are not silently added
+	// to the signed payload.
+	canonical, err := CanonicalJSON(bundle)
+	if err != nil {
+		return nil, wrapError("bundle_canonicalization_failed", "bundle could not be canonicalized", err)
+	}
+	if !ed25519.Verify(publicKey, canonical, signature) {
+		return nil, domainError("bundle_signature_invalid", "bundle signature verification failed")
+	}
+	if err := validateBundleObject(&bundle, expectedTenant); err != nil {
+		return nil, err
+	}
+	return &ValidatedBundle{Bundle: bundle, CanonicalJSON: canonical, Signature: append([]byte(nil), signature...), ContentHash: digestHex(HashBytes(canonical))}, nil
+}
+
+func decodeStrictBundle(raw []byte) (Bundle, error) {
+	var node yaml.Node
+	decoder := yaml.NewDecoder(bytes.NewReader(raw))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&node); err != nil {
+		return Bundle{}, err
+	}
+	var extra yaml.Node
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return Bundle{}, errors.New("multiple YAML/JSON documents are not allowed")
+		}
+		return Bundle{}, err
+	}
+	if err := rejectBundleReferences(&node); err != nil {
+		return Bundle{}, err
+	}
+	strict := yaml.NewDecoder(bytes.NewReader(raw))
+	strict.KnownFields(true)
+	var bundle Bundle
+	if err := strict.Decode(&bundle); err != nil {
+		return Bundle{}, err
+	}
+	return bundle, nil
+}
+
+func rejectBundleReferences(node *yaml.Node) error {
+	if node == nil {
+		return nil
+	}
+	if node.Kind == yaml.AliasNode || node.Anchor != "" || (node.Value == "<<" && node.Tag == "!!merge") {
+		return errors.New("YAML aliases, anchors, and merge keys are not allowed")
+	}
+	if node.Kind == yaml.MappingNode {
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			key := strings.ToLower(strings.ReplaceAll(node.Content[i].Value, "-", "_"))
+			switch key {
+			case "secret", "password", "token", "credential", "credentials", "client_id", "client_secret", "api_key", "access_token", "authorization", "private_key", "provider_secret":
+				return errors.New("provider credentials and secret fields are not allowed in bundles")
+			}
+		}
+	}
+	for _, child := range node.Content {
+		if err := rejectBundleReferences(child); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateBundleObject(bundle *Bundle, expectedTenant string) error {
+	if bundle.SchemaVersion != supportedBundleSchemaVersion {
+		return domainError("bundle_version_unsupported", fmt.Sprintf("unsupported bundle schema version %d", bundle.SchemaVersion))
+	}
+	if err := validateBundleString(bundle.BundleID, "bundle_id", maxBundleIDLength, true); err != nil || bundle.BundleVersion <= 0 || bundle.BundleVersion > maxRevision {
+		return domainError("bundle_invalid", "bundle_id and bounded positive bundle_version are required")
+	}
+	if err := validateBundleString(bundle.TenantID, "tenant_id", maxReferenceLength, true); err != nil || bundle.TenantID != expectedTenant {
+		return domainError("bundle_tenant_mismatch", "bundle tenant does not match configured tenant")
+	}
+	if len(bundle.Reports) == 0 || len(bundle.Reports) > 100 {
+		return domainError("bundle_invalid", "bundle must contain 1 through 100 report revisions")
+	}
+	reports := make(map[string]bool, len(bundle.Reports))
+	lastRevisionByReport := make(map[string]int)
+	byReport := make(map[string][]ReportRevision)
+	for reportIndex := range bundle.Reports {
+		report := &bundle.Reports[reportIndex]
+		key := fmt.Sprintf("%s/%d", report.ReportID, report.Revision)
+		if err := validateBundleString(report.ReportID, "report_id", maxReportIDLength, true); err != nil || report.Revision <= 0 || report.Revision > maxRevision || reports[key] {
+			return domainError("bundle_duplicate_or_invalid_report", "report IDs and bounded positive revisions must be unique")
+		}
+		if previousRevision, ok := lastRevisionByReport[report.ReportID]; ok && report.Revision <= previousRevision {
+			return domainError("bundle_revision_non_monotonic", fmt.Sprintf("report %s revisions must increase in declared order", report.ReportID))
+		}
+		lastRevisionByReport[report.ReportID] = report.Revision
+		reports[key] = true
+		if err := validateBundleString(report.Name, "name", maxNameLength, true); err != nil {
+			return domainError("bundle_invalid_report", fmt.Sprintf("report %s has invalid bounded metadata", report.ReportID))
+		}
+		if err := validateBundleString(report.Description, "description", maxDescriptionLength, false); err != nil {
+			return domainError("bundle_invalid_report", fmt.Sprintf("report %s has invalid bounded metadata", report.ReportID))
+		}
+		if err := validateBundleString(report.Owner, "owner", maxOwnerLength, true); err != nil {
+			return domainError("bundle_invalid_report", fmt.Sprintf("report %s has invalid bounded metadata", report.ReportID))
+		}
+		if report.Status != "active" {
+			return domainError("bundle_invalid_report", fmt.Sprintf("report %s must be active", report.ReportID))
+		}
+		if report.RetentionClass != "standard" && report.RetentionClass != "long_term" {
+			return domainError("bundle_invalid_retention_class", fmt.Sprintf("report %s has unsupported retention class %q", report.ReportID, report.RetentionClass))
+		}
+		if len(report.ResourcePolicyHash) != 64 {
+			return domainError("bundle_invalid_report", fmt.Sprintf("report %s resource policy hash is invalid", report.ReportID))
+		}
+		if _, err := hex.DecodeString(report.ResourcePolicyHash); err != nil {
+			return domainError("bundle_invalid_report", fmt.Sprintf("report %s resource policy hash is invalid", report.ReportID))
+		}
+		if len(report.ExportProfiles) > maxExportProfiles {
+			return domainError("bundle_collection_bound", fmt.Sprintf("report %s has too many export profiles", report.ReportID))
+		}
+		if report.RuleSetID != "" || report.MaterialityPolicyID != "" || len(report.ExportProfiles) != 0 {
+			return domainError("bundle_reference_unresolved", fmt.Sprintf("report %s references a policy or export profile not provisioned by the Wave 1 bundle contract", report.ReportID))
+		}
+		if len(report.Periods) == 0 || len(report.Periods) > maxPeriodCount || len(report.Fields) == 0 || len(report.Fields) > maxFieldCount {
+			return domainError("bundle_invalid_report", fmt.Sprintf("report %s has invalid period or field count", report.ReportID))
+		}
+		if err := validateEffectiveInterval(report.EffectiveFrom, report.EffectiveTo); err != nil {
+			return domainError("bundle_invalid_effective_interval", fmt.Sprintf("report %s: %v", report.ReportID, err))
+		}
+		periods := make(map[string]bool, len(report.Periods))
+		for _, period := range report.Periods {
+			if err := validateBundleString(period.Key, "period.key", maxPeriodKeyLength, true); err != nil {
+				return domainError("bundle_invalid_period", fmt.Sprintf("report %s contains an invalid, unbounded, or duplicate period", report.ReportID))
+			}
+			if err := validateBundleString(period.Label, "period.label", maxPeriodLabelLength, true); err != nil {
+				return domainError("bundle_invalid_period", fmt.Sprintf("report %s contains an invalid, unbounded, or duplicate period", report.ReportID))
+			}
+			if len(period.Start) != len("2006-01-02") || len(period.End) != len("2006-01-02") || periods[period.Key] || !validDateRange(period.Start, period.End) {
+				return domainError("bundle_invalid_period", fmt.Sprintf("report %s contains an invalid, unbounded, or duplicate period", report.ReportID))
+			}
+			periods[period.Key] = true
+		}
+		fields := make(map[string]bool, len(report.Fields))
+		orders := make(map[int]bool, len(report.Fields))
+		for _, field := range report.Fields {
+			for _, item := range []struct {
+				value    string
+				name     string
+				max      int
+				required bool
+			}{
+				{field.FieldID, "field_id", maxFieldIDLength, true},
+				{field.ResourceID, "resource_id", maxResourceIDLength, true},
+				{field.ExternalResourceID, "external_resource_id", maxResourceIDLength, true},
+				{field.SubresourceID, "subresource_id", maxResourceIDLength, true},
+				{field.Locator, "locator", maxLocatorLength, true},
+				{field.Unit, "unit", maxUnitLength, false},
+				{field.Scale, "scale", maxScaleLength, false},
+				{field.PercentBasis, "percent_basis", maxScaleLength, false},
+				{field.Timezone, "timezone", maxTimezoneLength, false},
+			} {
+				if err := validateBundleString(item.value, item.name, item.max, item.required); err != nil {
+					return domainError("bundle_invalid_field", fmt.Sprintf("report %s field %s: %v", report.ReportID, field.FieldID, err))
+				}
+			}
+			if field.Order <= 0 || field.Order > maxFieldCount || fields[field.FieldID] || orders[field.Order] {
+				return domainError("bundle_duplicate_or_invalid_field", fmt.Sprintf("report %s contains an invalid or duplicate field", report.ReportID))
+			}
+			if field.Precision < 0 || field.Precision > maxPrecision || field.MappingRevision < 0 || field.MappingRevision > maxRevision {
+				return domainError("bundle_invalid_field_bounds", fmt.Sprintf("field %s has an out-of-bounds precision or mapping revision", field.FieldID))
+			}
+			if !knownValueKind(field.Kind) {
+				return domainError("bundle_invalid_field_kind", fmt.Sprintf("field %s has unsupported kind %q", field.FieldID, field.Kind))
+			}
+			if field.Scale != "" && field.Scale != "ones" {
+				return domainError("bundle_invalid_field_scale", fmt.Sprintf("field %s has unsupported scale %q", field.FieldID, field.Scale))
+			}
+			if field.Kind == ValueCurrency && !currencyPattern.MatchString(field.Unit) {
+				return domainError("bundle_invalid_field_unit", fmt.Sprintf("field %s currency unit is invalid", field.FieldID))
+			}
+			if field.Kind == ValuePercent && field.PercentBasis != "0..1" && field.PercentBasis != "0..100" {
+				return domainError("bundle_invalid_percent_basis", fmt.Sprintf("field %s percent basis is invalid", field.FieldID))
+			}
+			fields[field.FieldID] = true
+			orders[field.Order] = true
+		}
+		suppliedContentHash := report.ContentHash
+		report.ContentHash = ""
+		canonical, err := CanonicalJSON(*report)
+		if err != nil {
+			return wrapError("bundle_canonicalization_failed", "report revision could not be canonicalized", err)
+		}
+		calculatedContentHash := digestHex(HashBytes(canonical))
+		if suppliedContentHash != "" && suppliedContentHash != calculatedContentHash {
+			return domainError("bundle_hash_invalid", fmt.Sprintf("report %s content hash does not match", report.ReportID))
+		}
+		report.ContentHash = calculatedContentHash
+		byReport[report.ReportID] = append(byReport[report.ReportID], *report)
+	}
+	for reportID, revisions := range byReport {
+		sort.Slice(revisions, func(i, j int) bool { return revisions[i].Revision < revisions[j].Revision })
+		for i := 1; i < len(revisions); i++ {
+			previous, current := revisions[i-1], revisions[i]
+			if previous.EffectiveTo != "" && current.EffectiveFrom != "" && current.EffectiveFrom <= previous.EffectiveTo {
+				return domainError("bundle_effective_interval_overlap", fmt.Sprintf("report %s revisions have overlapping effective intervals", reportID))
+			}
+		}
+	}
+	return nil
+}
+
+func validateBundleString(value, name string, max int, required bool) error {
+	if required && value == "" {
+		return fmt.Errorf("%s is required", name)
+	}
+	if len(value) > max {
+		return fmt.Errorf("%s exceeds %d bytes", name, max)
+	}
+	for _, r := range value {
+		if r < 0x20 || r == 0x7f {
+			return fmt.Errorf("%s contains a control character", name)
+		}
+	}
+	return nil
+}
+
+func validateEffectiveInterval(from, to string) error {
+	if from == "" && to == "" {
+		return nil
+	}
+	if from == "" || to == "" {
+		return errors.New("effective_from and effective_to must be supplied together")
+	}
+	fromDate, fromErr := time.Parse("2006-01-02", from)
+	toDate, toErr := time.Parse("2006-01-02", to)
+	if fromErr != nil || toErr != nil || toDate.Before(fromDate) {
+		return errors.New("effective interval must be an ordered ISO date range")
+	}
+	return nil
+}
+
+func knownValueKind(kind ValueKind) bool {
+	switch kind {
+	case ValueBlank, ValueText, ValueInteger, ValueNumber, ValueBoolean, ValueDate, ValueDateTime, ValueCurrency, ValuePercent, ValueError:
+		return true
+	default:
+		return false
+	}
+}
+
+func validDateRange(start, end string) bool {
+	startTime, startErr := time.Parse("2006-01-02", start)
+	endTime, endErr := time.Parse("2006-01-02", end)
+	return startErr == nil && endErr == nil && !endTime.Before(startTime)
+}
+
+// StageBundle atomically stores a fully validated candidate without requesting activation.
+func (s *Store) StageBundle(ctx context.Context, bundle *ValidatedBundle) error {
+	if bundle == nil {
+		return domainError("bundle_invalid", "validated bundle is required")
+	}
+	tenant := identity.StorageTenant(ctx)
+	if bundle.Bundle.TenantID != tenant {
+		return domainError("bundle_tenant_mismatch", "bundle tenant does not match trusted tenant")
+	}
+	var activeVersion sql.NullInt64
+	if err := s.db.QueryRowContext(ctx, `SELECT bundle_version FROM assurance_active_bundles WHERE tenant_id=? AND singleton=1`, tenant).Scan(&activeVersion); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("assurance: read active bundle: %w", err)
+	}
+	if activeVersion.Valid && int64(bundle.Bundle.BundleVersion) <= activeVersion.Int64 {
+		return domainError("bundle_revision_non_monotonic", "candidate bundle version must exceed active version")
+	}
+	for _, report := range bundle.Bundle.Reports {
+		var existingRevision int
+		var existingHash string
+		err := s.db.QueryRowContext(ctx, `SELECT revision, content_hash FROM assurance_report_revisions
+ WHERE tenant_id=? AND report_id=? ORDER BY revision DESC LIMIT 1`, tenant, report.ReportID).Scan(&existingRevision, &existingHash)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("assurance: inspect report revision: %w", err)
+		}
+		if err == nil && (report.Revision < existingRevision || report.Revision == existingRevision && report.ContentHash != existingHash) {
+			return domainError("bundle_revision_non_monotonic", fmt.Sprintf("report %s revision is not a valid immutable successor", report.ReportID))
+		}
+	}
+	_, err := s.db.ExecContext(ctx, `INSERT INTO assurance_bundle_candidates
+ (tenant_id, bundle_id, bundle_version, schema_version, bundle_json, signature_hex, content_hash, activation_requested, staged_at)
+ VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+ ON CONFLICT(tenant_id, bundle_id, bundle_version) DO UPDATE SET schema_version=excluded.schema_version,
+ bundle_json=excluded.bundle_json, signature_hex=excluded.signature_hex, content_hash=excluded.content_hash,
+ activation_requested=0, staged_at=excluded.staged_at, requested_at=''`, tenant, bundle.Bundle.BundleID, bundle.Bundle.BundleVersion,
+		bundle.Bundle.SchemaVersion, string(bundle.CanonicalJSON), hex.EncodeToString(bundle.Signature), bundle.ContentHash, formatTimestamp(time.Now()))
+	if err != nil {
+		return fmt.Errorf("assurance: stage bundle: %w", err)
+	}
+	return nil
+}
+
+// RequestActivation atomically marks one complete staged candidate for next-start activation.
+func (s *Store) RequestActivation(ctx context.Context, bundleID string, bundleVersion int) error {
+	tenant := identity.StorageTenant(ctx)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `UPDATE assurance_bundle_candidates SET activation_requested=0, requested_at='' WHERE tenant_id=?`, tenant); err != nil {
+		return fmt.Errorf("assurance: clear activation request: %w", err)
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE assurance_bundle_candidates SET activation_requested=1, requested_at=?
+ WHERE tenant_id=? AND bundle_id=? AND bundle_version=?`, formatTimestamp(time.Now()), tenant, bundleID, bundleVersion)
+	if err != nil {
+		return fmt.Errorf("assurance: request activation: %w", err)
+	}
+	if err := requireOneTransition(result); err != nil {
+		return domainError("bundle_candidate_missing", "staged candidate was not found")
+	}
+	return tx.Commit()
+}
+
+// Bootstrap verifies and atomically activates a requested candidate. Invalid
+// requested candidates force readiness false even when an older bundle exists.
+func (s *Store) Bootstrap(ctx context.Context, expectedTenant string, publicKey ed25519.PublicKey) error {
+	tenant := identity.StorageTenant(ctx)
+	if tenant != expectedTenant {
+		err := domainError("bundle_tenant_mismatch", "trusted startup tenant does not match configured tenant")
+		s.setReadiness(false, errors.Join(ErrNotReady, err))
+		return errors.Join(ErrNotReady, err)
+	}
+	if _, err := s.ExpireStaleReservations(ctx, time.Now().UTC()); err != nil {
+		return s.failReadiness(fmt.Errorf("assurance: startup reservation recovery: %w", err))
+	}
+	type candidate struct {
+		id           string
+		version      int
+		raw          string
+		signatureHex string
+		hash         string
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT bundle_id, bundle_version, bundle_json, signature_hex, content_hash
+ FROM assurance_bundle_candidates WHERE tenant_id=? AND activation_requested=1 ORDER BY requested_at`, tenant)
+	if err != nil {
+		return s.failReadiness(err)
+	}
+	var candidates []candidate
+	for rows.Next() {
+		var item candidate
+		if err := rows.Scan(&item.id, &item.version, &item.raw, &item.signatureHex, &item.hash); err != nil {
+			_ = rows.Close()
+			return s.failReadiness(err)
+		}
+		candidates = append(candidates, item)
+	}
+	if err := rows.Close(); err != nil {
+		return s.failReadiness(err)
+	}
+	if len(candidates) > 1 {
+		return s.failReadiness(domainError("bundle_activation_ambiguous", "multiple activation requests exist"))
+	}
+	if len(candidates) == 0 {
+		return s.bootstrapPriorActive(ctx, tenant, publicKey)
+	}
+	item := candidates[0]
+	signature, err := hex.DecodeString(item.signatureHex)
+	if err != nil {
+		return s.failReadiness(domainError("bundle_signature_invalid", "candidate signature encoding is invalid"))
+	}
+	validated, err := ValidateBundle([]byte(item.raw), signature, expectedTenant, publicKey)
+	if err != nil || validated.ContentHash != item.hash || validated.Bundle.BundleID != item.id || validated.Bundle.BundleVersion != item.version {
+		if err == nil {
+			err = domainError("bundle_hash_invalid", "candidate metadata or hash does not match signed bundle")
+		}
+		return s.failReadiness(err)
+	}
+	if err := s.activateBundle(ctx, validated); err != nil {
+		return s.failReadiness(err)
+	}
+	s.setReadiness(true, nil)
+	return nil
+}
+
+func (s *Store) bootstrapPriorActive(ctx context.Context, tenant string, publicKey ed25519.PublicKey) error {
+	var raw, signatureHex, storedHash string
+	err := s.db.QueryRowContext(ctx, `SELECT bundle_json, signature_hex, content_hash FROM assurance_active_bundles
+ WHERE tenant_id=? AND singleton=1`, tenant).Scan(&raw, &signatureHex, &storedHash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return s.failReadiness(domainError("active_bundle_missing", "no valid active bundle is available"))
+	}
+	if err != nil {
+		return s.failReadiness(err)
+	}
+	signature, err := hex.DecodeString(signatureHex)
+	if err != nil {
+		return s.failReadiness(err)
+	}
+	validated, err := ValidateBundle([]byte(raw), signature, tenant, publicKey)
+	if err != nil || validated.ContentHash != storedHash {
+		if err == nil {
+			err = domainError("bundle_hash_invalid", "active bundle hash does not match")
+		}
+		return s.failReadiness(err)
+	}
+	s.setReadiness(true, nil)
+	return nil
+}
+
+func (s *Store) failReadiness(cause error) error {
+	err := errors.Join(ErrNotReady, cause)
+	s.setReadiness(false, err)
+	return err
+}
+
+func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) error {
+	tenant := identity.StorageTenant(ctx)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `UPDATE assurance_report_definitions SET status='inactive' WHERE tenant_id=?`, tenant); err != nil {
+		return fmt.Errorf("assurance: deactivate omitted reports: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE assurance_report_revisions SET status='inactive' WHERE tenant_id=?`, tenant); err != nil {
+		return fmt.Errorf("assurance: deactivate historical revisions: %w", err)
+	}
+	latestByReport := make(map[string]int, len(bundle.Bundle.Reports))
+	for _, report := range bundle.Bundle.Reports {
+		if report.Revision > latestByReport[report.ReportID] {
+			latestByReport[report.ReportID] = report.Revision
+		}
+	}
+	for _, report := range bundle.Bundle.Reports {
+		active := report.Revision == latestByReport[report.ReportID]
+		status := "inactive"
+		if active {
+			status = "active"
+		}
+		var existingHash string
+		err := tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_report_revisions
+ WHERE tenant_id=? AND report_id=? AND revision=?`, tenant, report.ReportID, report.Revision).Scan(&existingHash)
+		existing := err == nil
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("assurance: inspect report revision %s/%d: %w", report.ReportID, report.Revision, err)
+		}
+		if existing && existingHash != report.ContentHash {
+			return domainError("bundle_revision_hash_conflict", fmt.Sprintf("report %s revision %d has a different content hash", report.ReportID, report.Revision))
+		}
+		if !existing {
+			periodsJSON, _ := marshalCanonical(report.Periods)
+			exportsJSON, _ := marshalCanonical(report.ExportProfiles)
+			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_report_revisions
+ (tenant_id, report_id, revision, name, description, owner, periods_json, resource_policy_hash, rule_set_id,
+  materiality_policy_id, export_profiles_json, retention_class, effective_from, effective_to, content_hash, status)
+ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, tenant, report.ReportID, report.Revision, report.Name,
+				report.Description, report.Owner, periodsJSON, report.ResourcePolicyHash, report.RuleSetID, report.MaterialityPolicyID,
+				exportsJSON, report.RetentionClass, report.EffectiveFrom, report.EffectiveTo, report.ContentHash, status); err != nil {
+				return fmt.Errorf("assurance: insert report revision %s/%d: %w", report.ReportID, report.Revision, err)
+			}
+			fields := append([]FieldDefinition(nil), report.Fields...)
+			sort.Slice(fields, func(i, j int) bool { return fields[i].Order < fields[j].Order })
+			for _, field := range fields {
+				if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_report_fields
+ (tenant_id, report_id, revision, field_id, field_order, required, resource_id, external_resource_id, subresource_id,
+  locator, value_kind, unit, scale, precision_value, percent_basis, timezone, mapping_revision)
+ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, tenant, report.ReportID, report.Revision, field.FieldID,
+					field.Order, field.Required, field.ResourceID, field.ExternalResourceID, field.SubresourceID, field.Locator,
+					field.Kind, field.Unit, field.Scale, field.Precision, field.PercentBasis, field.Timezone, field.MappingRevision); err != nil {
+					return fmt.Errorf("assurance: insert report field %s: %w", field.FieldID, err)
+				}
+			}
+		} else if _, err := tx.ExecContext(ctx, `UPDATE assurance_report_revisions SET status=? WHERE tenant_id=? AND report_id=? AND revision=?`, status, tenant, report.ReportID, report.Revision); err != nil {
+			return fmt.Errorf("assurance: reactivate unchanged report %s/%d: %w", report.ReportID, report.Revision, err)
+		}
+		if active {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_report_definitions
+ (tenant_id, report_id, name, description, owner, active_revision, status) VALUES (?, ?, ?, ?, ?, ?, 'active')
+ ON CONFLICT(tenant_id, report_id) DO UPDATE SET name=excluded.name, description=excluded.description,
+ owner=excluded.owner, active_revision=excluded.active_revision, status='active'`, tenant, report.ReportID, report.Name,
+				report.Description, report.Owner, report.Revision); err != nil {
+				return fmt.Errorf("assurance: activate report %s: %w", report.ReportID, err)
+			}
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_active_bundles
+ (tenant_id, singleton, bundle_id, bundle_version, schema_version, bundle_json, signature_hex, content_hash, activated_at)
+ VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?)
+ ON CONFLICT(tenant_id, singleton) DO UPDATE SET bundle_id=excluded.bundle_id, bundle_version=excluded.bundle_version,
+ schema_version=excluded.schema_version, bundle_json=excluded.bundle_json, signature_hex=excluded.signature_hex,
+ content_hash=excluded.content_hash, activated_at=excluded.activated_at`, tenant, bundle.Bundle.BundleID, bundle.Bundle.BundleVersion,
+		bundle.Bundle.SchemaVersion, string(bundle.CanonicalJSON), hex.EncodeToString(bundle.Signature), bundle.ContentHash, formatTimestamp(time.Now())); err != nil {
+		return fmt.Errorf("assurance: activate bundle pointer: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE assurance_bundle_candidates SET activation_requested=0 WHERE tenant_id=? AND bundle_id=? AND bundle_version=?`, tenant, bundle.Bundle.BundleID, bundle.Bundle.BundleVersion); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// ResolveReport resolves one active revision, exact named period, and an
+// approved field subset. Empty fieldIDs selects all required fields.
+func (s *Store) ResolveReport(ctx context.Context, reportID string, requested Period, fieldIDs []string) (ReportRevision, error) {
+	if err := s.Ready(); err != nil {
+		return ReportRevision{}, err
+	}
+	tenant := identity.StorageTenant(ctx)
+	var report ReportRevision
+	var periodsJSON, exportsJSON string
+	err := s.db.QueryRowContext(ctx, `SELECT r.report_id, r.revision, r.name, r.description, r.owner, r.status,
+ r.retention_class, r.resource_policy_hash, r.rule_set_id, r.materiality_policy_id, r.export_profiles_json,
+ r.effective_from, r.effective_to, r.periods_json, r.content_hash
+ FROM assurance_report_definitions d JOIN assurance_report_revisions r
+ ON r.tenant_id=d.tenant_id AND r.report_id=d.report_id AND r.revision=d.active_revision
+ WHERE d.tenant_id=? AND d.report_id=? AND d.status='active' AND r.status='active'`, tenant, reportID).Scan(&report.ReportID, &report.Revision,
+		&report.Name, &report.Description, &report.Owner, &report.Status, &report.RetentionClass, &report.ResourcePolicyHash,
+		&report.RuleSetID, &report.MaterialityPolicyID, &exportsJSON, &report.EffectiveFrom, &report.EffectiveTo, &periodsJSON, &report.ContentHash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ReportRevision{}, domainError("report_not_found", "approved report was not found")
+	}
+	if err != nil {
+		return ReportRevision{}, wrapError("report_resolution_failed", "approved report could not be resolved", err)
+	}
+	if err := json.Unmarshal([]byte(periodsJSON), &report.Periods); err != nil {
+		return ReportRevision{}, wrapError("report_integrity_failed", "stored period policy is invalid", err)
+	}
+	if err := json.Unmarshal([]byte(exportsJSON), &report.ExportProfiles); err != nil {
+		return ReportRevision{}, wrapError("report_integrity_failed", "stored export profiles are invalid", err)
+	}
+	period, err := resolvePeriod(report.Periods, requested)
+	if err != nil {
+		return ReportRevision{}, err
+	}
+	report.Periods = []Period{period}
+	rows, err := s.db.QueryContext(ctx, `SELECT field_id, resource_id, external_resource_id, subresource_id, locator,
+ value_kind, unit, scale, precision_value, percent_basis, timezone, required, field_order, mapping_revision
+ FROM assurance_report_fields WHERE tenant_id=? AND report_id=? AND revision=? ORDER BY field_order`, tenant, report.ReportID, report.Revision)
+	if err != nil {
+		return ReportRevision{}, err
+	}
+	defer rows.Close()
+	all := make(map[string]FieldDefinition)
+	var order []string
+	for rows.Next() {
+		var field FieldDefinition
+		if err := rows.Scan(&field.FieldID, &field.ResourceID, &field.ExternalResourceID, &field.SubresourceID, &field.Locator,
+			&field.Kind, &field.Unit, &field.Scale, &field.Precision, &field.PercentBasis, &field.Timezone, &field.Required, &field.Order, &field.MappingRevision); err != nil {
+			return ReportRevision{}, err
+		}
+		all[field.FieldID] = field
+		order = append(order, field.FieldID)
+	}
+	selected := make(map[string]bool)
+	if len(fieldIDs) == 0 {
+		for _, id := range order {
+			if all[id].Required {
+				selected[id] = true
+			}
+		}
+	} else {
+		for _, id := range fieldIDs {
+			if selected[id] {
+				return ReportRevision{}, domainError("field_selection_invalid", "field_ids contains a duplicate")
+			}
+			if _, ok := all[id]; !ok {
+				return ReportRevision{}, domainError("field_not_approved", "requested field is not in the approved report revision")
+			}
+			selected[id] = true
+		}
+	}
+	for _, id := range order {
+		if selected[id] {
+			report.Fields = append(report.Fields, all[id])
+		}
+	}
+	if len(report.Fields) == 0 {
+		return ReportRevision{}, domainError("field_selection_empty", "report selection contains no fields")
+	}
+	return report, nil
+}
+
+func resolvePeriod(periods []Period, requested Period) (Period, error) {
+	if requested.Key == "" {
+		return Period{}, domainError("period_required", "period.key is required")
+	}
+	for _, period := range periods {
+		if period.Key != requested.Key {
+			continue
+		}
+		if (requested.Label != "" && requested.Label != period.Label) || (requested.Start != "" && requested.Start != period.Start) || (requested.End != "" && requested.End != period.End) {
+			return Period{}, domainError("period_mismatch", "period metadata does not match the approved named period")
+		}
+		return period, nil
+	}
+	return Period{}, domainError("period_not_found", "approved named period was not found")
+}
+
+// ParsePublicKey accepts a hex-encoded detached Ed25519 public key.
+func ParsePublicKey(value string) (ed25519.PublicKey, error) {
+	decoded, err := hex.DecodeString(strings.TrimSpace(value))
+	if err != nil || len(decoded) != ed25519.PublicKeySize {
+		return nil, fmt.Errorf("invalid Ed25519 public key")
+	}
+	return ed25519.PublicKey(decoded), nil
+}

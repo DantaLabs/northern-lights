@@ -44,7 +44,7 @@ func allToolsMock(t *testing.T) http.HandlerFunc {
 	})
 }
 
-// TestEveryToolReturnsMatchingAuditID calls all 7 tools and checks each
+// TestEveryPhase2ToolReturnsMatchingAuditID calls all seven preserved tools and checks each
 // result carries a non-empty nl_audit_id, in the structured content and the
 // first text block, that matches an audit record. The confirmed write must
 // also carry the Workiva operation on a record with that same ID.

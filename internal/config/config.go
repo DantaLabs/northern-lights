@@ -4,6 +4,7 @@ package config
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -55,6 +56,10 @@ type Config struct {
 	// DemoMode swaps the Workiva client for a synthetic fixture client so
 	// the server can be tried without real Workiva credentials.
 	DemoMode bool
+	// AssuranceEnabled enables Wave 1 snapshot execution. The eighth tool is
+	// always registered, but fails closed while this flag is false.
+	AssuranceEnabled         bool
+	AssuranceBundlePublicKey string
 
 	// Entra identity settings are environment-only. They are kept out of YAML
 	// so deployment identity cannot be silently inherited from a repository.
@@ -78,6 +83,8 @@ type rawConfig struct {
 	RequireWriteConfirmation   *bool               `yaml:"require_write_confirmation"`
 	DisableLocalhostProtection *bool               `yaml:"disable_localhost_protection"`
 	AllowedResources           map[string][]string `yaml:"allowed_resources"`
+	AssuranceEnabled           *bool               `yaml:"assurance_enabled"`
+	AssuranceBundlePublicKey   *string             `yaml:"assurance_bundle_public_key"`
 	WorkivaClientID            *string             `yaml:"workiva_client_id"`
 	WorkivaClientSecret        *string             `yaml:"workiva_client_secret"`
 }
@@ -111,6 +118,12 @@ func Load(path string) (*Config, error) {
 	}
 	if err := validateIdentityConfig(cfg); err != nil {
 		return nil, err
+	}
+	if cfg.AssuranceEnabled {
+		key, err := hex.DecodeString(cfg.AssuranceBundlePublicKey)
+		if err != nil || len(key) != 32 {
+			return nil, errors.New("assurance requires a 32-byte hex Ed25519 public key in assurance_bundle_public_key or NL_ASSURANCE_BUNDLE_PUBLIC_KEY")
+		}
 	}
 	return cfg, nil
 }
@@ -189,6 +202,12 @@ func loadYAML(path string, cfg *Config) error {
 		}
 		cfg.AllowedResources = raw.AllowedResources
 	}
+	if raw.AssuranceEnabled != nil {
+		cfg.AssuranceEnabled = *raw.AssuranceEnabled
+	}
+	if raw.AssuranceBundlePublicKey != nil {
+		cfg.AssuranceBundlePublicKey = strings.TrimSpace(*raw.AssuranceBundlePublicKey)
+	}
 	return nil
 }
 
@@ -240,6 +259,16 @@ func applyEnv(cfg *Config) error {
 			return fmt.Errorf("invalid NL_DISABLE_LOCALHOST_PROTECTION %q: %w", v, err)
 		}
 		cfg.DisableLocalhostProtection = disabled
+	}
+	if v := os.Getenv("NL_ASSURANCE_ENABLED"); v != "" {
+		enabled, err := strconv.ParseBool(v)
+		if err != nil {
+			return fmt.Errorf("invalid NL_ASSURANCE_ENABLED %q: %w", v, err)
+		}
+		cfg.AssuranceEnabled = enabled
+	}
+	if v, configured := os.LookupEnv("NL_ASSURANCE_BUNDLE_PUBLIC_KEY"); configured {
+		cfg.AssuranceBundlePublicKey = strings.TrimSpace(v)
 	}
 	if v, configured := os.LookupEnv("NL_ALLOWED_RESOURCES"); configured {
 		var node yaml.Node

@@ -170,7 +170,8 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		if deps.Store == nil || deps.Audit == nil || deps.Store.Ping(r.Context()) != nil || deps.Audit.Ping(r.Context()) != nil {
+		assuranceReady := deps.Cfg == nil || !deps.Cfg.AssuranceEnabled || (deps.Assurance != nil && deps.Assurance.Ready() == nil)
+		if deps.Store == nil || deps.Audit == nil || deps.Store.Ping(r.Context()) != nil || deps.Audit.Ping(r.Context()) != nil || !assuranceReady {
 			http.Error(w, "not ready", http.StatusServiceUnavailable)
 			return
 		}
@@ -188,8 +189,9 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 // writeTools mutate state and must never execute when the audit log is
 // unavailable; an unaudited write is an EU AI Act Art. 12 violation.
 var writeTools = map[string]bool{
-	"workiva_update_field": true,
-	"workiva_sync_mapping": true,
+	"workiva_update_field":    true,
+	"workiva_sync_mapping":    true,
+	"workiva_snapshot_report": true,
 }
 
 func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
@@ -522,6 +524,8 @@ func requiredPermission(tool string, arguments json.RawMessage, requireConfirmat
 		return identity.PermissionMappingSync, nil
 	case "workiva_audit_trail":
 		return identity.PermissionAuditRead, nil
+	case "workiva_snapshot_report":
+		return identity.PermissionAssuranceSnapshot, nil
 	default:
 		return "", fmt.Errorf("authorization: tool %q has no permission mapping", tool)
 	}

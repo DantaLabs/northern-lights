@@ -195,7 +195,8 @@ type CellValue struct {
 
 // Store wraps the SQLite handle holding mappings and the cell cache.
 type Store struct {
-	db *sql.DB
+	db     *sql.DB
+	ownsDB bool
 }
 
 // Open opens (creating if needed) the SQLite database at path and applies
@@ -213,16 +214,28 @@ func Open(path string) (*Store, error) {
 	// SQLite allows one writer at a time; a single connection avoids
 	// SQLITE_BUSY errors on concurrent writes while keeping reads simple.
 	db.SetMaxOpenConns(1)
-	if migrateErr := sqlitedb.Migrate(context.Background(), db, "mapping", []string{migration0001, migration0002, migration0003, migration0004}); migrateErr != nil {
+	store, migrateErr := NewWithDB(db)
+	if migrateErr != nil {
 		if closeErr := db.Close(); closeErr != nil {
 			migrateErr = errors.Join(migrateErr, fmt.Errorf("mapping: close after migrate failure: %w", closeErr))
 		}
+		return nil, migrateErr
+	}
+	store.ownsDB = true
+	return store, nil
+}
+
+// NewWithDB applies every mapping migration, including the non-transactional
+// v5/v6 residue scrub and WAL truncation, on an existing shared handle. The
+// caller retains ownership; Close on the returned Store is a no-op.
+func NewWithDB(db *sql.DB) (*Store, error) {
+	if db == nil {
+		return nil, errors.New("mapping: database is required")
+	}
+	if migrateErr := sqlitedb.Migrate(context.Background(), db, "mapping", []string{migration0001, migration0002, migration0003, migration0004}); migrateErr != nil {
 		return nil, fmt.Errorf("mapping: migrate: %w", migrateErr)
 	}
 	if migrateErr := migratePendingWriteSecurity(context.Background(), db); migrateErr != nil {
-		if closeErr := db.Close(); closeErr != nil {
-			migrateErr = errors.Join(migrateErr, fmt.Errorf("mapping: close after pending-write migrate failure: %w", closeErr))
-		}
 		return nil, fmt.Errorf("mapping: migrate: %w", migrateErr)
 	}
 	return &Store{db: db}, nil
@@ -354,6 +367,9 @@ func scrubPendingWriteResidue(ctx context.Context, db *sql.DB) error {
 
 // Close releases the underlying database handle.
 func (s *Store) Close() error {
+	if !s.ownsDB {
+		return nil
+	}
 	return s.db.Close()
 }
 

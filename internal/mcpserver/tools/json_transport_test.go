@@ -129,7 +129,7 @@ func TestPostMCPAnswersJSONForEveryTool(t *testing.T) {
 			Tools []struct{ Name string } `json:"tools"`
 		} `json:"result"`
 	}
-	if err := json.Unmarshal(body, &list); err != nil || len(list.Result.Tools) != 7 {
+	if err := json.Unmarshal(body, &list); err != nil || len(list.Result.Tools) != 8 {
 		t.Fatalf("tools/list: %d tools (err %v): %s", len(list.Result.Tools), err, body)
 	}
 

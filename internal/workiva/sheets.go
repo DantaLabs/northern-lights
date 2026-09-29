@@ -59,6 +59,17 @@ type ValuesResponse struct {
 // are concatenated in order. cellRange and fields may be empty, in which
 // case the corresponding query parameters are omitted.
 func (c *Client) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellRange string, fields []string) (*SheetData, error) {
+	return c.getSheetData(ctx, spreadsheetID, sheetID, cellRange, fields, false)
+}
+
+// GetSheetDataTyped is the assurance read variant. It preserves JSON number
+// text as json.Number so decimal canonicalization never passes through binary
+// floating point. Existing GetSheetData callers retain their Phase 2 types.
+func (c *Client) GetSheetDataTyped(ctx context.Context, spreadsheetID, sheetID, cellRange string, fields []string) (*SheetData, error) {
+	return c.getSheetData(ctx, spreadsheetID, sheetID, cellRange, fields, true)
+}
+
+func (c *Client) getSheetData(ctx context.Context, spreadsheetID, sheetID, cellRange string, fields []string, preserveNumbers bool) (*SheetData, error) {
 	path := fmt.Sprintf("/spreadsheets/%s/sheets/%s/sheetdata",
 		url.PathEscape(spreadsheetID), url.PathEscape(sheetID))
 
@@ -87,7 +98,11 @@ func (c *Client) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 			return nil, err
 		}
 		var page sheetDataResponse
-		decodeErr := json.NewDecoder(resp.Body).Decode(&page)
+		decoder := json.NewDecoder(resp.Body)
+		if preserveNumbers {
+			decoder.UseNumber()
+		}
+		decodeErr := decoder.Decode(&page)
 		closeErr := resp.Body.Close()
 		if decodeErr != nil {
 			if closeErr != nil {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/dantalabs/northern-lights/internal/assurance"
 	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/config"
 	"github.com/dantalabs/northern-lights/internal/mapping"
@@ -19,10 +20,11 @@ import (
 // that do not need them; tools should fail gracefully with a clear error
 // rather than panic when a dependency they require is missing.
 type Deps struct {
-	Client workivaprovider.Backend
-	Store  *mapping.Store
-	Audit  *audit.Log
-	Cfg    *config.Config
+	Client    workivaprovider.Backend
+	Store     *mapping.Store
+	Audit     *audit.Log
+	Assurance *assurance.Store
+	Cfg       *config.Config
 	// ActorHeader is populated by New before tools are bound so middleware
 	// and rich mutation audit entries use the same identity source.
 	ActorHeader string

@@ -1,0 +1,6 @@
+{
+  "data": {
+    "range": {"startRow": 3, "startColumn": 1, "stopRow": 3, "stopColumn": 1},
+    "cells": [[{"value": "=SUM(B1:B3)", "calculatedValue": 12.50}]]
+  }
+}

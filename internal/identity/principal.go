@@ -29,6 +29,9 @@ const (
 	PermissionMappingSync         Permission = "mapping.sync"
 	PermissionAuditRead           Permission = "audit.read"
 	PermissionTenantAdmin         Permission = "tenant.admin"
+	PermissionAssuranceSnapshot   Permission = "assurance.snapshot"
+	PermissionAssuranceValidate   Permission = "assurance.validate"
+	PermissionAssuranceCompare    Permission = "assurance.compare"
 )
 
 var allPermissions = []Permission{
@@ -38,6 +41,9 @@ var allPermissions = []Permission{
 	PermissionMappingSync,
 	PermissionAuditRead,
 	PermissionTenantAdmin,
+	PermissionAssuranceSnapshot,
+	PermissionAssuranceValidate,
+	PermissionAssuranceCompare,
 }
 
 // AllPermissions returns the complete permission vocabulary in stable order.
