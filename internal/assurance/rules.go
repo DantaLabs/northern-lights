@@ -41,6 +41,7 @@ type RuleDefinition struct {
 	TargetFieldID     string       `json:"target_field_id,omitempty" yaml:"target_field_id,omitempty"`
 	AbsoluteTolerance string       `json:"absolute_tolerance,omitempty" yaml:"absolute_tolerance,omitempty"`
 	RelativeTolerance string       `json:"relative_tolerance,omitempty" yaml:"relative_tolerance,omitempty"`
+	FailureSeverity   string       `json:"failure_severity,omitempty" yaml:"failure_severity,omitempty"`
 }
 
 type Rule = RuleDefinition
@@ -120,6 +121,9 @@ func ValidateRuleSet(set RuleSet) error {
 		if rule.TargetFieldID != "" && fieldSeen[rule.TargetFieldID] {
 			return fmt.Errorf("rule %s target field must be distinct", rule.RuleID)
 		}
+		if err := validateRuleOperands(rule); err != nil {
+			return err
+		}
 		for _, decimal := range []string{rule.Lower, rule.Upper, rule.AbsoluteTolerance, rule.RelativeTolerance} {
 			if decimal != "" {
 				if _, err := canonicalDecimal(decimal); err != nil {
@@ -133,6 +137,47 @@ func ValidateRuleSet(set RuleSet) error {
 			}
 		}
 		seenIDs[rule.RuleID], seenOrders[order] = true, true
+	}
+	return nil
+}
+
+func validateRuleOperands(rule RuleDefinition) error {
+	switch rule.Kind {
+	case RuleRequired:
+		if rule.ExpectedKind != "" || rule.Unit != "" || rule.Lower != "" || rule.Upper != "" || len(rule.AllowedValues) > 0 || rule.TargetFieldID != "" || rule.AbsoluteTolerance != "" || rule.RelativeTolerance != "" {
+			return fmt.Errorf("rule %s: required has forbidden operands", rule.RuleID)
+		}
+	case RuleType:
+		if rule.ExpectedKind == "" || !knownValueKind(rule.ExpectedKind) || rule.Unit != "" || rule.Lower != "" || rule.Upper != "" || len(rule.AllowedValues) > 0 || rule.TargetFieldID != "" || rule.AbsoluteTolerance != "" || rule.RelativeTolerance != "" {
+			return fmt.Errorf("rule %s: type operand matrix is invalid", rule.RuleID)
+		}
+	case RuleUnit:
+		if rule.Unit == "" || rule.ExpectedKind != "" || rule.Lower != "" || rule.Upper != "" || len(rule.AllowedValues) > 0 || rule.TargetFieldID != "" || rule.AbsoluteTolerance != "" || rule.RelativeTolerance != "" {
+			return fmt.Errorf("rule %s: unit operand matrix is invalid", rule.RuleID)
+		}
+	case RuleNumericRange:
+		if len(rule.FieldIDs) != 1 || (rule.Lower == "" && rule.Upper == "") || rule.ExpectedKind != "" || rule.Unit != "" || len(rule.AllowedValues) > 0 || rule.TargetFieldID != "" || rule.AbsoluteTolerance != "" || rule.RelativeTolerance != "" {
+			return fmt.Errorf("rule %s: numeric range operand matrix is invalid", rule.RuleID)
+		}
+	case RuleAllowedValues:
+		if len(rule.FieldIDs) != 1 || len(rule.AllowedValues) == 0 || rule.ExpectedKind != "" || rule.Unit != "" || rule.Lower != "" || rule.Upper != "" || rule.TargetFieldID != "" || rule.AbsoluteTolerance != "" || rule.RelativeTolerance != "" {
+			return fmt.Errorf("rule %s: allowed values operand matrix is invalid", rule.RuleID)
+		}
+	case RuleReconciliationSum:
+		if len(rule.FieldIDs) < 2 || rule.TargetFieldID == "" || (rule.AbsoluteTolerance == "" && rule.RelativeTolerance == "") || rule.ExpectedKind != "" || rule.Unit != "" || rule.Lower != "" || rule.Upper != "" || len(rule.AllowedValues) > 0 {
+			return fmt.Errorf("rule %s: reconciliation operand matrix is invalid", rule.RuleID)
+		}
+	case RuleVariance:
+		if len(rule.FieldIDs) != 1 || rule.TargetFieldID == "" || (rule.AbsoluteTolerance == "" && rule.RelativeTolerance == "") || rule.ExpectedKind != "" || rule.Unit != "" || rule.Lower != "" || rule.Upper != "" || len(rule.AllowedValues) > 0 {
+			return fmt.Errorf("rule %s: variance operand matrix is invalid", rule.RuleID)
+		}
+	case RuleCompleteness:
+		if rule.ExpectedKind != "" || rule.Unit != "" || rule.Lower != "" || rule.Upper != "" || len(rule.AllowedValues) > 0 || rule.TargetFieldID != "" || rule.AbsoluteTolerance != "" || rule.RelativeTolerance != "" {
+			return fmt.Errorf("rule %s: completeness has forbidden operands", rule.RuleID)
+		}
+	}
+	if rule.FailureSeverity != "" && rule.FailureSeverity != "fail" && rule.FailureSeverity != "warn" {
+		return fmt.Errorf("rule %s: invalid failure severity", rule.RuleID)
 	}
 	return nil
 }

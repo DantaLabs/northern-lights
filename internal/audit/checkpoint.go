@@ -3,8 +3,8 @@ package audit
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/dantalabs/northern-lights/internal/identity"
 )
@@ -32,26 +32,22 @@ func (l *Log) VerifyCheckpoint(ctx context.Context, sequence int64, hash, checkp
 		return result, nil
 	}
 	tenant := identity.StorageTenant(ctx)
-	if _, err := l.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS assurance_checkpoints (tenant_id TEXT NOT NULL, checkpoint_id TEXT NOT NULL, checkpoint_kind TEXT NOT NULL, high_water_mark TEXT NOT NULL, checkpoint_hash TEXT NOT NULL, signature_hex TEXT NOT NULL DEFAULT '', metadata_json TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (tenant_id, checkpoint_id))`); err != nil {
-		return Checkpoint{}, err
-	}
-	var stored string
-	err := l.db.QueryRowContext(ctx, `SELECT hash FROM audit_log WHERE tenant_id=? AND seq=?`, tenant, sequence).Scan(&stored)
+	var highWater, stored, signature, kind string
+	err := l.db.QueryRowContext(ctx, `SELECT checkpoint_kind, high_water_mark, checkpoint_hash, signature_hex FROM assurance_checkpoints WHERE tenant_id=? AND checkpoint_id=?`, tenant, checkpointID).Scan(&kind, &highWater, &stored, &signature)
 	if err == sql.ErrNoRows {
 		return result, nil
 	}
 	if err != nil {
+		if strings.Contains(err.Error(), "no such table") {
+			return result, nil
+		}
 		return Checkpoint{}, err
 	}
-	if stored == hash {
+	storedSequence, parseErr := strconv.ParseInt(highWater, 10, 64)
+	if parseErr == nil && storedSequence == sequence && stored == hash && (signature != "" || kind == "external") {
 		result.Status = CheckpointVerified
 	} else {
 		result.Status = CheckpointMismatch
-	}
-	metadata, _ := json.Marshal(result)
-	_, insertErr := l.db.ExecContext(ctx, `INSERT INTO assurance_checkpoints (tenant_id, checkpoint_id, checkpoint_kind, high_water_mark, checkpoint_hash, metadata_json, created_at) VALUES (?, ?, 'audit', ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(tenant_id, checkpoint_id) DO UPDATE SET high_water_mark=excluded.high_water_mark, checkpoint_hash=excluded.checkpoint_hash, metadata_json=excluded.metadata_json`, tenant, checkpointID, fmt.Sprint(sequence), hash, string(metadata))
-	if insertErr != nil {
-		return Checkpoint{}, insertErr
 	}
 	return result, nil
 }

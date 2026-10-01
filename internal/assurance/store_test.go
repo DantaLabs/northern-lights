@@ -15,13 +15,14 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/identity"
 )
 
 const testTenant = "11111111-1111-1111-1111-111111111111"
 
 func assuranceContext() context.Context {
-	return identity.ContextWithPrincipal(context.Background(), identity.Principal{TenantID: testTenant, ObjectID: "actor-1"})
+	return identity.ContextWithPrincipal(context.Background(), identity.Principal{TenantID: testTenant, ObjectID: "actor-1", Permissions: []identity.Permission{identity.PermissionEvidenceExport}})
 }
 
 func openTestStore(t *testing.T) (*Store, *sql.DB) {
@@ -36,6 +37,12 @@ func openTestStore(t *testing.T) (*Store, *sql.DB) {
 		_ = db.Close()
 		t.Fatalf("NewWithDB: %v", err)
 	}
+	log, err := audit.NewWithDB(db)
+	if err != nil {
+		_ = db.Close()
+		t.Fatalf("audit.NewWithDB: %v", err)
+	}
+	store.SetAuditLog(log)
 	t.Cleanup(func() { _ = db.Close() })
 	return store, db
 }
@@ -116,8 +123,8 @@ func TestC066AssuranceMigrationsAreContiguousV1ThroughV9AndTenantFirst(t *testin
 		}
 		versions = append(versions, version)
 	}
-	if got := strings.Trim(strings.ReplaceAll(strings.TrimSpace(toJSON(versions)), ",", " "), "[]"); got != "1 2 3 4 5 6 7 8 9" {
-		t.Fatalf("assurance versions = %v, want 1..9", versions)
+	if got := strings.Trim(strings.ReplaceAll(strings.TrimSpace(toJSON(versions)), ",", " "), "[]"); got != "1 2 3 4 5 6 7 8 9 10" {
+		t.Fatalf("assurance versions = %v, want 1..10", versions)
 	}
 	for _, table := range assuranceTables() {
 		columns, err := tableColumns(db, table)

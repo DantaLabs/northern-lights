@@ -273,7 +273,23 @@ ALTER TABLE assurance_comparisons ADD COLUMN material_count INTEGER NOT NULL DEF
 ALTER TABLE assurance_validation_runs ADD COLUMN fail_on_warning INTEGER NOT NULL DEFAULT 0;
 `
 
-var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9}
+// migrationV10 is additive and records the exact object revisions selected by
+// the active signed bundle. Historical object rows remain untouched.
+const migrationV10 = `
+CREATE TABLE assurance_active_bundle_objects (
+ tenant_id TEXT NOT NULL, object_kind TEXT NOT NULL, object_id TEXT NOT NULL,
+ object_revision INTEGER NOT NULL, bundle_version INTEGER NOT NULL,
+ PRIMARY KEY (tenant_id, object_kind, object_id, object_revision)
+);
+CREATE INDEX idx_assurance_active_bundle_objects_tenant_kind ON assurance_active_bundle_objects(tenant_id, object_kind, object_id, object_revision);
+CREATE TABLE assurance_retention_policy_revisions (
+ tenant_id TEXT NOT NULL, retention_class TEXT NOT NULL, revision INTEGER NOT NULL,
+ duration_seconds INTEGER NOT NULL, policy_json TEXT NOT NULL, content_hash TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, retention_class, revision)
+);
+`
+
+var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10}
 
 // Migrate installs the complete contiguous assurance schema family.
 func Migrate(ctx context.Context, db *sql.DB) error {
@@ -297,5 +313,6 @@ func assuranceTables() []string {
 		"assurance_evidence_manifests", "assurance_evidence_artifacts", "assurance_evidence_subjects",
 		"assurance_retention_policies", "assurance_idempotency_records", "assurance_audit_links", "assurance_checkpoints",
 		"assurance_materiality_policies", "assurance_export_profiles", "assurance_legal_holds", "assurance_evidence_tombstones",
+		"assurance_active_bundle_objects", "assurance_retention_policy_revisions",
 	}
 }

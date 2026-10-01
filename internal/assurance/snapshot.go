@@ -139,6 +139,12 @@ func (service SnapshotService) Capture(ctx context.Context, actorID, auditID str
 	if service.Store == nil || service.Reader == nil {
 		return SnapshotResponse{}, domainError("dependency_unavailable", "assurance store or uncached provider reader is unavailable")
 	}
+	if err := service.Store.Ready(); err != nil {
+		return SnapshotResponse{}, err
+	}
+	if err := service.Store.requireRichAudit(service.Audit); err != nil {
+		return SnapshotResponse{}, err
+	}
 	if len(request.ReportID) == 0 || len(request.ReportID) > 128 || len(request.IdempotencyKey) == 0 || len(request.IdempotencyKey) > 256 || len(request.FieldIDs) > 1000 {
 		return SnapshotResponse{}, domainError("invalid_request", "report_id, bounded field_ids, and idempotency_key are required")
 	}
@@ -330,7 +336,11 @@ func (service SnapshotService) Capture(ctx context.Context, actorID, auditID str
 	}{identity.StorageTenant(ctx), report.ReportID, report.Revision, report.Periods[0], response.Completeness, observations, itemErrors}
 	hashJSON, _ := CanonicalJSON(hashBody)
 	response.ContentHash = digestHex(HashBytes(hashJSON))
-	if err := service.Store.finalizeSnapshot(ctx, reservation, internalSnapshotID, response, observations, itemErrors, now, service.Audit, actorID); err != nil {
+	auditLog := service.Audit
+	if auditLog == nil {
+		auditLog = service.Store.auditLog
+	}
+	if err := service.Store.finalizeSnapshot(ctx, reservation, internalSnapshotID, response, observations, itemErrors, now, auditLog, actorID); err != nil {
 		_ = service.Store.failRunningSnapshot(ctx, internalSnapshotID, "snapshot_finalize_failed", "snapshot finalization failed", service.now())
 		failure := asStructured(err, auditID)
 		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, failure, service.now())

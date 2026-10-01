@@ -30,19 +30,20 @@ type comparePeriodsInput struct {
 func (comparePeriodsTool) RegisterSDK(server *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(server, &mcp.Tool{Name: "workiva_compare_periods", Description: comparePeriodsTool{}.Description(), InputSchema: comparePeriodsInputSchema(), OutputSchema: comparePeriodsOutputSchema()}, func(ctx context.Context, request *mcp.CallToolRequest, input comparePeriodsInput) (*mcp.CallToolResult, assurance.ComparisonResponse, error) {
 		if deps.Assurance == nil {
-			return nil, assurance.ComparisonResponse{}, failMsg("assurance store is not available", "enable and provision Phase 3 assurance")
+			return nil, assurance.ComparisonResponse{}, failMsgWithContext(ctx, "assurance store is not available", "enable and provision Phase 3 assurance")
 		}
 		if deps.Cfg != nil && !deps.Cfg.AssuranceEnabled {
-			return nil, assurance.ComparisonResponse{}, failMsg("assurance comparison feature is disabled", "set NL_ASSURANCE_ENABLED=true and provision a signed bundle")
+			return nil, assurance.ComparisonResponse{}, failMsgWithContext(ctx, "assurance comparison feature is disabled", "set NL_ASSURANCE_ENABLED=true and provision a signed bundle")
 		}
 		if _, trusted := identityForTool(ctx); !trusted && (deps.Cfg == nil || !deps.Cfg.AssuranceLegacyAPIKeyProfile) {
 			if !trusted {
-				return nil, assurance.ComparisonResponse{}, failMsg("trusted assurance identity is required", "use the explicitly labeled legacy/demo assurance profile or Entra authentication")
+				return nil, assurance.ComparisonResponse{}, failMsgWithContext(ctx, "trusted assurance identity is required", "use the explicitly labeled legacy/demo assurance profile or Entra authentication")
 			}
 		}
+		ctx = assurance.WithRequestID(ctx, mcpserver.RequestIDFromContext(ctx))
 		response, err := (assurance.CompareService{Store: deps.Assurance, Audit: deps.Audit}).Compare(ctx, mcpserver.ActorFromContextOrRequest(ctx, request, deps.ActorHeader), mcpserver.AuditIDFromContext(ctx), assurance.CompareRequest{CurrentSnapshotID: input.CurrentSnapshotID, PriorSnapshotID: input.PriorSnapshotID, MaterialityPolicyID: input.MaterialityPolicyID, FieldIDs: input.FieldIDs, IncludeUnchanged: input.IncludeUnchanged, RetentionClass: input.RetentionClass, IdempotencyKey: input.IdempotencyKey})
 		if err != nil {
-			return nil, assurance.ComparisonResponse{}, fail(err, "verify the immutable snapshots, server-owned materiality policy, and authorization")
+			return nil, assurance.ComparisonResponse{}, failWithContext(ctx, err, "verify the immutable snapshots, server-owned materiality policy, and authorization")
 		}
 		return nil, response, nil
 	})

@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/csv"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -112,10 +114,10 @@ type AuditIntegrity struct {
 }
 type AuditCheckpoint struct {
 	Status         string `json:"status"`
-	CheckpointID   string `json:"checkpoint_id"`
-	Sequence       int64  `json:"sequence"`
-	Hash           string `json:"hash"`
-	ExternalAnchor string `json:"external_anchor"`
+	CheckpointID   string `json:"checkpoint_id,omitempty"`
+	Sequence       int64  `json:"sequence,omitempty"`
+	Hash           string `json:"hash,omitempty"`
+	ExternalAnchor string `json:"external_anchor,omitempty"`
 }
 type AuditCompleteness struct {
 	Status                     string `json:"status"`
@@ -210,6 +212,29 @@ func (s *Store) BuildManifest(ctx context.Context, subjectKind, subjectID string
 }
 
 func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, request EvidenceRequest, storages ...EvidenceStorage) (EvidenceResponse, error) {
+	if s == nil {
+		return EvidenceResponse{}, domainError("dependency_unavailable", "assurance store is unavailable")
+	}
+	principal, ok := identity.PrincipalFromContext(ctx)
+	if !ok || principal.TenantID == "" || principal.ObjectID == "" || !principal.HasPermission(identity.PermissionEvidenceExport) {
+		return EvidenceResponse{}, domainError("strong_identity_required", "validated Entra tid/oid and evidence.export authorization are required")
+	}
+	if err := s.Ready(); err != nil {
+		return EvidenceResponse{}, err
+	}
+	if err := s.requireRichAudit(); err != nil {
+		return EvidenceResponse{}, err
+	}
+	if len(storages) > 1 {
+		return EvidenceResponse{}, domainError("invalid_request", "only one evidence storage adapter is permitted")
+	}
+	configuredStorage := s.evidenceStorage
+	if len(storages) == 1 {
+		configuredStorage = storages[0]
+	}
+	if configuredStorage == nil {
+		return EvidenceResponse{}, domainError("evidence_storage_unconfigured", "a durable evidence storage adapter must be explicitly configured")
+	}
 	if request.RetentionClass == "" {
 		request.RetentionClass = "long_term"
 	}
@@ -224,10 +249,6 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	}
 	if request.SubjectKind == "transfer" {
 		return EvidenceResponse{}, domainError("subject_unavailable", "transfer evidence is unavailable until Wave 3 transfer state exists")
-	}
-	policy, err := s.ResolveRetentionPolicy(ctx, request.RetentionClass)
-	if err != nil {
-		return EvidenceResponse{}, err
 	}
 	profile := request.RedactionProfile
 	if profile == "" {
@@ -267,6 +288,16 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	default:
 		return EvidenceResponse{}, domainError("idempotency_state_invalid", "reservation disposition is invalid")
 	}
+	policy, err := s.ResolveRetentionPolicy(ctx, request.RetentionClass)
+	if err != nil {
+		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), time.Now().UTC())
+		return EvidenceResponse{}, err
+	}
+	profilePolicy, err := s.resolveExportProfile(ctx, request.SubjectKind, request.SubjectID, profile, request.RetentionClass)
+	if err != nil {
+		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), time.Now().UTC())
+		return EvidenceResponse{}, err
+	}
 	if err := s.MarkExecutionStarted(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
 		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), time.Now().UTC())
 		return EvidenceResponse{}, err
@@ -280,6 +311,16 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	if err != nil {
 		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), time.Now().UTC())
 		return EvidenceResponse{}, err
+	}
+	if profilePolicy.MaxBytes > 0 && len(redacted) > profilePolicy.MaxBytes {
+		failure := domainError("too_large", "evidence exceeds the approved export profile byte bound")
+		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
+		return EvidenceResponse{}, failure
+	}
+	if profilePolicy.MaxRows > 0 && estimateSubjectRows(redacted) > profilePolicy.MaxRows {
+		failure := domainError("too_large", "evidence exceeds the approved export profile row bound")
+		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
+		return EvidenceResponse{}, failure
 	}
 	manifest, err := s.BuildManifest(ctx, request.SubjectKind, request.SubjectID, profile)
 	if err != nil {
@@ -317,36 +358,53 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 				tenantIdentityHashed = false
 			}
 		}
-		manifest.Audit = AuditManifest{FirstSeq: rangeResult.FirstSeq, LastSeq: rangeResult.LastSeq, FirstHash: rangeResult.FirstHash, LastHash: rangeResult.LastHash, Integrity: AuditIntegrity{Scope: "included_rows_hash_continuity", ChainVerified: true, HashVersionCoverage: coverage, TenantIdentityHashed: tenantIdentityHashed}, Checkpoint: AuditCheckpoint{Status: "not_requested"}, Completeness: AuditCompleteness{Status: verification.Completeness.Status, ExpectedCount: verification.Completeness.ExpectedCount, IncludedCount: verification.Completeness.IncludedCount, OmittedCount: verification.Completeness.OmittedCount, ExpectedEventCount: verification.Completeness.ExpectedEventCount, IncludedEventCount: verification.Completeness.IncludedEventCount, OmissionCount: verification.Completeness.OmissionCount, OmissionsRecorded: verification.Completeness.OmissionsRecorded, TerminalAnchor: verification.Completeness.TerminalAnchor, TerminalAnchorVerified: verification.Completeness.TerminalAnchorVerified, FinalRowDeletionDetectable: verification.Completeness.FinalRowDeletionDetectable}, Caveats: verification.Caveats}
+		caveats := append([]string(nil), verification.Caveats...)
+		caveats = append(caveats, "subject selection is tenant-bounded full audit coverage")
+		if !tenantIdentityHashed {
+			caveats = append(caveats, "all-v1 audit rows lack tenant identity hashing")
+		}
+		manifest.Audit = AuditManifest{FirstSeq: rangeResult.FirstSeq, LastSeq: rangeResult.LastSeq, FirstHash: rangeResult.FirstHash, LastHash: rangeResult.LastHash, Integrity: AuditIntegrity{Scope: "included_rows_hash_continuity", ChainVerified: true, HashVersionCoverage: coverage, TenantIdentityHashed: tenantIdentityHashed}, Checkpoint: AuditCheckpoint{Status: "not_requested"}, Completeness: AuditCompleteness{Status: verification.Completeness.Status, ExpectedCount: verification.Completeness.ExpectedCount, IncludedCount: verification.Completeness.IncludedCount, OmittedCount: verification.Completeness.OmittedCount, ExpectedEventCount: verification.Completeness.ExpectedEventCount, IncludedEventCount: verification.Completeness.IncludedEventCount, OmissionCount: verification.Completeness.OmissionCount, OmissionsRecorded: verification.Completeness.OmissionsRecorded, TerminalAnchor: verification.Completeness.TerminalAnchor, TerminalAnchorVerified: verification.Completeness.TerminalAnchorVerified, FinalRowDeletionDetectable: verification.Completeness.FinalRowDeletionDetectable}, Caveats: caveats}
+		checkpoint, checkpointErr := s.auditLog.VerifyCheckpoint(ctx, rangeResult.LastSeq, rangeResult.LastHash, "audit-terminal")
+		if checkpointErr != nil {
+			failure := domainError("checkpoint_unavailable", "audit checkpoint verification failed")
+			_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
+			return EvidenceResponse{}, failure
+		}
+		manifest.Audit.Checkpoint = AuditCheckpoint{Status: string(checkpoint.Status), CheckpointID: checkpoint.CheckpointID, Sequence: checkpoint.Sequence, Hash: checkpoint.Hash, ExternalAnchor: checkpoint.ExternalAnchor}
 	}
-	storage := s.evidenceStorage
-	if len(storages) > 1 {
-		return EvidenceResponse{}, domainError("invalid_request", "only one evidence storage adapter is permitted")
+	storage := configuredStorage
+	createdRefs := []string{}
+	failMaterialization := func(failure error) (EvidenceResponse, error) {
+		for _, ref := range createdRefs {
+			_ = storage.Delete(ctx, ref)
+		}
+		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
+		return EvidenceResponse{}, failure
 	}
-	if len(storages) == 1 {
-		storage = storages[0]
-	}
-	if storage == nil {
-		storage = NewMemoryEvidenceStorage()
+	if err := s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
+		return failMaterialization(err)
 	}
 	subjectRef, err := storage.Put(ctx, "subject.json", "application/json", redacted)
 	if err != nil {
-		return EvidenceResponse{}, err
+		return failMaterialization(err)
 	}
+	createdRefs = append(createdRefs, subjectRef)
 	if err := VerifyStorageHash(ctx, storage, subjectRef, HashBytes(redacted)); err != nil {
-		return EvidenceResponse{}, err
+		return failMaterialization(err)
 	}
 	subjectArtifact := EvidenceArtifact{ArtifactID: uuid.NewString(), Name: "subject.json", MediaType: "application/json", ByteCount: len(redacted), SHA256: digestHex(HashBytes(redacted)), StorageRef: subjectRef}
 	artifacts := []EvidenceArtifact{subjectArtifact}
 	var csvData []byte
 	if request.Format == "csv" {
 		csvData = deterministicCSV(redacted)
+		manifest.Omissions = append(manifest.Omissions, OmissionRecord{Kind: "csv", Count: 1, Reason: "cell_formula_values_prefixed_with_apostrophe; JSON remains authoritative"})
 		ref, putErr := storage.Put(ctx, "subject.csv", "text/csv", csvData)
 		if putErr != nil {
-			return EvidenceResponse{}, putErr
+			return failMaterialization(putErr)
 		}
+		createdRefs = append(createdRefs, ref)
 		if verifyErr := VerifyStorageHash(ctx, storage, ref, HashBytes(csvData)); verifyErr != nil {
-			return EvidenceResponse{}, verifyErr
+			return failMaterialization(verifyErr)
 		}
 		artifacts = append(artifacts, EvidenceArtifact{ArtifactID: uuid.NewString(), Name: "subject.csv", MediaType: "text/csv", ByteCount: len(csvData), SHA256: digestHex(HashBytes(csvData)), StorageRef: ref})
 	}
@@ -355,23 +413,94 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	manifestWithoutSelf := canonicalManifestBytes(manifest)
 	manifestRef, err := storage.Put(ctx, "manifest.json", "application/json", manifestWithoutSelf)
 	if err != nil {
-		return EvidenceResponse{}, err
+		return failMaterialization(err)
 	}
+	createdRefs = append(createdRefs, manifestRef)
 	if err := VerifyStorageHash(ctx, storage, manifestRef, HashBytes(manifestWithoutSelf)); err != nil {
-		return EvidenceResponse{}, err
+		return failMaterialization(err)
 	}
 	manifestArtifact := EvidenceArtifact{ArtifactID: uuid.NewString(), Name: "manifest.json", MediaType: "application/json", ByteCount: len(manifestWithoutSelf), SHA256: digestHex(HashBytes(manifestWithoutSelf)), StorageRef: manifestRef}
-	manifest.Artifacts = append([]EvidenceArtifact{manifestArtifact}, manifest.Artifacts...)
-	if err := VerifyManifest(manifest, manifest.Artifacts); err != nil {
-		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), time.Now().UTC())
-		return EvidenceResponse{}, err
+	if err := VerifyManifest(manifest, append([]EvidenceArtifact{manifestArtifact}, manifest.Artifacts...), storage); err != nil {
+		return failMaterialization(err)
 	}
-	response := EvidenceResponse{NLAuditID: auditID, Status: EvidenceCompleted, EvidenceManifestID: manifest.ManifestID, ManifestVersion: 2, Manifest: manifest, Artifacts: manifest.Artifacts, PackageHash: manifest.PackageHash, Audit: manifest.Audit, ExpiresAt: manifest.ExpiresAt}
+	response := EvidenceResponse{NLAuditID: auditID, Status: EvidenceCompleted, EvidenceManifestID: manifest.ManifestID, ManifestVersion: 2, Manifest: manifest, Artifacts: append([]EvidenceArtifact{manifestArtifact}, manifest.Artifacts...), PackageHash: manifest.PackageHash, Audit: manifest.Audit, ExpiresAt: manifest.ExpiresAt}
 	if err := s.finalizeEvidence(ctx, reservation, response, actorID, time.Now().UTC()); err != nil {
-		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), time.Now().UTC())
-		return EvidenceResponse{}, err
+		return failMaterialization(err)
 	}
 	return response, nil
+}
+
+func estimateSubjectRows(raw []byte) int {
+	var value any
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	if decoder.Decode(&value) != nil {
+		return 1
+	}
+	if object, ok := value.(map[string]any); ok {
+		for _, key := range []string{"observations", "results", "changes"} {
+			if rows, ok := object[key].([]any); ok {
+				return len(rows)
+			}
+		}
+	}
+	if rows, ok := value.([]any); ok {
+		return len(rows)
+	}
+	return 1
+}
+
+func (s *Store) resolveExportProfile(ctx context.Context, kind, id string, requested RedactionProfile, retention string) (ExportProfile, error) {
+	tenant := identity.StorageTenant(ctx)
+	var snapshotID string
+	switch kind {
+	case "snapshot":
+		snapshotID = id
+	case "validation_run":
+		if err := s.db.QueryRowContext(ctx, `SELECT snapshot_id FROM assurance_validation_runs WHERE tenant_id=? AND validation_run_id=?`, tenant, id).Scan(&snapshotID); err != nil {
+			return ExportProfile{}, domainError("subject_not_found", "evidence subject was not found")
+		}
+	case "comparison":
+		if err := s.db.QueryRowContext(ctx, `SELECT current_snapshot_id FROM assurance_comparisons WHERE tenant_id=? AND comparison_id=?`, tenant, id).Scan(&snapshotID); err != nil {
+			return ExportProfile{}, domainError("subject_not_found", "evidence subject was not found")
+		}
+	default:
+		return ExportProfile{}, domainError("subject_unavailable", "evidence subject is not exportable")
+	}
+	var reportID string
+	var revision int
+	if err := s.db.QueryRowContext(ctx, `SELECT report_id, definition_revision FROM assurance_snapshots WHERE tenant_id=? AND snapshot_id=?`, tenant, snapshotID).Scan(&reportID, &revision); err != nil {
+		return ExportProfile{}, domainError("subject_not_found", "evidence subject was not found")
+	}
+	report, err := s.LoadReportRevision(ctx, reportID, revision)
+	if err != nil {
+		return ExportProfile{}, err
+	}
+	if len(report.ExportProfiles) == 0 {
+		return ExportProfile{}, domainError("export_profile_not_approved", "report has no approved export profile")
+	}
+	for _, profileID := range report.ExportProfiles {
+		var revision int
+		var status, raw string
+		if err := s.db.QueryRowContext(ctx, `SELECT revision, status, profile_json FROM assurance_export_profiles p JOIN assurance_active_bundle_objects a ON a.tenant_id=p.tenant_id AND a.object_kind='export_profile' AND a.object_id=p.profile_id AND a.object_revision=p.revision WHERE p.tenant_id=? AND p.profile_id=? AND p.status='active' ORDER BY p.revision DESC LIMIT 1`, tenant, profileID).Scan(&revision, &status, &raw); err != nil {
+			continue
+		}
+		var profile ExportProfile
+		if json.Unmarshal([]byte(raw), &profile) != nil {
+			continue
+		}
+		profile.Revision = revision
+		profile.Status = status
+		permitted := false
+		for _, subject := range profile.PermittedSubjects {
+			if subject == kind {
+				permitted = true
+			}
+		}
+		if permitted && profile.RedactionProfile == string(requested) && profile.RetentionClass == retention && profile.DeliveryPolicy == "opaque_reference" {
+			return profile, nil
+		}
+	}
+	return ExportProfile{}, domainError("export_profile_not_approved", "requested subject, redaction, retention, or delivery policy is not approved")
 }
 
 func defaultAuditManifest() AuditManifest {
@@ -386,17 +515,53 @@ func CanonicalManifestJSON(manifest EvidenceManifest) ([]byte, error) {
 	return CanonicalJSON(manifest)
 }
 
-func VerifyManifest(manifest EvidenceManifest, artifacts []EvidenceArtifact) error {
+func VerifyManifest(manifest EvidenceManifest, artifacts []EvidenceArtifact, storage ...EvidenceStorage) error {
 	if manifest.ManifestVersion != 2 || manifest.ManifestID == "" || manifest.SubjectKind == "" || manifest.SubjectID == "" {
 		return fmt.Errorf("invalid evidence manifest")
 	}
 	if len(artifacts) == 0 || len(artifacts) > 3 {
 		return fmt.Errorf("evidence manifest has an invalid artifact count")
 	}
+	payload := make([]EvidenceArtifact, 0, len(artifacts))
 	for _, artifact := range artifacts {
 		if artifact.ArtifactID == "" || artifact.Name == "" || artifact.MediaType == "" || artifact.StorageRef == "" || artifact.SHA256 == "" || artifact.ByteCount < 0 {
 			return fmt.Errorf("evidence manifest contains an invalid artifact")
 		}
+		if _, err := hex.DecodeString(artifact.SHA256); err != nil || len(artifact.SHA256) != 64 {
+			return fmt.Errorf("evidence manifest contains an invalid artifact hash")
+		}
+		if artifact.Name != "manifest.json" {
+			payload = append(payload, artifact)
+		}
+		if len(storage) > 1 {
+			return fmt.Errorf("exactly one storage adapter is permitted")
+		}
+		if len(storage) == 1 {
+			data, err := storage[0].Read(context.Background(), artifact.StorageRef)
+			if err != nil {
+				return fmt.Errorf("read artifact %s: %w", artifact.Name, err)
+			}
+			if len(data) != artifact.ByteCount || digestHex(HashBytes(data)) != artifact.SHA256 {
+				return fmt.Errorf("artifact %s failed read-back hash verification", artifact.Name)
+			}
+			if artifact.Name == "manifest.json" {
+				expected, err := CanonicalJSON(manifest)
+				if err != nil || string(expected) != string(data) {
+					return fmt.Errorf("stored manifest bytes do not match canonical manifest")
+				}
+			}
+		}
+	}
+	if len(payload) != len(manifest.Artifacts) {
+		return fmt.Errorf("manifest payload artifact set does not match")
+	}
+	for index := range payload {
+		if payload[index] != manifest.Artifacts[index] {
+			return fmt.Errorf("manifest payload artifact metadata does not match")
+		}
+	}
+	if manifest.PackageHash != digestHex(HashBytes(packageHash(payload))) {
+		return fmt.Errorf("manifest package hash does not match artifacts")
 	}
 	return nil
 }
@@ -462,10 +627,51 @@ func redactValue(value any, profile RedactionProfile) {
 	}
 }
 func deterministicCSV(raw []byte) []byte {
+	var value any
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if decoder.Decode(&value) != nil {
+		return nil
+	}
+	rows := make(map[string]string)
+	var walk func(string, any)
+	walk = func(path string, item any) {
+		switch typed := item.(type) {
+		case map[string]any:
+			keys := make([]string, 0, len(typed))
+			for key := range typed {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				next := key
+				if path != "" {
+					next = path + "." + key
+				}
+				walk(next, typed[key])
+			}
+		case []any:
+			for index, child := range typed {
+				walk(fmt.Sprintf("%s[%d]", path, index), child)
+			}
+		case nil:
+			rows[path] = ""
+		default:
+			rows[path] = fmt.Sprint(typed)
+		}
+	}
+	walk("subject", value)
 	var out bytes.Buffer
 	writer := csv.NewWriter(&out)
-	_ = writer.Write([]string{"subject_json"})
-	_ = writer.Write([]string{CSVSafeValue(string(raw))})
+	_ = writer.Write([]string{"path", "value"})
+	paths := make([]string, 0, len(rows))
+	for path := range rows {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	for _, path := range paths {
+		_ = writer.Write([]string{CSVSafeValue(path), CSVSafeValue(rows[path])})
+	}
 	writer.Flush()
 	return out.Bytes()
 }
@@ -572,7 +778,7 @@ func (s *Store) finalizeEvidence(ctx context.Context, reservation ReservationRes
 			return err
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'evidence_manifest', ?, ?, ?, ?, ?)`, tenant, uuid.NewString(), response.EvidenceManifestID, response.NLAuditID, uuid.NewString(), reservation.CorrelationID, formatTimestamp(now)); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'evidence_manifest', ?, ?, ?, ?, ?)`, tenant, uuid.NewString(), response.EvidenceManifestID, response.NLAuditID, RequestIDFromContext(ctx), reservation.CorrelationID, formatTimestamp(now)); err != nil {
 		return err
 	}
 	envelope, err := CanonicalJSON(response)
@@ -590,6 +796,13 @@ func (s *Store) finalizeEvidence(ctx context.Context, reservation ReservationRes
 }
 
 func (s *Store) PurgeExpiredEvidence(ctx context.Context, now time.Time) error {
+	principal, ok := identity.PrincipalFromContext(ctx)
+	if !ok || principal.TenantID == "" || principal.ObjectID == "" || !principal.HasPermission(identity.PermissionTenantAdmin) {
+		return domainError("operator_authorization_required", "an authorized tenant operator is required")
+	}
+	if err := s.requireRichAudit(); err != nil {
+		return err
+	}
 	tenant := identity.StorageTenant(ctx)
 	rows, err := s.db.QueryContext(ctx, `SELECT manifest_id, subject_kind, subject_id FROM assurance_evidence_manifests WHERE tenant_id=? AND expiry_at<>'' AND expiry_at<=? AND legal_hold=0`, tenant, now.UTC().Format(time.RFC3339Nano))
 	if err != nil {
@@ -624,23 +837,48 @@ func (s *Store) PurgeExpiredEvidence(ctx context.Context, now time.Time) error {
 			return rowsErr
 		}
 		_ = artifactRows.Close()
-		if s.evidenceStorage != nil {
-			for _, ref := range refs {
-				if deleteErr := s.evidenceStorage.Delete(ctx, ref); deleteErr != nil {
-					return deleteErr
-				}
+		// Persist a tombstone before external deletion. A failed delete leaves a
+		// durable retry marker and the DB rows intact, never a false purge.
+		tx, err := s.db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO assurance_evidence_tombstones (tenant_id, tombstone_id, subject_kind, subject_id, manifest_id, reason, purged_at) VALUES (?, ?, ?, ?, ?, 'retention_pending', ?)`, tenant, uuid.NewString(), value.kind, value.subject, value.id, formatTimestamp(now)); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+		if s.evidenceStorage == nil {
+			return domainError("evidence_storage_unconfigured", "evidence storage is not configured for purge")
+		}
+		for _, ref := range refs {
+			if deleteErr := s.evidenceStorage.Delete(ctx, ref); deleteErr != nil {
+				return deleteErr
 			}
 		}
-		if _, err := s.db.ExecContext(ctx, `INSERT INTO assurance_evidence_tombstones (tenant_id, tombstone_id, subject_kind, subject_id, manifest_id, reason, purged_at) VALUES (?, ?, ?, ?, ?, 'retention_expired', ?)`, tenant, uuid.NewString(), value.kind, value.subject, value.id, formatTimestamp(now)); err != nil {
+		tx, err = s.db.BeginTx(ctx, nil)
+		if err != nil {
 			return err
 		}
-		if _, err := s.db.ExecContext(ctx, `DELETE FROM assurance_evidence_artifacts WHERE tenant_id=? AND manifest_id=?`, tenant, value.id); err != nil {
+		defer func() { _ = tx.Rollback() }()
+		if _, err := s.auditLog.AppendTx(ctx, tx, audit.Entry{Actor: principal.AuditActor(), Tool: "assurance_retention", Action: "purge_evidence", Target: value.id}); err != nil {
 			return err
 		}
-		if _, err := s.db.ExecContext(ctx, `DELETE FROM assurance_evidence_subjects WHERE tenant_id=? AND manifest_id=?`, tenant, value.id); err != nil {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM assurance_evidence_artifacts WHERE tenant_id=? AND manifest_id=?`, tenant, value.id); err != nil {
 			return err
 		}
-		if _, err := s.db.ExecContext(ctx, `DELETE FROM assurance_evidence_manifests WHERE tenant_id=? AND manifest_id=?`, tenant, value.id); err != nil {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM assurance_evidence_subjects WHERE tenant_id=? AND manifest_id=?`, tenant, value.id); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM assurance_evidence_manifests WHERE tenant_id=? AND manifest_id=?`, tenant, value.id); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE assurance_evidence_tombstones SET reason='retention_expired' WHERE tenant_id=? AND manifest_id=?`, tenant, value.id); err != nil {
+			return err
+		}
+		if err := tx.Commit(); err != nil {
 			return err
 		}
 	}

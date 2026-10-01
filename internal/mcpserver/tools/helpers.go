@@ -22,8 +22,9 @@ import (
 // to recover. It renders as JSON, so {"error": "...", "hint": "..."}
 // reaches the client.
 type toolError struct {
-	msg  string
-	hint string
+	msg       string
+	hint      string
+	nlAuditID string
 }
 
 func (e toolError) Error() string {
@@ -40,6 +41,9 @@ func (e toolError) MarshalJSON() ([]byte, error) {
 	if e.hint != "" {
 		out["hint"] = e.hint
 	}
+	if e.nlAuditID != "" {
+		out["nl_audit_id"] = e.nlAuditID
+	}
 	return json.Marshal(out)
 }
 
@@ -48,9 +52,17 @@ func fail(err error, hint string) toolError {
 	return toolError{msg: err.Error(), hint: hint}
 }
 
+func failWithContext(ctx context.Context, err error, hint string) toolError {
+	return toolError{msg: err.Error(), hint: hint, nlAuditID: mcpserver.AuditIDFromContext(ctx)}
+}
+
 // failMsg builds an envelope from a plain message.
 func failMsg(msg, hint string) toolError {
 	return toolError{msg: msg, hint: hint}
+}
+
+func failMsgWithContext(ctx context.Context, msg, hint string) toolError {
+	return toolError{msg: msg, hint: hint, nlAuditID: mcpserver.AuditIDFromContext(ctx)}
 }
 
 // requireDeps validates the dependencies a tool cannot run without and

@@ -96,7 +96,7 @@ func TestWave2SignedBundleActivatesRulesMaterialityExportAndRetentionPolicies(t 
 	bundle := Bundle{
 		SchemaVersion: 1, BundleID: "bundle-wave2", BundleVersion: 1, TenantID: testTenant,
 		RuleSets: []RuleSet{rules}, MaterialityPolicies: []MaterialityPolicy{policy}, ExportProfiles: []ExportProfile{profile},
-		RetentionPolicies: []RetentionPolicy{{TenantID: testTenant, RetentionClass: "standard", DurationSeconds: 3600, Status: "active"}},
+		RetentionPolicies: []RetentionPolicy{{TenantID: testTenant, Revision: 1, RetentionClass: "standard", DurationSeconds: 3600, Status: "active"}},
 		Reports:           []ReportRevision{{ReportID: "energy-report", Revision: 1, Name: "Energy", Owner: "owner", Status: "active", RetentionClass: "standard", ResourcePolicyHash: strings.Repeat("a", 64), RuleSetID: rules.RuleSetID, MaterialityPolicyID: policy.PolicyID, ExportProfiles: []string{profile.ProfileID}, Periods: []Period{{Key: "q3", Label: "Q3", Start: "2026-07-01", End: "2026-09-30"}}, Fields: []FieldDefinition{{FieldID: "scope2-kwh", ResourceID: "r", ExternalResourceID: "sp", SubresourceID: "sh", Locator: "B3", Kind: ValueNumber, Unit: "kWh", Required: true, Order: 1}}}},
 	}
 	if err := ValidateRuleSet(rules); err != nil {
@@ -147,6 +147,9 @@ func TestWave2ValidationIsProviderFreeAndNotEvaluableNeverPasses(t *testing.T) {
 	if _, err := db.Exec(`INSERT INTO assurance_rule_sets (tenant_id, rule_set_id, revision, content_hash, status, definition_json) VALUES (?, ?, ?, ?, ?, ?)`, testTenant, ruleSet.RuleSetID, 1, "rules-hash", "active", definition); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.Exec(`INSERT INTO assurance_active_bundle_objects (tenant_id, object_kind, object_id, object_revision, bundle_version) VALUES (?, 'rule_set', ?, 1, 1)`, testTenant, ruleSet.RuleSetID); err != nil {
+		t.Fatal(err)
+	}
 	for index, rule := range ruleSet.Rules {
 		raw, _ := CanonicalJSON(rule)
 		if _, err := db.Exec(`INSERT INTO assurance_rule_set_rules (tenant_id, rule_set_id, revision, rule_id, rule_order, rule_json) VALUES (?, ?, ?, ?, ?, ?)`, testTenant, ruleSet.RuleSetID, 1, rule.RuleID, index+1, raw); err != nil {
@@ -193,9 +196,12 @@ func TestWave2ComparisonUsesStableFieldsExactDeltasAndPolicyOwnedPartialHandling
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy := MaterialityPolicy{PolicyID: "mat-compare", Revision: 1, Status: "active", AbsoluteThreshold: "1", RelativeThreshold: "0.05", Direction: "absolute_or_relative", ZeroBaseline: "not_comparable", MissingBehavior: "not_comparable", TypeChangeBehavior: "not_comparable", Rounding: "half_even"}
+	policy := MaterialityPolicy{PolicyID: "mat-default", Revision: 1, Status: "active", AbsoluteThreshold: "1", RelativeThreshold: "0.05", Direction: "absolute_or_relative", ZeroBaseline: "not_comparable", MissingBehavior: "not_comparable", TypeChangeBehavior: "not_comparable", Rounding: "half_even"}
 	raw, _ := CanonicalJSON(policy)
-	if _, err := db.Exec(`INSERT INTO assurance_materiality_policies (tenant_id, policy_id, revision, status, policy_json, content_hash) VALUES (?, ?, ?, ?, ?, ?)`, testTenant, policy.PolicyID, policy.Revision, policy.Status, raw, "policy-hash"); err != nil {
+	if _, err := db.Exec(`UPDATE assurance_materiality_policies SET policy_json=? WHERE tenant_id=? AND policy_id=? AND revision=?`, raw, testTenant, policy.PolicyID, policy.Revision); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT OR IGNORE INTO assurance_active_bundle_objects (tenant_id, object_kind, object_id, object_revision, bundle_version) VALUES (?, 'materiality_policy', ?, 1, 1)`, testTenant, policy.PolicyID); err != nil {
 		t.Fatal(err)
 	}
 	_, err = (CompareService{Store: store}).Compare(assuranceContext(), "actor-1", "audit-compare-rejected", CompareRequest{CurrentSnapshotID: current.SnapshotID, PriorSnapshotID: prior.SnapshotID, MaterialityPolicyID: policy.PolicyID, IdempotencyKey: "compare-rejected"})
@@ -232,6 +238,12 @@ func TestWave2EvidenceExportIsOneSubjectManifestV2AndTransferIsUnavailable(t *te
 	if _, err := db.Exec(`INSERT INTO assurance_retention_policies (tenant_id, retention_class, duration_seconds, policy_json, content_hash) VALUES (?, 'long_term', 86400, '{}', 'retention-hash')`, testTenant); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.Exec(`INSERT INTO assurance_retention_policy_revisions (tenant_id, retention_class, revision, duration_seconds, policy_json, content_hash) VALUES (?, 'long_term', 0, 86400, '{}', 'retention-hash')`, testTenant); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO assurance_active_bundle_objects (tenant_id, object_kind, object_id, object_revision, bundle_version) VALUES (?, 'retention_policy', 'long_term', 0, 1)`, testTenant); err != nil {
+		t.Fatal(err)
+	}
 	reader := &scriptedReader{results: map[string]ProviderRead{"B3": {Value: ProviderValue{Value: "authoritative"}, CacheBypassed: true}}, errors: map[string]error{}}
 	snapshot, err := (SnapshotService{Store: store, Reader: reader}).Capture(assuranceContext(), "actor-1", "audit-snapshot-export", SnapshotRequest{ReportID: "energy-report", Period: Period{Key: "2026-Q3"}, IdempotencyKey: "snapshot-export"})
 	if err != nil {
@@ -243,7 +255,7 @@ func TestWave2EvidenceExportIsOneSubjectManifestV2AndTransferIsUnavailable(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	if export.Status != EvidenceCompleted || export.Manifest.ManifestVersion != 2 || len(export.Manifest.Artifacts) != 3 {
+	if export.Status != EvidenceCompleted || export.Manifest.ManifestVersion != 2 || len(export.Manifest.Artifacts) != 2 {
 		t.Fatalf("export = %#v", export)
 	}
 	for _, artifact := range export.Manifest.Artifacts {

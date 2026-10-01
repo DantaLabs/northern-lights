@@ -209,7 +209,9 @@ func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
 				return nil, fmt.Errorf("%s requires the %s header identifying the calling user; refusing unattributed write", params.Name, ActorHeader)
 			}
 			auditID := uuid.NewString()
+			requestID := uuid.NewString()
 			ctx = context.WithValue(ctx, auditIDKey{}, auditID)
+			ctx = context.WithValue(ctx, requestIDKey{}, requestID)
 			if err := recordToolCall(ctx, log, actor, auditID, params); err != nil {
 				log2.Printf("AUDIT FAILURE: could not record call to %q: %v", params.Name, err)
 				if writeTools[params.Name] {
@@ -229,12 +231,20 @@ func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
 // from the middleware to tool handlers.
 type auditIDKey struct{}
 
+type requestIDKey struct{}
+
 // AuditIDFromContext returns the audit ID of the tools/call being handled,
 // or "" outside a tool call. Tools that append their own rich audit entries
 // (writes, syncs, reads) set it on those entries so every record produced
 // by one call shares the nl_audit_id returned to the client.
 func AuditIDFromContext(ctx context.Context) string {
 	id, _ := ctx.Value(auditIDKey{}).(string)
+	return id
+}
+
+// RequestIDFromContext returns the server-generated ingress request ID.
+func RequestIDFromContext(ctx context.Context) string {
+	id, _ := ctx.Value(requestIDKey{}).(string)
 	return id
 }
 

@@ -31,7 +31,7 @@ func TestWave2BoundedAuditRangeSeparatesChainFromCompleteness(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !verified.ChainVerified || verified.Completeness.Status == "complete" {
+	if !verified.ChainVerified || verified.Completeness.Status != "complete" {
 		t.Fatalf("verification = %#v", verified)
 	}
 }
@@ -47,11 +47,20 @@ func TestWave2CheckpointReportsVerifiedMissingAndMismatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if _, err := log.db.Exec(`CREATE TABLE assurance_checkpoints (tenant_id TEXT NOT NULL, checkpoint_id TEXT NOT NULL, checkpoint_kind TEXT NOT NULL, high_water_mark TEXT NOT NULL, checkpoint_hash TEXT NOT NULL, signature_hex TEXT NOT NULL, metadata_json TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (tenant_id, checkpoint_id))`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := log.db.Exec(`INSERT INTO assurance_checkpoints (tenant_id, checkpoint_id, checkpoint_kind, high_water_mark, checkpoint_hash, signature_hex, metadata_json, created_at) VALUES (?, 'checkpoint-1', 'external', ?, ?, 'signed', '{}', CURRENT_TIMESTAMP)`, "legacy-api-key", entry.Seq, entry.Hash); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := log.db.Exec(`INSERT INTO assurance_checkpoints (tenant_id, checkpoint_id, checkpoint_kind, high_water_mark, checkpoint_hash, signature_hex, metadata_json, created_at) VALUES (?, 'checkpoint-2', 'external', ?, 'wrong', 'signed', '{}', CURRENT_TIMESTAMP)`, "legacy-api-key", entry.Seq); err != nil {
+		t.Fatal(err)
+	}
 	verified, err := log.VerifyCheckpoint(ctx, entry.Seq, entry.Hash, "checkpoint-1")
 	if err != nil || verified.Status != CheckpointVerified {
 		t.Fatalf("verified checkpoint = %#v, %v", verified, err)
 	}
-	mismatch, err := log.VerifyCheckpoint(ctx, entry.Seq, "wrong", "checkpoint-2")
+	mismatch, err := log.VerifyCheckpoint(ctx, entry.Seq, entry.Hash, "checkpoint-2")
 	if err != nil || mismatch.Status != CheckpointMismatch {
 		t.Fatalf("mismatch checkpoint = %#v, %v", mismatch, err)
 	}

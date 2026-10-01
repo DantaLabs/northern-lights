@@ -375,6 +375,27 @@ func validateBundleObject(bundle *Bundle, expectedTenant string) error {
 		if report.RuleSetID != "" && !hasLatestRuleSet(ruleSets, report.RuleSetID) {
 			return domainError("bundle_reference_unresolved", fmt.Sprintf("report %s references an unavailable rule set", report.ReportID))
 		}
+		if report.RuleSetID != "" {
+			approved := make(map[string]bool, len(report.Fields))
+			for _, field := range report.Fields {
+				approved[field.FieldID] = true
+			}
+			for _, set := range ruleSets {
+				if set.RuleSetID != report.RuleSetID {
+					continue
+				}
+				for _, rule := range set.Rules {
+					for _, fieldID := range rule.FieldIDs {
+						if !approved[fieldID] {
+							return domainError("bundle_reference_unresolved", fmt.Sprintf("rule %s references an unapproved field", rule.RuleID))
+						}
+					}
+					if rule.TargetFieldID != "" && !approved[rule.TargetFieldID] {
+						return domainError("bundle_reference_unresolved", fmt.Sprintf("rule %s references an unapproved target field", rule.RuleID))
+					}
+				}
+			}
+		}
 		if report.MaterialityPolicyID != "" && !hasLatestMaterialityPolicy(policies, report.MaterialityPolicyID) {
 			return domainError("bundle_reference_unresolved", fmt.Sprintf("report %s references an unavailable materiality policy", report.ReportID))
 		}
@@ -469,6 +490,17 @@ func (s *Store) StageBundle(ctx context.Context, bundle *ValidatedBundle) error 
 	if bundle.Bundle.TenantID != tenant {
 		return domainError("bundle_tenant_mismatch", "bundle tenant does not match trusted tenant")
 	}
+	var candidateHash string
+	candidateErr := s.db.QueryRowContext(ctx, `SELECT content_hash FROM assurance_bundle_candidates WHERE tenant_id=? AND bundle_id=? AND bundle_version=?`, tenant, bundle.Bundle.BundleID, bundle.Bundle.BundleVersion).Scan(&candidateHash)
+	if candidateErr == nil {
+		if candidateHash != bundle.ContentHash {
+			return domainError("bundle_candidate_conflict", "reused bundle candidate revision has different content")
+		}
+		return nil
+	}
+	if !errors.Is(candidateErr, sql.ErrNoRows) {
+		return fmt.Errorf("assurance: inspect bundle candidate: %w", candidateErr)
+	}
 	var activeVersion sql.NullInt64
 	if err := s.db.QueryRowContext(ctx, `SELECT bundle_version FROM assurance_active_bundles WHERE tenant_id=? AND singleton=1`, tenant).Scan(&activeVersion); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("assurance: read active bundle: %w", err)
@@ -486,6 +518,52 @@ func (s *Store) StageBundle(ctx context.Context, bundle *ValidatedBundle) error 
 		}
 		if err == nil && (report.Revision < existingRevision || report.Revision == existingRevision && report.ContentHash != existingHash) {
 			return domainError("bundle_revision_non_monotonic", fmt.Sprintf("report %s revision is not a valid immutable successor", report.ReportID))
+		}
+	}
+	checkRevision := func(table, idColumn string, id string, revision int, contentHash string) error {
+		var existingRevision int
+		var existingHash string
+		err := s.db.QueryRowContext(ctx, `SELECT revision, content_hash FROM `+table+` WHERE tenant_id=? AND `+idColumn+`=? ORDER BY revision DESC LIMIT 1`, tenant, id).Scan(&existingRevision, &existingHash)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if revision < existingRevision || (revision == existingRevision && existingHash != contentHash) {
+			return domainError("bundle_revision_non_monotonic", fmt.Sprintf("%s revision is not a valid immutable successor", id))
+		}
+		return nil
+	}
+	for _, set := range bundle.Bundle.RuleSets {
+		if err := checkRevision("assurance_rule_sets", "rule_set_id", set.RuleSetID, set.Revision, set.ContentHash); err != nil {
+			return err
+		}
+	}
+	for _, policy := range bundle.Bundle.MaterialityPolicies {
+		raw, _ := marshalCanonical(policy)
+		if err := checkRevision("assurance_materiality_policies", "policy_id", policy.PolicyID, policy.Revision, digestHex(HashBytes([]byte(raw)))); err != nil {
+			return err
+		}
+	}
+	for _, profile := range bundle.Bundle.ExportProfiles {
+		raw, _ := marshalCanonical(profile)
+		if err := checkRevision("assurance_export_profiles", "profile_id", profile.ProfileID, profile.Revision, digestHex(HashBytes([]byte(raw)))); err != nil {
+			return err
+		}
+	}
+	for _, policy := range bundle.Bundle.RetentionPolicies {
+		copyPolicy := policy
+		copyPolicy.TenantID = tenant
+		raw, _ := marshalCanonical(copyPolicy)
+		var existingRevision, existingDuration int
+		var existingHash string
+		err := s.db.QueryRowContext(ctx, `SELECT revision, duration_seconds, content_hash FROM assurance_retention_policy_revisions WHERE tenant_id=? AND retention_class=? ORDER BY revision DESC LIMIT 1`, tenant, policy.RetentionClass).Scan(&existingRevision, &existingDuration, &existingHash)
+		if err == nil && (policy.Revision < existingRevision || (policy.Revision == existingRevision && existingHash != digestHex(HashBytes([]byte(raw))))) {
+			return domainError("bundle_revision_non_monotonic", "retention policy revision is not a valid immutable successor")
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
 		}
 	}
 	_, err := s.db.ExecContext(ctx, `INSERT INTO assurance_bundle_candidates
@@ -605,6 +683,9 @@ func (s *Store) bootstrapPriorActive(ctx context.Context, tenant string, publicK
 		}
 		return s.failReadiness(err)
 	}
+	if err := s.activateBundle(ctx, validated); err != nil {
+		return s.failReadiness(err)
+	}
 	s.setReadiness(true, nil)
 	return nil
 }
@@ -627,6 +708,13 @@ func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE assurance_report_revisions SET status='inactive' WHERE tenant_id=?`, tenant); err != nil {
 		return fmt.Errorf("assurance: deactivate historical revisions: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM assurance_active_bundle_objects WHERE tenant_id=?`, tenant); err != nil {
+		return fmt.Errorf("assurance: clear active bundle object set: %w", err)
+	}
+	addActiveObject := func(kind, id string, revision int, version int) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO assurance_active_bundle_objects (tenant_id, object_kind, object_id, object_revision, bundle_version) VALUES (?, ?, ?, ?, ?)`, tenant, kind, id, revision, version)
+		return err
 	}
 	for _, ruleSet := range bundle.Bundle.RuleSets {
 		definitionJSON, err := marshalCanonical(ruleSet)
@@ -659,6 +747,9 @@ func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) err
 				}
 			}
 		}
+		if err := addActiveObject("rule_set", ruleSet.RuleSetID, ruleSet.Revision, bundle.Bundle.BundleVersion); err != nil {
+			return err
+		}
 	}
 	for _, policy := range bundle.Bundle.MaterialityPolicies {
 		policyJSON, err := marshalCanonical(policy)
@@ -679,6 +770,9 @@ func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) err
 				return err
 			}
 		}
+		if err := addActiveObject("materiality_policy", policy.PolicyID, policy.Revision, bundle.Bundle.BundleVersion); err != nil {
+			return err
+		}
 	}
 	for _, profile := range bundle.Bundle.ExportProfiles {
 		profileJSON, err := marshalCanonical(profile)
@@ -698,6 +792,9 @@ func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) err
 			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_export_profiles (tenant_id, profile_id, revision, status, profile_json, content_hash) VALUES (?, ?, ?, ?, ?, ?)`, tenant, profile.ProfileID, profile.Revision, profile.Status, profileJSON, contentHash); err != nil {
 				return err
 			}
+		}
+		if err := addActiveObject("export_profile", profile.ProfileID, profile.Revision, bundle.Bundle.BundleVersion); err != nil {
+			return err
 		}
 	}
 	for _, policy := range bundle.Bundle.RetentionPolicies {
@@ -720,6 +817,12 @@ func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) err
 				return err
 			}
 		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_retention_policy_revisions (tenant_id, retention_class, revision, duration_seconds, policy_json, content_hash) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(tenant_id, retention_class, revision) DO NOTHING`, tenant, policy.RetentionClass, policy.Revision, policy.DurationSeconds, policyJSON, contentHash); err != nil {
+			return err
+		}
+		if err := addActiveObject("retention_policy", policy.RetentionClass, policy.Revision, bundle.Bundle.BundleVersion); err != nil {
+			return err
+		}
 	}
 	latestByReport := make(map[string]int, len(bundle.Bundle.Reports))
 	for _, report := range bundle.Bundle.Reports {
@@ -731,6 +834,9 @@ func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) err
 		active := report.Revision == latestByReport[report.ReportID]
 		status := "inactive"
 		if active {
+			if err := addActiveObject("report", report.ReportID, report.Revision, bundle.Bundle.BundleVersion); err != nil {
+				return err
+			}
 			status = "active"
 		}
 		var existingHash string

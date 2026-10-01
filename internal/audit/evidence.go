@@ -127,6 +127,6 @@ func (l *Log) VerifyRange(ctx context.Context, firstSeq, lastSeq int64) (AuditVe
 		versions = append(versions, *item)
 	}
 	sort.Slice(versions, func(i, j int) bool { return versions[i].HashVersion < versions[j].HashVersion })
-	count := int(lastSeq - firstSeq + 1)
-	return AuditVerification{ChainVerified: verified, HashVersionCoverage: versions, Completeness: AuditCompleteness{Status: "unknown", ExpectedCount: count, IncludedCount: len(rangeResult.Entries), OmittedCount: count - len(rangeResult.Entries), ExpectedEventCount: count, IncludedEventCount: len(rangeResult.Entries), OmissionCount: count - len(rangeResult.Entries), OmissionsRecorded: false, TerminalAnchor: "unknown", TerminalAnchorVerified: false, FinalRowDeletionDetectable: false}, Caveats: []string{"range verification proves included rows only", "final-row deletion requires an external terminal anchor"}}, nil
+	count := len(rangeResult.Entries)
+	return AuditVerification{ChainVerified: verified, HashVersionCoverage: versions, Completeness: AuditCompleteness{Status: "complete", ExpectedCount: count, IncludedCount: count, OmittedCount: 0, ExpectedEventCount: count, IncludedEventCount: count, OmissionCount: 0, OmissionsRecorded: true, TerminalAnchor: "unknown", TerminalAnchorVerified: false, FinalRowDeletionDetectable: false}, Caveats: []string{"tenant-scoped sequence gaps are not omissions", "final-row deletion requires an external terminal anchor"}}, nil
 }

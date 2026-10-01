@@ -2,6 +2,7 @@ package assurance
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -69,23 +70,17 @@ func (service ValidationService) Validate(ctx context.Context, actorID, auditID 
 	if service.Store == nil {
 		return ValidationResponse{}, domainError("dependency_unavailable", "assurance store is unavailable")
 	}
+	if err := service.Store.Ready(); err != nil {
+		return ValidationResponse{}, err
+	}
+	if err := service.Store.requireRichAudit(service.Audit); err != nil {
+		return ValidationResponse{}, err
+	}
 	if request.SnapshotID == "" || request.RuleSetID == "" || request.IdempotencyKey == "" || len(request.RuleIDs) > maxFieldCount {
 		return ValidationResponse{}, domainError("invalid_request", "snapshot_id, rule_set_id, and idempotency_key are required")
 	}
 	if request.RetentionClass == "" {
 		request.RetentionClass = "standard"
-	}
-	analysis, err := service.Store.SnapshotForAnalysis(ctx, request.SnapshotID)
-	if err != nil {
-		return ValidationResponse{}, err
-	}
-	ruleSet, err := service.Store.ResolveRuleSet(ctx, request.RuleSetID, 0)
-	if err != nil {
-		return ValidationResponse{}, err
-	}
-	rules, err := selectRules(ruleSet, request.RuleIDs)
-	if err != nil {
-		return ValidationResponse{}, err
 	}
 	canonicalRequest, err := CanonicalJSON(struct {
 		SnapshotID     string   `json:"snapshot_id"`
@@ -93,7 +88,7 @@ func (service ValidationService) Validate(ctx context.Context, actorID, auditID 
 		RuleIDs        []string `json:"rule_ids"`
 		FailOnWarning  bool     `json:"fail_on_warning"`
 		RetentionClass string   `json:"retention_class"`
-	}{request.SnapshotID, request.RuleSetID, ruleIDs(rules), request.FailOnWarning, request.RetentionClass})
+	}{request.SnapshotID, request.RuleSetID, append([]string(nil), request.RuleIDs...), request.FailOnWarning, request.RetentionClass})
 	if err != nil {
 		return ValidationResponse{}, err
 	}
@@ -122,6 +117,21 @@ func (service ValidationService) Validate(ctx context.Context, actorID, auditID 
 	default:
 		return ValidationResponse{}, domainError("idempotency_state_invalid", "reservation disposition is invalid")
 	}
+	analysis, err := service.Store.SnapshotForAnalysis(ctx, request.SnapshotID)
+	if err != nil {
+		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
+		return ValidationResponse{}, err
+	}
+	ruleSet, err := service.Store.ResolveRuleSet(ctx, request.RuleSetID, 0)
+	if err != nil {
+		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
+		return ValidationResponse{}, err
+	}
+	rules, err := selectRules(ruleSet, request.RuleIDs)
+	if err != nil {
+		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
+		return ValidationResponse{}, err
+	}
 	if err := service.Store.MarkExecutionStarted(ctx, reservation.RecordID, reservation.OwnerNonce, now); err != nil {
 		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
 		return ValidationResponse{}, err
@@ -140,7 +150,11 @@ func (service ValidationService) Validate(ctx context.Context, actorID, auditID 
 		status = ValidationNotEvaluable
 	}
 	response := ValidationResponse{NLAuditID: auditID, Status: status, ValidationRunID: uuid.NewString(), SnapshotID: request.SnapshotID, RuleSetID: request.RuleSetID, RuleSetRevision: ruleSet.Revision, Counts: counts, Results: results}
-	if err := service.Store.finalizeValidation(ctx, reservation, response, idempotencyDigest, request.FailOnWarning, service.Audit, actorID, service.now()); err != nil {
+	auditLog := service.Audit
+	if auditLog == nil {
+		auditLog = service.Store.auditLog
+	}
+	if err := service.Store.finalizeValidation(ctx, reservation, response, idempotencyDigest, request.FailOnWarning, auditLog, actorID, service.now()); err != nil {
 		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
 		return ValidationResponse{}, err
 	}
@@ -170,14 +184,6 @@ func selectRules(set RuleSet, requested []string) ([]RuleDefinition, error) {
 		return nil, domainError("rule_not_approved", "requested rule is not in the approved rule set")
 	}
 	return result, nil
-}
-
-func ruleIDs(rules []RuleDefinition) []string {
-	ids := make([]string, len(rules))
-	for i, rule := range rules {
-		ids[i] = rule.RuleID
-	}
-	return ids
 }
 
 func evaluateRules(analysis SnapshotAnalysis, rules []RuleDefinition) []ValidationResult {
@@ -227,19 +233,22 @@ func evaluateRule(rule RuleDefinition, observations map[string]SnapshotObservati
 	actual := &first.TypedValue
 	switch rule.Kind {
 	case RuleRequired:
+		if isBlankValue(first.TypedValue) {
+			return ruleFailure(rule), actual, nil
+		}
 		return "pass", actual, nil
 	case RuleType:
 		if first.TypedValue.Kind == rule.ExpectedKind {
 			return "pass", actual, nil
 		}
 		expected := &TypedValue{Kind: rule.ExpectedKind}
-		return "fail", actual, expected
+		return ruleFailure(rule), actual, expected
 	case RuleUnit:
 		if first.TypedValue.Unit == rule.Unit {
 			return "pass", actual, nil
 		}
 		expected := &TypedValue{Kind: first.TypedValue.Kind, Unit: rule.Unit}
-		return "fail", actual, expected
+		return ruleFailure(rule), actual, expected
 	case RuleNumericRange:
 		if first.TypedValue.Number == "" {
 			return "error", actual, nil
@@ -248,14 +257,14 @@ func evaluateRule(rule RuleDefinition, observations map[string]SnapshotObservati
 			if cmp, err := CompareDecimal(first.TypedValue.Number, rule.Lower); err != nil {
 				return "error", actual, nil
 			} else if cmp < 0 {
-				return "fail", actual, &TypedValue{Kind: ValueNumber, Number: rule.Lower}
+				return ruleFailure(rule), actual, &TypedValue{Kind: ValueNumber, Number: rule.Lower}
 			}
 		}
 		if rule.Upper != "" {
 			if cmp, err := CompareDecimal(first.TypedValue.Number, rule.Upper); err != nil {
 				return "error", actual, nil
 			} else if cmp > 0 {
-				return "fail", actual, &TypedValue{Kind: ValueNumber, Number: rule.Upper}
+				return ruleFailure(rule), actual, &TypedValue{Kind: ValueNumber, Number: rule.Upper}
 			}
 		}
 		return "pass", actual, nil
@@ -265,7 +274,7 @@ func evaluateRule(rule RuleDefinition, observations map[string]SnapshotObservati
 				return "pass", actual, nil
 			}
 		}
-		return "fail", actual, nil
+		return ruleFailure(rule), actual, nil
 	case RuleCompleteness:
 		return "pass", actual, nil
 	case RuleVariance:
@@ -286,10 +295,8 @@ func evaluateRule(rule RuleDefinition, observations map[string]SnapshotObservati
 		if err != nil {
 			return "error", actual, nil
 		}
-		if rule.AbsoluteTolerance != "" {
-			if cmp, _ := CompareDecimal(diff, rule.AbsoluteTolerance); cmp > 0 {
-				return "fail", actual, &target.TypedValue
-			}
+		if !withinTolerance(diff, rule.AbsoluteTolerance, rule.RelativeTolerance, target.TypedValue.Number) {
+			return ruleFailure(rule), actual, &target.TypedValue
 		}
 		return "pass", actual, &target.TypedValue
 	case RuleReconciliationSum:
@@ -309,6 +316,49 @@ func mustNumber(value TypedValue) string { return value.Number }
 func mustSubtract(a, b TypedValue) string {
 	value, _ := SubtractDecimal(a.Number, b.Number)
 	return value
+}
+
+func isBlankValue(value TypedValue) bool {
+	if value.Kind == ValueBlank || value.Kind == ValueError {
+		return true
+	}
+	if value.Kind == ValueText {
+		return strings.TrimSpace(value.Text) == ""
+	}
+	return value.Number == "" && value.Date == "" && value.DateTime == ""
+}
+
+func ruleFailure(rule RuleDefinition) string {
+	if rule.FailureSeverity == "warn" {
+		return "warn"
+	}
+	return "fail"
+}
+
+func withinTolerance(delta, absolute, relative, baseline string) bool {
+	if absolute != "" {
+		if cmp, err := CompareDecimal(delta, absolute); err == nil && cmp <= 0 {
+			return true
+		}
+	}
+	if relative != "" && baseline != "" {
+		base, err := AbsoluteDecimal(baseline)
+		if err != nil || base == "0" {
+			return false
+		}
+		ratio, err := DivideDecimal(delta, base, RoundHalfEven)
+		if err != nil {
+			return false
+		}
+		ratio, err = AbsoluteDecimal(ratio)
+		if err != nil {
+			return false
+		}
+		if cmp, err := CompareDecimal(ratio, relative); err == nil && cmp <= 0 {
+			return true
+		}
+	}
+	return absolute == "" && relative == ""
 }
 
 func evaluateReconciliation(rule RuleDefinition, observations map[string]SnapshotObservation) (string, *TypedValue, *TypedValue) {
@@ -337,8 +387,8 @@ func evaluateReconciliation(rule RuleDefinition, observations map[string]Snapsho
 	}
 	if cmp, err := CompareDecimal(sum, target.TypedValue.Number); err != nil {
 		return "error", nil, nil
-	} else if cmp != 0 {
-		return "fail", &target.TypedValue, &TypedValue{Kind: target.TypedValue.Kind, Number: sum}
+	} else if cmp != 0 && !withinTolerance(mustSubtract(TypedValue{Number: sum}, target.TypedValue), rule.AbsoluteTolerance, rule.RelativeTolerance, target.TypedValue.Number) {
+		return ruleFailure(rule), &target.TypedValue, &TypedValue{Kind: target.TypedValue.Kind, Number: sum}
 	}
 	return "pass", &target.TypedValue, &TypedValue{Kind: target.TypedValue.Kind, Number: sum}
 }
@@ -378,7 +428,7 @@ func (s *Store) finalizeValidation(ctx context.Context, reservation ReservationR
 			return err
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'validation_run', ?, ?, ?, ?, ?)`, tenant, uuid.NewString(), response.ValidationRunID, response.NLAuditID, uuid.NewString(), reservation.CorrelationID, formatTimestamp(now)); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'validation_run', ?, ?, ?, ?, ?)`, tenant, uuid.NewString(), response.ValidationRunID, response.NLAuditID, RequestIDFromContext(ctx), reservation.CorrelationID, formatTimestamp(now)); err != nil {
 		return err
 	}
 	envelope, err := CanonicalJSON(response)

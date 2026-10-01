@@ -30,19 +30,20 @@ type validateReportInput struct {
 func (validateReportTool) RegisterSDK(server *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(server, &mcp.Tool{Name: "workiva_validate_report", Description: validateReportTool{}.Description(), InputSchema: validateReportInputSchema(), OutputSchema: validateReportOutputSchema()}, func(ctx context.Context, request *mcp.CallToolRequest, input validateReportInput) (*mcp.CallToolResult, assurance.ValidationResponse, error) {
 		if deps.Assurance == nil {
-			return nil, assurance.ValidationResponse{}, failMsg("assurance store is not available", "enable and provision Phase 3 assurance")
+			return nil, assurance.ValidationResponse{}, failMsgWithContext(ctx, "assurance store is not available", "enable and provision Phase 3 assurance")
 		}
 		if deps.Cfg != nil && !deps.Cfg.AssuranceEnabled {
-			return nil, assurance.ValidationResponse{}, failMsg("assurance validation feature is disabled", "set NL_ASSURANCE_ENABLED=true and provision a signed bundle")
+			return nil, assurance.ValidationResponse{}, failMsgWithContext(ctx, "assurance validation feature is disabled", "set NL_ASSURANCE_ENABLED=true and provision a signed bundle")
 		}
 		if _, trusted := identityForTool(ctx); !trusted && (deps.Cfg == nil || !deps.Cfg.AssuranceLegacyAPIKeyProfile) {
 			if !trusted {
-				return nil, assurance.ValidationResponse{}, failMsg("trusted assurance identity is required", "use the explicitly labeled legacy/demo assurance profile or Entra authentication")
+				return nil, assurance.ValidationResponse{}, failMsgWithContext(ctx, "trusted assurance identity is required", "use the explicitly labeled legacy/demo assurance profile or Entra authentication")
 			}
 		}
+		ctx = assurance.WithRequestID(ctx, mcpserver.RequestIDFromContext(ctx))
 		response, err := (assurance.ValidationService{Store: deps.Assurance, Audit: deps.Audit}).Validate(ctx, mcpserver.ActorFromContextOrRequest(ctx, request, deps.ActorHeader), mcpserver.AuditIDFromContext(ctx), assurance.ValidationRequest{SnapshotID: input.SnapshotID, RuleSetID: input.RuleSetID, RuleIDs: input.RuleIDs, FailOnWarning: input.FailOnWarning, RetentionClass: input.RetentionClass, IdempotencyKey: input.IdempotencyKey})
 		if err != nil {
-			return nil, assurance.ValidationResponse{}, fail(err, "verify the immutable snapshot, approved rule set, and legacy/demo or Entra authorization")
+			return nil, assurance.ValidationResponse{}, failWithContext(ctx, err, "verify the immutable snapshot, approved rule set, and legacy/demo or Entra authorization")
 		}
 		return nil, response, nil
 	})

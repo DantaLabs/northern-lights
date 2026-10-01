@@ -3,6 +3,7 @@ package assurance
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -36,19 +37,24 @@ func ValidateRetentionPolicy(policy RetentionPolicy) error {
 	if seconds <= 0 && policy.Duration > 0 {
 		seconds = int64(policy.Duration / time.Second)
 	}
-	if policy.RetentionClass == "" || len(policy.RetentionClass) > 64 || seconds <= 0 || policy.Status != "active" {
+	if policy.RetentionClass == "" || len(policy.RetentionClass) > 64 || policy.Revision <= 0 || policy.Revision > maxRevision || seconds <= 0 || policy.Status != "active" {
 		return fmt.Errorf("invalid retention policy")
 	}
 	return nil
 }
 
 func (s *Store) ResolveRetentionPolicy(ctx context.Context, class string) (RetentionPolicy, error) {
+	if err := s.Ready(); err != nil {
+		return RetentionPolicy{}, err
+	}
 	if class == "" {
 		return RetentionPolicy{}, domainError("retention_policy_missing", "retention policy is required")
 	}
 	tenant := identity.StorageTenant(ctx)
 	var policy RetentionPolicy
-	err := s.db.QueryRowContext(ctx, `SELECT retention_class, duration_seconds, policy_json FROM assurance_retention_policies WHERE tenant_id=? AND retention_class=?`, tenant, class).Scan(&policy.RetentionClass, &policy.DurationSeconds, new(string))
+	var raw string
+	var revision int
+	err := s.db.QueryRowContext(ctx, `SELECT p.retention_class, p.duration_seconds, p.policy_json, p.revision FROM assurance_retention_policy_revisions p JOIN assurance_active_bundle_objects a ON a.tenant_id=p.tenant_id AND a.object_kind='retention_policy' AND a.object_id=p.retention_class AND a.object_revision=p.revision WHERE p.tenant_id=? AND p.retention_class=? ORDER BY p.revision DESC LIMIT 1`, tenant, class).Scan(&policy.RetentionClass, &policy.DurationSeconds, &raw, &revision)
 	if err == sql.ErrNoRows {
 		return RetentionPolicy{}, domainError("retention_policy_missing", "retention policy is not provisioned")
 	}
@@ -56,6 +62,8 @@ func (s *Store) ResolveRetentionPolicy(ctx context.Context, class string) (Reten
 		return RetentionPolicy{}, err
 	}
 	policy.Status = "active"
+	policy.Revision = revision
+	_ = json.Unmarshal([]byte(raw), &policy)
 	policy.Duration = time.Duration(policy.DurationSeconds) * time.Second
 	return policy, nil
 }
@@ -77,12 +85,31 @@ func (s *Store) ReleaseLegalHold(ctx context.Context, manifestID, actorID string
 }
 
 func (s *Store) setLegalHold(ctx context.Context, manifestID, actorID string, held bool) error {
+	principal, ok := identity.PrincipalFromContext(ctx)
+	if !ok || principal.TenantID == "" || principal.ObjectID == "" || !principal.HasPermission(identity.PermissionTenantAdmin) {
+		return domainError("operator_authorization_required", "an authorized tenant operator is required")
+	}
+	if err := s.requireRichAudit(); err != nil {
+		return err
+	}
 	tenant := identity.StorageTenant(ctx)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var subjectKind, subjectID string
+	if err := tx.QueryRowContext(ctx, `SELECT subject_kind, subject_id FROM assurance_evidence_manifests WHERE tenant_id=? AND manifest_id=?`, tenant, manifestID).Scan(&subjectKind, &subjectID); err != nil {
+		if err == sql.ErrNoRows {
+			return domainError("subject_not_found", "evidence manifest was not found")
+		}
+		return err
+	}
 	value := 0
 	if held {
 		value = 1
 	}
-	result, err := s.db.ExecContext(ctx, `UPDATE assurance_evidence_manifests SET legal_hold=? WHERE tenant_id=? AND manifest_id=?`, value, tenant, manifestID)
+	result, err := tx.ExecContext(ctx, `UPDATE assurance_evidence_manifests SET legal_hold=? WHERE tenant_id=? AND manifest_id=?`, value, tenant, manifestID)
 	if err != nil {
 		return err
 	}
@@ -94,24 +121,20 @@ func (s *Store) setLegalHold(ctx context.Context, manifestID, actorID string, he
 		return domainError("subject_not_found", "evidence manifest was not found")
 	}
 	if held {
-		var subjectKind, subjectID string
-		if err := s.db.QueryRowContext(ctx, `SELECT subject_kind, subject_id FROM assurance_evidence_manifests WHERE tenant_id=? AND manifest_id=?`, tenant, manifestID).Scan(&subjectKind, &subjectID); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_legal_holds (tenant_id, hold_id, subject_kind, subject_id, reason, active, actor_id, created_at) VALUES (?, ?, ?, ?, 'authorized_retention_hold', 1, ?, ?)`, tenant, uuid.NewString(), subjectKind, subjectID, actorID, formatTimestamp(time.Now().UTC())); err != nil {
 			return err
 		}
-		if _, err := s.db.ExecContext(ctx, `INSERT INTO assurance_legal_holds (tenant_id, hold_id, subject_kind, subject_id, reason, active, actor_id, created_at) VALUES (?, ?, ?, ?, 'authorized_retention_hold', 1, ?, ?)`, tenant, uuid.NewString(), subjectKind, subjectID, actorID, formatTimestamp(time.Now().UTC())); err != nil {
-			return err
-		}
-	} else if _, err := s.db.ExecContext(ctx, `UPDATE assurance_legal_holds SET active=0, released_at=? WHERE tenant_id=? AND subject_id=(SELECT subject_id FROM assurance_evidence_manifests WHERE tenant_id=? AND manifest_id=?) AND active=1`, formatTimestamp(time.Now().UTC()), tenant, tenant, manifestID); err != nil {
+	} else if _, err := tx.ExecContext(ctx, `UPDATE assurance_legal_holds SET active=0, released_at=? WHERE tenant_id=? AND subject_kind=? AND subject_id=? AND active=1`, formatTimestamp(time.Now().UTC()), tenant, subjectKind, subjectID); err != nil {
 		return err
 	}
-	if s.auditLog != nil {
-		action := "release_legal_hold"
-		if held {
-			action = "place_legal_hold"
-		}
-		_, _ = s.auditLog.Append(ctx, audit.Entry{Actor: actorID, Tool: "assurance_retention", Action: action, Target: manifestID})
+	action := "release_legal_hold"
+	if held {
+		action = "place_legal_hold"
 	}
-	return nil
+	if _, err := s.auditLog.AppendTx(ctx, tx, audit.Entry{Actor: actorID, Tool: "assurance_retention", Action: action, Target: manifestID}); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (s *Store) PurgeExpired(ctx context.Context, now time.Time) error {

@@ -79,30 +79,17 @@ func (service CompareService) Compare(ctx context.Context, actorID, auditID stri
 	if service.Store == nil {
 		return ComparisonResponse{}, domainError("dependency_unavailable", "assurance store is unavailable")
 	}
+	if err := service.Store.Ready(); err != nil {
+		return ComparisonResponse{}, err
+	}
+	if err := service.Store.requireRichAudit(service.Audit); err != nil {
+		return ComparisonResponse{}, err
+	}
 	if request.CurrentSnapshotID == "" || request.PriorSnapshotID == "" || request.MaterialityPolicyID == "" || request.IdempotencyKey == "" || len(request.FieldIDs) > maxFieldCount {
 		return ComparisonResponse{}, domainError("invalid_request", "snapshot IDs, materiality policy, and idempotency key are required")
 	}
 	if request.RetentionClass == "" {
 		request.RetentionClass = "standard"
-	}
-	current, err := service.Store.SnapshotForAnalysis(ctx, request.CurrentSnapshotID)
-	if err != nil {
-		return ComparisonResponse{}, err
-	}
-	prior, err := service.Store.SnapshotForAnalysis(ctx, request.PriorSnapshotID)
-	if err != nil {
-		return ComparisonResponse{}, err
-	}
-	policy, err := service.Store.ResolveMaterialityPolicy(ctx, request.MaterialityPolicyID, 0)
-	if err != nil {
-		return ComparisonResponse{}, err
-	}
-	if (current.Response.Completeness == CompletenessIncomplete || prior.Response.Completeness == CompletenessIncomplete) && !policy.permitsPartialComparison() {
-		return ComparisonResponse{}, domainError("partial_comparison_not_permitted", "materiality policy does not permit partial comparison")
-	}
-	fieldIDs, basis, err := comparisonFieldIDs(current, prior, request.FieldIDs)
-	if err != nil {
-		return ComparisonResponse{}, err
 	}
 	canonicalRequest, err := CanonicalJSON(struct {
 		Current   string   `json:"current_snapshot_id"`
@@ -111,7 +98,7 @@ func (service CompareService) Compare(ctx context.Context, actorID, auditID stri
 		Fields    []string `json:"field_ids"`
 		Include   bool     `json:"include_unchanged"`
 		Retention string   `json:"retention_class"`
-	}{request.CurrentSnapshotID, request.PriorSnapshotID, request.MaterialityPolicyID, fieldIDs, request.IncludeUnchanged, request.RetentionClass})
+	}{request.CurrentSnapshotID, request.PriorSnapshotID, request.MaterialityPolicyID, append([]string(nil), request.FieldIDs...), request.IncludeUnchanged, request.RetentionClass})
 	if err != nil {
 		return ComparisonResponse{}, err
 	}
@@ -139,6 +126,36 @@ func (service CompareService) Compare(ctx context.Context, actorID, auditID stri
 	default:
 		return ComparisonResponse{}, domainError("idempotency_state_invalid", "reservation disposition is invalid")
 	}
+	current, err := service.Store.SnapshotForAnalysis(ctx, request.CurrentSnapshotID)
+	if err != nil {
+		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
+		return ComparisonResponse{}, err
+	}
+	prior, err := service.Store.SnapshotForAnalysis(ctx, request.PriorSnapshotID)
+	if err != nil {
+		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
+		return ComparisonResponse{}, err
+	}
+	policy, err := service.Store.ResolveMaterialityPolicy(ctx, request.MaterialityPolicyID, 0)
+	if err != nil {
+		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
+		return ComparisonResponse{}, err
+	}
+	if current.MaterialityPolicyID == "" || prior.MaterialityPolicyID == "" || current.MaterialityPolicyID != request.MaterialityPolicyID || prior.MaterialityPolicyID != request.MaterialityPolicyID {
+		failure := domainError("materiality_policy_not_applicable", "materiality policy is not approved by both report definitions")
+		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), service.now())
+		return ComparisonResponse{}, failure
+	}
+	if (current.Response.Completeness == CompletenessIncomplete || prior.Response.Completeness == CompletenessIncomplete) && !policy.permitsPartialComparison() {
+		failure := domainError("partial_comparison_not_permitted", "materiality policy does not permit partial comparison")
+		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), service.now())
+		return ComparisonResponse{}, failure
+	}
+	fieldIDs, basis, err := comparisonFieldIDs(current, prior, request.FieldIDs)
+	if err != nil {
+		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
+		return ComparisonResponse{}, err
+	}
 	if err := service.Store.MarkExecutionStarted(ctx, reservation.RecordID, reservation.OwnerNonce, service.now()); err != nil {
 		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
 		return ComparisonResponse{}, err
@@ -156,8 +173,19 @@ func (service CompareService) Compare(ctx context.Context, actorID, auditID stri
 		response.Completeness = CompletenessNotCreated
 	} else {
 		response.Changes, response.MaterialCount = buildComparisonItems(current, prior, policy, fieldIDs, request.IncludeUnchanged)
+		for _, item := range response.Changes {
+			if item.MaterialityStatus == "error" {
+				failure := domainError("type_change_error", "materiality policy rejects a type change")
+				_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), service.now())
+				return ComparisonResponse{}, failure
+			}
+		}
 	}
-	if err := service.Store.finalizeComparison(ctx, reservation, response, idempotencyDigest, service.Audit, actorID, service.now()); err != nil {
+	auditLog := service.Audit
+	if auditLog == nil {
+		auditLog = service.Store.auditLog
+	}
+	if err := service.Store.finalizeComparison(ctx, reservation, response, idempotencyDigest, auditLog, actorID, service.now()); err != nil {
 		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
 		return ComparisonResponse{}, err
 	}
@@ -208,7 +236,10 @@ func buildComparisonItems(current, prior SnapshotAnalysis, policy MaterialityPol
 		}
 		switch {
 		case !curOK && !prevOK:
-			item.ComparisonStatus, item.MaterialityStatus = "not_comparable", "not_comparable"
+			item.ComparisonStatus, item.MaterialityStatus = "not_comparable", missingMateriality(policy)
+			if item.MaterialityStatus == "material" {
+				material++
+			}
 		case !curOK:
 			if _, inMembership := currentFields[id]; inMembership {
 				item.ComparisonStatus = "missing_in_current"
@@ -216,6 +247,9 @@ func buildComparisonItems(current, prior SnapshotAnalysis, policy MaterialityPol
 				item.ComparisonStatus = "removed"
 			}
 			item.MaterialityStatus = missingMateriality(policy)
+			if item.MaterialityStatus == "material" {
+				material++
+			}
 		case !prevOK:
 			if _, inMembership := priorFields[id]; inMembership {
 				item.ComparisonStatus = "missing_in_prior"
@@ -223,9 +257,15 @@ func buildComparisonItems(current, prior SnapshotAnalysis, policy MaterialityPol
 				item.ComparisonStatus = "added"
 			}
 			item.MaterialityStatus = missingMateriality(policy)
+			if item.MaterialityStatus == "material" {
+				material++
+			}
 		case cur.TypedValue.Kind != prev.TypedValue.Kind || cur.TypedValue.Unit != prev.TypedValue.Unit:
 			item.ComparisonStatus = "not_comparable"
 			item.MaterialityStatus = typeChangeMateriality(policy)
+			if item.MaterialityStatus == "material" {
+				material++
+			}
 		default:
 			if cur.TypedValue.Number != "" && prev.TypedValue.Number != "" {
 				delta, err := SubtractDecimal(cur.TypedValue.Number, prev.TypedValue.Number)
@@ -288,6 +328,9 @@ func missingMateriality(policy MaterialityPolicy) string {
 	}
 }
 func typeChangeMateriality(policy MaterialityPolicy) string {
+	if policy.TypeChangeBehavior == "error" {
+		return "error"
+	}
 	if policy.TypeChangeBehavior == "material" {
 		return "material"
 	}
@@ -311,6 +354,10 @@ func materialityStatus(policy MaterialityPolicy, absolute, delta, prior string) 
 			if cmp, _ := CompareDecimal(absRatio, policy.RelativeThreshold); cmp >= 0 {
 				relMaterial = true
 			}
+		}
+	} else if relEnabled && prior == "0" && policy.ZeroBaseline == "relative_zero" {
+		if cmp, err := CompareDecimal(absolute, policy.RelativeThreshold); err == nil && cmp >= 0 {
+			relMaterial = true
 		}
 	}
 	switch policy.Direction {
@@ -375,7 +422,7 @@ func (s *Store) finalizeComparison(ctx context.Context, reservation ReservationR
 			return err
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'comparison', ?, ?, ?, ?, ?)`, tenant, uuid.NewString(), response.ComparisonID, response.NLAuditID, uuid.NewString(), reservation.CorrelationID, formatTimestamp(now)); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'comparison', ?, ?, ?, ?, ?)`, tenant, uuid.NewString(), response.ComparisonID, response.NLAuditID, RequestIDFromContext(ctx), reservation.CorrelationID, formatTimestamp(now)); err != nil {
 		return err
 	}
 	envelope, err := CanonicalJSON(response)

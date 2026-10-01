@@ -15,15 +15,19 @@ import (
 // comparison. Membership is loaded from the historical report revision, never
 // inferred from whichever observations happened to be present.
 type SnapshotAnalysis struct {
-	Response   SnapshotResponse
-	ReportID   string
-	Revision   int
-	Membership []FieldDefinition
+	Response            SnapshotResponse
+	ReportID            string
+	Revision            int
+	Membership          []FieldDefinition
+	MaterialityPolicyID string
 }
 
 func (s *Store) ResolveRuleSet(ctx context.Context, id string, revision int) (RuleSet, error) {
+	if err := s.Ready(); err != nil {
+		return RuleSet{}, err
+	}
 	tenant := identity.StorageTenant(ctx)
-	query := `SELECT revision, status, content_hash, definition_json FROM assurance_rule_sets WHERE tenant_id=? AND rule_set_id=? AND status='active'`
+	query := `SELECT r.revision, r.status, r.content_hash, r.definition_json FROM assurance_rule_sets r JOIN assurance_active_bundle_objects a ON a.tenant_id=r.tenant_id AND a.object_kind='rule_set' AND a.object_id=r.rule_set_id AND a.object_revision=r.revision WHERE r.tenant_id=? AND r.rule_set_id=? AND r.status='active'`
 	args := []any{tenant, id}
 	if revision > 0 {
 		query += ` AND revision=?`
@@ -47,8 +51,11 @@ func (s *Store) ResolveRuleSet(ctx context.Context, id string, revision int) (Ru
 }
 
 func (s *Store) ResolveMaterialityPolicy(ctx context.Context, id string, revision int) (MaterialityPolicy, error) {
+	if err := s.Ready(); err != nil {
+		return MaterialityPolicy{}, err
+	}
 	tenant := identity.StorageTenant(ctx)
-	query := `SELECT revision, policy_json FROM assurance_materiality_policies WHERE tenant_id=? AND policy_id=? AND status='active'`
+	query := `SELECT p.revision, p.policy_json FROM assurance_materiality_policies p JOIN assurance_active_bundle_objects a ON a.tenant_id=p.tenant_id AND a.object_kind='materiality_policy' AND a.object_id=p.policy_id AND a.object_revision=p.revision WHERE p.tenant_id=? AND p.policy_id=? AND p.status='active'`
 	args := []any{tenant, id}
 	if revision > 0 {
 		query += ` AND revision=?`
@@ -107,6 +114,9 @@ func (s *Store) LoadReportRevision(ctx context.Context, reportID string, revisio
 }
 
 func (s *Store) SnapshotForAnalysis(ctx context.Context, id string) (SnapshotAnalysis, error) {
+	if err := s.Ready(); err != nil {
+		return SnapshotAnalysis{}, err
+	}
 	tenant := identity.StorageTenant(ctx)
 	var reportID string
 	var revision int
@@ -126,7 +136,7 @@ func (s *Store) SnapshotForAnalysis(ctx context.Context, id string) (SnapshotAna
 	if err != nil {
 		return SnapshotAnalysis{}, err
 	}
-	return SnapshotAnalysis{Response: response, ReportID: reportID, Revision: revision, Membership: append([]FieldDefinition(nil), report.Fields...)}, nil
+	return SnapshotAnalysis{Response: response, ReportID: reportID, Revision: revision, Membership: append([]FieldDefinition(nil), report.Fields...), MaterialityPolicyID: report.MaterialityPolicyID}, nil
 }
 
 func membershipByField(fields []FieldDefinition) map[string]FieldDefinition {

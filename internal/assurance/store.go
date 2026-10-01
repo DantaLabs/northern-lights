@@ -39,7 +39,7 @@ func NewWithDB(db *sql.DB) (*Store, error) {
 	if err := Migrate(context.Background(), db); err != nil {
 		return nil, err
 	}
-	return &Store{db: db, evidenceStorage: NewMemoryEvidenceStorage()}, nil
+	return &Store{db: db}, nil
 }
 
 // SetEvidenceStorage installs the deterministic delivery adapter. Production
@@ -53,6 +53,20 @@ func (s *Store) SetEvidenceStorage(storage EvidenceStorage) {
 
 // SetAuditLog connects rich evidence links to the shared audit chain.
 func (s *Store) SetAuditLog(log *audit.Log) { s.auditLog = log }
+
+func (s *Store) requireRichAudit(logs ...*audit.Log) error {
+	if s == nil {
+		return domainError("audit_unavailable", "shared rich audit is required")
+	}
+	log := s.auditLog
+	if len(logs) == 1 && logs[0] != nil {
+		log = logs[0]
+	}
+	if log == nil || !log.SharesDB(s.db) {
+		return domainError("audit_unavailable", "shared rich audit is required")
+	}
+	return nil
+}
 
 // Close is a no-op because Store never owns the shared database handle.
 func (s *Store) Close() error { return nil }
@@ -311,7 +325,16 @@ func (s *Store) FailReservation(ctx context.Context, recordID, ownerNonce string
 	if err != nil {
 		return fmt.Errorf("assurance: fail reservation: %w", err)
 	}
-	return requireOneTransition(result)
+	if err := requireOneTransition(result); err != nil {
+		return err
+	}
+	if s.auditLog != nil && s.auditLog.SharesDB(s.db) {
+		raw, _ := CanonicalJSON(failure)
+		if _, err := s.auditLog.Append(ctx, audit.Entry{Tool: "assurance", Action: "terminal_failure", Target: recordID, AfterJSON: string(raw), AuditID: failure.NLAuditID}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // MarkExecutionStarted prevents an abandoned reservation from being classified
