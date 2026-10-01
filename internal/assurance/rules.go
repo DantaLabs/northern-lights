@@ -126,7 +126,8 @@ func ValidateRuleSet(set RuleSet) error {
 		}
 		for _, decimal := range []string{rule.Lower, rule.Upper, rule.AbsoluteTolerance, rule.RelativeTolerance} {
 			if decimal != "" {
-				if _, err := canonicalDecimal(decimal); err != nil {
+				canonical, err := canonicalDecimal(decimal)
+				if err != nil || stringsHasMinus(canonical) {
 					return fmt.Errorf("rule %s has invalid decimal operand", rule.RuleID)
 				}
 			}
@@ -215,11 +216,30 @@ func ValidateMaterialityPolicy(policy MaterialityPolicy) error {
 func stringsHasMinus(value string) bool { return len(value) > 0 && value[0] == '-' }
 
 func ValidateExportProfile(profile ExportProfile) error {
-	if profile.ProfileID == "" || profile.Revision <= 0 || profile.Status != "active" || profile.RetentionClass == "" || profile.MaxRows <= 0 || profile.MaxBytes <= 0 {
+	if profile.ProfileID == "" || len(profile.ProfileID) > maxReferenceLength || profile.Revision <= 0 || profile.Revision > maxRevision || profile.Status != "active" || profile.RetentionClass == "" || profile.MaxRows <= 0 || profile.MaxRows > maxFieldCount*100 || profile.MaxBytes <= 0 || profile.MaxBytes > 64<<20 {
 		return fmt.Errorf("invalid export profile")
 	}
 	if profile.RedactionProfile != "standard" && profile.RedactionProfile != "strict" {
 		return fmt.Errorf("unsupported redaction profile %q", profile.RedactionProfile)
+	}
+	if profile.RetentionClass != "standard" && profile.RetentionClass != "long_term" {
+		return fmt.Errorf("unsupported retention class %q", profile.RetentionClass)
+	}
+	if profile.DeliveryPolicy != "opaque_reference" {
+		return fmt.Errorf("unsupported delivery policy %q", profile.DeliveryPolicy)
+	}
+	if len(profile.PermittedSubjects) == 0 || len(profile.PermittedSubjects) > 4 {
+		return fmt.Errorf("export profile must permit one through four subject kinds")
+	}
+	seen := make(map[string]struct{}, len(profile.PermittedSubjects))
+	for _, subject := range profile.PermittedSubjects {
+		if subject != "snapshot" && subject != "validation_run" && subject != "comparison" {
+			return fmt.Errorf("unsupported evidence subject %q", subject)
+		}
+		if _, exists := seen[subject]; exists {
+			return fmt.Errorf("duplicate evidence subject %q", subject)
+		}
+		seen[subject] = struct{}{}
 	}
 	return nil
 }

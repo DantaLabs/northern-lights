@@ -156,6 +156,9 @@ func TestWave2ValidationIsProviderFreeAndNotEvaluableNeverPasses(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if _, err := db.Exec(`UPDATE assurance_report_revisions SET rule_set_id=? WHERE tenant_id=? AND report_id=? AND revision=?`, ruleSet.RuleSetID, testTenant, "energy-report", 1); err != nil {
+		t.Fatal(err)
+	}
 	response, err := (ValidationService{Store: store}).Validate(assuranceContext(), "actor-1", "audit-validation", ValidationRequest{SnapshotID: snapshot.SnapshotID, RuleSetID: ruleSet.RuleSetID, IdempotencyKey: "validate-1"})
 	if err != nil {
 		t.Fatal(err)
@@ -235,13 +238,14 @@ func TestWave2EvidenceExportIsOneSubjectManifestV2AndTransferIsUnavailable(t *te
 	store, db := openTestStore(t)
 	field := FieldDefinition{FieldID: "amount", ResourceID: "r", ExternalResourceID: "sp", SubresourceID: "sh", Locator: "B3", Kind: ValueText, Required: true, Order: 1}
 	snapshotBundle(t, store, []FieldDefinition{field})
-	if _, err := db.Exec(`INSERT INTO assurance_retention_policies (tenant_id, retention_class, duration_seconds, policy_json, content_hash) VALUES (?, 'long_term', 86400, '{}', 'retention-hash')`, testTenant); err != nil {
+	retentionHash := digestHex(HashBytes([]byte(`{"retention_class":"long_term","duration_seconds":86400,"status":"active"}`)))
+	if _, err := db.Exec(`INSERT INTO assurance_retention_policies (tenant_id, retention_class, duration_seconds, policy_json, content_hash) VALUES (?, 'long_term', 86400, '{}', ?)`, testTenant, retentionHash); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`INSERT INTO assurance_retention_policy_revisions (tenant_id, retention_class, revision, duration_seconds, policy_json, content_hash) VALUES (?, 'long_term', 0, 86400, '{}', 'retention-hash')`, testTenant); err != nil {
+	if _, err := db.Exec(`INSERT INTO assurance_retention_policy_revisions (tenant_id, retention_class, revision, duration_seconds, policy_json, content_hash) VALUES (?, 'long_term', 1, 86400, '{}', ?)`, testTenant, digestHex(HashBytes([]byte(`{}`)))); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`INSERT INTO assurance_active_bundle_objects (tenant_id, object_kind, object_id, object_revision, bundle_version) VALUES (?, 'retention_policy', 'long_term', 0, 1)`, testTenant); err != nil {
+	if _, err := db.Exec(`INSERT INTO assurance_active_bundle_objects (tenant_id, object_kind, object_id, object_revision, bundle_version) VALUES (?, 'retention_policy', 'long_term', 1, 1)`, testTenant); err != nil {
 		t.Fatal(err)
 	}
 	reader := &scriptedReader{results: map[string]ProviderRead{"B3": {Value: ProviderValue{Value: "authoritative"}, CacheBypassed: true}}, errors: map[string]error{}}

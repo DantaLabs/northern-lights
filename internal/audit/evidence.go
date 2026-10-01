@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/dantalabs/northern-lights/internal/identity"
 )
@@ -85,6 +86,47 @@ func (l *Log) ExportRange(ctx context.Context, firstSeq, lastSeq int64) (AuditRa
 	return result, nil
 }
 
+// ExportLinked returns only audit rows linked to one subject. Tenant scope is
+// applied before the linked-ID predicate, and no unrelated rows are exposed to
+// fill sequence gaps.
+func (l *Log) ExportLinked(ctx context.Context, auditIDs []string) (AuditRange, error) {
+	if len(auditIDs) == 0 || len(auditIDs) > 1000 {
+		return AuditRange{}, fmt.Errorf("audit: invalid linked audit set")
+	}
+	placeholders := make([]string, len(auditIDs))
+	args := make([]any, 0, len(auditIDs)+1)
+	args = append(args, identity.StorageTenant(ctx))
+	for i, id := range auditIDs {
+		if id == "" || len(id) > 128 {
+			return AuditRange{}, fmt.Errorf("audit: invalid linked audit ID")
+		}
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	rows, err := l.db.QueryContext(ctx, `SELECT `+auditColumns+` FROM audit_log WHERE tenant_id=? AND audit_id IN (`+strings.Join(placeholders, ",")+") ORDER BY seq", args...)
+	if err != nil {
+		return AuditRange{}, err
+	}
+	defer func() { _ = rows.Close() }()
+	result := AuditRange{Entries: []Entry{}}
+	for rows.Next() {
+		entry, err := scanEntry(rows)
+		if err != nil {
+			return AuditRange{}, err
+		}
+		result.Entries = append(result.Entries, entry)
+	}
+	if err := rows.Err(); err != nil {
+		return AuditRange{}, err
+	}
+	if len(result.Entries) == 0 {
+		return AuditRange{}, fmt.Errorf("audit: linked subject has no rows")
+	}
+	result.FirstSeq, result.LastSeq = result.Entries[0].Seq, result.Entries[len(result.Entries)-1].Seq
+	result.FirstHash, result.LastHash = result.Entries[0].Hash, result.Entries[len(result.Entries)-1].Hash
+	return result, nil
+}
+
 func (l *Log) VerifyRange(ctx context.Context, firstSeq, lastSeq int64) (AuditVerification, error) {
 	rangeResult, err := l.ExportRange(ctx, firstSeq, lastSeq)
 	if err != nil {
@@ -128,5 +170,52 @@ func (l *Log) VerifyRange(ctx context.Context, firstSeq, lastSeq int64) (AuditVe
 	}
 	sort.Slice(versions, func(i, j int) bool { return versions[i].HashVersion < versions[j].HashVersion })
 	count := len(rangeResult.Entries)
-	return AuditVerification{ChainVerified: verified, HashVersionCoverage: versions, Completeness: AuditCompleteness{Status: "complete", ExpectedCount: count, IncludedCount: count, OmittedCount: 0, ExpectedEventCount: count, IncludedEventCount: count, OmissionCount: 0, OmissionsRecorded: true, TerminalAnchor: "unknown", TerminalAnchorVerified: false, FinalRowDeletionDetectable: false}, Caveats: []string{"tenant-scoped sequence gaps are not omissions", "final-row deletion requires an external terminal anchor"}}, nil
+	return AuditVerification{ChainVerified: verified, HashVersionCoverage: versions, Completeness: AuditCompleteness{Status: "unknown", ExpectedCount: count, IncludedCount: count, OmittedCount: 0, ExpectedEventCount: count, IncludedEventCount: count, OmissionCount: 0, OmissionsRecorded: true, TerminalAnchor: "unknown", TerminalAnchorVerified: false, FinalRowDeletionDetectable: false}, Caveats: []string{"tenant-scoped sequence gaps are not omissions", "final-row deletion requires an external terminal anchor"}}, nil
+}
+
+// VerifyLinked validates only the selected rows. Hashes are checked against
+// their stored previous-hash pointer; sequence gaps are reported as an
+// omission caveat rather than filled with unrelated tenant events.
+func (l *Log) VerifyLinked(_ context.Context, entries []Entry) AuditVerification {
+	coverage := map[int]*HashVersionCoverage{}
+	verified := len(entries) > 0
+	contiguous := true
+	for i, entry := range entries {
+		item := coverage[entry.HashVersion]
+		if item == nil {
+			item = &HashVersionCoverage{HashVersion: entry.HashVersion, FirstSeq: entry.Seq, LastSeq: entry.Seq, TenantIdentityHashed: entry.HashVersion >= 2}
+			coverage[entry.HashVersion] = item
+		}
+		if entry.Seq < item.FirstSeq {
+			item.FirstSeq = entry.Seq
+		}
+		if entry.Seq > item.LastSeq {
+			item.LastSeq = entry.Seq
+		}
+		if i > 0 && entry.Seq != entries[i-1].Seq+1 {
+			contiguous = false
+		}
+		var expected string
+		switch entry.HashVersion {
+		case 1:
+			expected = entryHash(entry.PrevHash, entry.Ts.UTC().Format(timeFormat), entry.Actor, entry.Tool, entry.Action, entry.Target, entry.BeforeJSON, entry.AfterJSON, entry.WorkivaOpURL, entry.AuditID)
+		case 2:
+			expected = tenantEntryHash(entry.PrevHash, entry.TenantID, entry.Ts.UTC().Format(timeFormat), entry.Actor, entry.Tool, entry.Action, entry.Target, entry.BeforeJSON, entry.AfterJSON, entry.WorkivaOpURL, entry.AuditID)
+		default:
+			verified = false
+		}
+		if entry.Hash != expected {
+			verified = false
+		}
+	}
+	versions := make([]HashVersionCoverage, 0, len(coverage))
+	for _, item := range coverage {
+		versions = append(versions, *item)
+	}
+	sort.Slice(versions, func(i, j int) bool { return versions[i].HashVersion < versions[j].HashVersion })
+	caveats := []string{"subject selection excludes unlinked tenant events"}
+	if !contiguous {
+		caveats = append(caveats, "unlinked sequence rows are omitted; included-row hashes were checked individually")
+	}
+	return AuditVerification{ChainVerified: verified, HashVersionCoverage: versions, Completeness: AuditCompleteness{Status: "unknown", ExpectedCount: len(entries), IncludedCount: len(entries), ExpectedEventCount: len(entries), IncludedEventCount: len(entries), OmissionsRecorded: true, TerminalAnchor: "unknown"}, Caveats: caveats}
 }

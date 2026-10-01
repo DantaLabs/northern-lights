@@ -91,6 +91,11 @@ func (service CompareService) Compare(ctx context.Context, actorID, auditID stri
 	if request.RetentionClass == "" {
 		request.RetentionClass = "standard"
 	}
+	canonicalFields, canonicalErr := canonicalizeSetStrings(request.FieldIDs)
+	if canonicalErr != nil {
+		return ComparisonResponse{}, domainError("invalid_request", canonicalErr.Error())
+	}
+	request.FieldIDs = canonicalFields
 	canonicalRequest, err := CanonicalJSON(struct {
 		Current   string   `json:"current_snapshot_id"`
 		Prior     string   `json:"prior_snapshot_id"`
@@ -136,31 +141,42 @@ func (service CompareService) Compare(ctx context.Context, actorID, auditID stri
 		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
 		return ComparisonResponse{}, err
 	}
-	policy, err := service.Store.ResolveMaterialityPolicy(ctx, request.MaterialityPolicyID, 0)
-	if err != nil {
-		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
-		return ComparisonResponse{}, err
+	disjointReports := comparisonReportsDisjoint(current, prior)
+	var policy MaterialityPolicy
+	if !disjointReports {
+		policy, err = service.Store.ResolveMaterialityPolicy(ctx, request.MaterialityPolicyID, 0)
+		if err != nil {
+			_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
+			return ComparisonResponse{}, err
+		}
+		if current.MaterialityPolicyID == "" || prior.MaterialityPolicyID == "" || current.MaterialityPolicyID != request.MaterialityPolicyID || prior.MaterialityPolicyID != request.MaterialityPolicyID {
+			failure := domainError("materiality_policy_not_applicable", "materiality policy is not approved by both report definitions")
+			_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), service.now())
+			return ComparisonResponse{}, failure
+		}
+		if (current.Response.Completeness == CompletenessIncomplete || prior.Response.Completeness == CompletenessIncomplete) && !policy.permitsPartialComparison() {
+			failure := domainError("partial_comparison_not_permitted", "materiality policy does not permit partial comparison")
+			_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), service.now())
+			return ComparisonResponse{}, failure
+		}
 	}
-	if current.MaterialityPolicyID == "" || prior.MaterialityPolicyID == "" || current.MaterialityPolicyID != request.MaterialityPolicyID || prior.MaterialityPolicyID != request.MaterialityPolicyID {
-		failure := domainError("materiality_policy_not_applicable", "materiality policy is not approved by both report definitions")
-		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), service.now())
-		return ComparisonResponse{}, failure
-	}
-	if (current.Response.Completeness == CompletenessIncomplete || prior.Response.Completeness == CompletenessIncomplete) && !policy.permitsPartialComparison() {
-		failure := domainError("partial_comparison_not_permitted", "materiality policy does not permit partial comparison")
-		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), service.now())
-		return ComparisonResponse{}, failure
-	}
-	fieldIDs, basis, err := comparisonFieldIDs(current, prior, request.FieldIDs)
-	if err != nil {
-		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
-		return ComparisonResponse{}, err
+	fieldIDs, basis := []string(nil), ComparisonBasisUnion
+	if !disjointReports {
+		fieldIDs, basis, err = comparisonFieldIDs(current, prior, request.FieldIDs)
+		if err != nil {
+			_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
+			return ComparisonResponse{}, err
+		}
 	}
 	if err := service.Store.MarkExecutionStarted(ctx, reservation.RecordID, reservation.OwnerNonce, service.now()); err != nil {
 		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
 		return ComparisonResponse{}, err
 	}
-	response := ComparisonResponse{NLAuditID: auditID, Status: ComparisonCompleted, ComparisonID: uuid.NewString(), CurrentSnapshotID: request.CurrentSnapshotID, PriorSnapshotID: request.PriorSnapshotID, Completeness: CompletenessComplete, ComparisonBasis: basis, MaterialityPolicyID: policy.PolicyID, MaterialityRevision: policy.Revision, Changes: []ComparisonItem{}}
+	policyID := policy.PolicyID
+	if policyID == "" {
+		policyID = request.MaterialityPolicyID
+	}
+	response := ComparisonResponse{NLAuditID: auditID, Status: ComparisonCompleted, ComparisonID: uuid.NewString(), CurrentSnapshotID: request.CurrentSnapshotID, PriorSnapshotID: request.PriorSnapshotID, Completeness: CompletenessComplete, ComparisonBasis: basis, MaterialityPolicyID: policyID, MaterialityRevision: policy.Revision, Changes: []ComparisonItem{}}
 	response.currentReportID, response.priorReportID = current.ReportID, prior.ReportID
 	response.currentRevision, response.priorRevision = current.Revision, prior.Revision
 	response.partialPolicy = "reject"
@@ -168,9 +184,9 @@ func (service CompareService) Compare(ctx context.Context, actorID, auditID stri
 		response.Completeness = CompletenessIncomplete
 		response.partialPolicy = "label_incomplete"
 	}
-	if current.ReportID != prior.ReportID {
+	if disjointReports {
 		response.Status = ComparisonIncompatible
-		response.Completeness = CompletenessNotCreated
+		response.Completeness = incompatibleComparisonCompleteness(current, prior)
 	} else {
 		response.Changes, response.MaterialCount = buildComparisonItems(current, prior, policy, fieldIDs, request.IncludeUnchanged)
 		for _, item := range response.Changes {
@@ -190,6 +206,17 @@ func (service CompareService) Compare(ctx context.Context, actorID, auditID stri
 		return ComparisonResponse{}, err
 	}
 	return response, nil
+}
+
+func comparisonReportsDisjoint(current, prior SnapshotAnalysis) bool {
+	return current.ReportID != prior.ReportID
+}
+
+func incompatibleComparisonCompleteness(current, prior SnapshotAnalysis) Completeness {
+	if comparisonReportsDisjoint(current, prior) {
+		return CompletenessNotEvaluable
+	}
+	return CompletenessComplete
 }
 
 func comparisonFieldIDs(current, prior SnapshotAnalysis, requested []string) ([]string, string, error) {
@@ -356,9 +383,10 @@ func materialityStatus(policy MaterialityPolicy, absolute, delta, prior string) 
 			}
 		}
 	} else if relEnabled && prior == "0" && policy.ZeroBaseline == "relative_zero" {
-		if cmp, err := CompareDecimal(absolute, policy.RelativeThreshold); err == nil && cmp >= 0 {
-			relMaterial = true
-		}
+		// A relative threshold is dimensionless. With a zero baseline there
+		// is no finite ratio, so any non-zero change is the explicit policy
+		// outcome; never compare a unit-bearing absolute delta to it.
+		relMaterial = absolute != "0"
 	}
 	switch policy.Direction {
 	case "absolute":
@@ -394,6 +422,12 @@ func multiplyDecimal(a, b string) (string, error) {
 }
 
 func (s *Store) finalizeComparison(ctx context.Context, reservation ReservationResult, response ComparisonResponse, idempotencyDigest string, auditLog *audit.Log, actor string, now time.Time) error {
+	if auditLog == nil {
+		auditLog = s.auditLog
+	}
+	if err := s.requireRichAudit(auditLog); err != nil {
+		return err
+	}
 	tenant := identity.StorageTenant(ctx)
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -413,14 +447,16 @@ func (s *Store) finalizeComparison(ctx context.Context, reservation ReservationR
 			return err
 		}
 	}
-	if auditLog != nil && auditLog.SharesDB(s.db) {
-		raw, err := CanonicalJSON(response)
-		if err != nil {
-			return err
-		}
-		if _, err := auditLog.AppendTx(ctx, tx, audit.Entry{Actor: actor, Tool: "workiva_compare_periods", Action: "compare", Target: response.ComparisonID, AfterJSON: string(raw), AuditID: response.NLAuditID}); err != nil {
-			return err
-		}
+	trustedActor, err := reservationActor(ctx, tx, reservation)
+	if err != nil {
+		return err
+	}
+	raw, err := CanonicalJSON(response)
+	if err != nil {
+		return err
+	}
+	if _, err := auditLog.AppendTx(ctx, tx, audit.Entry{Actor: trustedActor, Tool: "workiva_compare_periods", Action: "compare", Target: response.ComparisonID, AfterJSON: string(raw), AuditID: response.NLAuditID}); err != nil {
+		return err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'comparison', ?, ?, ?, ?, ?)`, tenant, uuid.NewString(), response.ComparisonID, response.NLAuditID, RequestIDFromContext(ctx), reservation.CorrelationID, formatTimestamp(now)); err != nil {
 		return err

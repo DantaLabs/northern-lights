@@ -289,7 +289,24 @@ CREATE TABLE assurance_retention_policy_revisions (
 );
 `
 
-var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10}
+// migrationV11 makes evidence retention retries and legal holds exact and
+// durable. The v8 singleton retention table remains compatibility history;
+// revisioned rows are authoritative.
+const migrationV11 = `
+ALTER TABLE assurance_legal_holds ADD COLUMN manifest_id TEXT NOT NULL DEFAULT '';
+CREATE INDEX idx_assurance_legal_holds_tenant_manifest ON assurance_legal_holds(tenant_id, manifest_id, active);
+ALTER TABLE assurance_evidence_tombstones ADD COLUMN state TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE assurance_evidence_tombstones ADD COLUMN artifact_disposition_json TEXT NOT NULL DEFAULT '{}';
+CREATE UNIQUE INDEX idx_assurance_evidence_tombstones_manifest ON assurance_evidence_tombstones(tenant_id, manifest_id);
+CREATE TABLE assurance_evidence_cleanup (
+ tenant_id TEXT NOT NULL, cleanup_id TEXT NOT NULL, record_id TEXT NOT NULL, storage_reference TEXT NOT NULL,
+ state TEXT NOT NULL, error TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, cleanup_id)
+);
+CREATE INDEX idx_assurance_evidence_cleanup_record ON assurance_evidence_cleanup(tenant_id, record_id, state);
+`
+
+var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11}
 
 // Migrate installs the complete contiguous assurance schema family.
 func Migrate(ctx context.Context, db *sql.DB) error {
@@ -314,5 +331,6 @@ func assuranceTables() []string {
 		"assurance_retention_policies", "assurance_idempotency_records", "assurance_audit_links", "assurance_checkpoints",
 		"assurance_materiality_policies", "assurance_export_profiles", "assurance_legal_holds", "assurance_evidence_tombstones",
 		"assurance_active_bundle_objects", "assurance_retention_policy_revisions",
+		"assurance_evidence_cleanup",
 	}
 }

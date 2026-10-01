@@ -2,7 +2,9 @@ package audit
 
 import (
 	"context"
+	"crypto/ed25519"
 	"database/sql"
+	"encoding/hex"
 	"strconv"
 	"strings"
 
@@ -15,6 +17,7 @@ const (
 	CheckpointVerified     CheckpointStatus = "verified"
 	CheckpointMissing      CheckpointStatus = "missing"
 	CheckpointMismatch     CheckpointStatus = "mismatch"
+	CheckpointUnverified   CheckpointStatus = "unverified"
 	CheckpointNotRequested CheckpointStatus = "not_requested"
 )
 
@@ -44,10 +47,23 @@ func (l *Log) VerifyCheckpoint(ctx context.Context, sequence int64, hash, checkp
 		return Checkpoint{}, err
 	}
 	storedSequence, parseErr := strconv.ParseInt(highWater, 10, 64)
-	if parseErr == nil && storedSequence == sequence && stored == hash && (signature != "" || kind == "external") {
-		result.Status = CheckpointVerified
-	} else {
+	if parseErr != nil || storedSequence != sequence || stored != hash {
 		result.Status = CheckpointMismatch
+		return result, nil
 	}
+	if len(l.checkpointPublicKey) != ed25519.PublicKeySize || signature == "" {
+		result.Status = CheckpointUnverified
+		return result, nil
+	}
+	signatureBytes, decodeErr := hex.DecodeString(signature)
+	if decodeErr != nil || !ed25519.Verify(l.checkpointPublicKey, checkpointSigningBytes(tenant, sequence, hash, checkpointID), signatureBytes) {
+		result.Status = CheckpointMismatch
+		return result, nil
+	}
+	result.Status = CheckpointVerified
 	return result, nil
+}
+
+func checkpointSigningBytes(tenant string, sequence int64, hash, checkpointID string) []byte {
+	return []byte(strings.Join([]string{tenant, strconv.FormatInt(sequence, 10), hash, checkpointID}, "\x00"))
 }

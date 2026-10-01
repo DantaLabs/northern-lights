@@ -556,13 +556,20 @@ func (s *Store) StageBundle(ctx context.Context, bundle *ValidatedBundle) error 
 		copyPolicy := policy
 		copyPolicy.TenantID = tenant
 		raw, _ := marshalCanonical(copyPolicy)
+		incomingHash := digestHex(HashBytes([]byte(raw)))
 		var existingRevision, existingDuration int
 		var existingHash string
 		err := s.db.QueryRowContext(ctx, `SELECT revision, duration_seconds, content_hash FROM assurance_retention_policy_revisions WHERE tenant_id=? AND retention_class=? ORDER BY revision DESC LIMIT 1`, tenant, policy.RetentionClass).Scan(&existingRevision, &existingDuration, &existingHash)
-		if err == nil && (policy.Revision < existingRevision || (policy.Revision == existingRevision && existingHash != digestHex(HashBytes([]byte(raw))))) {
+		if err == nil && retentionRevisionConflict(existingRevision, existingHash, incomingHash, policy.Revision) {
 			return domainError("bundle_revision_non_monotonic", "retention policy revision is not a valid immutable successor")
 		}
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		var reusedRevision int
+		if err := s.db.QueryRowContext(ctx, `SELECT revision FROM assurance_retention_policy_revisions WHERE tenant_id=? AND retention_class=? AND content_hash=? AND revision<>? LIMIT 1`, tenant, policy.RetentionClass, incomingHash, policy.Revision).Scan(&reusedRevision); err == nil {
+			return domainError("bundle_revision_content_reused", "retention policy content cannot be reused under a different revision")
+		} else if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
 	}
@@ -804,18 +811,33 @@ func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) err
 			return err
 		}
 		contentHash := digestHex(HashBytes([]byte(policyJSON)))
-		var existing string
-		err = tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_retention_policies WHERE tenant_id=? AND retention_class=?`, tenant, policy.RetentionClass).Scan(&existing)
-		if err == nil && existing != contentHash {
-			return domainError("bundle_revision_hash_conflict", "retention policy content changed")
+		// The v8 singleton is compatibility history only. Revision/hash
+		// monotonicity is checked against assurance_retention_policy_revisions.
+		if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_retention_policies (tenant_id, retention_class, duration_seconds, policy_json, content_hash) VALUES (?, ?, ?, ?, ?) ON CONFLICT(tenant_id, retention_class) DO NOTHING`, tenant, policy.RetentionClass, policy.DurationSeconds, policyJSON, contentHash); err != nil {
+			return err
+		}
+		var existingRevisionHash string
+		err = tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_retention_policy_revisions WHERE tenant_id=? AND retention_class=? AND revision=?`, tenant, policy.RetentionClass, policy.Revision).Scan(&existingRevisionHash)
+		var latestRevision int
+		var latestHash string
+		latestErr := tx.QueryRowContext(ctx, `SELECT revision, content_hash FROM assurance_retention_policy_revisions WHERE tenant_id=? AND retention_class=? ORDER BY revision DESC LIMIT 1`, tenant, policy.RetentionClass).Scan(&latestRevision, &latestHash)
+		if latestErr != nil && !errors.Is(latestErr, sql.ErrNoRows) {
+			return latestErr
+		}
+		if latestErr == nil && retentionRevisionConflict(latestRevision, latestHash, contentHash, policy.Revision) {
+			return domainError("bundle_revision_non_monotonic", "retention policy revision is not a valid immutable successor")
+		}
+		var reusedRevision int
+		if reuseErr := tx.QueryRowContext(ctx, `SELECT revision FROM assurance_retention_policy_revisions WHERE tenant_id=? AND retention_class=? AND content_hash=? AND revision<>? LIMIT 1`, tenant, policy.RetentionClass, contentHash, policy.Revision).Scan(&reusedRevision); reuseErr == nil {
+			return domainError("bundle_revision_content_reused", "retention policy content cannot be reused under a different revision")
+		} else if !errors.Is(reuseErr, sql.ErrNoRows) {
+			return reuseErr
+		}
+		if err == nil && existingRevisionHash != contentHash {
+			return domainError("bundle_revision_hash_conflict", "retention policy revision content changed")
 		}
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return err
-		}
-		if errors.Is(err, sql.ErrNoRows) {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_retention_policies (tenant_id, retention_class, duration_seconds, policy_json, content_hash) VALUES (?, ?, ?, ?, ?)`, tenant, policy.RetentionClass, policy.DurationSeconds, policyJSON, contentHash); err != nil {
-				return err
-			}
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_retention_policy_revisions (tenant_id, retention_class, revision, duration_seconds, policy_json, content_hash) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(tenant_id, retention_class, revision) DO NOTHING`, tenant, policy.RetentionClass, policy.Revision, policy.DurationSeconds, policyJSON, contentHash); err != nil {
 			return err

@@ -39,9 +39,10 @@ const (
 type Completeness string
 
 const (
-	CompletenessComplete   Completeness = "complete"
-	CompletenessIncomplete Completeness = "incomplete"
-	CompletenessNotCreated Completeness = "not_created"
+	CompletenessComplete     Completeness = "complete"
+	CompletenessIncomplete   Completeness = "incomplete"
+	CompletenessNotCreated   Completeness = "not_created"
+	CompletenessNotEvaluable Completeness = "not_evaluable"
 )
 
 // SnapshotRequest is the exact materializing request. IdempotencyKey is
@@ -154,6 +155,11 @@ func (service SnapshotService) Capture(ctx context.Context, actorID, auditID str
 	if request.RetentionClass == "" {
 		request.RetentionClass = "standard"
 	}
+	canonicalFields, canonicalErr := canonicalizeSetStrings(request.FieldIDs)
+	if canonicalErr != nil {
+		return SnapshotResponse{}, domainError("invalid_request", canonicalErr.Error())
+	}
+	request.FieldIDs = canonicalFields
 	if request.Consistency != ConsistencyNone && request.Consistency != ConsistencyBestEffort && request.Consistency != ConsistencyRevisionPinned {
 		return SnapshotResponse{}, domainError("invalid_consistency", "consistency must be none, best_effort, or revision_pinned")
 	}
@@ -380,6 +386,12 @@ func classifyReadError(err error) string {
 }
 
 func (s *Store) finalizeSnapshot(ctx context.Context, reservation ReservationResult, internalSnapshotID string, response SnapshotResponse, observations []SnapshotObservation, failures []SnapshotItemError, now time.Time, auditLog *audit.Log, auditActor string) error {
+	if auditLog == nil {
+		auditLog = s.auditLog
+	}
+	if err := s.requireRichAudit(auditLog); err != nil {
+		return err
+	}
 	tenant := identity.StorageTenant(ctx)
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -409,17 +421,19 @@ func (s *Store) finalizeSnapshot(ctx context.Context, reservation ReservationRes
 		response.CapturedAt, tenant, internalSnapshotID); err != nil {
 		return fmt.Errorf("assurance: finalize snapshot: %w", err)
 	}
-	if auditLog != nil && auditLog.SharesDB(s.db) {
-		auditJSON, err := CanonicalJSON(response)
-		if err != nil {
-			return err
-		}
-		if _, err := auditLog.AppendTx(ctx, tx, audit.Entry{
-			Actor: auditActor, Tool: "workiva_snapshot_report", Action: "capture", Target: internalSnapshotID,
-			AfterJSON: string(auditJSON), AuditID: response.NLAuditID,
-		}); err != nil {
-			return fmt.Errorf("assurance: append snapshot audit: %w", err)
-		}
+	trustedActor, err := reservationActor(ctx, tx, reservation)
+	if err != nil {
+		return err
+	}
+	auditJSON, err := CanonicalJSON(response)
+	if err != nil {
+		return err
+	}
+	if _, err := auditLog.AppendTx(ctx, tx, audit.Entry{
+		Actor: trustedActor, Tool: "workiva_snapshot_report", Action: "capture", Target: internalSnapshotID,
+		AfterJSON: string(auditJSON), AuditID: response.NLAuditID,
+	}); err != nil {
+		return fmt.Errorf("assurance: append snapshot audit: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links
 	 (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'snapshot', ?, ?, ?, ?, ?)`,

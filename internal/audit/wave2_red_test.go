@@ -31,7 +31,7 @@ func TestWave2BoundedAuditRangeSeparatesChainFromCompleteness(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !verified.ChainVerified || verified.Completeness.Status != "complete" {
+	if !verified.ChainVerified || verified.Completeness.Status != "unknown" {
 		t.Fatalf("verification = %#v", verified)
 	}
 }
@@ -57,7 +57,7 @@ func TestWave2CheckpointReportsVerifiedMissingAndMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	verified, err := log.VerifyCheckpoint(ctx, entry.Seq, entry.Hash, "checkpoint-1")
-	if err != nil || verified.Status != CheckpointVerified {
+	if err != nil || verified.Status != CheckpointUnverified {
 		t.Fatalf("verified checkpoint = %#v, %v", verified, err)
 	}
 	mismatch, err := log.VerifyCheckpoint(ctx, entry.Seq, entry.Hash, "checkpoint-2")

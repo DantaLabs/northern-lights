@@ -7,10 +7,14 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/dantalabs/northern-lights/internal/assurance"
 	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/mapping"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
@@ -22,9 +26,10 @@ import (
 // to recover. It renders as JSON, so {"error": "...", "hint": "..."}
 // reaches the client.
 type toolError struct {
-	msg       string
-	hint      string
-	nlAuditID string
+	msg        string
+	hint       string
+	nlAuditID  string
+	structured assurance.StructuredError
 }
 
 func (e toolError) Error() string {
@@ -37,12 +42,23 @@ func (e toolError) Error() string {
 
 // MarshalJSON renders the envelope shape expected by MCP clients.
 func (e toolError) MarshalJSON() ([]byte, error) {
-	out := map[string]string{"error": e.msg}
+	structured := e.structured
+	if structured.Code == "" {
+		structured = assurance.StructuredError{Code: "internal_error", Message: e.msg, NLAuditID: e.nlAuditID}
+	}
+	out := map[string]any{
+		"status":      "error",
+		"nl_audit_id": e.nlAuditID,
+		"error": map[string]any{
+			"code":                    structured.Code,
+			"message":                 structured.Message,
+			"retryable":               structured.Retryable,
+			"reconciliation_required": structured.ReconciliationRequired,
+			"nl_audit_id":             e.nlAuditID,
+		},
+	}
 	if e.hint != "" {
 		out["hint"] = e.hint
-	}
-	if e.nlAuditID != "" {
-		out["nl_audit_id"] = e.nlAuditID
 	}
 	return json.Marshal(out)
 }
@@ -53,7 +69,13 @@ func fail(err error, hint string) toolError {
 }
 
 func failWithContext(ctx context.Context, err error, hint string) toolError {
-	return toolError{msg: err.Error(), hint: hint, nlAuditID: mcpserver.AuditIDFromContext(ctx)}
+	auditID := mcpserver.AuditIDFromContext(ctx)
+	var typed *assurance.Error
+	structured := assurance.StructuredError{Code: "internal_error", Message: err.Error(), NLAuditID: auditID}
+	if errors.As(err, &typed) {
+		structured.Code, structured.Message, structured.Retryable, structured.ReconciliationRequired = typed.Code, typed.Message, typed.Retryable, typed.ReconciliationRequired
+	}
+	return toolError{msg: err.Error(), hint: hint, nlAuditID: auditID, structured: structured}
 }
 
 // failMsg builds an envelope from a plain message.
@@ -62,7 +84,26 @@ func failMsg(msg, hint string) toolError {
 }
 
 func failMsgWithContext(ctx context.Context, msg, hint string) toolError {
-	return toolError{msg: msg, hint: hint, nlAuditID: mcpserver.AuditIDFromContext(ctx)}
+	return toolError{msg: msg, hint: hint, nlAuditID: mcpserver.AuditIDFromContext(ctx), structured: assurance.StructuredError{Code: "invalid_request", Message: msg, NLAuditID: mcpserver.AuditIDFromContext(ctx)}}
+}
+
+func structuredToolResult(ctx context.Context, err error, hint string) *mcp.CallToolResult {
+	auditID := mcpserver.AuditIDFromContext(ctx)
+	value := map[string]any{"status": "error", "nl_audit_id": auditID, "error": map[string]any{"code": "internal_error", "message": err.Error(), "retryable": false, "reconciliation_required": false, "nl_audit_id": auditID}}
+	var typed *assurance.Error
+	if errors.As(err, &typed) {
+		value["error"] = map[string]any{"code": typed.Code, "message": typed.Message, "retryable": typed.Retryable, "reconciliation_required": typed.ReconciliationRequired, "nl_audit_id": auditID}
+	}
+	raw, _ := json.Marshal(value)
+	return &mcp.CallToolResult{IsError: true, StructuredContent: value, Content: []mcp.Content{&mcp.TextContent{Text: string(raw)}}}
+}
+
+func structuredErrorSchema() map[string]any {
+	return map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{
+		"code": boundedSchema("stable error code", 128), "message": boundedSchema("safe error message", 512),
+		"retryable": map[string]any{"type": "boolean"}, "reconciliation_required": map[string]any{"type": "boolean"},
+		"nl_audit_id": boundedSchema("audit ID", 128),
+	}, "required": []string{"code", "message", "retryable", "reconciliation_required", "nl_audit_id"}}
 }
 
 // requireDeps validates the dependencies a tool cannot run without and

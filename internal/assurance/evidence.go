@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -89,6 +90,8 @@ const (
 	RedactionStandard RedactionProfile = "standard"
 	RedactionStrict   RedactionProfile = "strict"
 )
+
+var ErrEvidenceCommitAmbiguous = errors.New("evidence final database commit outcome is ambiguous")
 
 type RedactionRecord struct {
 	Profile string `json:"profile"`
@@ -225,16 +228,7 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	if err := s.requireRichAudit(); err != nil {
 		return EvidenceResponse{}, err
 	}
-	if len(storages) > 1 {
-		return EvidenceResponse{}, domainError("invalid_request", "only one evidence storage adapter is permitted")
-	}
-	configuredStorage := s.evidenceStorage
-	if len(storages) == 1 {
-		configuredStorage = storages[0]
-	}
-	if configuredStorage == nil {
-		return EvidenceResponse{}, domainError("evidence_storage_unconfigured", "a durable evidence storage adapter must be explicitly configured")
-	}
+	var configuredStorage EvidenceStorage
 	if request.RetentionClass == "" {
 		request.RetentionClass = "long_term"
 	}
@@ -246,9 +240,6 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	}
 	if request.IdempotencyKey == "" || request.SubjectID == "" {
 		return EvidenceResponse{}, domainError("invalid_request", "subject_id and idempotency_key are required")
-	}
-	if request.SubjectKind == "transfer" {
-		return EvidenceResponse{}, domainError("subject_unavailable", "transfer evidence is unavailable until Wave 3 transfer state exists")
 	}
 	profile := request.RedactionProfile
 	if profile == "" {
@@ -288,6 +279,21 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	default:
 		return EvidenceResponse{}, domainError("idempotency_state_invalid", "reservation disposition is invalid")
 	}
+	if request.SubjectKind == "transfer" {
+		failure := domainError("subject_unavailable", "transfer evidence is unavailable until Wave 3 transfer state exists")
+		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
+		return EvidenceResponse{}, failure
+	}
+	if len(storages) > 1 {
+		return EvidenceResponse{}, domainError("invalid_request", "only one evidence storage adapter is permitted")
+	}
+	configuredStorage = s.evidenceStorage
+	if len(storages) == 1 {
+		configuredStorage = storages[0]
+	}
+	if configuredStorage == nil {
+		return EvidenceResponse{}, domainError("evidence_storage_unconfigured", "a durable evidence storage adapter must be explicitly configured")
+	}
 	policy, err := s.ResolveRetentionPolicy(ctx, request.RetentionClass)
 	if err != nil {
 		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), time.Now().UTC())
@@ -313,14 +319,10 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 		return EvidenceResponse{}, err
 	}
 	if profilePolicy.MaxBytes > 0 && len(redacted) > profilePolicy.MaxBytes {
-		failure := domainError("too_large", "evidence exceeds the approved export profile byte bound")
-		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
-		return EvidenceResponse{}, failure
+		return s.sealTooLarge(ctx, reservation, auditID, "evidence exceeds the approved export profile byte bound", defaultAuditManifest(), time.Now().UTC())
 	}
 	if profilePolicy.MaxRows > 0 && estimateSubjectRows(redacted) > profilePolicy.MaxRows {
-		failure := domainError("too_large", "evidence exceeds the approved export profile row bound")
-		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
-		return EvidenceResponse{}, failure
+		return s.sealTooLarge(ctx, reservation, auditID, "evidence exceeds the approved export profile row bound", defaultAuditManifest(), time.Now().UTC())
 	}
 	manifest, err := s.BuildManifest(ctx, request.SubjectKind, request.SubjectID, profile)
 	if err != nil {
@@ -335,15 +337,20 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 			_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
 			return EvidenceResponse{}, failure
 		}
-		first, last, boundsErr := s.auditLog.RangeBounds(ctx)
-		if boundsErr != nil {
+		auditIDs, linksErr := s.subjectAuditIDs(ctx, request.SubjectKind, request.SubjectID)
+		if linksErr != nil {
 			failure := domainError("audit_incomplete", "audit-chain evidence could not establish a bounded tenant range")
 			_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
 			return EvidenceResponse{}, failure
 		}
-		rangeResult, rangeErr := s.auditLog.ExportRange(ctx, first, last)
-		verification, verifyErr := s.auditLog.VerifyRange(ctx, first, last)
-		if rangeErr != nil || verifyErr != nil || !verification.ChainVerified {
+		rangeResult, rangeErr := s.auditLog.ExportLinked(ctx, auditIDs)
+		if rangeErr != nil {
+			failure := domainError("audit_incomplete", "audit-chain evidence could not select linked subject events")
+			_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
+			return EvidenceResponse{}, failure
+		}
+		verification := s.auditLog.VerifyLinked(ctx, rangeResult.Entries)
+		if !verification.ChainVerified {
 			failure := domainError("audit_integrity_failed", "audit-chain evidence failed closed")
 			_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
 			return EvidenceResponse{}, failure
@@ -359,7 +366,6 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 			}
 		}
 		caveats := append([]string(nil), verification.Caveats...)
-		caveats = append(caveats, "subject selection is tenant-bounded full audit coverage")
 		if !tenantIdentityHashed {
 			caveats = append(caveats, "all-v1 audit rows lack tenant identity hashing")
 		}
@@ -371,15 +377,26 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 			return EvidenceResponse{}, failure
 		}
 		manifest.Audit.Checkpoint = AuditCheckpoint{Status: string(checkpoint.Status), CheckpointID: checkpoint.CheckpointID, Sequence: checkpoint.Sequence, Hash: checkpoint.Hash, ExternalAnchor: checkpoint.ExternalAnchor}
+		if checkpoint.Status == audit.CheckpointVerified && verification.Completeness.OmissionsRecorded && verification.Completeness.OmittedCount == 0 {
+			manifest.Audit.Completeness.Status = "complete"
+			manifest.Audit.Completeness.TerminalAnchor = "verified"
+			manifest.Audit.Completeness.TerminalAnchorVerified = true
+			manifest.Audit.Completeness.FinalRowDeletionDetectable = true
+		} else {
+			manifest.Audit.Completeness.Status = "unknown"
+			manifest.Audit.Completeness.TerminalAnchorVerified = false
+			manifest.Audit.Completeness.FinalRowDeletionDetectable = false
+		}
 	}
 	storage := configuredStorage
 	createdRefs := []string{}
 	failMaterialization := func(failure error) (EvidenceResponse, error) {
-		for _, ref := range createdRefs {
-			_ = storage.Delete(ctx, ref)
-		}
+		cleanupEvidenceRefs(ctx, s, storage, createdRefs, reservation.RecordID, failure)
 		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
 		return EvidenceResponse{}, failure
+	}
+	if err := s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
+		return failMaterialization(err)
 	}
 	if err := s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
 		return failMaterialization(err)
@@ -389,6 +406,9 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 		return failMaterialization(err)
 	}
 	createdRefs = append(createdRefs, subjectRef)
+	if err := s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
+		return failMaterialization(err)
+	}
 	if err := VerifyStorageHash(ctx, storage, subjectRef, HashBytes(redacted)); err != nil {
 		return failMaterialization(err)
 	}
@@ -398,11 +418,17 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	if request.Format == "csv" {
 		csvData = deterministicCSV(redacted)
 		manifest.Omissions = append(manifest.Omissions, OmissionRecord{Kind: "csv", Count: 1, Reason: "cell_formula_values_prefixed_with_apostrophe; JSON remains authoritative"})
+		if err := s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
+			return failMaterialization(err)
+		}
 		ref, putErr := storage.Put(ctx, "subject.csv", "text/csv", csvData)
 		if putErr != nil {
 			return failMaterialization(putErr)
 		}
 		createdRefs = append(createdRefs, ref)
+		if err := s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
+			return failMaterialization(err)
+		}
 		if verifyErr := VerifyStorageHash(ctx, storage, ref, HashBytes(csvData)); verifyErr != nil {
 			return failMaterialization(verifyErr)
 		}
@@ -411,23 +437,67 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	manifest.Artifacts = artifacts
 	manifest.PackageHash = digestHex(HashBytes(packageHash(artifacts)))
 	manifestWithoutSelf := canonicalManifestBytes(manifest)
+	if !packageWithinBoundsWithRows(len(redacted), len(csvData), len(manifestWithoutSelf), estimateSubjectRows(redacted), csvRowCount(csvData), profilePolicy.MaxBytes, profilePolicy.MaxRows) {
+		return s.cleanupAndSealTooLarge(ctx, reservation, storage, createdRefs, auditID, "evidence package exceeds the approved final byte or row bound", manifest.Audit, time.Now().UTC())
+	}
+	if err := s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
+		return failMaterialization(err)
+	}
 	manifestRef, err := storage.Put(ctx, "manifest.json", "application/json", manifestWithoutSelf)
 	if err != nil {
 		return failMaterialization(err)
 	}
 	createdRefs = append(createdRefs, manifestRef)
+	if err := s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
+		return failMaterialization(err)
+	}
 	if err := VerifyStorageHash(ctx, storage, manifestRef, HashBytes(manifestWithoutSelf)); err != nil {
 		return failMaterialization(err)
 	}
 	manifestArtifact := EvidenceArtifact{ArtifactID: uuid.NewString(), Name: "manifest.json", MediaType: "application/json", ByteCount: len(manifestWithoutSelf), SHA256: digestHex(HashBytes(manifestWithoutSelf)), StorageRef: manifestRef}
-	if err := VerifyManifest(manifest, append([]EvidenceArtifact{manifestArtifact}, manifest.Artifacts...), storage); err != nil {
+	if err := s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
+		return failMaterialization(err)
+	}
+	if err := VerifyManifestWithRenewal(manifest, append([]EvidenceArtifact{manifestArtifact}, manifest.Artifacts...), storage, func() error {
+		return s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC())
+	}); err != nil {
 		return failMaterialization(err)
 	}
 	response := EvidenceResponse{NLAuditID: auditID, Status: EvidenceCompleted, EvidenceManifestID: manifest.ManifestID, ManifestVersion: 2, Manifest: manifest, Artifacts: append([]EvidenceArtifact{manifestArtifact}, manifest.Artifacts...), PackageHash: manifest.PackageHash, Audit: manifest.Audit, ExpiresAt: manifest.ExpiresAt}
+	if err := s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
+		return failMaterialization(err)
+	}
 	if err := s.finalizeEvidence(ctx, reservation, response, actorID, time.Now().UTC()); err != nil {
 		return failMaterialization(err)
 	}
 	return response, nil
+}
+
+func (s *Store) subjectAuditIDs(ctx context.Context, subjectKind, subjectID string) ([]string, error) {
+	tenant := identity.StorageTenant(ctx)
+	rows, err := s.db.QueryContext(ctx, `SELECT audit_id FROM assurance_audit_links WHERE tenant_id=? AND entity_kind=? AND entity_id=? AND audit_id<>'' ORDER BY created_at, link_id`, tenant, subjectKind, subjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	ids := make([]string, 0, 16)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+		if len(ids) > 1000 {
+			return nil, fmt.Errorf("audit subject selection exceeds bound")
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, fmt.Errorf("audit subject has no linked rows")
+	}
+	return ids, nil
 }
 
 func estimateSubjectRows(raw []byte) int {
@@ -447,6 +517,70 @@ func estimateSubjectRows(raw []byte) int {
 		return len(rows)
 	}
 	return 1
+}
+
+func packageWithinBounds(subjectBytes, csvBytes, manifestBytes, maxBytes, rows int) bool {
+	if maxBytes > 0 && subjectBytes+csvBytes+manifestBytes > maxBytes {
+		return false
+	}
+	if rows <= 0 {
+		return false
+	}
+	artifactRows := 1
+	if csvBytes > 0 {
+		artifactRows++
+	}
+	if manifestBytes > 0 {
+		artifactRows++
+	}
+	return artifactRows <= rows
+}
+
+func packageWithinBoundsWithRows(subjectBytes, csvBytes, manifestBytes, subjectRows, csvRows, maxBytes, maxRows int) bool {
+	if maxBytes > 0 && subjectBytes+csvBytes+manifestBytes > maxBytes {
+		return false
+	}
+	if maxRows > 0 && subjectRows+csvRows+1 > maxRows {
+		return false
+	}
+	return true
+}
+
+func csvRowCount(data []byte) int {
+	if len(data) == 0 {
+		return 0
+	}
+	return bytes.Count(data, []byte{'\n'})
+}
+
+func cleanupEvidenceRefs(ctx context.Context, store *Store, storage EvidenceStorage, refs []string, recordID string, cause error) {
+	for _, ref := range refs {
+		if errors.Is(cause, ErrEvidenceCommitAmbiguous) {
+			_, _ = store.db.ExecContext(ctx, `INSERT INTO assurance_evidence_cleanup (tenant_id, cleanup_id, record_id, storage_reference, state, error, created_at, updated_at) VALUES (?, ?, ?, ?, 'reconciliation_required', ?, ?, ?)`, identity.StorageTenant(ctx), uuid.NewString(), recordID, ref, cause.Error(), formatTimestamp(time.Now().UTC()), formatTimestamp(time.Now().UTC()))
+			continue
+		}
+		if err := storage.Delete(ctx, ref); err != nil {
+			_, _ = store.db.ExecContext(ctx, `INSERT INTO assurance_evidence_cleanup (tenant_id, cleanup_id, record_id, storage_reference, state, error, created_at, updated_at) VALUES (?, ?, ?, ?, 'reconciliation_required', ?, ?, ?)`, identity.StorageTenant(ctx), uuid.NewString(), recordID, ref, err.Error(), formatTimestamp(time.Now().UTC()), formatTimestamp(time.Now().UTC()))
+		}
+	}
+}
+
+func (s *Store) sealTooLarge(ctx context.Context, reservation ReservationResult, auditID, message string, auditManifest AuditManifest, now time.Time) (EvidenceResponse, error) {
+	response := EvidenceResponse{NLAuditID: auditID, Status: EvidenceTooLarge, ManifestVersion: 2, Artifacts: []EvidenceArtifact{}, Audit: auditManifest}
+	envelope, err := CanonicalJSON(response)
+	if err != nil {
+		return EvidenceResponse{}, err
+	}
+	if err := s.sealTerminalOutcome(ctx, reservation, envelope, EvidenceTooLarge, "", auditID, now); err != nil {
+		return EvidenceResponse{}, err
+	}
+	_ = message
+	return response, nil
+}
+
+func (s *Store) cleanupAndSealTooLarge(ctx context.Context, reservation ReservationResult, storage EvidenceStorage, refs []string, auditID, message string, auditManifest AuditManifest, now time.Time) (EvidenceResponse, error) {
+	cleanupEvidenceRefs(ctx, s, storage, refs, reservation.RecordID, domainError(EvidenceTooLarge, message))
+	return s.sealTooLarge(ctx, reservation, auditID, message, auditManifest, now)
 }
 
 func (s *Store) resolveExportProfile(ctx context.Context, kind, id string, requested RedactionProfile, retention string) (ExportProfile, error) {
@@ -516,6 +650,14 @@ func CanonicalManifestJSON(manifest EvidenceManifest) ([]byte, error) {
 }
 
 func VerifyManifest(manifest EvidenceManifest, artifacts []EvidenceArtifact, storage ...EvidenceStorage) error {
+	return verifyManifest(manifest, artifacts, nil, storage...)
+}
+
+func VerifyManifestWithRenewal(manifest EvidenceManifest, artifacts []EvidenceArtifact, storage EvidenceStorage, beforeRead func() error) error {
+	return verifyManifest(manifest, artifacts, beforeRead, storage)
+}
+
+func verifyManifest(manifest EvidenceManifest, artifacts []EvidenceArtifact, beforeRead func() error, storage ...EvidenceStorage) error {
 	if manifest.ManifestVersion != 2 || manifest.ManifestID == "" || manifest.SubjectKind == "" || manifest.SubjectID == "" {
 		return fmt.Errorf("invalid evidence manifest")
 	}
@@ -537,6 +679,11 @@ func VerifyManifest(manifest EvidenceManifest, artifacts []EvidenceArtifact, sto
 			return fmt.Errorf("exactly one storage adapter is permitted")
 		}
 		if len(storage) == 1 {
+			if beforeRead != nil {
+				if err := beforeRead(); err != nil {
+					return err
+				}
+			}
 			data, err := storage[0].Read(context.Background(), artifact.StorageRef)
 			if err != nil {
 				return fmt.Errorf("read artifact %s: %w", artifact.Name, err)
@@ -748,6 +895,9 @@ func (s *Store) subjectJSON(ctx context.Context, kind, id string) ([]byte, error
 }
 
 func (s *Store) finalizeEvidence(ctx context.Context, reservation ReservationResult, response EvidenceResponse, actor string, now time.Time) error {
+	if err := s.requireRichAudit(); err != nil {
+		return err
+	}
 	tenant := identity.StorageTenant(ctx)
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -769,14 +919,16 @@ func (s *Store) finalizeEvidence(ctx context.Context, reservation ReservationRes
 	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_evidence_subjects (tenant_id, manifest_id, subject_kind, subject_id) VALUES (?, ?, ?, ?)`, tenant, response.EvidenceManifestID, response.Manifest.SubjectKind, response.Manifest.SubjectID); err != nil {
 		return err
 	}
-	if s.auditLog != nil && s.auditLog.SharesDB(s.db) {
-		raw, err := CanonicalJSON(response)
-		if err != nil {
-			return err
-		}
-		if _, err := s.auditLog.AppendTx(ctx, tx, audit.Entry{Actor: actor, Tool: "workiva_export_evidence", Action: "export", Target: response.EvidenceManifestID, AfterJSON: string(raw), AuditID: response.NLAuditID}); err != nil {
-			return err
-		}
+	trustedActor, err := reservationActor(ctx, tx, reservation)
+	if err != nil {
+		return err
+	}
+	raw, err := CanonicalJSON(response)
+	if err != nil {
+		return err
+	}
+	if _, err := s.auditLog.AppendTx(ctx, tx, audit.Entry{Actor: trustedActor, Tool: "workiva_export_evidence", Action: "export", Target: response.EvidenceManifestID, AfterJSON: string(raw), AuditID: response.NLAuditID}); err != nil {
+		return err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'evidence_manifest', ?, ?, ?, ?, ?)`, tenant, uuid.NewString(), response.EvidenceManifestID, response.NLAuditID, RequestIDFromContext(ctx), reservation.CorrelationID, formatTimestamp(now)); err != nil {
 		return err
@@ -792,7 +944,10 @@ func (s *Store) finalizeEvidence(ctx context.Context, reservation ReservationRes
 	if err := requireOneTransition(result); err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("%w: %v", ErrEvidenceCommitAmbiguous, err)
+	}
+	return nil
 }
 
 func (s *Store) PurgeExpiredEvidence(ctx context.Context, now time.Time) error {
@@ -843,7 +998,7 @@ func (s *Store) PurgeExpiredEvidence(ctx context.Context, now time.Time) error {
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO assurance_evidence_tombstones (tenant_id, tombstone_id, subject_kind, subject_id, manifest_id, reason, purged_at) VALUES (?, ?, ?, ?, ?, 'retention_pending', ?)`, tenant, uuid.NewString(), value.kind, value.subject, value.id, formatTimestamp(now)); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_evidence_tombstones (tenant_id, tombstone_id, subject_kind, subject_id, manifest_id, reason, purged_at, state) VALUES (?, ?, ?, ?, ?, 'retention_pending', ?, 'pending') ON CONFLICT(tenant_id, manifest_id) DO UPDATE SET reason='retention_pending', state='pending', purged_at=excluded.purged_at`, tenant, uuid.NewString(), value.kind, value.subject, value.id, formatTimestamp(now)); err != nil {
 			_ = tx.Rollback()
 			return err
 		}
@@ -853,9 +1008,21 @@ func (s *Store) PurgeExpiredEvidence(ctx context.Context, now time.Time) error {
 		if s.evidenceStorage == nil {
 			return domainError("evidence_storage_unconfigured", "evidence storage is not configured for purge")
 		}
-		for _, ref := range refs {
+		dispositions := make(map[string]string, len(refs))
+		for index, ref := range refs {
+			if _, err := s.db.ExecContext(ctx, `UPDATE assurance_evidence_tombstones SET state='deleting' WHERE tenant_id=? AND manifest_id=?`, tenant, value.id); err != nil {
+				return err
+			}
 			if deleteErr := s.evidenceStorage.Delete(ctx, ref); deleteErr != nil {
+				dispositions[fmt.Sprintf("artifact_%d", index)] = "unknown"
+				raw, _ := json.Marshal(dispositions)
+				_, _ = s.db.ExecContext(ctx, `UPDATE assurance_evidence_tombstones SET state='reconciliation_required', reason=?, artifact_disposition_json=? WHERE tenant_id=? AND manifest_id=?`, "storage_delete_unknown", string(raw), tenant, value.id)
 				return deleteErr
+			}
+			dispositions[fmt.Sprintf("artifact_%d", index)] = "deleted"
+			raw, _ := json.Marshal(dispositions)
+			if _, err := s.db.ExecContext(ctx, `UPDATE assurance_evidence_tombstones SET artifact_disposition_json=? WHERE tenant_id=? AND manifest_id=?`, string(raw), tenant, value.id); err != nil {
+				return err
 			}
 		}
 		tx, err = s.db.BeginTx(ctx, nil)
@@ -864,6 +1031,8 @@ func (s *Store) PurgeExpiredEvidence(ctx context.Context, now time.Time) error {
 		}
 		defer func() { _ = tx.Rollback() }()
 		if _, err := s.auditLog.AppendTx(ctx, tx, audit.Entry{Actor: principal.AuditActor(), Tool: "assurance_retention", Action: "purge_evidence", Target: value.id}); err != nil {
+			_ = tx.Rollback()
+			_, _ = s.db.ExecContext(ctx, `UPDATE assurance_evidence_tombstones SET state='reconciliation_required', reason='audit_or_db_failure' WHERE tenant_id=? AND manifest_id=?`, tenant, value.id)
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM assurance_evidence_artifacts WHERE tenant_id=? AND manifest_id=?`, tenant, value.id); err != nil {
@@ -875,10 +1044,11 @@ func (s *Store) PurgeExpiredEvidence(ctx context.Context, now time.Time) error {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM assurance_evidence_manifests WHERE tenant_id=? AND manifest_id=?`, tenant, value.id); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE assurance_evidence_tombstones SET reason='retention_expired' WHERE tenant_id=? AND manifest_id=?`, tenant, value.id); err != nil {
+		if _, err := tx.ExecContext(ctx, `UPDATE assurance_evidence_tombstones SET reason='retention_expired', state='deleted', artifact_disposition_json='{}' WHERE tenant_id=? AND manifest_id=?`, tenant, value.id); err != nil {
 			return err
 		}
 		if err := tx.Commit(); err != nil {
+			_, _ = s.db.ExecContext(ctx, `UPDATE assurance_evidence_tombstones SET state='reconciliation_required', reason='audit_or_db_commit_unknown' WHERE tenant_id=? AND manifest_id=?`, tenant, value.id)
 			return err
 		}
 	}

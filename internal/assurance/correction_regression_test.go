@@ -272,7 +272,7 @@ func TestP3W2_015_MigrationUpgradeFailureRollsBackMarker(t *testing.T) {
 		t.Fatalf("v1-v8 upgrade failed: %v", err)
 	}
 	var version int
-	if err := db.QueryRow(`SELECT max(version) FROM schema_migrations WHERE app='assurance'`).Scan(&version); err != nil || version != 10 {
+	if err := db.QueryRow(`SELECT max(version) FROM schema_migrations WHERE app='assurance'`).Scan(&version); err != nil || version != 11 {
 		t.Fatalf("migration marker = %d, %v", version, err)
 	}
 	var count int
@@ -298,6 +298,27 @@ func TestP3W2_015_MigrationUpgradeFailureRollsBackMarker(t *testing.T) {
 	}
 	if err := collisionDB.QueryRow(`SELECT max(version) FROM schema_migrations WHERE app='assurance'`).Scan(&version); err != nil || version != 9 {
 		t.Fatalf("failed v10 marker = %d, %v", version, err)
+	}
+}
+
+func TestP3W2_015_V11CollisionRollsBackMarker(t *testing.T) {
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	if err := sqlitedb.Migrate(context.Background(), db, "assurance", migrations[:10]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`CREATE TABLE assurance_evidence_cleanup (tenant_id TEXT)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := Migrate(context.Background(), db); err == nil {
+		t.Fatal("v11 migration collision unexpectedly succeeded")
+	}
+	var version int
+	if err := db.QueryRow(`SELECT max(version) FROM schema_migrations WHERE app='assurance'`).Scan(&version); err != nil || version != 10 {
+		t.Fatalf("v11 collision marker=%d err=%v", version, err)
 	}
 }
 

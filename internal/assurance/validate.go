@@ -82,6 +82,11 @@ func (service ValidationService) Validate(ctx context.Context, actorID, auditID 
 	if request.RetentionClass == "" {
 		request.RetentionClass = "standard"
 	}
+	canonicalRules, canonicalErr := canonicalizeSetStrings(request.RuleIDs)
+	if canonicalErr != nil {
+		return ValidationResponse{}, domainError("invalid_request", canonicalErr.Error())
+	}
+	request.RuleIDs = canonicalRules
 	canonicalRequest, err := CanonicalJSON(struct {
 		SnapshotID     string   `json:"snapshot_id"`
 		RuleSetID      string   `json:"rule_set_id"`
@@ -127,6 +132,11 @@ func (service ValidationService) Validate(ctx context.Context, actorID, auditID 
 		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
 		return ValidationResponse{}, err
 	}
+	if !ruleSetApprovedForSnapshot(analysis, ruleSet) {
+		failure := domainError("rule_set_not_applicable", "rule set is not approved by the snapshot's historical report revision")
+		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), service.now())
+		return ValidationResponse{}, failure
+	}
 	rules, err := selectRules(ruleSet, request.RuleIDs)
 	if err != nil {
 		_ = service.Store.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(err, auditID), service.now())
@@ -168,9 +178,6 @@ func selectRules(set RuleSet, requested []string) ([]RuleDefinition, error) {
 	}
 	wanted := make(map[string]bool, len(requested))
 	for _, id := range requested {
-		if wanted[id] {
-			return nil, domainError("rule_selection_invalid", "rule_ids contains a duplicate")
-		}
 		wanted[id] = true
 	}
 	result := make([]RuleDefinition, 0, len(requested))
@@ -226,7 +233,7 @@ func evaluateRule(rule RuleDefinition, observations map[string]SnapshotObservati
 	first, exists := observations[firstField(rule)]
 	if !exists {
 		if rule.Kind == RuleRequired {
-			return "fail", nil, nil
+			return ruleFailure(rule), nil, nil
 		}
 		return "not_evaluable", nil, nil
 	}
@@ -319,13 +326,22 @@ func mustSubtract(a, b TypedValue) string {
 }
 
 func isBlankValue(value TypedValue) bool {
-	if value.Kind == ValueBlank || value.Kind == ValueError {
+	switch value.Kind {
+	case ValueBlank, ValueError:
+		return true
+	case ValueText:
+		return strings.TrimSpace(value.Text) == ""
+	case ValueBoolean:
+		return false
+	case ValueInteger, ValueNumber, ValueCurrency, ValuePercent:
+		return value.Number == ""
+	case ValueDate:
+		return value.Date == ""
+	case ValueDateTime:
+		return value.DateTime == ""
+	default:
 		return true
 	}
-	if value.Kind == ValueText {
-		return strings.TrimSpace(value.Text) == ""
-	}
-	return value.Number == "" && value.Date == "" && value.DateTime == ""
 }
 
 func ruleFailure(rule RuleDefinition) string {
@@ -336,6 +352,11 @@ func ruleFailure(rule RuleDefinition) string {
 }
 
 func withinTolerance(delta, absolute, relative, baseline string) bool {
+	if normalized, err := AbsoluteDecimal(delta); err == nil {
+		delta = normalized
+	} else {
+		return false
+	}
 	if absolute != "" {
 		if cmp, err := CompareDecimal(delta, absolute); err == nil && cmp <= 0 {
 			return true
@@ -400,6 +421,12 @@ func typedValuesEqual(a, b TypedValue) bool {
 }
 
 func (s *Store) finalizeValidation(ctx context.Context, reservation ReservationResult, response ValidationResponse, idempotencyDigest string, failOnWarning bool, auditLog *audit.Log, actor string, now time.Time) error {
+	if auditLog == nil {
+		auditLog = s.auditLog
+	}
+	if err := s.requireRichAudit(auditLog); err != nil {
+		return err
+	}
 	tenant := identity.StorageTenant(ctx)
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -419,14 +446,16 @@ func (s *Store) finalizeValidation(ctx context.Context, reservation ReservationR
 			return err
 		}
 	}
-	if auditLog != nil && auditLog.SharesDB(s.db) {
-		raw, err := CanonicalJSON(response)
-		if err != nil {
-			return err
-		}
-		if _, err := auditLog.AppendTx(ctx, tx, audit.Entry{Actor: actor, Tool: "workiva_validate_report", Action: "validate", Target: response.ValidationRunID, AfterJSON: string(raw), AuditID: response.NLAuditID}); err != nil {
-			return err
-		}
+	trustedActor, err := reservationActor(ctx, tx, reservation)
+	if err != nil {
+		return err
+	}
+	raw, err := CanonicalJSON(response)
+	if err != nil {
+		return err
+	}
+	if _, err := auditLog.AppendTx(ctx, tx, audit.Entry{Actor: trustedActor, Tool: "workiva_validate_report", Action: "validate", Target: response.ValidationRunID, AfterJSON: string(raw), AuditID: response.NLAuditID}); err != nil {
+		return err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'validation_run', ?, ?, ?, ?, ?)`, tenant, uuid.NewString(), response.ValidationRunID, response.NLAuditID, RequestIDFromContext(ctx), reservation.CorrelationID, formatTimestamp(now)); err != nil {
 		return err

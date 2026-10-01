@@ -18,6 +18,7 @@ type SnapshotAnalysis struct {
 	Response            SnapshotResponse
 	ReportID            string
 	Revision            int
+	ApprovedRuleSetID   string
 	Membership          []FieldDefinition
 	MaterialityPolicyID string
 }
@@ -136,7 +137,11 @@ func (s *Store) SnapshotForAnalysis(ctx context.Context, id string) (SnapshotAna
 	if err != nil {
 		return SnapshotAnalysis{}, err
 	}
-	return SnapshotAnalysis{Response: response, ReportID: reportID, Revision: revision, Membership: append([]FieldDefinition(nil), report.Fields...), MaterialityPolicyID: report.MaterialityPolicyID}, nil
+	return SnapshotAnalysis{Response: response, ReportID: reportID, Revision: revision, ApprovedRuleSetID: report.RuleSetID, Membership: append([]FieldDefinition(nil), report.Fields...), MaterialityPolicyID: report.MaterialityPolicyID}, nil
+}
+
+func ruleSetApprovedForSnapshot(analysis SnapshotAnalysis, set RuleSet) bool {
+	return analysis.ApprovedRuleSetID != "" && analysis.ApprovedRuleSetID == set.RuleSetID
 }
 
 func membershipByField(fields []FieldDefinition) map[string]FieldDefinition {
