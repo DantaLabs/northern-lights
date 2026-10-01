@@ -630,7 +630,7 @@ func (s *Store) ResolveReport(ctx context.Context, reportID string, requested Pe
 	if err != nil {
 		return ReportRevision{}, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	all := make(map[string]FieldDefinition)
 	var order []string
 	for rows.Next() {

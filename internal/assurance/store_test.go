@@ -107,7 +107,7 @@ func TestC066AssuranceMigrationsAreContiguousV1ThroughV8AndTenantFirst(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var versions []int
 	for rows.Next() {
 		var version int
@@ -634,7 +634,7 @@ func tableColumns(db *sql.DB, table string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var columns []string
 	for rows.Next() {
 		var cid int

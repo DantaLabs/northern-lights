@@ -238,12 +238,6 @@ func (l *Log) append(ctx context.Context, executor auditExecutor, e Entry) (Entr
 	return e, nil
 }
 
-// latestHash returns the hash of the most recent row, or "" for an empty
-// log.
-func (l *Log) latestHash(ctx context.Context, tenant string) (string, error) {
-	return latestHash(ctx, l.db, tenant)
-}
-
 func latestHash(ctx context.Context, executor auditExecutor, tenant string) (string, error) {
 	var h sql.NullString
 	err := executor.QueryRowContext(ctx, `SELECT hash FROM audit_log WHERE tenant_id = ? ORDER BY seq DESC LIMIT 1`, tenant).Scan(&h)

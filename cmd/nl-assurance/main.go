@@ -59,7 +59,7 @@ func run(args []string, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 		ctx := tenantContext(*tenant)
 		if err := store.StageBundle(ctx, validated); err != nil {
 			return err
@@ -84,7 +84,7 @@ func run(args []string, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 		if err := store.RequestActivation(tenantContext(*tenant), *bundleID, *version); err != nil {
 			return err
 		}

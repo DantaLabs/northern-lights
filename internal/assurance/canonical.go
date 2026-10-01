@@ -105,7 +105,7 @@ func writeCanonical(out *bytes.Buffer, value any) error {
 func canonicalJSONNumber(value string) (string, error) {
 	// JSON number syntax permits exponents. Preserve the decoded number bytes;
 	// domain decimals use canonicalDecimal and therefore reject exponents.
-	var number json.Number = json.Number(value)
+	number := json.Number(value)
 	if _, err := number.Float64(); err != nil {
 		return "", fmt.Errorf("invalid JSON number %q", value)
 	}
