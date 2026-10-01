@@ -144,8 +144,14 @@ func (s *Store) setLegalHold(ctx context.Context, manifestID, actorID string, he
 		return domainError("subject_not_found", "evidence manifest was not found")
 	}
 	if held {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_legal_holds (tenant_id, hold_id, subject_kind, subject_id, manifest_id, reason, active, actor_id, created_at) VALUES (?, ?, ?, ?, ?, 'authorized_retention_hold', 1, ?, ?)`, tenant, uuid.NewString(), subjectKind, subjectID, manifestID, trustedActor, formatTimestamp(time.Now().UTC())); err != nil {
+		var active int
+		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM assurance_legal_holds WHERE tenant_id=? AND manifest_id=? AND active=1`, tenant, manifestID).Scan(&active); err != nil {
 			return err
+		}
+		if active == 0 {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_legal_holds (tenant_id, hold_id, subject_kind, subject_id, manifest_id, reason, active, actor_id, created_at) VALUES (?, ?, ?, ?, ?, 'authorized_retention_hold', 1, ?, ?)`, tenant, uuid.NewString(), subjectKind, subjectID, manifestID, trustedActor, formatTimestamp(time.Now().UTC())); err != nil {
+				return err
+			}
 		}
 	} else if _, err := tx.ExecContext(ctx, `UPDATE assurance_legal_holds SET active=0, released_at=? WHERE tenant_id=? AND manifest_id=? AND active=1`, formatTimestamp(time.Now().UTC()), tenant, manifestID); err != nil {
 		return err

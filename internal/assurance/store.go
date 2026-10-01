@@ -42,9 +42,10 @@ func NewWithDB(db *sql.DB) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
-// SetEvidenceStorage installs the deterministic delivery adapter. Production
-// deployments can provide an opaque-reference Blob adapter in a later wave;
-// local tests use the in-memory implementation.
+// SetEvidenceStorage installs an explicitly selected delivery adapter. The
+// constructor never supplies process-local storage implicitly; callers may wire
+// the memory adapter only for tests or an explicit demo profile, while a
+// production deployment must provide a durable opaque-reference adapter.
 func (s *Store) SetEvidenceStorage(storage EvidenceStorage) {
 	if storage != nil {
 		s.evidenceStorage = storage
