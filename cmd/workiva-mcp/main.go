@@ -200,6 +200,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		closeDB()
 		return nil, nil, nil, fmt.Errorf("bootstrap assurance store: %w", err)
 	}
+	assuranceStore.SetAuditLog(auditLog)
 	if cfg.AssuranceEnabled {
 		publicKey, err := assurance.ParsePublicKey(cfg.AssuranceBundlePublicKey)
 		if err != nil {

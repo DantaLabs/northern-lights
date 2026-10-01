@@ -101,7 +101,7 @@ func activateTestBundle(t *testing.T, store *Store) ed25519.PublicKey {
 	return public
 }
 
-func TestC066AssuranceMigrationsAreContiguousV1ThroughV8AndTenantFirst(t *testing.T) {
+func TestC066AssuranceMigrationsAreContiguousV1ThroughV9AndTenantFirst(t *testing.T) {
 	_, db := openTestStore(t)
 	rows, err := db.Query(`SELECT version FROM schema_migrations WHERE app='assurance' ORDER BY version`)
 	if err != nil {
@@ -116,8 +116,8 @@ func TestC066AssuranceMigrationsAreContiguousV1ThroughV8AndTenantFirst(t *testin
 		}
 		versions = append(versions, version)
 	}
-	if got := strings.Trim(strings.ReplaceAll(strings.TrimSpace(toJSON(versions)), ",", " "), "[]"); got != "1 2 3 4 5 6 7 8" {
-		t.Fatalf("assurance versions = %v, want 1..8", versions)
+	if got := strings.Trim(strings.ReplaceAll(strings.TrimSpace(toJSON(versions)), ",", " "), "[]"); got != "1 2 3 4 5 6 7 8 9" {
+		t.Fatalf("assurance versions = %v, want 1..9", versions)
 	}
 	for _, table := range assuranceTables() {
 		columns, err := tableColumns(db, table)

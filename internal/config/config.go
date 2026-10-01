@@ -56,10 +56,13 @@ type Config struct {
 	// DemoMode swaps the Workiva client for a synthetic fixture client so
 	// the server can be tried without real Workiva credentials.
 	DemoMode bool
-	// AssuranceEnabled enables Wave 1 snapshot execution. The eighth tool is
-	// always registered, but fails closed while this flag is false.
+	// AssuranceEnabled enables Phase 3 assurance execution. Assurance tools are
+	// always registered, but fail closed while this flag is false.
 	AssuranceEnabled         bool
 	AssuranceBundlePublicKey string
+	// AssuranceLegacyAPIKeyProfile is an explicit compatibility/demo boundary
+	// for validation and comparison. It never grants evidence export.
+	AssuranceLegacyAPIKeyProfile bool
 
 	// Entra identity settings are environment-only. They are kept out of YAML
 	// so deployment identity cannot be silently inherited from a repository.
@@ -266,6 +269,13 @@ func applyEnv(cfg *Config) error {
 			return fmt.Errorf("invalid NL_ASSURANCE_ENABLED %q: %w", v, err)
 		}
 		cfg.AssuranceEnabled = enabled
+	}
+	if v := os.Getenv("NL_ASSURANCE_LEGACY_API_KEY_PROFILE"); v != "" {
+		enabled, err := strconv.ParseBool(v)
+		if err != nil {
+			return fmt.Errorf("invalid NL_ASSURANCE_LEGACY_API_KEY_PROFILE %q: %w", v, err)
+		}
+		cfg.AssuranceLegacyAPIKeyProfile = enabled
 	}
 	if v, configured := os.LookupEnv("NL_ASSURANCE_BUNDLE_PUBLIC_KEY"); configured {
 		cfg.AssuranceBundlePublicKey = strings.TrimSpace(v)

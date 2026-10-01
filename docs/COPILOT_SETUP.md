@@ -42,7 +42,7 @@ Use the current MCP onboarding wizard:
 7. When creating the connection, provide the full value
    `Bearer <NL_API_KEY>`, not the Workiva client secret.
 8. Create the connection and add the MCP server to the agent. Copilot Studio
-   should discover all seven Northern Lights tools automatically.
+   should discover all eleven Wave 2 Northern Lights tools automatically.
 
 ### Entra mode
 

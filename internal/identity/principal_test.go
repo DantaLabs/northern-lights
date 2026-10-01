@@ -67,6 +67,7 @@ func TestPermissionValuesAreExact(t *testing.T) {
 		PermissionAssuranceSnapshot,
 		PermissionAssuranceValidate,
 		PermissionAssuranceCompare,
+		PermissionEvidenceExport,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("AllPermissions() = %#v, want %#v", got, want)
@@ -81,6 +82,7 @@ func TestPermissionValuesAreExact(t *testing.T) {
 		"assurance.snapshot",
 		"assurance.validate",
 		"assurance.compare",
+		"evidence.export",
 	}
 	for i, permission := range got {
 		if string(permission) != wantValues[i] {

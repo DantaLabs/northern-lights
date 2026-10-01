@@ -32,6 +32,7 @@ const (
 	PermissionAssuranceSnapshot   Permission = "assurance.snapshot"
 	PermissionAssuranceValidate   Permission = "assurance.validate"
 	PermissionAssuranceCompare    Permission = "assurance.compare"
+	PermissionEvidenceExport      Permission = "evidence.export"
 )
 
 var allPermissions = []Permission{
@@ -44,6 +45,7 @@ var allPermissions = []Permission{
 	PermissionAssuranceSnapshot,
 	PermissionAssuranceValidate,
 	PermissionAssuranceCompare,
+	PermissionEvidenceExport,
 }
 
 // AllPermissions returns the complete permission vocabulary in stable order.

@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/identity"
 )
 
@@ -24,7 +25,9 @@ const (
 // Store owns assurance state on the application's shared SQLite handle. The
 // caller retains database ownership.
 type Store struct {
-	db *sql.DB
+	db              *sql.DB
+	evidenceStorage EvidenceStorage
+	auditLog        *audit.Log
 
 	readinessMu  sync.RWMutex
 	ready        bool
@@ -36,8 +39,20 @@ func NewWithDB(db *sql.DB) (*Store, error) {
 	if err := Migrate(context.Background(), db); err != nil {
 		return nil, err
 	}
-	return &Store{db: db}, nil
+	return &Store{db: db, evidenceStorage: NewMemoryEvidenceStorage()}, nil
 }
+
+// SetEvidenceStorage installs the deterministic delivery adapter. Production
+// deployments can provide an opaque-reference Blob adapter in a later wave;
+// local tests use the in-memory implementation.
+func (s *Store) SetEvidenceStorage(storage EvidenceStorage) {
+	if storage != nil {
+		s.evidenceStorage = storage
+	}
+}
+
+// SetAuditLog connects rich evidence links to the shared audit chain.
+func (s *Store) SetAuditLog(log *audit.Log) { s.auditLog = log }
 
 // Close is a no-op because Store never owns the shared database handle.
 func (s *Store) Close() error { return nil }

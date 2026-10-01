@@ -192,6 +192,9 @@ var writeTools = map[string]bool{
 	"workiva_update_field":    true,
 	"workiva_sync_mapping":    true,
 	"workiva_snapshot_report": true,
+	"workiva_validate_report": true,
+	"workiva_compare_periods": true,
+	"workiva_export_evidence": true,
 }
 
 func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
@@ -526,6 +529,12 @@ func requiredPermission(tool string, arguments json.RawMessage, requireConfirmat
 		return identity.PermissionAuditRead, nil
 	case "workiva_snapshot_report":
 		return identity.PermissionAssuranceSnapshot, nil
+	case "workiva_validate_report":
+		return identity.PermissionAssuranceValidate, nil
+	case "workiva_compare_periods":
+		return identity.PermissionAssuranceCompare, nil
+	case "workiva_export_evidence":
+		return identity.PermissionEvidenceExport, nil
 	default:
 		return "", fmt.Errorf("authorization: tool %q has no permission mapping", tool)
 	}

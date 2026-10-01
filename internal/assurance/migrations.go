@@ -237,7 +237,43 @@ CREATE TABLE assurance_checkpoints (
 );
 `
 
-var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8}
+// migrationV9 is additive Wave 2 storage. The v1-v8 migrations are already
+// deployed and must remain byte-for-byte stable for upgrade safety.
+const migrationV9 = `
+CREATE TABLE assurance_materiality_policies (
+ tenant_id TEXT NOT NULL, policy_id TEXT NOT NULL, revision INTEGER NOT NULL,
+ status TEXT NOT NULL, policy_json TEXT NOT NULL, content_hash TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, policy_id, revision)
+);
+CREATE TABLE assurance_export_profiles (
+ tenant_id TEXT NOT NULL, profile_id TEXT NOT NULL, revision INTEGER NOT NULL,
+ status TEXT NOT NULL, profile_json TEXT NOT NULL, content_hash TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, profile_id, revision)
+);
+CREATE TABLE assurance_legal_holds (
+ tenant_id TEXT NOT NULL, hold_id TEXT NOT NULL, subject_kind TEXT NOT NULL,
+ subject_id TEXT NOT NULL, reason TEXT NOT NULL, active INTEGER NOT NULL,
+ actor_id TEXT NOT NULL, created_at TEXT NOT NULL, released_at TEXT NOT NULL DEFAULT '',
+ PRIMARY KEY (tenant_id, hold_id)
+);
+CREATE INDEX idx_assurance_legal_holds_subject ON assurance_legal_holds(tenant_id, subject_kind, subject_id, active);
+CREATE TABLE assurance_evidence_tombstones (
+ tenant_id TEXT NOT NULL, tombstone_id TEXT NOT NULL, subject_kind TEXT NOT NULL,
+ subject_id TEXT NOT NULL, manifest_id TEXT NOT NULL, reason TEXT NOT NULL,
+ purged_at TEXT NOT NULL, PRIMARY KEY (tenant_id, tombstone_id)
+);
+CREATE INDEX idx_assurance_evidence_tombstones_subject ON assurance_evidence_tombstones(tenant_id, subject_kind, subject_id);
+ALTER TABLE assurance_comparisons ADD COLUMN materiality_policy_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_comparisons ADD COLUMN current_report_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_comparisons ADD COLUMN prior_report_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_comparisons ADD COLUMN current_definition_revision INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE assurance_comparisons ADD COLUMN prior_definition_revision INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE assurance_comparisons ADD COLUMN partial_policy TEXT NOT NULL DEFAULT 'reject';
+ALTER TABLE assurance_comparisons ADD COLUMN material_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE assurance_validation_runs ADD COLUMN fail_on_warning INTEGER NOT NULL DEFAULT 0;
+`
+
+var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9}
 
 // Migrate installs the complete contiguous assurance schema family.
 func Migrate(ctx context.Context, db *sql.DB) error {
@@ -260,5 +296,6 @@ func assuranceTables() []string {
 		"assurance_visual_acknowledgements", "assurance_reconciliations", "assurance_reconciliation_events",
 		"assurance_evidence_manifests", "assurance_evidence_artifacts", "assurance_evidence_subjects",
 		"assurance_retention_policies", "assurance_idempotency_records", "assurance_audit_links", "assurance_checkpoints",
+		"assurance_materiality_policies", "assurance_export_profiles", "assurance_legal_holds", "assurance_evidence_tombstones",
 	}
 }

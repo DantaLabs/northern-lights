@@ -91,7 +91,9 @@ reporting a tool error. Turn both off on the test agent.
       (`connectionProperties: mode: Maker`). With the default, invoker mode,
       the test chat shows "Let's get you connected first" and never calls
       the server.
-- [ ] Pass: 7 tools are listed: `workiva_list_spreadsheets`,
+- [ ] Pass: 11 Wave 2 tools are listed, including `workiva_validate_report`,
+      `workiva_compare_periods`, and `workiva_export_evidence`, plus
+      `workiva_list_spreadsheets`,
       `workiva_read_range`, `workiva_search_fields`, `workiva_get_field`,
       `workiva_update_field`, `workiva_sync_mapping`, `workiva_audit_trail`.
       If any is missing, its schema is being hidden; run
