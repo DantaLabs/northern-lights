@@ -337,7 +337,47 @@ CREATE TRIGGER assurance_failure_no_update BEFORE UPDATE ON assurance_snapshot_f
 CREATE TRIGGER assurance_failure_no_delete BEFORE DELETE ON assurance_snapshot_failures BEGIN SELECT RAISE(ABORT, 'immutable assurance failure'); END;
 `
 
-var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11, migrationV12}
+const migrationV13 = `
+ALTER TABLE assurance_validation_runs RENAME TO assurance_validation_runs_v13;
+CREATE TABLE assurance_validation_runs (
+ tenant_id TEXT NOT NULL, validation_run_id TEXT NOT NULL, snapshot_id TEXT NOT NULL, rule_set_id TEXT NOT NULL,
+ rule_set_revision INTEGER NOT NULL, idempotency_digest TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL,
+ fail_on_warning INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (tenant_id, validation_run_id)
+);
+INSERT INTO assurance_validation_runs (tenant_id, validation_run_id, snapshot_id, rule_set_id, rule_set_revision, idempotency_digest, status, created_at, fail_on_warning)
+SELECT tenant_id, validation_run_id, snapshot_id, rule_set_id, rule_set_revision, idempotency_digest, status, created_at, fail_on_warning
+FROM assurance_validation_runs_v13;
+DROP TABLE assurance_validation_runs_v13;
+
+ALTER TABLE assurance_comparisons RENAME TO assurance_comparisons_v13;
+CREATE TABLE assurance_comparisons (
+ tenant_id TEXT NOT NULL, comparison_id TEXT NOT NULL, current_snapshot_id TEXT NOT NULL, prior_snapshot_id TEXT NOT NULL,
+ idempotency_digest TEXT NOT NULL, status TEXT NOT NULL, completeness TEXT NOT NULL, comparison_basis TEXT NOT NULL,
+ policy_revision INTEGER NOT NULL, created_at TEXT NOT NULL, materiality_policy_id TEXT NOT NULL DEFAULT '',
+ current_report_id TEXT NOT NULL DEFAULT '', prior_report_id TEXT NOT NULL DEFAULT '',
+ current_definition_revision INTEGER NOT NULL DEFAULT 0, prior_definition_revision INTEGER NOT NULL DEFAULT 0,
+ partial_policy TEXT NOT NULL DEFAULT 'reject', material_count INTEGER NOT NULL DEFAULT 0,
+ PRIMARY KEY (tenant_id, comparison_id)
+);
+INSERT INTO assurance_comparisons (tenant_id, comparison_id, current_snapshot_id, prior_snapshot_id, idempotency_digest, status, completeness, comparison_basis, policy_revision, created_at, materiality_policy_id, current_report_id, prior_report_id, current_definition_revision, prior_definition_revision, partial_policy, material_count)
+SELECT tenant_id, comparison_id, current_snapshot_id, prior_snapshot_id, idempotency_digest, status, completeness, comparison_basis, policy_revision, created_at, materiality_policy_id, current_report_id, prior_report_id, current_definition_revision, prior_definition_revision, partial_policy, material_count
+FROM assurance_comparisons_v13;
+DROP TABLE assurance_comparisons_v13;
+
+ALTER TABLE assurance_evidence_manifests RENAME TO assurance_evidence_manifests_v13;
+CREATE TABLE assurance_evidence_manifests (
+ tenant_id TEXT NOT NULL, manifest_id TEXT NOT NULL, manifest_version INTEGER NOT NULL, subject_kind TEXT NOT NULL,
+ subject_id TEXT NOT NULL, manifest_hash TEXT NOT NULL, manifest_json TEXT NOT NULL, audit_integrity TEXT NOT NULL,
+ audit_completeness TEXT NOT NULL, expiry_at TEXT NOT NULL DEFAULT '', legal_hold INTEGER NOT NULL DEFAULT 0,
+ idempotency_digest TEXT NOT NULL, PRIMARY KEY (tenant_id, manifest_id)
+);
+INSERT INTO assurance_evidence_manifests (tenant_id, manifest_id, manifest_version, subject_kind, subject_id, manifest_hash, manifest_json, audit_integrity, audit_completeness, expiry_at, legal_hold, idempotency_digest)
+SELECT tenant_id, manifest_id, manifest_version, subject_kind, subject_id, manifest_hash, manifest_json, audit_integrity, audit_completeness, expiry_at, legal_hold, idempotency_digest
+FROM assurance_evidence_manifests_v13;
+DROP TABLE assurance_evidence_manifests_v13;
+`
+
+var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11, migrationV12, migrationV13}
 
 // Migrate installs the complete contiguous assurance schema family.
 func Migrate(ctx context.Context, db *sql.DB) error {
