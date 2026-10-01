@@ -49,8 +49,10 @@ type searchFieldsOutput struct {
 
 func (searchFieldsTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "workiva_search_fields",
-		Description: searchFieldsDescription,
+		Name:         "workiva_search_fields",
+		Description:  searchFieldsDescription,
+		InputSchema:  searchFieldsInputSchema(),
+		OutputSchema: searchFieldsOutputSchema(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in searchFieldsInput) (*mcp.CallToolResult, searchFieldsOutput, error) {
 		if err := requireDeps(deps, true, false); err != nil {
 			return nil, searchFieldsOutput{}, err

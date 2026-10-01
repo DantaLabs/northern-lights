@@ -54,8 +54,10 @@ type listSpreadsheetsOutput struct {
 
 func (listSpreadsheetsTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "workiva_list_spreadsheets",
-		Description: listSpreadsheetsDescription,
+		Name:         "workiva_list_spreadsheets",
+		Description:  listSpreadsheetsDescription,
+		InputSchema:  listSpreadsheetsInputSchema(),
+		OutputSchema: listSpreadsheetsOutputSchema(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listSpreadsheetsInput) (*mcp.CallToolResult, listSpreadsheetsOutput, error) {
 		if err := requireDeps(deps, true, false); err != nil {
 			return nil, listSpreadsheetsOutput{}, err

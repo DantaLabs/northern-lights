@@ -437,7 +437,7 @@ func (s *Store) finalizeSnapshot(ctx context.Context, reservation ReservationRes
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links
 	 (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'snapshot', ?, ?, ?, ?, ?)`,
-		tenant, uuid.NewString(), internalSnapshotID, response.NLAuditID, uuid.NewString(), reservation.CorrelationID, formatTimestamp(now)); err != nil {
+		tenant, uuid.NewString(), internalSnapshotID, response.NLAuditID, RequestIDFromContext(ctx), reservation.CorrelationID, formatTimestamp(now)); err != nil {
 		return fmt.Errorf("assurance: link snapshot audit: %w", err)
 	}
 	envelope, err := CanonicalJSON(response)

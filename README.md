@@ -123,7 +123,12 @@ exactly `app`; this repository has not completed that live acceptance gate.
 The complete permission vocabulary is `workiva.read`,
 `workiva.write.preview`, `workiva.write.confirm`, `mapping.sync`, `audit.read`,
 `tenant.admin`, `assurance.snapshot`, `assurance.validate`,
-`assurance.compare`, and `evidence.export`. `workiva.read` does not implicitly grant an assurance
+`assurance.compare`, `evidence.export`, `assurance.relationship.read`,
+`assurance.relationship.refresh`, `workiva.visual_ack`, and
+`reconciliation.manage`. The Wave 2 MCP surface requires the first four
+assurance capabilities plus `evidence.export`; relationship, visual-ack, and
+reconciliation permissions are reserved for their later registered tools.
+`workiva.read` does not implicitly grant an assurance
 capability. Delegated tokens receive permissions only through `scp`;
 app-only tokens additionally require `idtyp` to be exactly `app` and receive
 permissions only through the intersection of `roles` and the explicit
@@ -218,7 +223,7 @@ multi-replica operation requires the Wave 3 shared-state work.
 
 ### Phase 3 assurance provisioning
 
-The eleven Wave 2 assurance tools are always discoverable, but they
+The eleven current Wave 2 MCP tools are always discoverable, but they
 fail closed until `assurance_enabled: true` (or
 `NL_ASSURANCE_ENABLED=true`) and a signed bundle is active. Bundles are
 strict, versioned, tenant-bound YAML/JSON signed over canonical JSON with a

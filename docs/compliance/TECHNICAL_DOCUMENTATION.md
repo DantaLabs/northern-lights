@@ -27,7 +27,7 @@ Copilot Studio (MCP client)
   |  streamable HTTP, bearer auth
   v
 Northern Lights (this software)
-  |  internal/mcpserver: 11 tools, bearer auth middleware, audit
+  |  internal/mcpserver: 11 current Wave 2 tools (13 final contract), bearer auth middleware, audit
   |  internal/mapping: SQLite field mapping + cell cache
   |  internal/audit: hash-chained log
   |  internal/workiva: OAuth2 client, rate-limited, retrying

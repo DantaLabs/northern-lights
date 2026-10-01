@@ -1,0 +1,309 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "captured_at": {
+      "maxLength": 64,
+      "type": "string"
+    },
+    "completeness": {
+      "enum": [
+        "complete",
+        "incomplete",
+        "not_created"
+      ],
+      "maxLength": 11,
+      "minLength": 1,
+      "type": "string"
+    },
+    "content_hash": {
+      "maxLength": 64,
+      "type": "string"
+    },
+    "definition_revision": {
+      "maximum": 1000000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "stable error code",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "description": "safe error message",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "nl_audit_id": {
+          "description": "audit ID",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reconciliation_required": {
+          "type": "boolean"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "reconciliation_required",
+        "nl_audit_id"
+      ],
+      "type": "object"
+    },
+    "item_errors": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "source_unavailable",
+              "denied",
+              "invalid",
+              "ambiguous"
+            ],
+            "maxLength": 18,
+            "minLength": 1,
+            "type": "string"
+          },
+          "field_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 512,
+            "type": "string"
+          }
+        },
+        "required": [
+          "field_id",
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "maxItems": 1000,
+      "type": "array"
+    },
+    "nl_audit_id": {
+      "maxLength": 128,
+      "type": "string"
+    },
+    "observations": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "external_resource_id": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "field_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "locator": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "observation_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "observed_at": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "provider_revision": {
+            "additionalProperties": false,
+            "properties": {
+              "strength": {
+                "enum": [
+                  "verified",
+                  "best_effort",
+                  "unavailable"
+                ],
+                "maxLength": 11,
+                "minLength": 1,
+                "type": "string"
+              },
+              "value": {
+                "maxLength": 512,
+                "type": "string"
+              }
+            },
+            "required": [
+              "strength"
+            ],
+            "type": "object"
+          },
+          "resource_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "source_fingerprint": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "typed_value": {
+            "additionalProperties": false,
+            "properties": {
+              "boolean": {
+                "type": "boolean"
+              },
+              "calculated": {
+                "type": "boolean"
+              },
+              "calculated_source": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "date": {
+                "maxLength": 10,
+                "type": "string"
+              },
+              "datetime": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "error_code": {
+                "maxLength": 128,
+                "type": "string"
+              },
+              "formula": {
+                "type": "boolean"
+              },
+              "formula_text": {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "blank",
+                  "text",
+                  "integer",
+                  "number",
+                  "boolean",
+                  "date",
+                  "datetime",
+                  "currency",
+                  "percent",
+                  "error"
+                ],
+                "maxLength": 8,
+                "minLength": 1,
+                "type": "string"
+              },
+              "number": {
+                "maxLength": 256,
+                "type": "string"
+              },
+              "percent_basis": {
+                "maxLength": 16,
+                "type": "string"
+              },
+              "precision": {
+                "type": "integer"
+              },
+              "scale": {
+                "maxLength": 32,
+                "type": "string"
+              },
+              "text": {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              "timezone": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "unit": {
+                "maxLength": 64,
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "formula"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "observation_id",
+          "field_id",
+          "resource_id",
+          "external_resource_id",
+          "locator",
+          "typed_value",
+          "provider_revision",
+          "source_fingerprint",
+          "observed_at"
+        ],
+        "type": "object"
+      },
+      "maxItems": 1000,
+      "type": "array"
+    },
+    "period": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "maxLength": 128,
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 256,
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "label"
+      ],
+      "type": "object"
+    },
+    "relationship_count": {
+      "maximum": 1000,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "report_id": {
+      "maxLength": 128,
+      "type": "string"
+    },
+    "snapshot_id": {
+      "maxLength": 128,
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "partial",
+        "failed",
+        "idempotency_replay",
+        "error",
+        "denied",
+        "idempotency_in_progress",
+        "idempotency_conflict"
+      ],
+      "maxLength": 23,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "nl_audit_id",
+    "status"
+  ],
+  "type": "object"
+}

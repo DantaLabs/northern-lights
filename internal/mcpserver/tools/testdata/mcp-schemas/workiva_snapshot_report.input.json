@@ -1,0 +1,85 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "allow_partial": {
+      "type": "boolean"
+    },
+    "consistency": {
+      "enum": [
+        "none",
+        "best_effort",
+        "revision_pinned"
+      ],
+      "maxLength": 15,
+      "minLength": 1,
+      "type": "string"
+    },
+    "field_ids": {
+      "items": {
+        "description": "approved stable field ID",
+        "maxLength": 128,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 1000,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "idempotency_key": {
+      "description": "single-use client idempotency key",
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "include_relationships": {
+      "type": "boolean"
+    },
+    "period": {
+      "additionalProperties": false,
+      "properties": {
+        "end": {
+          "description": "optional approved ISO date",
+          "maxLength": 10,
+          "type": "string"
+        },
+        "key": {
+          "description": "approved period key",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "label": {
+          "description": "optional approved label",
+          "maxLength": 256,
+          "type": "string"
+        },
+        "start": {
+          "description": "optional approved ISO date",
+          "maxLength": 10,
+          "type": "string"
+        }
+      },
+      "required": [
+        "key"
+      ],
+      "type": "object"
+    },
+    "report_id": {
+      "description": "approved server-owned report ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "retention_class": {
+      "description": "server-approved retention class",
+      "maxLength": 64,
+      "type": "string"
+    }
+  },
+  "required": [
+    "report_id",
+    "period",
+    "idempotency_key"
+  ],
+  "type": "object"
+}

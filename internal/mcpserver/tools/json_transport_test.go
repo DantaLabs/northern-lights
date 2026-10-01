@@ -168,3 +168,57 @@ func TestPostMCPAnswersJSONForEveryTool(t *testing.T) {
 		t.Fatalf("GET /mcp: Allow = %q, want to include POST", getResp.Header.Get("Allow"))
 	}
 }
+
+func TestRawJSONRPCWave2ToolsReturnStructuredErrorsOverJSON(t *testing.T) {
+	env := newTestEnv(t, allToolsMock(t))
+	reg := mcpserver.NewRegistry()
+	for _, tool := range All() {
+		reg.Register(tool)
+	}
+	handler, err := mcpserver.New(env.deps, reg, &mcpserver.Options{APIToken: "test-token"})
+	if err != nil {
+		t.Fatalf("mcpserver.New: %v", err)
+	}
+	srv := httptest.NewServer(handler)
+	t.Cleanup(srv.Close)
+	c := &rawMCPClient{t: t, url: srv.URL + "/mcp"}
+	if resp, body := c.post("initialize", map[string]any{"protocolVersion": "2025-06-18", "capabilities": map[string]any{}, "clientInfo": map[string]any{"name": "raw-wave2", "version": "dev"}}); resp.StatusCode != http.StatusOK {
+		t.Fatalf("initialize: %d: %s", resp.StatusCode, body)
+	}
+	_, _ = c.post("notifications/initialized", nil)
+
+	cases := []struct {
+		name string
+		args map[string]any
+	}{
+		{"workiva_snapshot_report", map[string]any{"report_id": "r", "period": map[string]any{"key": "p"}, "idempotency_key": "k"}},
+		{"workiva_validate_report", map[string]any{"snapshot_id": "s", "rule_set_id": "r", "idempotency_key": "k"}},
+		{"workiva_compare_periods", map[string]any{"current_snapshot_id": "c", "prior_snapshot_id": "p", "materiality_policy_id": "m", "idempotency_key": "k"}},
+		{"workiva_export_evidence", map[string]any{"subject_kind": "snapshot", "subject_id": "s", "format": "json", "redaction_profile": "standard", "include_audit_chain": false, "retention_class": "long_term", "idempotency_key": "k"}},
+	}
+	for _, tc := range cases {
+		resp, body := c.post("tools/call", map[string]any{"name": tc.name, "arguments": tc.args})
+		if resp.StatusCode != http.StatusOK || !strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
+			t.Fatalf("%s: status/content-type %d/%q: %s", tc.name, resp.StatusCode, resp.Header.Get("Content-Type"), body)
+		}
+		var rpc struct {
+			Result struct {
+				IsError           bool           `json:"isError"`
+				StructuredContent map[string]any `json:"structuredContent"`
+				Content           []struct {
+					Text string `json:"text"`
+				} `json:"content"`
+			} `json:"result"`
+		}
+		if err := json.Unmarshal(body, &rpc); err != nil {
+			t.Fatalf("%s: invalid JSON-RPC body: %v", tc.name, err)
+		}
+		if !rpc.Result.IsError || rpc.Result.StructuredContent["status"] != "error" {
+			t.Fatalf("%s: untyped result: %s", tc.name, body)
+		}
+		auditID, _ := rpc.Result.StructuredContent["nl_audit_id"].(string)
+		if auditID == "" || len(rpc.Result.Content) == 0 || !strings.Contains(rpc.Result.Content[0].Text, auditID) {
+			t.Fatalf("%s: audit correlation missing from result/content: %s", tc.name, body)
+		}
+	}
+}

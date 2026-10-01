@@ -1,0 +1,15 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "description": "exact mapped field name",
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "type": "object"
+}

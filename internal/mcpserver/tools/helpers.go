@@ -89,13 +89,55 @@ func failMsgWithContext(ctx context.Context, msg, hint string) toolError {
 
 func structuredToolResult(ctx context.Context, err error, hint string) *mcp.CallToolResult {
 	auditID := mcpserver.AuditIDFromContext(ctx)
-	value := map[string]any{"status": "error", "nl_audit_id": auditID, "error": map[string]any{"code": "internal_error", "message": err.Error(), "retryable": false, "reconciliation_required": false, "nl_audit_id": auditID}}
-	var typed *assurance.Error
-	if errors.As(err, &typed) {
-		value["error"] = map[string]any{"code": typed.Code, "message": typed.Message, "retryable": typed.Retryable, "reconciliation_required": typed.ReconciliationRequired, "nl_audit_id": auditID}
-	}
+	structured, status := structuredFailure(err, auditID)
+	value := map[string]any{"status": status, "nl_audit_id": auditID, "error": structured}
 	raw, _ := json.Marshal(value)
 	return &mcp.CallToolResult{IsError: true, StructuredContent: value, Content: []mcp.Content{&mcp.TextContent{Text: string(raw)}}}
+}
+
+func structuredFailure(err error, auditID string) (map[string]any, string) {
+	code, message := "internal_error", err.Error()
+	retryable, reconciliation := false, false
+	var typed *assurance.Error
+	if errors.As(err, &typed) && typed != nil {
+		code, message, retryable, reconciliation = typed.Code, typed.Message, typed.Retryable, typed.ReconciliationRequired
+	} else {
+		var tool toolError
+		if errors.As(err, &tool) {
+			if tool.structured.Code != "" {
+				code, message, retryable, reconciliation = tool.structured.Code, tool.structured.Message, tool.structured.Retryable, tool.structured.ReconciliationRequired
+			} else if tool.msg != "" {
+				message = tool.msg
+			}
+			if auditID == "" {
+				auditID = tool.nlAuditID
+			}
+		}
+	}
+	if message == "" {
+		message = "operation failed"
+	}
+	message = boundedErrorMessage(message)
+	status := "error"
+	switch code {
+	case "idempotency_conflict":
+		status = "idempotency_conflict"
+	case "idempotency_in_progress":
+		status = "idempotency_in_progress"
+	case "too_large":
+		status = "too_large"
+	case "strong_identity_required", "authorization_denied", "resource_denied", "permission_denied", "forbidden":
+		status = "denied"
+	}
+	return map[string]any{"code": code, "message": message, "retryable": retryable, "reconciliation_required": reconciliation, "nl_audit_id": auditID}, status
+}
+
+func boundedErrorMessage(message string) string {
+	runes := []rune(message)
+	if len(runes) > 512 {
+		return string(runes[:512])
+	}
+	return message
 }
 
 func structuredErrorSchema() map[string]any {

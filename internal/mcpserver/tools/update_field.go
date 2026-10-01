@@ -69,8 +69,10 @@ type updateFieldOutput struct {
 
 func (updateFieldTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "workiva_update_field",
-		Description: updateFieldDescription,
+		Name:         "workiva_update_field",
+		Description:  updateFieldDescription,
+		InputSchema:  updateFieldInputSchema(),
+		OutputSchema: updateFieldOutputSchema(),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in updateFieldInput) (*mcp.CallToolResult, updateFieldOutput, error) {
 		if err := requireDeps(deps, true, true); err != nil {
 			return nil, updateFieldOutput{}, err

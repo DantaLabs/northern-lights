@@ -109,12 +109,11 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 	}
 
 	if authMode == config.AuthModeEntra {
-		middlewares := []mcp.Middleware{authorizationMiddleware(deps.Audit, confirmationRequired(deps))}
-		if deps.Audit != nil {
-			middlewares = append(middlewares, auditMiddleware(deps.Audit, actorHeader))
-		}
+		// Audit is outermost so authorization and handler failures share the
+		// same server-generated correlation ID and structured envelope.
+		middlewares := []mcp.Middleware{auditMiddleware(deps.Audit, actorHeader), authorizationMiddleware(deps.Audit, confirmationRequired(deps))}
 		server.AddReceivingMiddleware(middlewares...)
-	} else if deps.Audit != nil {
+	} else {
 		server.AddReceivingMiddleware(auditMiddleware(deps.Audit, actorHeader))
 	}
 
@@ -204,27 +203,62 @@ func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
 			if method != "tools/call" || !ok || params == nil {
 				return next(ctx, method, req)
 			}
-			actor := ActorFromContextOrRequest(ctx, req, actorHeader)
-			if writeTools[params.Name] && actor == DefaultActor {
-				return nil, fmt.Errorf("%s requires the %s header identifying the calling user; refusing unattributed write", params.Name, ActorHeader)
-			}
 			auditID := uuid.NewString()
 			requestID := uuid.NewString()
 			ctx = context.WithValue(ctx, auditIDKey{}, auditID)
 			ctx = context.WithValue(ctx, requestIDKey{}, requestID)
+			actor := ActorFromContextOrRequest(ctx, req, actorHeader)
+			if writeTools[params.Name] && actor == DefaultActor {
+				if !wave2AssuranceTool(params.Name) {
+					return nil, fmt.Errorf("%s requires the %s header identifying the calling user; refusing unattributed write", params.Name, ActorHeader)
+				}
+				return structuredCallToolError(auditID, "authorization_denied", fmt.Sprintf("%s requires a trusted caller identity; refusing unattributed write", params.Name), false, false), nil
+			}
+			if log == nil {
+				if writeTools[params.Name] {
+					if !wave2AssuranceTool(params.Name) {
+						return nil, fmt.Errorf("audit log unavailable, refusing unaudited write via %s", params.Name)
+					}
+					return structuredCallToolError(auditID, "audit_unavailable", "audit log unavailable; refusing unaudited materializing operation", true, true), nil
+				}
+				res, err := next(ctx, method, req)
+				return finishCallToolResult(res, err, auditID), nil
+			}
 			if err := recordToolCall(ctx, log, actor, auditID, params); err != nil {
 				log2.Printf("AUDIT FAILURE: could not record call to %q: %v", params.Name, err)
 				if writeTools[params.Name] {
-					return nil, fmt.Errorf("audit log unavailable, refusing unaudited write via %s: %w", params.Name, err)
+					if !wave2AssuranceTool(params.Name) {
+						return nil, fmt.Errorf("audit log unavailable, refusing unaudited write via %s: %w", params.Name, err)
+					}
+					return structuredCallToolError(auditID, "audit_unavailable", fmt.Sprintf("audit log unavailable, refusing unaudited write via %s", params.Name), true, true), nil
 				}
 			}
 			res, err := next(ctx, method, req)
-			if r, ok := res.(*mcp.CallToolResult); ok && r != nil {
-				attachAuditID(r, auditID)
-			}
-			return res, err
+			return finishCallToolResult(res, err, auditID), nil
 		}
 	}
+}
+
+func wave2AssuranceTool(name string) bool {
+	switch name {
+	case "workiva_snapshot_report", "workiva_validate_report", "workiva_compare_periods", "workiva_export_evidence":
+		return true
+	default:
+		return false
+	}
+}
+
+func finishCallToolResult(result mcp.Result, err error, auditID string) mcp.Result {
+	if err != nil {
+		return structuredCallToolError(auditID, "internal_error", err.Error(), false, false)
+	}
+	if result == nil {
+		return structuredCallToolError(auditID, "internal_error", "tool returned no result", false, false)
+	}
+	if call, ok := result.(*mcp.CallToolResult); ok && call != nil {
+		attachAuditID(call, auditID)
+	}
+	return result
 }
 
 // auditIDKey is the context key under which the per-call audit ID travels
@@ -252,9 +286,17 @@ func RequestIDFromContext(ctx context.Context) string {
 // text content block of a tool result, so it is visible in Copilot Studio's
 // activity view and can be matched to the audit log.
 func attachAuditID(res *mcp.CallToolResult, id string) {
+	if res == nil {
+		return
+	}
+	if res.IsError {
+		normalizeStructuredToolError(res, id)
+		return
+	}
 	res.StructuredContent = withAuditID(res.StructuredContent, id)
 	if len(res.Content) == 0 {
-		res.Content = []mcp.Content{&mcp.TextContent{Text: string(res.StructuredContent.(json.RawMessage))}}
+		encoded, _ := json.Marshal(res.StructuredContent)
+		res.Content = []mcp.Content{&mcp.TextContent{Text: string(encoded)}}
 		return
 	}
 	text, ok := res.Content[0].(*mcp.TextContent)
@@ -268,6 +310,74 @@ func attachAuditID(res *mcp.CallToolResult, id string) {
 		return
 	}
 	text.Text += "\nnl_audit_id: " + id
+}
+
+func structuredCallToolError(auditID, code, message string, retryable, reconciliation bool) *mcp.CallToolResult {
+	status := "error"
+	switch code {
+	case "authorization_denied", "permission_denied", "strong_identity_required", "forbidden":
+		status = "denied"
+	case "idempotency_in_progress":
+		status = "idempotency_in_progress"
+	case "idempotency_conflict":
+		status = "idempotency_conflict"
+	case "too_large":
+		status = "too_large"
+	}
+	value := map[string]any{"status": status, "nl_audit_id": auditID, "error": map[string]any{
+		"code": code, "message": boundedStructuredMessage(message), "retryable": retryable,
+		"reconciliation_required": reconciliation, "nl_audit_id": auditID,
+	}}
+	raw, _ := json.Marshal(value)
+	return &mcp.CallToolResult{IsError: true, StructuredContent: value, Content: []mcp.Content{&mcp.TextContent{Text: string(raw)}}}
+}
+
+func boundedStructuredMessage(message string) string {
+	runes := []rune(message)
+	if len(runes) > 512 {
+		return string(runes[:512])
+	}
+	return message
+}
+
+func normalizeStructuredToolError(res *mcp.CallToolResult, auditID string) {
+	var value map[string]any
+	if raw, ok := res.StructuredContent.(json.RawMessage); ok {
+		_ = json.Unmarshal(raw, &value)
+	} else if res.StructuredContent != nil {
+		encoded, _ := json.Marshal(res.StructuredContent)
+		_ = json.Unmarshal(encoded, &value)
+	}
+	if value == nil && len(res.Content) > 0 {
+		if text, ok := res.Content[0].(*mcp.TextContent); ok {
+			_ = json.Unmarshal([]byte(text.Text), &value)
+		}
+	}
+	if value == nil {
+		value = map[string]any{}
+	}
+	value["nl_audit_id"] = auditID
+	if _, ok := value["status"]; !ok {
+		value["status"] = "error"
+	}
+	if rawError, ok := value["error"].(map[string]any); ok {
+		rawError["nl_audit_id"] = auditID
+		if message, ok := rawError["message"].(string); ok {
+			rawError["message"] = boundedStructuredMessage(message)
+		}
+	} else {
+		message := "tool execution failed"
+		if len(res.Content) > 0 {
+			if text, ok := res.Content[0].(*mcp.TextContent); ok && text.Text != "" {
+				message = text.Text
+			}
+		}
+		value["error"] = map[string]any{"code": "internal_error", "message": boundedStructuredMessage(message), "retryable": false, "reconciliation_required": false, "nl_audit_id": auditID}
+	}
+	res.StructuredContent = value
+	raw, _ := json.Marshal(value)
+	res.Content = []mcp.Content{&mcp.TextContent{Text: string(raw)}}
+	res.IsError = true
 }
 
 // withAuditID re-encodes v with nl_audit_id added. A nil v becomes an
@@ -550,10 +660,6 @@ func requiredPermission(tool string, arguments json.RawMessage, requireConfirmat
 	}
 }
 
-func authorizationError(permission identity.Permission) error {
-	return fmt.Errorf("authorization denied: permission %s is required", permission)
-}
-
 func recordAuthorizationDenial(ctx context.Context, log *audit.Log, principal identity.Principal, params *mcp.CallToolParamsRaw) {
 	if log == nil || params == nil {
 		return
@@ -563,10 +669,11 @@ func recordAuthorizationDenial(ctx context.Context, log *audit.Log, principal id
 		target = extracted
 	}
 	if _, err := log.Append(ctx, audit.Entry{
-		Actor:  principal.AuditActor(),
-		Tool:   params.Name,
-		Action: "authorization_denied",
-		Target: target,
+		Actor:   principal.AuditActor(),
+		Tool:    params.Name,
+		Action:  "authorization_denied",
+		Target:  target,
+		AuditID: AuditIDFromContext(ctx),
 	}); err != nil {
 		log2.Printf("AUDIT FAILURE: could not record authorization denial for %q: %v", params.Name, err)
 	}
@@ -581,16 +688,16 @@ func authorizationMiddleware(log *audit.Log, requireConfirmation bool) mcp.Middl
 			}
 			principal, ok := identity.PrincipalFromContext(ctx)
 			if !ok {
-				return nil, errors.New("authorization denied: trusted principal is missing")
+				return structuredCallToolError(AuditIDFromContext(ctx), "strong_identity_required", "trusted principal is missing", false, false), nil
 			}
 			permission, err := requiredPermission(params.Name, params.Arguments, requireConfirmation)
 			if err != nil {
 				recordAuthorizationDenial(ctx, log, principal, params)
-				return nil, err
+				return structuredCallToolError(AuditIDFromContext(ctx), "permission_denied", "tool is not authorized", false, false), nil
 			}
 			if !principal.HasPermission(permission) {
 				recordAuthorizationDenial(ctx, log, principal, params)
-				return nil, authorizationError(permission)
+				return structuredCallToolError(AuditIDFromContext(ctx), "permission_denied", fmt.Sprintf("permission %s is required", permission), false, false), nil
 			}
 			return next(ctx, method, req)
 		}
@@ -610,6 +717,8 @@ type jsonRPCRequest struct {
 // middleware repeats the check as a transport-independent defense.
 func authorizationHTTPHandler(log *audit.Log, requireConfirmation bool, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auditID := uuid.NewString()
+		ctx := context.WithValue(r.Context(), auditIDKey{}, auditID)
 		if r.Method != http.MethodPost || r.Body == nil {
 			next.ServeHTTP(w, r)
 			return
@@ -617,8 +726,7 @@ func authorizationHTTPHandler(log *audit.Log, requireConfirmation bool, next htt
 		data, err := io.ReadAll(io.LimitReader(r.Body, maxPeekBody+1))
 		_ = r.Body.Close()
 		if err != nil {
-			w.Header().Set("Cache-Control", "no-store")
-			http.Error(w, "bad request: failed to read request body", http.StatusBadRequest)
+			writeHTTPStructuredError(w, http.StatusBadRequest, auditID, "invalid_request", "failed to read request body", false, false)
 			return
 		}
 		if len(data) > maxPeekBody {
@@ -634,9 +742,7 @@ func authorizationHTTPHandler(log *audit.Log, requireConfirmation bool, next htt
 		}
 		principal, ok := identity.PrincipalFromContext(r.Context())
 		if !ok {
-			w.Header().Set("Cache-Control", "no-store")
-			w.Header().Set("WWW-Authenticate", `Bearer realm="northern-lights"`)
-			http.Error(w, "unauthorized: trusted principal is missing", http.StatusUnauthorized)
+			writeHTTPStructuredError(w, http.StatusUnauthorized, auditID, "strong_identity_required", "trusted principal is missing", false, false)
 			return
 		}
 		permission, permissionErr := requiredPermission(message.Params.Name, message.Params.Arguments, requireConfirmation)
@@ -645,14 +751,28 @@ func authorizationHTTPHandler(log *audit.Log, requireConfirmation bool, next htt
 			return
 		}
 		params := &mcp.CallToolParamsRaw{Name: message.Params.Name, Arguments: message.Params.Arguments}
-		recordAuthorizationDenial(r.Context(), log, principal, params)
-		w.Header().Set("Cache-Control", "no-store")
+		recordAuthorizationDenial(ctx, log, principal, params)
 		if permissionErr != nil {
-			http.Error(w, "forbidden: tool is not authorized", http.StatusForbidden)
+			writeHTTPStructuredError(w, http.StatusForbidden, auditID, "permission_denied", "tool is not authorized", false, false)
 			return
 		}
-		http.Error(w, "forbidden: required permission is not granted", http.StatusForbidden)
+		writeHTTPStructuredError(w, http.StatusForbidden, auditID, "permission_denied", "required permission is not granted", false, false)
 	})
+}
+
+func writeHTTPStructuredError(w http.ResponseWriter, status int, auditID, code, message string, retryable, reconciliation bool) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("WWW-Authenticate", `Bearer realm="northern-lights"`)
+	payload := map[string]any{"status": "denied", "nl_audit_id": auditID, "error": map[string]any{
+		"code": code, "message": message, "retryable": retryable,
+		"reconciliation_required": reconciliation, "nl_audit_id": auditID,
+	}}
+	if code != "strong_identity_required" && code != "permission_denied" {
+		payload["status"] = "error"
+	}
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
 }
 
 func bearerToken(header string) (string, bool) {
@@ -665,18 +785,15 @@ func bearerToken(header string) (string, bool) {
 
 func entraAuthHandler(verifier identity.TokenVerifier, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auditID := uuid.NewString()
 		raw, ok := bearerToken(r.Header.Get("Authorization"))
 		if !ok {
-			w.Header().Set("Cache-Control", "no-store")
-			w.Header().Set("WWW-Authenticate", `Bearer realm="northern-lights"`)
-			http.Error(w, "unauthorized: missing or invalid bearer token", http.StatusUnauthorized)
+			writeHTTPStructuredError(w, http.StatusUnauthorized, auditID, "authentication_required", "missing or invalid bearer token", false, false)
 			return
 		}
 		principal, err := verifier.Verify(r.Context(), raw)
 		if err != nil {
-			w.Header().Set("Cache-Control", "no-store")
-			w.Header().Set("WWW-Authenticate", `Bearer realm="northern-lights"`)
-			http.Error(w, "unauthorized: bearer token validation failed", http.StatusUnauthorized)
+			writeHTTPStructuredError(w, http.StatusUnauthorized, auditID, "authentication_failed", "bearer token validation failed", false, false)
 			return
 		}
 		r.Header.Del(ActorHeader)

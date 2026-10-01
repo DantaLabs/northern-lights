@@ -1,0 +1,29 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "range": {
+      "description": "A1 cell range",
+      "maxLength": 512,
+      "minLength": 1,
+      "type": "string"
+    },
+    "sheet_id": {
+      "description": "sheet ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "spreadsheet_id": {
+      "description": "spreadsheet ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "spreadsheet_id",
+    "sheet_id",
+    "range"
+  ],
+  "type": "object"
+}

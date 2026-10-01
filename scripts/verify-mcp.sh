@@ -4,7 +4,7 @@
 #   NL_URL=https://<host>/mcp NL_KEY=<api key> scripts/verify-mcp.sh
 #
 # Sends initialize, notifications/initialized (keeping Mcp-Session-Id when
-# the server returns one) and tools/list, checks for exactly 7 tools and
+# the server returns one) and tools/list, checks for exactly 11 current tools
 # application/json responses, then repeats tools/list with a malformed key
 # and expects 401. Exits non-zero on the first failed check. NL_KEY is
 # passed to curl through a private header file and is never printed.
@@ -60,7 +60,7 @@ try:
     print(len(json.load(sys.stdin)["result"]["tools"]))
 except Exception:
     print(-1)')
-check "tools/list has exactly 7 tools (got $count)" "$([ "$count" = 7 ]; echo $?)"
+check "tools/list has exactly 11 current tools (got $count)" "$([ "$count" = 11 ]; echo $?)"
 
 post "$work/badauth" '{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}'
 check "malformed key is rejected with 401 (got $status)" "$([ "$status" = 401 ]; echo $?)"

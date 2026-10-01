@@ -1,0 +1,359 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": {
+            "description": "artifact ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "byte_count": {
+            "maximum": 1073741824,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "media_type": {
+            "description": "media type",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "description": "bounded artifact name",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sha256": {
+            "description": "artifact SHA-256",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "storage_ref": {
+            "description": "opaque storage reference",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "name",
+          "media_type",
+          "byte_count",
+          "sha256",
+          "storage_ref"
+        ],
+        "type": "object"
+      },
+      "maxItems": 3,
+      "type": "array"
+    },
+    "audit": {
+      "additionalProperties": false,
+      "properties": {
+        "caveats": {
+          "items": {
+            "description": "audit caveat",
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "type": "array"
+        },
+        "checkpoint": {
+          "additionalProperties": false,
+          "properties": {
+            "checkpoint_id": {
+              "description": "checkpoint ID",
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "external_anchor": {
+              "description": "external checkpoint anchor",
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "hash": {
+              "description": "checkpoint hash",
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "sequence": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "status": {
+              "enum": [
+                "verified",
+                "missing",
+                "mismatch",
+                "unverified",
+                "not_requested"
+              ],
+              "maxLength": 13,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "type": "object"
+        },
+        "completeness": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_count": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "expected_event_count": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "final_row_deletion_detectable": {
+              "type": "boolean"
+            },
+            "included_count": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "included_event_count": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "omission_count": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "omissions_recorded": {
+              "type": "boolean"
+            },
+            "omitted_count": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "status": {
+              "enum": [
+                "complete",
+                "incomplete",
+                "unknown"
+              ],
+              "maxLength": 10,
+              "minLength": 1,
+              "type": "string"
+            },
+            "terminal_anchor": {
+              "description": "terminal anchor state",
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            },
+            "terminal_anchor_verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "status",
+            "expected_count",
+            "included_count",
+            "omitted_count",
+            "omissions_recorded",
+            "terminal_anchor",
+            "terminal_anchor_verified",
+            "final_row_deletion_detectable"
+          ],
+          "type": "object"
+        },
+        "first_hash": {
+          "description": "first audit hash",
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        "first_seq": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "integrity": {
+          "additionalProperties": false,
+          "properties": {
+            "chain_verified": {
+              "type": "boolean"
+            },
+            "hash_version_coverage": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "first_seq": {
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "hash_version": {
+                    "maximum": 2,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "last_seq": {
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "tenant_identity_hashed": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "hash_version",
+                  "first_seq",
+                  "last_seq",
+                  "tenant_identity_hashed"
+                ],
+                "type": "object"
+              },
+              "maxItems": 4,
+              "type": "array"
+            },
+            "scope": {
+              "description": "audit scope",
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            },
+            "tenant_identity_hashed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "chain_verified",
+            "hash_version_coverage",
+            "tenant_identity_hashed"
+          ],
+          "type": "object"
+        },
+        "last_hash": {
+          "description": "last audit hash",
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        "last_seq": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "integrity",
+        "checkpoint",
+        "completeness",
+        "caveats"
+      ],
+      "type": "object"
+    },
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "stable error code",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "description": "safe error message",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "nl_audit_id": {
+          "description": "audit ID",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reconciliation_required": {
+          "type": "boolean"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "reconciliation_required",
+        "nl_audit_id"
+      ],
+      "type": "object"
+    },
+    "evidence_manifest_id": {
+      "description": "manifest ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "expires_at": {
+      "description": "expiry time",
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "manifest_version": {
+      "maximum": 2,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "nl_audit_id": {
+      "description": "audit ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "package_hash": {
+      "description": "package SHA-256",
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "too_large",
+        "denied",
+        "error",
+        "idempotency_replay",
+        "idempotency_in_progress",
+        "idempotency_conflict"
+      ],
+      "maxLength": 23,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "nl_audit_id",
+    "status"
+  ],
+  "type": "object"
+}

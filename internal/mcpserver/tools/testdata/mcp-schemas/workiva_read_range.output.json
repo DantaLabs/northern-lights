@@ -1,0 +1,98 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "stable error code",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "description": "safe error message",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "nl_audit_id": {
+          "description": "audit ID",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reconciliation_required": {
+          "type": "boolean"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "reconciliation_required",
+        "nl_audit_id"
+      ],
+      "type": "object"
+    },
+    "fetched_at": {
+      "description": "fetch time",
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "nl_audit_id": {
+      "description": "audit ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "range": {
+      "description": "A1 cell range",
+      "maxLength": 512,
+      "minLength": 1,
+      "type": "string"
+    },
+    "rows": {
+      "items": {
+        "items": {
+          "description": "cell value",
+          "maxLength": 4096,
+          "type": "string"
+        },
+        "maxItems": 1000,
+        "type": "array"
+      },
+      "maxItems": 1000,
+      "type": "array"
+    },
+    "sheet_id": {
+      "description": "sheet ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "spreadsheet_id": {
+      "description": "spreadsheet ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "status": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "spreadsheet_id",
+    "sheet_id",
+    "range",
+    "rows",
+    "fetched_at"
+  ],
+  "type": "object"
+}

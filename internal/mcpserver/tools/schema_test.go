@@ -2,9 +2,12 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -54,13 +57,117 @@ func TestToolSchemasAreCopilotStudioCompatible(t *testing.T) {
 			t.Fatalf("%s: inputSchema is %T %v, want an object schema", tool.Name, tool.InputSchema, tool.InputSchema)
 		}
 		walkSchema(t, tool.Name+".inputSchema", schema)
-		if tool.Name == "workiva_snapshot_report" || tool.Name == "workiva_validate_report" || tool.Name == "workiva_compare_periods" || tool.Name == "workiva_export_evidence" {
-			output, ok := tool.OutputSchema.(map[string]any)
-			if !ok || output["type"] != "object" {
-				t.Fatalf("%s: outputSchema is %T %v, want an object schema", tool.Name, tool.OutputSchema, tool.OutputSchema)
-			}
-			walkSchema(t, tool.Name+".outputSchema", output)
+		output, ok := tool.OutputSchema.(map[string]any)
+		if !ok || output["type"] != "object" {
+			t.Fatalf("%s: outputSchema is %T %v, want an object schema", tool.Name, tool.OutputSchema, tool.OutputSchema)
 		}
+		walkSchema(t, tool.Name+".outputSchema", output)
+	}
+}
+
+func TestEveryAdvertisedSchemaIsRecursivelyClosedAndBounded(t *testing.T) {
+	for _, tool := range listAllTools(t) {
+		for label, raw := range map[string]any{"input": tool.InputSchema, "output": tool.OutputSchema} {
+			schema, ok := raw.(map[string]any)
+			if !ok {
+				t.Fatalf("%s %s schema has type %T", tool.Name, label, raw)
+			}
+			verifyClosedBoundedSchema(t, tool.Name+"."+label, schema)
+		}
+	}
+}
+
+func TestRegisteredSchemasMatchGoldenJSON(t *testing.T) {
+	root := filepath.Join("testdata", "mcp-schemas")
+	for _, tool := range listAllTools(t) {
+		for label, raw := range map[string]any{"input": tool.InputSchema, "output": tool.OutputSchema} {
+			encoded, err := json.MarshalIndent(raw, "", "  ")
+			if err != nil {
+				t.Fatalf("%s %s schema marshal: %v", tool.Name, label, err)
+			}
+			encoded = append(encoded, '\n')
+			path := filepath.Join(root, tool.Name+"."+label+".json")
+			if os.Getenv("UPDATE_MCP_GOLDEN") == "1" {
+				if err := os.MkdirAll(root, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, encoded, 0o644); err != nil {
+					t.Fatal(err)
+				}
+				continue
+			}
+			want, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("%s: missing schema golden %s (run UPDATE_MCP_GOLDEN=1 once): %v", tool.Name, path, err)
+			}
+			if string(want) != string(encoded) {
+				t.Fatalf("%s %s schema differs from golden %s", tool.Name, label, path)
+			}
+		}
+	}
+}
+
+func schemaBound(value any) (int, bool) {
+	switch number := value.(type) {
+	case int:
+		return number, true
+	case float64:
+		return int(number), number == float64(int(number))
+	default:
+		return 0, false
+	}
+}
+
+func verifyClosedBoundedSchema(t *testing.T, path string, node any) {
+	t.Helper()
+	schema, ok := node.(map[string]any)
+	if !ok {
+		if children, ok := node.([]any); ok {
+			for index, child := range children {
+				verifyClosedBoundedSchema(t, fmt.Sprintf("%s[%d]", path, index), child)
+			}
+		}
+		return
+	}
+	if _, forbidden := schema["$ref"]; forbidden {
+		t.Errorf("%s: $ref is forbidden", path)
+	}
+	for _, key := range []string{"oneOf", "anyOf", "allOf"} {
+		if _, forbidden := schema[key]; forbidden {
+			t.Errorf("%s: %s is forbidden", path, key)
+		}
+	}
+	if typ, ok := schema["type"].([]any); ok {
+		t.Errorf("%s: array-valued type is forbidden: %v", path, typ)
+	}
+	if typ, _ := schema["type"].(string); typ == "null" {
+		t.Errorf("%s: null type is forbidden", path)
+	}
+	if typ, _ := schema["type"].(string); typ == "object" {
+		if schema["additionalProperties"] != false {
+			t.Errorf("%s: object must set additionalProperties:false", path)
+		}
+	}
+	if typ, _ := schema["type"].(string); typ == "string" {
+		max, ok := schemaBound(schema["maxLength"])
+		if !ok || max <= 0 {
+			t.Errorf("%s: string must have positive maxLength, got %T %v", path, schema["maxLength"], schema["maxLength"])
+		}
+	}
+	if typ, _ := schema["type"].(string); typ == "array" {
+		max, ok := schemaBound(schema["maxItems"])
+		if !ok || max <= 0 {
+			t.Errorf("%s: array must have positive maxItems, got %T %v", path, schema["maxItems"], schema["maxItems"])
+		}
+		if _, ok := schema["items"]; !ok {
+			t.Errorf("%s: array must declare items", path)
+		}
+	}
+	for key, child := range schema {
+		if key == "description" || key == "title" || key == "default" {
+			continue
+		}
+		verifyClosedBoundedSchema(t, path+"."+key, child)
 	}
 }
 

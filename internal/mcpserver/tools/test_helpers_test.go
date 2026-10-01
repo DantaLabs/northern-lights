@@ -72,9 +72,10 @@ func newTestEnv(t *testing.T, handler http.HandlerFunc) testEnv {
 			Store:  store,
 			Audit:  log,
 			Cfg: &config.Config{
-				Region:                   "eu",
-				ReadCacheTTL:             30 * time.Second,
-				RequireWriteConfirmation: true,
+				Region:                       "eu",
+				ReadCacheTTL:                 30 * time.Second,
+				RequireWriteConfirmation:     true,
+				AssuranceLegacyAPIKeyProfile: true,
 			},
 		},
 		apiCalls: &apiCalls,

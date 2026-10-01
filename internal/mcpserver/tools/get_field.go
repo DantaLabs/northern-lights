@@ -46,8 +46,10 @@ type getFieldOutput struct {
 
 func (getFieldTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "workiva_get_field",
-		Description: getFieldDescription,
+		Name:         "workiva_get_field",
+		Description:  getFieldDescription,
+		InputSchema:  getFieldInputSchema(),
+		OutputSchema: getFieldOutputSchema(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getFieldInput) (*mcp.CallToolResult, getFieldOutput, error) {
 		if err := requireDeps(deps, true, false); err != nil {
 			return nil, getFieldOutput{}, err

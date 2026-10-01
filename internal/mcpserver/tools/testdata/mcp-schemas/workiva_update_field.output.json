@@ -1,0 +1,116 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "after": {
+      "description": "written value",
+      "maxLength": 4096,
+      "type": "string"
+    },
+    "after_preview": {
+      "description": "proposed value",
+      "maxLength": 4096,
+      "type": "string"
+    },
+    "before": {
+      "description": "previous value",
+      "maxLength": 4096,
+      "type": "string"
+    },
+    "confirm_token": {
+      "description": "single-use confirmation token",
+      "maxLength": 4096,
+      "type": "string"
+    },
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "stable error code",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "description": "safe error message",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "nl_audit_id": {
+          "description": "audit ID",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reconciliation_required": {
+          "type": "boolean"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "reconciliation_required",
+        "nl_audit_id"
+      ],
+      "type": "object"
+    },
+    "field": {
+      "description": "mapped field name",
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "message": {
+      "description": "bounded operator message",
+      "maxLength": 2048,
+      "type": "string"
+    },
+    "nl_audit_id": {
+      "description": "audit ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "range": {
+      "description": "A1 cell range",
+      "maxLength": 512,
+      "minLength": 1,
+      "type": "string"
+    },
+    "sheet_id": {
+      "description": "sheet ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "spreadsheet_id": {
+      "description": "spreadsheet ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "status": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "workiva_op_url": {
+      "description": "Workiva operation reference",
+      "maxLength": 1024,
+      "type": "string"
+    }
+  },
+  "required": [
+    "status",
+    "field",
+    "spreadsheet_id",
+    "sheet_id",
+    "range",
+    "before"
+  ],
+  "type": "object"
+}
