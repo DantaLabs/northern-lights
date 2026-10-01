@@ -42,6 +42,10 @@ func snapshotBundle(t *testing.T, store *Store, fields []FieldDefinition) {
 	}
 	raw, sig := signedBundle(t, private, func(bundle *Bundle) {
 		bundle.Reports[0].Fields = fields
+		bundle.ExportProfiles = []ExportProfile{{ProfileID: "profile-standard", Revision: 1, Status: "active", PermittedSubjects: []string{"snapshot", "validation_run", "comparison"}, RedactionProfile: "standard", RetentionClass: "long_term", MaxRows: 1000, MaxBytes: 1 << 20, DeliveryPolicy: "opaque_reference"}}
+		bundle.Reports[0].ExportProfiles = []string{"profile-standard"}
+		bundle.MaterialityPolicies = []MaterialityPolicy{{PolicyID: "mat-default", Revision: 1, Status: "active", AbsoluteThreshold: "1", RelativeThreshold: "0.05", Direction: "absolute_or_relative", ZeroBaseline: "not_comparable", MissingBehavior: "not_comparable", TypeChangeBehavior: "not_comparable", Rounding: "half_even"}}
+		bundle.Reports[0].MaterialityPolicyID = "mat-default"
 	})
 	validated, err := ValidateBundle(raw, sig, testTenant, public)
 	if err != nil {

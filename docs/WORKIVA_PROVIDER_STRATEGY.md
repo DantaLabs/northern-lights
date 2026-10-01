@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Decision
 
-Northern Lights remains the primary Workiva implementation. Its seven public MCP tools, semantic mapping, confirmation flow, policy enforcement, and audit contract remain stable regardless of the upstream transport.
+Northern Lights remains the primary Workiva implementation. Its eleven public MCP tools, semantic mapping, confirmation flow, policy enforcement, and audit contract remain stable regardless of the upstream transport.
 
 The official Workiva MCP server is treated as an optional provider, not as a replacement roadmap commitment. We adopt an official capability only when evidence shows that it is more reliable or strategically unavoidable and preserves Northern Lights' governance guarantees.
 

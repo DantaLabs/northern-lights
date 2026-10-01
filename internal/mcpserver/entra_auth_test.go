@@ -132,7 +132,7 @@ func TestEntraHealthEndpointsStayAnonymous(t *testing.T) {
 	}
 }
 
-func TestToolPermissionMappingCoversSevenTools(t *testing.T) {
+func TestToolPermissionMappingCoversWave2Tools(t *testing.T) {
 	tests := []struct {
 		name                 string
 		arguments            json.RawMessage
@@ -149,6 +149,9 @@ func TestToolPermissionMappingCoversSevenTools(t *testing.T) {
 		{name: "workiva_sync_mapping", want: identity.PermissionMappingSync},
 		{name: "workiva_audit_trail", want: identity.PermissionAuditRead},
 		{name: "workiva_snapshot_report", want: identity.PermissionAssuranceSnapshot},
+		{name: "workiva_validate_report", want: identity.PermissionAssuranceValidate},
+		{name: "workiva_compare_periods", want: identity.PermissionAssuranceCompare},
+		{name: "workiva_export_evidence", want: identity.PermissionEvidenceExport},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name+"/"+string(tc.want), func(t *testing.T) {

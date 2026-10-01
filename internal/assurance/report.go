@@ -47,11 +47,15 @@ const (
 // Bundle is the signed tenant-bound provisioning unit. It intentionally has no
 // provider credentials or runtime secrets.
 type Bundle struct {
-	SchemaVersion int              `json:"schema_version" yaml:"schema_version"`
-	BundleID      string           `json:"bundle_id" yaml:"bundle_id"`
-	BundleVersion int              `json:"bundle_version" yaml:"bundle_version"`
-	TenantID      string           `json:"tenant_id" yaml:"tenant_id"`
-	Reports       []ReportRevision `json:"reports" yaml:"reports"`
+	SchemaVersion       int                 `json:"schema_version" yaml:"schema_version"`
+	BundleID            string              `json:"bundle_id" yaml:"bundle_id"`
+	BundleVersion       int                 `json:"bundle_version" yaml:"bundle_version"`
+	TenantID            string              `json:"tenant_id" yaml:"tenant_id"`
+	Reports             []ReportRevision    `json:"reports" yaml:"reports"`
+	RuleSets            []RuleSet           `json:"rule_sets,omitempty" yaml:"rule_sets,omitempty"`
+	MaterialityPolicies []MaterialityPolicy `json:"materiality_policies,omitempty" yaml:"materiality_policies,omitempty"`
+	ExportProfiles      []ExportProfile     `json:"export_profiles,omitempty" yaml:"export_profiles,omitempty"`
+	RetentionPolicies   []RetentionPolicy   `json:"retention_policies,omitempty" yaml:"retention_policies,omitempty"`
 }
 
 // ReportRevision is one immutable server-owned report definition revision.
@@ -213,9 +217,8 @@ func validateBundleObject(bundle *Bundle, expectedTenant string) error {
 		if len(report.ExportProfiles) > maxExportProfiles {
 			return domainError("bundle_collection_bound", fmt.Sprintf("report %s has too many export profiles", report.ReportID))
 		}
-		if report.RuleSetID != "" || report.MaterialityPolicyID != "" || len(report.ExportProfiles) != 0 {
-			return domainError("bundle_reference_unresolved", fmt.Sprintf("report %s references a policy or export profile not provisioned by the Wave 1 bundle contract", report.ReportID))
-		}
+		// References are checked against the complete candidate below, after all
+		// server-owned objects have been validated and indexed.
 		if len(report.Periods) == 0 || len(report.Periods) > maxPeriodCount || len(report.Fields) == 0 || len(report.Fields) > maxFieldCount {
 			return domainError("bundle_invalid_report", fmt.Sprintf("report %s has invalid period or field count", report.ReportID))
 		}
@@ -301,7 +304,136 @@ func validateBundleObject(bundle *Bundle, expectedTenant string) error {
 			}
 		}
 	}
+	ruleSets := make(map[string]RuleSet, len(bundle.RuleSets))
+	for index := range bundle.RuleSets {
+		set := &bundle.RuleSets[index]
+		if err := ValidateRuleSet(*set); err != nil {
+			return domainError("bundle_invalid_rule_set", err.Error())
+		}
+		key := fmt.Sprintf("%s/%d", set.RuleSetID, set.Revision)
+		if _, exists := ruleSets[key]; exists {
+			return domainError("bundle_duplicate_rule_set", "rule set revisions must be unique")
+		}
+		if set.ContentHash == "" {
+			copySet := *set
+			copySet.ContentHash = ""
+			canonical, _ := CanonicalJSON(copySet)
+			set.ContentHash = digestHex(HashBytes(canonical))
+		} else {
+			copySet := *set
+			supplied := copySet.ContentHash
+			copySet.ContentHash = ""
+			canonical, _ := CanonicalJSON(copySet)
+			if supplied != digestHex(HashBytes(canonical)) {
+				return domainError("bundle_hash_invalid", "rule set content hash does not match")
+			}
+		}
+		ruleSets[key] = *set
+	}
+	policies := make(map[string]MaterialityPolicy, len(bundle.MaterialityPolicies))
+	for index := range bundle.MaterialityPolicies {
+		policy := &bundle.MaterialityPolicies[index]
+		if err := ValidateMaterialityPolicy(*policy); err != nil {
+			return domainError("bundle_invalid_materiality_policy", err.Error())
+		}
+		key := fmt.Sprintf("%s/%d", policy.PolicyID, policy.Revision)
+		if _, exists := policies[key]; exists {
+			return domainError("bundle_duplicate_materiality_policy", "materiality policy revisions must be unique")
+		}
+		if policy.Revision > maxRevision {
+			return domainError("bundle_invalid_materiality_policy", "materiality policy revision is out of bounds")
+		}
+		policies[key] = *policy
+	}
+	profiles := make(map[string]ExportProfile, len(bundle.ExportProfiles))
+	for index := range bundle.ExportProfiles {
+		profile := &bundle.ExportProfiles[index]
+		if err := ValidateExportProfile(*profile); err != nil {
+			return domainError("bundle_invalid_export_profile", err.Error())
+		}
+		key := fmt.Sprintf("%s/%d", profile.ProfileID, profile.Revision)
+		if _, exists := profiles[key]; exists {
+			return domainError("bundle_duplicate_export_profile", "export profile revisions must be unique")
+		}
+		profiles[key] = *profile
+	}
+	retentions := make(map[string]RetentionPolicy, len(bundle.RetentionPolicies))
+	for index := range bundle.RetentionPolicies {
+		policy := &bundle.RetentionPolicies[index]
+		if err := ValidateRetentionPolicy(*policy); err != nil {
+			return domainError("bundle_invalid_retention_policy", err.Error())
+		}
+		if policy.TenantID != "" && policy.TenantID != bundle.TenantID {
+			return domainError("bundle_tenant_mismatch", "retention policy tenant does not match bundle tenant")
+		}
+		if _, exists := retentions[policy.RetentionClass]; exists {
+			return domainError("bundle_duplicate_retention_policy", "retention classes must be unique")
+		}
+		retentions[policy.RetentionClass] = *policy
+	}
+	for _, report := range bundle.Reports {
+		if report.RuleSetID != "" && !hasLatestRuleSet(ruleSets, report.RuleSetID) {
+			return domainError("bundle_reference_unresolved", fmt.Sprintf("report %s references an unavailable rule set", report.ReportID))
+		}
+		if report.RuleSetID != "" {
+			approved := make(map[string]bool, len(report.Fields))
+			for _, field := range report.Fields {
+				approved[field.FieldID] = true
+			}
+			for _, set := range ruleSets {
+				if set.RuleSetID != report.RuleSetID {
+					continue
+				}
+				for _, rule := range set.Rules {
+					for _, fieldID := range rule.FieldIDs {
+						if !approved[fieldID] {
+							return domainError("bundle_reference_unresolved", fmt.Sprintf("rule %s references an unapproved field", rule.RuleID))
+						}
+					}
+					if rule.TargetFieldID != "" && !approved[rule.TargetFieldID] {
+						return domainError("bundle_reference_unresolved", fmt.Sprintf("rule %s references an unapproved target field", rule.RuleID))
+					}
+				}
+			}
+		}
+		if report.MaterialityPolicyID != "" && !hasLatestMaterialityPolicy(policies, report.MaterialityPolicyID) {
+			return domainError("bundle_reference_unresolved", fmt.Sprintf("report %s references an unavailable materiality policy", report.ReportID))
+		}
+		for _, profileID := range report.ExportProfiles {
+			if !hasLatestExportProfile(profiles, profileID) {
+				return domainError("bundle_reference_unresolved", fmt.Sprintf("report %s references an unavailable export profile", report.ReportID))
+			}
+		}
+		if len(bundle.RetentionPolicies) > 0 && retentions[report.RetentionClass].RetentionClass == "" {
+			return domainError("bundle_reference_unresolved", fmt.Sprintf("report %s references an unavailable retention policy", report.ReportID))
+		}
+	}
 	return nil
+}
+
+func hasLatestRuleSet(values map[string]RuleSet, id string) bool {
+	for key, value := range values {
+		if value.RuleSetID == id && strings.HasPrefix(key, id+"/") {
+			return true
+		}
+	}
+	return false
+}
+func hasLatestMaterialityPolicy(values map[string]MaterialityPolicy, id string) bool {
+	for _, value := range values {
+		if value.PolicyID == id {
+			return true
+		}
+	}
+	return false
+}
+func hasLatestExportProfile(values map[string]ExportProfile, id string) bool {
+	for _, value := range values {
+		if value.ProfileID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func validateBundleString(value, name string, max int, required bool) error {
@@ -358,6 +490,17 @@ func (s *Store) StageBundle(ctx context.Context, bundle *ValidatedBundle) error 
 	if bundle.Bundle.TenantID != tenant {
 		return domainError("bundle_tenant_mismatch", "bundle tenant does not match trusted tenant")
 	}
+	var candidateHash string
+	candidateErr := s.db.QueryRowContext(ctx, `SELECT content_hash FROM assurance_bundle_candidates WHERE tenant_id=? AND bundle_id=? AND bundle_version=?`, tenant, bundle.Bundle.BundleID, bundle.Bundle.BundleVersion).Scan(&candidateHash)
+	if candidateErr == nil {
+		if candidateHash != bundle.ContentHash {
+			return domainError("bundle_candidate_conflict", "reused bundle candidate revision has different content")
+		}
+		return nil
+	}
+	if !errors.Is(candidateErr, sql.ErrNoRows) {
+		return fmt.Errorf("assurance: inspect bundle candidate: %w", candidateErr)
+	}
 	var activeVersion sql.NullInt64
 	if err := s.db.QueryRowContext(ctx, `SELECT bundle_version FROM assurance_active_bundles WHERE tenant_id=? AND singleton=1`, tenant).Scan(&activeVersion); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("assurance: read active bundle: %w", err)
@@ -375,6 +518,59 @@ func (s *Store) StageBundle(ctx context.Context, bundle *ValidatedBundle) error 
 		}
 		if err == nil && (report.Revision < existingRevision || report.Revision == existingRevision && report.ContentHash != existingHash) {
 			return domainError("bundle_revision_non_monotonic", fmt.Sprintf("report %s revision is not a valid immutable successor", report.ReportID))
+		}
+	}
+	checkRevision := func(table, idColumn string, id string, revision int, contentHash string) error {
+		var existingRevision int
+		var existingHash string
+		err := s.db.QueryRowContext(ctx, `SELECT revision, content_hash FROM `+table+` WHERE tenant_id=? AND `+idColumn+`=? ORDER BY revision DESC LIMIT 1`, tenant, id).Scan(&existingRevision, &existingHash)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if revision < existingRevision || (revision == existingRevision && existingHash != contentHash) {
+			return domainError("bundle_revision_non_monotonic", fmt.Sprintf("%s revision is not a valid immutable successor", id))
+		}
+		return nil
+	}
+	for _, set := range bundle.Bundle.RuleSets {
+		if err := checkRevision("assurance_rule_sets", "rule_set_id", set.RuleSetID, set.Revision, set.ContentHash); err != nil {
+			return err
+		}
+	}
+	for _, policy := range bundle.Bundle.MaterialityPolicies {
+		raw, _ := marshalCanonical(policy)
+		if err := checkRevision("assurance_materiality_policies", "policy_id", policy.PolicyID, policy.Revision, digestHex(HashBytes([]byte(raw)))); err != nil {
+			return err
+		}
+	}
+	for _, profile := range bundle.Bundle.ExportProfiles {
+		raw, _ := marshalCanonical(profile)
+		if err := checkRevision("assurance_export_profiles", "profile_id", profile.ProfileID, profile.Revision, digestHex(HashBytes([]byte(raw)))); err != nil {
+			return err
+		}
+	}
+	for _, policy := range bundle.Bundle.RetentionPolicies {
+		copyPolicy := policy
+		copyPolicy.TenantID = tenant
+		raw, _ := marshalCanonical(copyPolicy)
+		incomingHash := digestHex(HashBytes([]byte(raw)))
+		var existingRevision, existingDuration int
+		var existingHash string
+		err := s.db.QueryRowContext(ctx, `SELECT revision, duration_seconds, content_hash FROM assurance_retention_policy_revisions WHERE tenant_id=? AND retention_class=? ORDER BY revision DESC LIMIT 1`, tenant, policy.RetentionClass).Scan(&existingRevision, &existingDuration, &existingHash)
+		if err == nil && retentionRevisionConflict(existingRevision, existingHash, incomingHash, policy.Revision) {
+			return domainError("bundle_revision_non_monotonic", "retention policy revision is not a valid immutable successor")
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		var reusedRevision int
+		if err := s.db.QueryRowContext(ctx, `SELECT revision FROM assurance_retention_policy_revisions WHERE tenant_id=? AND retention_class=? AND content_hash=? AND revision<>? LIMIT 1`, tenant, policy.RetentionClass, incomingHash, policy.Revision).Scan(&reusedRevision); err == nil {
+			return domainError("bundle_revision_content_reused", "retention policy content cannot be reused under a different revision")
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			return err
 		}
 	}
 	_, err := s.db.ExecContext(ctx, `INSERT INTO assurance_bundle_candidates
@@ -494,6 +690,9 @@ func (s *Store) bootstrapPriorActive(ctx context.Context, tenant string, publicK
 		}
 		return s.failReadiness(err)
 	}
+	if err := s.activateBundle(ctx, validated); err != nil {
+		return s.failReadiness(err)
+	}
 	s.setReadiness(true, nil)
 	return nil
 }
@@ -517,6 +716,136 @@ func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) err
 	if _, err := tx.ExecContext(ctx, `UPDATE assurance_report_revisions SET status='inactive' WHERE tenant_id=?`, tenant); err != nil {
 		return fmt.Errorf("assurance: deactivate historical revisions: %w", err)
 	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM assurance_active_bundle_objects WHERE tenant_id=?`, tenant); err != nil {
+		return fmt.Errorf("assurance: clear active bundle object set: %w", err)
+	}
+	addActiveObject := func(kind, id string, revision int, version int) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO assurance_active_bundle_objects (tenant_id, object_kind, object_id, object_revision, bundle_version) VALUES (?, ?, ?, ?, ?)`, tenant, kind, id, revision, version)
+		return err
+	}
+	for _, ruleSet := range bundle.Bundle.RuleSets {
+		definitionJSON, err := marshalCanonical(ruleSet)
+		if err != nil {
+			return err
+		}
+		var existing string
+		err = tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_rule_sets WHERE tenant_id=? AND rule_set_id=? AND revision=?`, tenant, ruleSet.RuleSetID, ruleSet.Revision).Scan(&existing)
+		if err == nil && existing != ruleSet.ContentHash {
+			return domainError("bundle_revision_hash_conflict", "rule set revision content changed")
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_rule_sets (tenant_id, rule_set_id, revision, content_hash, status, definition_json) VALUES (?, ?, ?, ?, ?, ?)`, tenant, ruleSet.RuleSetID, ruleSet.Revision, ruleSet.ContentHash, ruleSet.Status, definitionJSON); err != nil {
+				return err
+			}
+			for index, rule := range ruleOrder(ruleSet) {
+				ruleJSON, err := marshalCanonical(rule)
+				if err != nil {
+					return err
+				}
+				order := rule.Order
+				if order == 0 {
+					order = index + 1
+				}
+				if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_rule_set_rules (tenant_id, rule_set_id, revision, rule_id, rule_order, rule_json) VALUES (?, ?, ?, ?, ?, ?)`, tenant, ruleSet.RuleSetID, ruleSet.Revision, rule.RuleID, order, ruleJSON); err != nil {
+					return err
+				}
+			}
+		}
+		if err := addActiveObject("rule_set", ruleSet.RuleSetID, ruleSet.Revision, bundle.Bundle.BundleVersion); err != nil {
+			return err
+		}
+	}
+	for _, policy := range bundle.Bundle.MaterialityPolicies {
+		policyJSON, err := marshalCanonical(policy)
+		if err != nil {
+			return err
+		}
+		var existing string
+		err = tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_materiality_policies WHERE tenant_id=? AND policy_id=? AND revision=?`, tenant, policy.PolicyID, policy.Revision).Scan(&existing)
+		contentHash := digestHex(HashBytes([]byte(policyJSON)))
+		if err == nil && existing != contentHash {
+			return domainError("bundle_revision_hash_conflict", "materiality policy revision content changed")
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_materiality_policies (tenant_id, policy_id, revision, status, policy_json, content_hash) VALUES (?, ?, ?, ?, ?, ?)`, tenant, policy.PolicyID, policy.Revision, policy.Status, policyJSON, contentHash); err != nil {
+				return err
+			}
+		}
+		if err := addActiveObject("materiality_policy", policy.PolicyID, policy.Revision, bundle.Bundle.BundleVersion); err != nil {
+			return err
+		}
+	}
+	for _, profile := range bundle.Bundle.ExportProfiles {
+		profileJSON, err := marshalCanonical(profile)
+		if err != nil {
+			return err
+		}
+		var existing string
+		err = tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_export_profiles WHERE tenant_id=? AND profile_id=? AND revision=?`, tenant, profile.ProfileID, profile.Revision).Scan(&existing)
+		contentHash := digestHex(HashBytes([]byte(profileJSON)))
+		if err == nil && existing != contentHash {
+			return domainError("bundle_revision_hash_conflict", "export profile revision content changed")
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_export_profiles (tenant_id, profile_id, revision, status, profile_json, content_hash) VALUES (?, ?, ?, ?, ?, ?)`, tenant, profile.ProfileID, profile.Revision, profile.Status, profileJSON, contentHash); err != nil {
+				return err
+			}
+		}
+		if err := addActiveObject("export_profile", profile.ProfileID, profile.Revision, bundle.Bundle.BundleVersion); err != nil {
+			return err
+		}
+	}
+	for _, policy := range bundle.Bundle.RetentionPolicies {
+		policy.TenantID = tenant
+		policyJSON, err := marshalCanonical(policy)
+		if err != nil {
+			return err
+		}
+		contentHash := digestHex(HashBytes([]byte(policyJSON)))
+		// The v8 singleton is compatibility history only. Revision/hash
+		// monotonicity is checked against assurance_retention_policy_revisions.
+		if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_retention_policies (tenant_id, retention_class, duration_seconds, policy_json, content_hash) VALUES (?, ?, ?, ?, ?) ON CONFLICT(tenant_id, retention_class) DO NOTHING`, tenant, policy.RetentionClass, policy.DurationSeconds, policyJSON, contentHash); err != nil {
+			return err
+		}
+		var existingRevisionHash string
+		err = tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_retention_policy_revisions WHERE tenant_id=? AND retention_class=? AND revision=?`, tenant, policy.RetentionClass, policy.Revision).Scan(&existingRevisionHash)
+		var latestRevision int
+		var latestHash string
+		latestErr := tx.QueryRowContext(ctx, `SELECT revision, content_hash FROM assurance_retention_policy_revisions WHERE tenant_id=? AND retention_class=? ORDER BY revision DESC LIMIT 1`, tenant, policy.RetentionClass).Scan(&latestRevision, &latestHash)
+		if latestErr != nil && !errors.Is(latestErr, sql.ErrNoRows) {
+			return latestErr
+		}
+		if latestErr == nil && retentionRevisionConflict(latestRevision, latestHash, contentHash, policy.Revision) {
+			return domainError("bundle_revision_non_monotonic", "retention policy revision is not a valid immutable successor")
+		}
+		var reusedRevision int
+		if reuseErr := tx.QueryRowContext(ctx, `SELECT revision FROM assurance_retention_policy_revisions WHERE tenant_id=? AND retention_class=? AND content_hash=? AND revision<>? LIMIT 1`, tenant, policy.RetentionClass, contentHash, policy.Revision).Scan(&reusedRevision); reuseErr == nil {
+			return domainError("bundle_revision_content_reused", "retention policy content cannot be reused under a different revision")
+		} else if !errors.Is(reuseErr, sql.ErrNoRows) {
+			return reuseErr
+		}
+		if err == nil && existingRevisionHash != contentHash {
+			return domainError("bundle_revision_hash_conflict", "retention policy revision content changed")
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_retention_policy_revisions (tenant_id, retention_class, revision, duration_seconds, policy_json, content_hash) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(tenant_id, retention_class, revision) DO NOTHING`, tenant, policy.RetentionClass, policy.Revision, policy.DurationSeconds, policyJSON, contentHash); err != nil {
+			return err
+		}
+		if err := addActiveObject("retention_policy", policy.RetentionClass, policy.Revision, bundle.Bundle.BundleVersion); err != nil {
+			return err
+		}
+	}
 	latestByReport := make(map[string]int, len(bundle.Bundle.Reports))
 	for _, report := range bundle.Bundle.Reports {
 		if report.Revision > latestByReport[report.ReportID] {
@@ -527,6 +856,9 @@ func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) err
 		active := report.Revision == latestByReport[report.ReportID]
 		status := "inactive"
 		if active {
+			if err := addActiveObject("report", report.ReportID, report.Revision, bundle.Bundle.BundleVersion); err != nil {
+				return err
+			}
 			status = "active"
 		}
 		var existingHash string

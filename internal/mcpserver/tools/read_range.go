@@ -50,8 +50,10 @@ type readRangeOutput struct {
 
 func (readRangeTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "workiva_read_range",
-		Description: readRangeDescription,
+		Name:         "workiva_read_range",
+		Description:  readRangeDescription,
+		InputSchema:  readRangeInputSchema(),
+		OutputSchema: readRangeOutputSchema(),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in readRangeInput) (*mcp.CallToolResult, readRangeOutput, error) {
 		if err := requireDeps(deps, true, true); err != nil {
 			return nil, readRangeOutput{}, err

@@ -51,7 +51,8 @@ YAML supports `auth_mode`, `region`, `db_path`, `listen_addr`, `read_cache_ttl`,
 `assurance_bundle_public_key`. Environment overrides are `NL_REGION`, `NL_DB_PATH`,
 `NL_LISTEN_ADDR`, `NL_READ_CACHE_TTL`, `NL_REQUIRE_WRITE_CONFIRMATION`,
 `NL_DISABLE_LOCALHOST_PROTECTION`, `NL_ALLOWED_RESOURCES`,
-`NL_ASSURANCE_ENABLED`, and `NL_ASSURANCE_BUNDLE_PUBLIC_KEY`, plus the
+`NL_ASSURANCE_ENABLED`, `NL_ASSURANCE_LEGACY_API_KEY_PROFILE`, and
+`NL_ASSURANCE_BUNDLE_PUBLIC_KEY`, plus the
 environment-only credentials `NL_API_KEY`, `NL_WORKIVA_CLIENT_ID`, and
 `NL_WORKIVA_CLIENT_SECRET`, and `NL_DEMO_MODE`. `NL_AUTH_MODE` overrides YAML
 and defaults to `api_key`.
@@ -121,8 +122,13 @@ exactly `app`; this repository has not completed that live acceptance gate.
 
 The complete permission vocabulary is `workiva.read`,
 `workiva.write.preview`, `workiva.write.confirm`, `mapping.sync`, `audit.read`,
-`tenant.admin`, `assurance.snapshot`, `assurance.validate`, and
-`assurance.compare`. `workiva.read` does not implicitly grant an assurance
+`tenant.admin`, `assurance.snapshot`, `assurance.validate`,
+`assurance.compare`, `evidence.export`, `assurance.relationship.read`,
+`assurance.relationship.refresh`, `workiva.visual_ack`, and
+`reconciliation.manage`. The Wave 2 MCP surface requires the first four
+assurance capabilities plus `evidence.export`; relationship, visual-ack, and
+reconciliation permissions are reserved for their later registered tools.
+`workiva.read` does not implicitly grant an assurance
 capability. Delegated tokens receive permissions only through `scp`;
 app-only tokens additionally require `idtyp` to be exactly `app` and receive
 permissions only through the intersection of `roles` and the explicit
@@ -211,11 +217,14 @@ multi-replica operation requires the Wave 3 shared-state work.
 | `workiva_sync_mapping` | Discover and map fields from a two-column spreadsheet structure |
 | `workiva_audit_trail` | Query recent audit log entries |
 | `workiva_snapshot_report` | Capture an immutable uncached typed snapshot of an approved report and period |
+| `workiva_validate_report` | Validate one immutable snapshot with a server-owned closed rule set |
+| `workiva_compare_periods` | Compare two immutable snapshots with a server-owned materiality policy |
+| `workiva_export_evidence` | Export one authorized subject as manifest-v2 evidence |
 
 ### Phase 3 assurance provisioning
 
-The snapshot tool is always discoverable as the eighth current tool, but it
-fails closed until `assurance_enabled: true` (or
+The eleven current Wave 2 MCP tools are always discoverable, but they
+fail closed until `assurance_enabled: true` (or
 `NL_ASSURANCE_ENABLED=true`) and a signed bundle is active. Bundles are
 strict, versioned, tenant-bound YAML/JSON signed over canonical JSON with a
 detached Ed25519 signature. Provisioning is an operator channel outside MCP:
@@ -264,7 +273,7 @@ Copilot (MCP client)
   v
 Northern Lights (Go binary)
   |-- MCP streamable HTTP endpoint (/mcp)
-  |-- Tool registry (8 current tools; later Phase 3 waves reach 13)
+  |-- Tool registry (11 Wave 2 tools; later Phase 3 waves reach 13)
   |-- One shared SQLite handle (mapping -> audit -> assurance migrations)
   |-- Mapping store (field names, cell cache)
   |-- Audit log (hash-chained, append-only)

@@ -8,6 +8,7 @@ package audit
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -103,9 +104,10 @@ type Entry struct {
 
 // Log wraps the SQLite handle holding the audit chain.
 type Log struct {
-	db       *sql.DB
-	ownsDB   bool
-	appendMu sync.Mutex
+	db                  *sql.DB
+	ownsDB              bool
+	appendMu            sync.Mutex
+	checkpointPublicKey ed25519.PublicKey
 }
 
 // Open opens (creating if needed) the SQLite database at path and applies
@@ -148,6 +150,15 @@ func NewWithDB(db *sql.DB) (*Log, error) {
 // handles share an atomic transaction in tests or alternate embeddings.
 func (l *Log) SharesDB(db *sql.DB) bool {
 	return l != nil && db != nil && l.db == db
+}
+
+// SetCheckpointPublicKey installs the explicit trust boundary used to verify
+// signed external terminal checkpoints. An absent key never verifies a row.
+func (l *Log) SetCheckpointPublicKey(key ed25519.PublicKey) {
+	if l == nil {
+		return
+	}
+	l.checkpointPublicKey = append(ed25519.PublicKey(nil), key...)
 }
 
 // Close releases the underlying database handle when the Log owns it (that

@@ -1,0 +1,116 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "stable error code",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "description": "safe error message",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "nl_audit_id": {
+          "description": "audit ID",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reconciliation_required": {
+          "type": "boolean"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "reconciliation_required",
+        "nl_audit_id"
+      ],
+      "type": "object"
+    },
+    "nl_audit_id": {
+      "description": "audit ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "spreadsheets": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "spreadsheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "description": "spreadsheet name",
+            "maxLength": 512,
+            "type": "string"
+          },
+          "region": {
+            "description": "Workiva region",
+            "maxLength": 16,
+            "type": "string"
+          },
+          "sheets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "description": "sheet ID",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "name": {
+                  "description": "sheet name",
+                  "maxLength": 512,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "synced_at": {
+            "description": "last local sync time",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sheets"
+        ],
+        "type": "object"
+      },
+      "maxItems": 1000,
+      "type": "array"
+    },
+    "status": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "spreadsheets"
+  ],
+  "type": "object"
+}

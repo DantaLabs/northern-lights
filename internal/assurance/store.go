@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/identity"
 )
 
@@ -24,7 +25,9 @@ const (
 // Store owns assurance state on the application's shared SQLite handle. The
 // caller retains database ownership.
 type Store struct {
-	db *sql.DB
+	db              *sql.DB
+	evidenceStorage EvidenceStorage
+	auditLog        *audit.Log
 
 	readinessMu  sync.RWMutex
 	ready        bool
@@ -37,6 +40,33 @@ func NewWithDB(db *sql.DB) (*Store, error) {
 		return nil, err
 	}
 	return &Store{db: db}, nil
+}
+
+// SetEvidenceStorage installs an explicitly selected delivery adapter. The
+// constructor never supplies process-local storage implicitly; callers may wire
+// the memory adapter only for tests or an explicit demo profile, while a
+// production deployment must provide a durable opaque-reference adapter.
+func (s *Store) SetEvidenceStorage(storage EvidenceStorage) {
+	if storage != nil {
+		s.evidenceStorage = storage
+	}
+}
+
+// SetAuditLog connects rich evidence links to the shared audit chain.
+func (s *Store) SetAuditLog(log *audit.Log) { s.auditLog = log }
+
+func (s *Store) requireRichAudit(logs ...*audit.Log) error {
+	if s == nil {
+		return domainError("audit_unavailable", "shared rich audit is required")
+	}
+	log := s.auditLog
+	if len(logs) == 1 && logs[0] != nil {
+		log = logs[0]
+	}
+	if log == nil || !log.SharesDB(s.db) {
+		return domainError("audit_unavailable", "shared rich audit is required")
+	}
+	return nil
 }
 
 // Close is a no-op because Store never owns the shared database handle.
@@ -282,6 +312,40 @@ func (s *Store) SealReservation(ctx context.Context, recordID, ownerNonce string
 	return requireOneTransition(result)
 }
 
+func (s *Store) sealTerminalOutcome(ctx context.Context, reservation ReservationResult, envelope []byte, status, entityReference, auditID string, now time.Time) error {
+	if err := s.requireRichAudit(); err != nil {
+		return err
+	}
+	canonical, err := CanonicalJSONBytes(envelope)
+	if err != nil {
+		return err
+	}
+	tenant := identity.StorageTenant(ctx)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var actor, tool, action string
+	if err := tx.QueryRowContext(ctx, `SELECT actor_id, tool, action FROM assurance_idempotency_records WHERE tenant_id=? AND record_id=? AND owner_nonce=? AND state='reserved'`, tenant, reservation.RecordID, reservation.OwnerNonce).Scan(&actor, &tool, &action); err != nil {
+		return err
+	}
+	if _, err := s.auditLog.AppendTx(ctx, tx, audit.Entry{Actor: actor, Tool: tool, Action: action + ".terminal", Target: entityReference, AfterJSON: string(canonical), AuditID: auditID}); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'idempotency_record', ?, ?, ?, ?, ?)`, tenant, uuid.NewString(), reservation.RecordID, auditID, RequestIDFromContext(ctx), reservation.CorrelationID, formatTimestamp(now)); err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE assurance_idempotency_records SET state='sealed', response_envelope=?, response_hash=?, response_status=?, entity_reference=?, audit_id=?, terminal_at=?, lease_expires_at=? WHERE tenant_id=? AND record_id=? AND state='reserved' AND owner_nonce=?`, string(canonical), digestHex(HashBytes(canonical)), status, entityReference, auditID, formatTimestamp(now), formatTimestamp(now), tenant, reservation.RecordID, reservation.OwnerNonce)
+	if err != nil {
+		return err
+	}
+	if err := requireOneTransition(result); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // FailReservation stores a typed terminal error envelope.
 func (s *Store) FailReservation(ctx context.Context, recordID, ownerNonce string, failure StructuredError, now time.Time) error {
 	envelope, err := CanonicalJSON(failure)
@@ -289,14 +353,38 @@ func (s *Store) FailReservation(ctx context.Context, recordID, ownerNonce string
 		return err
 	}
 	tenant := identity.StorageTenant(ctx)
-	result, err := s.db.ExecContext(ctx, `UPDATE assurance_idempotency_records SET state='failed', response_envelope=?, response_hash=?,
- response_status='failed', audit_id=?, terminal_at=?, lease_expires_at=?
- WHERE tenant_id=? AND record_id=? AND state='reserved' AND owner_nonce=?`, string(envelope), digestHex(HashBytes(envelope)),
+	if err := s.requireRichAudit(); err != nil {
+		return err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("assurance: fail reservation begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	var actor, tool, action, correlationID, entityReference string
+	if err := tx.QueryRowContext(ctx, `SELECT actor_id, tool, action, correlation_id, entity_reference FROM assurance_idempotency_records WHERE tenant_id=? AND record_id=? AND state='reserved' AND owner_nonce=?`, tenant, recordID, ownerNonce).Scan(&actor, &tool, &action, &correlationID, &entityReference); err != nil {
+		if err == sql.ErrNoRows {
+			return ErrInvalidTransition
+		}
+		return err
+	}
+	if _, err := s.auditLog.AppendTx(ctx, tx, audit.Entry{Actor: actor, Tool: tool, Action: action + ".failed", Target: recordID, AfterJSON: string(envelope), AuditID: failure.NLAuditID}); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_audit_links (tenant_id, link_id, entity_kind, entity_id, audit_id, request_id, correlation_id, created_at) VALUES (?, ?, 'idempotency_record', ?, ?, ?, ?, ?)`, tenant, uuid.NewString(), recordID, failure.NLAuditID, RequestIDFromContext(ctx), correlationID, formatTimestamp(now)); err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE assurance_idempotency_records SET state='failed', response_envelope=?, response_hash=?,
+	 response_status='failed', audit_id=?, terminal_at=?, lease_expires_at=?
+	 WHERE tenant_id=? AND record_id=? AND state='reserved' AND owner_nonce=?`, string(envelope), digestHex(HashBytes(envelope)),
 		failure.NLAuditID, formatTimestamp(now), formatTimestamp(now), tenant, recordID, ownerNonce)
 	if err != nil {
 		return fmt.Errorf("assurance: fail reservation: %w", err)
 	}
-	return requireOneTransition(result)
+	if err := requireOneTransition(result); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // MarkExecutionStarted prevents an abandoned reservation from being classified
@@ -451,6 +539,18 @@ func requireOneTransition(result sql.Result) error {
 		return ErrInvalidTransition
 	}
 	return nil
+}
+
+func reservationActor(ctx context.Context, tx *sql.Tx, reservation ReservationResult) (string, error) {
+	var actor string
+	err := tx.QueryRowContext(ctx, `SELECT actor_id FROM assurance_idempotency_records WHERE tenant_id=? AND record_id=? AND owner_nonce=?`, identity.StorageTenant(ctx), reservation.RecordID, reservation.OwnerNonce).Scan(&actor)
+	if err != nil {
+		return "", err
+	}
+	if actor == "" {
+		return "", domainError("audit_actor_missing", "trusted reservation actor is missing")
+	}
+	return actor, nil
 }
 
 func isConstraintError(err error) bool {

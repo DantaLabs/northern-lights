@@ -42,13 +42,17 @@ Use the current MCP onboarding wizard:
 7. When creating the connection, provide the full value
    `Bearer <NL_API_KEY>`, not the Workiva client secret.
 8. Create the connection and add the MCP server to the agent. Copilot Studio
-   should discover all seven Northern Lights tools automatically.
+   should discover all 11 current Wave 2 Northern Lights tools automatically.
+   The final Phase 3 contract is 13 names; the two relationship/transfer
+   names remain fixture-only until their implementation wave is registered.
 
 ### Entra mode
 
 For trusted per-user or app-only identity, start Northern Lights with
 `NL_AUTH_MODE=entra` and the environment-only tenant, authority, audience, and
-permission mappings documented in the README. Configure the Copilot connection
+permission mappings documented in the README (`assurance.snapshot`,
+`assurance.validate`, `assurance.compare`, and `evidence.export` for the
+current Wave 2 assurance tools). Configure the Copilot connection
 with `NL_ENTRA_AUDIENCE="<API-client-ID-GUID>"`. In the API app registration
 manifest, set `requestedAccessTokenVersion` to `2`. Configure the Copilot
 connection to use OAuth 2.0 and request a delegated scope in the form

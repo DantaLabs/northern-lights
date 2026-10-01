@@ -11,6 +11,23 @@ import (
 	"strconv"
 )
 
+func canonicalizeSetStrings(values []string) ([]string, error) {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if value == "" {
+			return nil, fmt.Errorf("set member must not be empty")
+		}
+		if _, exists := seen[value]; exists {
+			return nil, fmt.Errorf("set member %q is duplicated", value)
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	sort.Strings(result)
+	return result, nil
+}
+
 // Digest is a fixed one-way SHA-256 digest. Using a distinct type prevents raw
 // idempotency keys from accidentally reaching persistence APIs.
 type Digest [sha256.Size]byte

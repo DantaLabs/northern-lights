@@ -1,0 +1,65 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "enum": [
+        "json",
+        "csv"
+      ],
+      "maxLength": 4,
+      "minLength": 1,
+      "type": "string"
+    },
+    "idempotency_key": {
+      "description": "single-use idempotency key",
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "include_audit_chain": {
+      "type": "boolean"
+    },
+    "redaction_profile": {
+      "enum": [
+        "standard",
+        "strict"
+      ],
+      "maxLength": 8,
+      "minLength": 1,
+      "type": "string"
+    },
+    "retention_class": {
+      "description": "server-owned retention class",
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "subject_id": {
+      "description": "one tenant-owned subject ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "subject_kind": {
+      "enum": [
+        "snapshot",
+        "validation_run",
+        "comparison",
+        "transfer"
+      ],
+      "maxLength": 14,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "subject_kind",
+    "subject_id",
+    "format",
+    "redaction_profile",
+    "include_audit_chain",
+    "retention_class",
+    "idempotency_key"
+  ],
+  "type": "object"
+}

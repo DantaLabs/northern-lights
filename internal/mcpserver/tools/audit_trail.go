@@ -46,8 +46,10 @@ type auditTrailOutput struct {
 
 func (auditTrailTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "workiva_audit_trail",
-		Description: auditTrailDescription,
+		Name:         "workiva_audit_trail",
+		Description:  auditTrailDescription,
+		InputSchema:  auditTrailInputSchema(),
+		OutputSchema: auditTrailOutputSchema(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in auditTrailInput) (*mcp.CallToolResult, auditTrailOutput, error) {
 		if err := requireDeps(deps, false, true); err != nil {
 			return nil, auditTrailOutput{}, err

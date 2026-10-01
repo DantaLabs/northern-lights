@@ -1,0 +1,54 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "current_snapshot_id": {
+      "description": "current immutable snapshot ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "field_ids": {
+      "items": {
+        "description": "approved stable field ID",
+        "maxLength": 128,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 1000,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "idempotency_key": {
+      "description": "single-use idempotency key",
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "include_unchanged": {
+      "type": "boolean"
+    },
+    "materiality_policy_id": {
+      "description": "server-owned materiality policy ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "prior_snapshot_id": {
+      "description": "prior immutable snapshot ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "retention_class": {
+      "maxLength": 64,
+      "type": "string"
+    }
+  },
+  "required": [
+    "current_snapshot_id",
+    "prior_snapshot_id",
+    "materiality_policy_id",
+    "idempotency_key"
+  ],
+  "type": "object"
+}

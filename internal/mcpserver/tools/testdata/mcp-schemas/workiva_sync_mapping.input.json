@@ -1,0 +1,37 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "name_column": {
+      "description": "name column",
+      "maxLength": 16,
+      "type": "string"
+    },
+    "sheet_id": {
+      "description": "sheet ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "spreadsheet_id": {
+      "description": "spreadsheet ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "start_row": {
+      "maximum": 1000000,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "value_column": {
+      "description": "value column",
+      "maxLength": 16,
+      "type": "string"
+    }
+  },
+  "required": [
+    "spreadsheet_id",
+    "sheet_id"
+  ],
+  "type": "object"
+}

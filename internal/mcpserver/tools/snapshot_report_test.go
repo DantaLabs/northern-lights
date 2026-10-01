@@ -18,6 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/dantalabs/northern-lights/internal/assurance"
+	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 	"github.com/dantalabs/northern-lights/internal/workivaprovider"
 )
@@ -79,6 +80,11 @@ func TestWave1C008C009SnapshotToolUsesApprovedUncachedSourceAndReplays(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
+	sharedAudit, err := audit.NewWithDB(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	env.deps.Audit = sharedAudit
 	provisionSnapshotTestBundle(t, store)
 	env.deps.Assurance = store
 	env.deps.Cfg.AssuranceEnabled = true

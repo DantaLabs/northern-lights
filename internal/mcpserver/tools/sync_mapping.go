@@ -58,8 +58,10 @@ type syncMappingOutput struct {
 
 func (syncMappingTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "workiva_sync_mapping",
-		Description: syncMappingDescription,
+		Name:         "workiva_sync_mapping",
+		Description:  syncMappingDescription,
+		InputSchema:  syncMappingInputSchema(),
+		OutputSchema: syncMappingOutputSchema(),
 	}, func(ctx context.Context, req *mcp.CallToolRequest, in syncMappingInput) (*mcp.CallToolResult, syncMappingOutput, error) {
 		if err := requireDeps(deps, true, true); err != nil {
 			return nil, syncMappingOutput{}, err

@@ -1,0 +1,17 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "limit": {
+      "maximum": 1000,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "target": {
+      "description": "exact audit target",
+      "maxLength": 1024,
+      "type": "string"
+    }
+  },
+  "required": [],
+  "type": "object"
+}

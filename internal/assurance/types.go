@@ -122,6 +122,12 @@ func canonicalDecimal(value string) (string, error) {
 	fraction := ""
 	if len(parts) == 2 {
 		fraction = strings.TrimRight(parts[1], "0")
+		if len(fraction) > maxPrecision {
+			return "", fmt.Errorf("decimal precision exceeds %d places", maxPrecision)
+		}
+	}
+	if len(whole) > 128 {
+		return "", fmt.Errorf("decimal magnitude is too large")
 	}
 	if fraction != "" {
 		whole += "." + fraction

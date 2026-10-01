@@ -1,0 +1,159 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "count": {
+      "maximum": 100,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "entries": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "description": "audit action",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "actor": {
+            "description": "audit actor",
+            "maxLength": 256,
+            "type": "string"
+          },
+          "after_json": {
+            "description": "redacted after payload",
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "audit_id": {
+            "description": "audit correlation ID",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "before_json": {
+            "description": "redacted before payload",
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "hash": {
+            "description": "audit hash",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "hash_version": {
+            "maximum": 2,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "prev_hash": {
+            "description": "previous audit hash",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "seq": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "target": {
+            "description": "audit target",
+            "maxLength": 1024,
+            "type": "string"
+          },
+          "tenant_id": {
+            "description": "tenant identifier",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tool": {
+            "description": "tool name",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ts": {
+            "description": "audit timestamp",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "workiva_op_url": {
+            "description": "Workiva operation reference",
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "ts",
+          "tenant_id",
+          "tool",
+          "action",
+          "prev_hash",
+          "hash",
+          "hash_version"
+        ],
+        "type": "object"
+      },
+      "maxItems": 100,
+      "type": "array"
+    },
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "stable error code",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "description": "safe error message",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "nl_audit_id": {
+          "description": "audit ID",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reconciliation_required": {
+          "type": "boolean"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "reconciliation_required",
+        "nl_audit_id"
+      ],
+      "type": "object"
+    },
+    "nl_audit_id": {
+      "description": "audit ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "status": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "count",
+    "entries"
+  ],
+  "type": "object"
+}

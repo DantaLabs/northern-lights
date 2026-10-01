@@ -1,0 +1,93 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "stable error code",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "description": "safe error message",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "nl_audit_id": {
+          "description": "audit ID",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reconciliation_required": {
+          "type": "boolean"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "reconciliation_required",
+        "nl_audit_id"
+      ],
+      "type": "object"
+    },
+    "fields": {
+      "items": {
+        "description": "mapped field name",
+        "maxLength": 256,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 1000,
+      "type": "array"
+    },
+    "fields_count": {
+      "maximum": 1000,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "message": {
+      "description": "bounded sync message",
+      "maxLength": 2048,
+      "type": "string"
+    },
+    "nl_audit_id": {
+      "description": "audit ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "sheet_id": {
+      "description": "sheet ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "spreadsheet_id": {
+      "description": "spreadsheet ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "status": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "status",
+    "spreadsheet_id",
+    "sheet_id",
+    "fields_count",
+    "fields"
+  ],
+  "type": "object"
+}

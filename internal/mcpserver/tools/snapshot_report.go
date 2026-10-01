@@ -64,7 +64,7 @@ func snapshotReportInputSchema() map[string]any {
 			"field_ids":             map[string]any{"type": "array", "maxItems": 1000, "uniqueItems": true, "items": boundedString("approved stable field ID", 128)},
 			"allow_partial":         map[string]any{"type": "boolean"},
 			"include_relationships": map[string]any{"type": "boolean"},
-			"consistency":           map[string]any{"type": "string", "enum": []string{"none", "best_effort", "revision_pinned"}},
+			"consistency":           boundedEnum("none", "best_effort", "revision_pinned"),
 			"retention_class":       optionalString("server-approved retention class", 64),
 			"idempotency_key":       boundedString("single-use client idempotency key", 256),
 		},
@@ -78,7 +78,7 @@ func snapshotReportOutputSchema() map[string]any {
 	typedValue := map[string]any{
 		"type": "object", "additionalProperties": false,
 		"properties": map[string]any{
-			"kind": map[string]any{"type": "string", "enum": []string{"blank", "text", "integer", "number", "boolean", "date", "datetime", "currency", "percent", "error"}},
+			"kind": boundedEnum("blank", "text", "integer", "number", "boolean", "date", "datetime", "currency", "percent", "error"),
 			"text": stringProperty(10000), "number": stringProperty(256), "boolean": map[string]any{"type": "boolean"},
 			"date": stringProperty(10), "datetime": stringProperty(64), "unit": stringProperty(64), "scale": stringProperty(32),
 			"precision": map[string]any{"type": "integer"}, "percent_basis": stringProperty(16), "timezone": stringProperty(64),
@@ -93,7 +93,7 @@ func snapshotReportOutputSchema() map[string]any {
 			"observation_id": stringProperty(128), "field_id": stringProperty(128), "resource_id": stringProperty(128),
 			"external_resource_id": stringProperty(512), "locator": stringProperty(512), "typed_value": typedValue,
 			"provider_revision": map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{
-				"value": stringProperty(512), "strength": map[string]any{"type": "string", "enum": []string{"verified", "best_effort", "unavailable"}},
+				"value": stringProperty(512), "strength": boundedEnum("verified", "best_effort", "unavailable"),
 			}, "required": []string{"strength"}},
 			"source_fingerprint": stringProperty(64), "observed_at": stringProperty(64),
 		},
@@ -103,7 +103,7 @@ func snapshotReportOutputSchema() map[string]any {
 		"type": "object", "additionalProperties": false,
 		"properties": map[string]any{
 			"field_id": stringProperty(128),
-			"code":     map[string]any{"type": "string", "enum": []string{"source_unavailable", "denied", "invalid", "ambiguous"}},
+			"code":     boundedEnum("source_unavailable", "denied", "invalid", "ambiguous"),
 			"message":  stringProperty(512),
 		},
 		"required": []string{"field_id", "code", "message"},
@@ -112,18 +112,28 @@ func snapshotReportOutputSchema() map[string]any {
 		"type": "object", "additionalProperties": false,
 		"properties": map[string]any{
 			"nl_audit_id": stringProperty(128),
-			"status":      map[string]any{"type": "string", "enum": []string{"completed", "partial", "failed", "idempotency_replay"}},
-			"snapshot_id": stringProperty(128), "report_id": stringProperty(128), "definition_revision": map[string]any{"type": "integer"},
+			"status":      boundedEnum("completed", "partial", "failed", "idempotency_replay", "error", "denied", "idempotency_in_progress", "idempotency_conflict"),
+			"snapshot_id": stringProperty(128), "report_id": stringProperty(128), "definition_revision": boundedInteger(1, 1000000),
 			"period": map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{
 				"key": stringProperty(128), "label": stringProperty(256),
 			}, "required": []string{"key", "label"}},
 			"captured_at":  stringProperty(64),
-			"completeness": map[string]any{"type": "string", "enum": []string{"complete", "incomplete", "not_created"}},
+			"completeness": boundedEnum("complete", "incomplete", "not_created"),
 			"observations": map[string]any{"type": "array", "maxItems": 1000, "items": observation},
 			"item_errors":  map[string]any{"type": "array", "maxItems": 1000, "items": itemError},
-			"content_hash": stringProperty(64), "relationship_count": map[string]any{"type": "integer"},
+			"content_hash": stringProperty(64), "relationship_count": boundedInteger(0, 1000), "error": structuredErrorSchema(),
 		},
-		"required": []string{"nl_audit_id", "status", "snapshot_id", "report_id", "definition_revision", "period", "captured_at", "completeness", "observations", "item_errors", "content_hash", "relationship_count"},
+		"required": []string{"nl_audit_id", "status"},
+	}
+}
+
+func snapshotErrorResponse(ctx context.Context, err error) assurance.SnapshotResponse {
+	_, status := structuredFailure(err, mcpserver.AuditIDFromContext(ctx))
+	return assurance.SnapshotResponse{
+		NLAuditID: mcpserver.AuditIDFromContext(ctx), Status: assurance.SnapshotStatus(status),
+		SnapshotID: "not_created", ReportID: "not_created", CapturedAt: "not_created",
+		DefinitionRevision: 1, Completeness: assurance.CompletenessNotCreated,
+		Observations: []assurance.SnapshotObservation{}, ItemErrors: []assurance.SnapshotItemError{},
 	}
 }
 
@@ -131,17 +141,24 @@ func (snapshotReportTool) RegisterSDK(server *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(server, &mcp.Tool{Name: "workiva_snapshot_report", Description: snapshotReportDescription, InputSchema: snapshotReportInputSchema(), OutputSchema: snapshotReportOutputSchema()},
 		func(ctx context.Context, request *mcp.CallToolRequest, input snapshotReportInput) (*mcp.CallToolResult, assurance.SnapshotResponse, error) {
 			if err := requireDeps(deps, true, true); err != nil {
-				return nil, assurance.SnapshotResponse{}, err
+				return structuredToolResult(ctx, err, ""), snapshotErrorResponse(ctx, err), nil
 			}
 			if deps.Assurance == nil {
-				return nil, assurance.SnapshotResponse{}, failMsg("assurance store is not available", "enable and provision Phase 3 assurance")
+				err := failMsgWithContext(ctx, "assurance store is not available", "enable and provision Phase 3 assurance")
+				return structuredToolResult(ctx, err, ""), snapshotErrorResponse(ctx, err), nil
 			}
 			if deps.Cfg != nil && !deps.Cfg.AssuranceEnabled {
-				return nil, assurance.SnapshotResponse{}, failMsg("assurance snapshot feature is disabled", "set NL_ASSURANCE_ENABLED=true and provision a signed bundle")
+				err := failMsgWithContext(ctx, "assurance snapshot feature is disabled", "set NL_ASSURANCE_ENABLED=true and provision a signed bundle")
+				return structuredToolResult(ctx, err, ""), snapshotErrorResponse(ctx, err), nil
+			}
+			if _, trusted := identityForTool(ctx); !trusted && (deps.Cfg == nil || !deps.Cfg.AssuranceLegacyAPIKeyProfile) {
+				err := &assurance.Error{Code: "strong_identity_required", Message: "trusted assurance identity is required"}
+				return structuredToolResult(ctx, err, ""), snapshotErrorResponse(ctx, err), nil
 			}
 			reader, ok := deps.Client.(assurance.SourceReader)
 			if !ok {
-				return nil, assurance.SnapshotResponse{}, failMsg("uncached typed provider reads are not available", "use the configured Workiva REST provider router")
+				err := failMsgWithContext(ctx, "uncached typed provider reads are not available", "use the configured Workiva REST provider router")
+				return structuredToolResult(ctx, err, ""), snapshotErrorResponse(ctx, err), nil
 			}
 			service := assurance.SnapshotService{
 				Store:  deps.Assurance,
@@ -154,6 +171,7 @@ func (snapshotReportTool) RegisterSDK(server *mcp.Server, deps mcpserver.Deps) {
 					return requireTenantOwnedResource(ctx, deps, field.ExternalResourceID, field.SubresourceID)
 				},
 			}
+			ctx = assurance.WithRequestID(ctx, mcpserver.RequestIDFromContext(ctx))
 			response, err := service.Capture(ctx, mcpserver.ActorFromContextOrRequest(ctx, request, deps.ActorHeader),
 				mcpserver.AuditIDFromContext(ctx), assurance.SnapshotRequest{
 					ReportID: input.ReportID,
@@ -162,7 +180,7 @@ func (snapshotReportTool) RegisterSDK(server *mcp.Server, deps mcpserver.Deps) {
 					Consistency: assurance.ConsistencyMode(input.Consistency), RetentionClass: input.RetentionClass, IdempotencyKey: input.IdempotencyKey,
 				})
 			if err != nil {
-				return nil, assurance.SnapshotResponse{}, fail(err, "verify the approved report, period, fields, capability, and signed bundle")
+				return structuredToolResult(ctx, err, "verify the approved report, period, fields, capability, and signed bundle"), snapshotErrorResponse(ctx, err), nil
 			}
 			return nil, response, nil
 		})

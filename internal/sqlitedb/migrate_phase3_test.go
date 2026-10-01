@@ -51,7 +51,7 @@ func TestC050C069SharedHandleBootstrapsMappingBeforeAuditAndAssuranceWithoutRowL
 	if err != nil || field == nil || field.CellRange != "B3" {
 		t.Fatalf("preserved Phase 2 row = %#v err=%v", field, err)
 	}
-	for app, want := range map[string]int{"mapping": 6, "audit": 3, "assurance": 8} {
+	for app, want := range map[string]int{"mapping": 6, "audit": 3, "assurance": 13} {
 		var got int
 		if err := db.QueryRow(`SELECT max(version) FROM schema_migrations WHERE app=?`, app).Scan(&got); err != nil {
 			t.Fatalf("%s migration marker: %v", app, err)

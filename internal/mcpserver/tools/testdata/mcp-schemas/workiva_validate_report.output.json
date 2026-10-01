@@ -1,0 +1,334 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "counts": {
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fail": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "not_evaluable": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "pass": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "warn": {
+          "maximum": 1000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pass",
+        "fail",
+        "warn",
+        "not_evaluable",
+        "error"
+      ],
+      "type": "object"
+    },
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "stable error code",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "description": "safe error message",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "nl_audit_id": {
+          "description": "audit ID",
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reconciliation_required": {
+          "type": "boolean"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "reconciliation_required",
+        "nl_audit_id"
+      ],
+      "type": "object"
+    },
+    "nl_audit_id": {
+      "description": "audit ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "results": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "absolute_tolerance": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "actual": {
+            "additionalProperties": false,
+            "properties": {
+              "boolean": {
+                "type": "boolean"
+              },
+              "date": {
+                "maxLength": 10,
+                "type": "string"
+              },
+              "datetime": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "formula": {
+                "type": "boolean"
+              },
+              "kind": {
+                "enum": [
+                  "blank",
+                  "text",
+                  "integer",
+                  "number",
+                  "boolean",
+                  "date",
+                  "datetime",
+                  "currency",
+                  "percent",
+                  "error"
+                ],
+                "maxLength": 8,
+                "minLength": 1,
+                "type": "string"
+              },
+              "number": {
+                "maxLength": 256,
+                "type": "string"
+              },
+              "scale": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "text": {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              "unit": {
+                "maxLength": 128,
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "formula"
+            ],
+            "type": "object"
+          },
+          "code": {
+            "enum": [
+              "required",
+              "type",
+              "unit",
+              "range",
+              "allowed_values",
+              "reconciliation",
+              "variance",
+              "completeness"
+            ],
+            "maxLength": 14,
+            "minLength": 1,
+            "type": "string"
+          },
+          "evidence_observation_ids": {
+            "items": {
+              "description": "observation ID",
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "expected": {
+            "additionalProperties": false,
+            "properties": {
+              "boolean": {
+                "type": "boolean"
+              },
+              "date": {
+                "maxLength": 10,
+                "type": "string"
+              },
+              "datetime": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "formula": {
+                "type": "boolean"
+              },
+              "kind": {
+                "enum": [
+                  "blank",
+                  "text",
+                  "integer",
+                  "number",
+                  "boolean",
+                  "date",
+                  "datetime",
+                  "currency",
+                  "percent",
+                  "error"
+                ],
+                "maxLength": 8,
+                "minLength": 1,
+                "type": "string"
+              },
+              "number": {
+                "maxLength": 256,
+                "type": "string"
+              },
+              "scale": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "text": {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              "unit": {
+                "maxLength": 128,
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "formula"
+            ],
+            "type": "object"
+          },
+          "field_ids": {
+            "items": {
+              "description": "field ID",
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "relative_tolerance": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "result_id": {
+            "description": "result ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "rule_id": {
+            "description": "rule ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "rule_revision": {
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "fail",
+              "warn",
+              "not_evaluable",
+              "error"
+            ],
+            "maxLength": 13,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "result_id",
+          "rule_id",
+          "rule_revision",
+          "code",
+          "status",
+          "field_ids",
+          "evidence_observation_ids"
+        ],
+        "type": "object"
+      },
+      "maxItems": 1000,
+      "type": "array"
+    },
+    "rule_set_id": {
+      "description": "rule set ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "rule_set_revision": {
+      "maximum": 1000000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "snapshot_id": {
+      "description": "snapshot ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "error",
+        "not_evaluable",
+        "idempotency_replay",
+        "denied",
+        "idempotency_in_progress",
+        "idempotency_conflict"
+      ],
+      "maxLength": 23,
+      "minLength": 1,
+      "type": "string"
+    },
+    "validation_run_id": {
+      "description": "validation run ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "nl_audit_id",
+    "status"
+  ],
+  "type": "object"
+}

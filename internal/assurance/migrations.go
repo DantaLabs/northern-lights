@@ -237,7 +237,147 @@ CREATE TABLE assurance_checkpoints (
 );
 `
 
-var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8}
+// migrationV9 is additive Wave 2 storage. The v1-v8 migrations are already
+// deployed and must remain byte-for-byte stable for upgrade safety.
+const migrationV9 = `
+CREATE TABLE assurance_materiality_policies (
+ tenant_id TEXT NOT NULL, policy_id TEXT NOT NULL, revision INTEGER NOT NULL,
+ status TEXT NOT NULL, policy_json TEXT NOT NULL, content_hash TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, policy_id, revision)
+);
+CREATE TABLE assurance_export_profiles (
+ tenant_id TEXT NOT NULL, profile_id TEXT NOT NULL, revision INTEGER NOT NULL,
+ status TEXT NOT NULL, profile_json TEXT NOT NULL, content_hash TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, profile_id, revision)
+);
+CREATE TABLE assurance_legal_holds (
+ tenant_id TEXT NOT NULL, hold_id TEXT NOT NULL, subject_kind TEXT NOT NULL,
+ subject_id TEXT NOT NULL, reason TEXT NOT NULL, active INTEGER NOT NULL,
+ actor_id TEXT NOT NULL, created_at TEXT NOT NULL, released_at TEXT NOT NULL DEFAULT '',
+ PRIMARY KEY (tenant_id, hold_id)
+);
+CREATE INDEX idx_assurance_legal_holds_subject ON assurance_legal_holds(tenant_id, subject_kind, subject_id, active);
+CREATE TABLE assurance_evidence_tombstones (
+ tenant_id TEXT NOT NULL, tombstone_id TEXT NOT NULL, subject_kind TEXT NOT NULL,
+ subject_id TEXT NOT NULL, manifest_id TEXT NOT NULL, reason TEXT NOT NULL,
+ purged_at TEXT NOT NULL, PRIMARY KEY (tenant_id, tombstone_id)
+);
+CREATE INDEX idx_assurance_evidence_tombstones_subject ON assurance_evidence_tombstones(tenant_id, subject_kind, subject_id);
+ALTER TABLE assurance_comparisons ADD COLUMN materiality_policy_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_comparisons ADD COLUMN current_report_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_comparisons ADD COLUMN prior_report_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_comparisons ADD COLUMN current_definition_revision INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE assurance_comparisons ADD COLUMN prior_definition_revision INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE assurance_comparisons ADD COLUMN partial_policy TEXT NOT NULL DEFAULT 'reject';
+ALTER TABLE assurance_comparisons ADD COLUMN material_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE assurance_validation_runs ADD COLUMN fail_on_warning INTEGER NOT NULL DEFAULT 0;
+`
+
+// migrationV10 is additive and records the exact object revisions selected by
+// the active signed bundle. Historical object rows remain untouched.
+const migrationV10 = `
+CREATE TABLE assurance_active_bundle_objects (
+ tenant_id TEXT NOT NULL, object_kind TEXT NOT NULL, object_id TEXT NOT NULL,
+ object_revision INTEGER NOT NULL, bundle_version INTEGER NOT NULL,
+ PRIMARY KEY (tenant_id, object_kind, object_id, object_revision)
+);
+CREATE INDEX idx_assurance_active_bundle_objects_tenant_kind ON assurance_active_bundle_objects(tenant_id, object_kind, object_id, object_revision);
+CREATE TABLE assurance_retention_policy_revisions (
+ tenant_id TEXT NOT NULL, retention_class TEXT NOT NULL, revision INTEGER NOT NULL,
+ duration_seconds INTEGER NOT NULL, policy_json TEXT NOT NULL, content_hash TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, retention_class, revision)
+);
+`
+
+// migrationV11 makes evidence retention retries and legal holds exact and
+// durable. The v8 singleton retention table remains compatibility history;
+// revisioned rows are authoritative.
+const migrationV11 = `
+ALTER TABLE assurance_legal_holds ADD COLUMN manifest_id TEXT NOT NULL DEFAULT '';
+CREATE INDEX idx_assurance_legal_holds_tenant_manifest ON assurance_legal_holds(tenant_id, manifest_id, active);
+ALTER TABLE assurance_evidence_tombstones ADD COLUMN state TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE assurance_evidence_tombstones ADD COLUMN artifact_disposition_json TEXT NOT NULL DEFAULT '{}';
+CREATE UNIQUE INDEX idx_assurance_evidence_tombstones_manifest ON assurance_evidence_tombstones(tenant_id, manifest_id);
+CREATE TABLE assurance_evidence_cleanup (
+ tenant_id TEXT NOT NULL, cleanup_id TEXT NOT NULL, record_id TEXT NOT NULL, storage_reference TEXT NOT NULL,
+ state TEXT NOT NULL, error TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, cleanup_id)
+);
+CREATE INDEX idx_assurance_evidence_cleanup_record ON assurance_evidence_cleanup(tenant_id, record_id, state);
+`
+
+const migrationV12 = `
+DROP TRIGGER IF EXISTS assurance_snapshot_terminal_immutable;
+DROP TRIGGER IF EXISTS assurance_snapshot_no_delete;
+DROP TRIGGER IF EXISTS assurance_observation_no_update;
+DROP TRIGGER IF EXISTS assurance_observation_no_delete;
+DROP TRIGGER IF EXISTS assurance_failure_no_update;
+DROP TRIGGER IF EXISTS assurance_failure_no_delete;
+DROP INDEX IF EXISTS idx_assurance_snapshots_tenant_report_period;
+ALTER TABLE assurance_snapshots RENAME TO assurance_snapshots_v11;
+CREATE TABLE assurance_snapshots (
+ tenant_id TEXT NOT NULL, snapshot_id TEXT NOT NULL, idempotency_digest TEXT NOT NULL, report_id TEXT NOT NULL,
+ definition_revision INTEGER NOT NULL, period_json TEXT NOT NULL, status TEXT NOT NULL,
+ completeness TEXT NOT NULL, mapping_set_hash TEXT NOT NULL, provider_route TEXT NOT NULL,
+ content_hash TEXT NOT NULL DEFAULT '', retention_class TEXT NOT NULL, captured_at TEXT NOT NULL DEFAULT '',
+ expires_at TEXT NOT NULL DEFAULT '', audit_id TEXT NOT NULL DEFAULT '', PRIMARY KEY (tenant_id, snapshot_id),
+ CHECK(status IN ('running','completed','partial','failed','expired'))
+);
+INSERT INTO assurance_snapshots (tenant_id, snapshot_id, idempotency_digest, report_id, definition_revision, period_json, status, completeness, mapping_set_hash, provider_route, content_hash, retention_class, captured_at, expires_at, audit_id)
+ SELECT tenant_id, snapshot_id, idempotency_digest, report_id, definition_revision, period_json, status, completeness, mapping_set_hash, provider_route, content_hash, retention_class, captured_at, expires_at, audit_id
+ FROM assurance_snapshots_v11;
+DROP TABLE assurance_snapshots_v11;
+CREATE INDEX idx_assurance_snapshots_tenant_report_period ON assurance_snapshots(tenant_id, report_id, definition_revision);
+CREATE TRIGGER assurance_snapshot_terminal_immutable BEFORE UPDATE ON assurance_snapshots
+ WHEN OLD.status IN ('completed','partial','failed','expired') BEGIN SELECT RAISE(ABORT, 'immutable assurance snapshot'); END;
+CREATE TRIGGER assurance_snapshot_no_delete BEFORE DELETE ON assurance_snapshots BEGIN SELECT RAISE(ABORT, 'immutable assurance snapshot'); END;
+CREATE TRIGGER assurance_observation_no_update BEFORE UPDATE ON assurance_snapshot_observations BEGIN SELECT RAISE(ABORT, 'immutable assurance observation'); END;
+CREATE TRIGGER assurance_observation_no_delete BEFORE DELETE ON assurance_snapshot_observations BEGIN SELECT RAISE(ABORT, 'immutable assurance observation'); END;
+CREATE TRIGGER assurance_failure_no_update BEFORE UPDATE ON assurance_snapshot_failures BEGIN SELECT RAISE(ABORT, 'immutable assurance failure'); END;
+CREATE TRIGGER assurance_failure_no_delete BEFORE DELETE ON assurance_snapshot_failures BEGIN SELECT RAISE(ABORT, 'immutable assurance failure'); END;
+`
+
+const migrationV13 = `
+ALTER TABLE assurance_validation_runs RENAME TO assurance_validation_runs_v13;
+CREATE TABLE assurance_validation_runs (
+ tenant_id TEXT NOT NULL, validation_run_id TEXT NOT NULL, snapshot_id TEXT NOT NULL, rule_set_id TEXT NOT NULL,
+ rule_set_revision INTEGER NOT NULL, idempotency_digest TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL,
+ fail_on_warning INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (tenant_id, validation_run_id)
+);
+INSERT INTO assurance_validation_runs (tenant_id, validation_run_id, snapshot_id, rule_set_id, rule_set_revision, idempotency_digest, status, created_at, fail_on_warning)
+SELECT tenant_id, validation_run_id, snapshot_id, rule_set_id, rule_set_revision, idempotency_digest, status, created_at, fail_on_warning
+FROM assurance_validation_runs_v13;
+DROP TABLE assurance_validation_runs_v13;
+
+ALTER TABLE assurance_comparisons RENAME TO assurance_comparisons_v13;
+CREATE TABLE assurance_comparisons (
+ tenant_id TEXT NOT NULL, comparison_id TEXT NOT NULL, current_snapshot_id TEXT NOT NULL, prior_snapshot_id TEXT NOT NULL,
+ idempotency_digest TEXT NOT NULL, status TEXT NOT NULL, completeness TEXT NOT NULL, comparison_basis TEXT NOT NULL,
+ policy_revision INTEGER NOT NULL, created_at TEXT NOT NULL, materiality_policy_id TEXT NOT NULL DEFAULT '',
+ current_report_id TEXT NOT NULL DEFAULT '', prior_report_id TEXT NOT NULL DEFAULT '',
+ current_definition_revision INTEGER NOT NULL DEFAULT 0, prior_definition_revision INTEGER NOT NULL DEFAULT 0,
+ partial_policy TEXT NOT NULL DEFAULT 'reject', material_count INTEGER NOT NULL DEFAULT 0,
+ PRIMARY KEY (tenant_id, comparison_id)
+);
+INSERT INTO assurance_comparisons (tenant_id, comparison_id, current_snapshot_id, prior_snapshot_id, idempotency_digest, status, completeness, comparison_basis, policy_revision, created_at, materiality_policy_id, current_report_id, prior_report_id, current_definition_revision, prior_definition_revision, partial_policy, material_count)
+SELECT tenant_id, comparison_id, current_snapshot_id, prior_snapshot_id, idempotency_digest, status, completeness, comparison_basis, policy_revision, created_at, materiality_policy_id, current_report_id, prior_report_id, current_definition_revision, prior_definition_revision, partial_policy, material_count
+FROM assurance_comparisons_v13;
+DROP TABLE assurance_comparisons_v13;
+
+ALTER TABLE assurance_evidence_manifests RENAME TO assurance_evidence_manifests_v13;
+CREATE TABLE assurance_evidence_manifests (
+ tenant_id TEXT NOT NULL, manifest_id TEXT NOT NULL, manifest_version INTEGER NOT NULL, subject_kind TEXT NOT NULL,
+ subject_id TEXT NOT NULL, manifest_hash TEXT NOT NULL, manifest_json TEXT NOT NULL, audit_integrity TEXT NOT NULL,
+ audit_completeness TEXT NOT NULL, expiry_at TEXT NOT NULL DEFAULT '', legal_hold INTEGER NOT NULL DEFAULT 0,
+ idempotency_digest TEXT NOT NULL, PRIMARY KEY (tenant_id, manifest_id)
+);
+INSERT INTO assurance_evidence_manifests (tenant_id, manifest_id, manifest_version, subject_kind, subject_id, manifest_hash, manifest_json, audit_integrity, audit_completeness, expiry_at, legal_hold, idempotency_digest)
+SELECT tenant_id, manifest_id, manifest_version, subject_kind, subject_id, manifest_hash, manifest_json, audit_integrity, audit_completeness, expiry_at, legal_hold, idempotency_digest
+FROM assurance_evidence_manifests_v13;
+DROP TABLE assurance_evidence_manifests_v13;
+`
+
+var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11, migrationV12, migrationV13}
 
 // Migrate installs the complete contiguous assurance schema family.
 func Migrate(ctx context.Context, db *sql.DB) error {
@@ -260,5 +400,8 @@ func assuranceTables() []string {
 		"assurance_visual_acknowledgements", "assurance_reconciliations", "assurance_reconciliation_events",
 		"assurance_evidence_manifests", "assurance_evidence_artifacts", "assurance_evidence_subjects",
 		"assurance_retention_policies", "assurance_idempotency_records", "assurance_audit_links", "assurance_checkpoints",
+		"assurance_materiality_policies", "assurance_export_profiles", "assurance_legal_holds", "assurance_evidence_tombstones",
+		"assurance_active_bundle_objects", "assurance_retention_policy_revisions",
+		"assurance_evidence_cleanup",
 	}
 }

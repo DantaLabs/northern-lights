@@ -1,0 +1,47 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "fail_on_warning": {
+      "type": "boolean"
+    },
+    "idempotency_key": {
+      "description": "single-use idempotency key",
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "retention_class": {
+      "maxLength": 64,
+      "type": "string"
+    },
+    "rule_ids": {
+      "items": {
+        "description": "approved rule ID",
+        "maxLength": 128,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 1000,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "rule_set_id": {
+      "description": "server-owned rule set ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "snapshot_id": {
+      "description": "immutable snapshot ID",
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "snapshot_id",
+    "rule_set_id",
+    "idempotency_key"
+  ],
+  "type": "object"
+}

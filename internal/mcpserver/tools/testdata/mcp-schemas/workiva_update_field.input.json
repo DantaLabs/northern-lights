@@ -1,0 +1,26 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "confirm_token": {
+      "description": "single-use confirmation token",
+      "maxLength": 4096,
+      "type": "string"
+    },
+    "name": {
+      "description": "exact mapped field name",
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "value": {
+      "description": "new field value",
+      "maxLength": 4096,
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "value"
+  ],
+  "type": "object"
+}
