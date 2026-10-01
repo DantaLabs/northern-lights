@@ -2,8 +2,8 @@
 // for EU AI Act Art. 12 record keeping. Every tool call and Workiva mutation
 // is one row; each row hashes the previous row's hash, so tampering with any
 // single row breaks the chain at that sequence number. The log lives in the
-// same SQLite database as the mapping store, but owns its handle so it can
-// be opened, verified, and exported standalone (e.g. by an auditor CLI).
+// same SQLite database as the mapping store. Open owns a standalone handle;
+// NewWithDB participates in the application's single shared handle.
 package audit
 
 import (
@@ -143,6 +143,13 @@ func NewWithDB(db *sql.DB) (*Log, error) {
 	return &Log{db: db}, nil
 }
 
+// SharesDB reports whether tx from db can safely be used with this log.
+// It lets cross-package services avoid pretending two independent SQLite
+// handles share an atomic transaction in tests or alternate embeddings.
+func (l *Log) SharesDB(db *sql.DB) bool {
+	return l != nil && db != nil && l.db == db
+}
+
 // Close releases the underlying database handle when the Log owns it (that
 // is, it was created with Open). It is a no-op for logs created with
 // NewWithDB.
@@ -173,6 +180,27 @@ func tenantEntryHash(prevHash, tenant, ts, actor, tool, action, target, before, 
 func (l *Log) Append(ctx context.Context, e Entry) (Entry, error) {
 	l.appendMu.Lock()
 	defer l.appendMu.Unlock()
+	return l.append(ctx, l.db, e)
+}
+
+// AppendTx records an entry inside the caller's shared SQLite transaction.
+// The caller owns commit/rollback. This permits assurance terminal state and
+// its rich audit row to commit atomically without opening another handle.
+func (l *Log) AppendTx(ctx context.Context, tx *sql.Tx, e Entry) (Entry, error) {
+	if tx == nil {
+		return Entry{}, errors.New("audit: transaction is required")
+	}
+	l.appendMu.Lock()
+	defer l.appendMu.Unlock()
+	return l.append(ctx, tx, e)
+}
+
+type auditExecutor interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+func (l *Log) append(ctx context.Context, executor auditExecutor, e Entry) (Entry, error) {
 
 	ts := e.Ts
 	if ts.IsZero() {
@@ -181,7 +209,7 @@ func (l *Log) Append(ctx context.Context, e Entry) (Entry, error) {
 	tsStr := ts.UTC().Format(timeFormat)
 	tenant := identity.StorageTenant(ctx)
 
-	prev, err := l.latestHash(ctx, tenant)
+	prev, err := latestHash(ctx, executor, tenant)
 	if err != nil {
 		return Entry{}, err
 	}
@@ -191,7 +219,7 @@ func (l *Log) Append(ctx context.Context, e Entry) (Entry, error) {
 
 	const hashVersion = 2
 	hash := tenantEntryHash(prev, tenant, tsStr, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, e.AuditID)
-	res, err := l.db.ExecContext(ctx,
+	res, err := executor.ExecContext(ctx,
 		`INSERT INTO audit_log (ts, tenant_id, hash_version, actor, tool, action, target, before_json, after_json, workiva_op_url, audit_id, prev_hash, hash)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		tsStr, tenant, hashVersion, e.Actor, e.Tool, e.Action, e.Target, e.BeforeJSON, e.AfterJSON, e.WorkivaOpURL, e.AuditID, prev, hash)
@@ -210,11 +238,9 @@ func (l *Log) Append(ctx context.Context, e Entry) (Entry, error) {
 	return e, nil
 }
 
-// latestHash returns the hash of the most recent row, or "" for an empty
-// log.
-func (l *Log) latestHash(ctx context.Context, tenant string) (string, error) {
+func latestHash(ctx context.Context, executor auditExecutor, tenant string) (string, error) {
 	var h sql.NullString
-	err := l.db.QueryRowContext(ctx, `SELECT hash FROM audit_log WHERE tenant_id = ? ORDER BY seq DESC LIMIT 1`, tenant).Scan(&h)
+	err := executor.QueryRowContext(ctx, `SELECT hash FROM audit_log WHERE tenant_id = ? ORDER BY seq DESC LIMIT 1`, tenant).Scan(&h)
 	if err == sql.ErrNoRows {
 		return "", nil
 	}

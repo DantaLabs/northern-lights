@@ -1,2 +1,5 @@
 region: eu
 listen_addr: ":8090"
+# Phase 3 Wave 1 is fail-closed until a signed bundle is staged and applied.
+assurance_enabled: false
+# assurance_bundle_public_key: "<64 hex characters>"

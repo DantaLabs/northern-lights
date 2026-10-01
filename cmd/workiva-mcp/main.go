@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dantalabs/northern-lights/internal/assurance"
 	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/bootstrap"
 	"github.com/dantalabs/northern-lights/internal/config"
@@ -26,6 +27,7 @@ import (
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 	"github.com/dantalabs/northern-lights/internal/mcpserver/tools"
 	"github.com/dantalabs/northern-lights/internal/ratelimit"
+	"github.com/dantalabs/northern-lights/internal/sqlitedb"
 	"github.com/dantalabs/northern-lights/internal/workiva"
 	"github.com/dantalabs/northern-lights/internal/workivaprovider"
 )
@@ -174,19 +176,58 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		return nil, nil, nil, errors.New("NL_WORKIVA_CLIENT_ID and NL_WORKIVA_CLIENT_SECRET must be set (or enable NL_DEMO_MODE=true)")
 	}
 
-	store, err := mapping.Open(cfg.DBPath)
+	db, err := sqlitedb.Open(cfg.DBPath)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("open mapping store: %w", err)
+		return nil, nil, nil, fmt.Errorf("open shared database: %w", err)
+	}
+	closeDB := func() {
+		if err := db.Close(); err != nil {
+			log.Printf("close shared database: %v", err)
+		}
+	}
+	store, err := mapping.NewWithDB(db)
+	if err != nil {
+		closeDB()
+		return nil, nil, nil, fmt.Errorf("bootstrap mapping store: %w", err)
+	}
+	auditLog, err := audit.NewWithDB(db)
+	if err != nil {
+		closeDB()
+		return nil, nil, nil, fmt.Errorf("bootstrap audit log: %w", err)
+	}
+	assuranceStore, err := assurance.NewWithDB(db)
+	if err != nil {
+		closeDB()
+		return nil, nil, nil, fmt.Errorf("bootstrap assurance store: %w", err)
+	}
+	if cfg.AssuranceEnabled {
+		publicKey, err := assurance.ParsePublicKey(cfg.AssuranceBundlePublicKey)
+		if err != nil {
+			closeDB()
+			return nil, nil, nil, fmt.Errorf("load assurance bundle public key: %w", err)
+		}
+		if err := assuranceStore.Bootstrap(storageCtx, identity.StorageTenant(storageCtx), publicKey); err != nil {
+			closeDB()
+			return nil, nil, nil, fmt.Errorf("bootstrap assurance definitions: %w", err)
+		}
+	}
+	janitorCtx, cancelJanitor := context.WithCancel(storageCtx)
+	janitorDone := make(chan struct{})
+	go func() {
+		defer close(janitorDone)
+		assuranceStore.RunJanitor(janitorCtx, 10*time.Second)
+	}()
+	cleanup := func() {
+		cancelJanitor()
+		<-janitorDone
+		closeDB()
 	}
 
-	// Seed the store from a declarative mappings file when present, or
 	// from the built-in demo fixture when running in demo mode.
 	path := mappingsPath
 	if cfg.DemoMode {
 		if err := bootstrap.LoadDemoMappings(storageCtx, store); err != nil {
-			if err := store.Close(); err != nil {
-				log.Printf("close mapping store: %v", err)
-			}
+			cleanup()
 			return nil, nil, nil, fmt.Errorf("load demo mappings: %w", err)
 		}
 		log.Println("loaded demo mappings")
@@ -199,21 +240,11 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		}
 		if path != "" {
 			if err := bootstrap.LoadMappings(storageCtx, path, store); err != nil {
-				if err := store.Close(); err != nil {
-					log.Printf("close mapping store: %v", err)
-				}
+				cleanup()
 				return nil, nil, nil, fmt.Errorf("load mappings: %w", err)
 			}
 			log.Printf("loaded mappings from %s", path)
 		}
-	}
-
-	auditLog, err := audit.Open(cfg.DBPath)
-	if err != nil {
-		if err := store.Close(); err != nil {
-			log.Printf("close mapping store: %v", err)
-		}
-		return nil, nil, nil, fmt.Errorf("open audit log: %w", err)
 	}
 
 	// Drop staged write confirmations left over from previous runs. The
@@ -225,14 +256,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		log.Printf("cleaned up %d expired pending writes", n)
 	}
 
-	cleanup := func() {
-		if err := auditLog.Close(); err != nil {
-			log.Printf("close audit log: %v", err)
-		}
-		if err := store.Close(); err != nil {
-			log.Printf("close mapping store: %v", err)
-		}
-	}
+	// cleanup also stops the bounded assurance janitor before closing SQLite.
 
 	if cfg.DemoMode {
 		if _, err := auditLog.Append(storageCtx, audit.Entry{
@@ -273,10 +297,11 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	authOptions.Version = version
 	authOptions.DisableLocalhostProtection = cfg.DisableLocalhostProtection
 	handler, err := mcpserver.New(mcpserver.Deps{
-		Client: workivaBackend,
-		Store:  store,
-		Audit:  auditLog,
-		Cfg:    cfg,
+		Client:    workivaBackend,
+		Store:     store,
+		Audit:     auditLog,
+		Assurance: assuranceStore,
+		Cfg:       cfg,
 	}, registry, &authOptions)
 	if err != nil {
 		cleanup()

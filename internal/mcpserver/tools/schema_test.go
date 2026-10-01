@@ -45,8 +45,8 @@ func listAllTools(t *testing.T) []*mcp.Tool {
 // warnings because Copilot Studio treats them as plain strings.
 func TestToolSchemasAreCopilotStudioCompatible(t *testing.T) {
 	tools := listAllTools(t)
-	if len(tools) != 7 {
-		t.Fatalf("tools/list returned %d tools, want 7", len(tools))
+	if len(tools) != 8 {
+		t.Fatalf("tools/list returned %d tools, want 8", len(tools))
 	}
 	for _, tool := range tools {
 		schema, ok := tool.InputSchema.(map[string]any)
@@ -54,6 +54,13 @@ func TestToolSchemasAreCopilotStudioCompatible(t *testing.T) {
 			t.Fatalf("%s: inputSchema is %T %v, want an object schema", tool.Name, tool.InputSchema, tool.InputSchema)
 		}
 		walkSchema(t, tool.Name+".inputSchema", schema)
+		if tool.Name == "workiva_snapshot_report" {
+			output, ok := tool.OutputSchema.(map[string]any)
+			if !ok || output["type"] != "object" {
+				t.Fatalf("%s: outputSchema is %T %v, want an object schema", tool.Name, tool.OutputSchema, tool.OutputSchema)
+			}
+			walkSchema(t, tool.Name+".outputSchema", output)
+		}
 	}
 }
 

@@ -8,9 +8,12 @@ package workivaprovider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
+	"github.com/dantalabs/northern-lights/internal/assurance"
 	"github.com/dantalabs/northern-lights/internal/workiva"
 )
 
@@ -116,6 +119,53 @@ func (r *Router) ListSheets(ctx context.Context, spreadsheetID string) ([]workiv
 
 func (r *Router) GetSheetData(ctx context.Context, spreadsheetID, sheetID, cellRange string, fields []string) (*workiva.SheetData, error) {
 	return r.reader.GetSheetData(ctx, spreadsheetID, sheetID, cellRange, fields)
+}
+
+// ReadUncached performs a distinct direct provider read for assurance. The
+// existing range cache is intentionally not consulted or populated.
+func (r *Router) ReadUncached(ctx context.Context, request assurance.SourceRequest) (assurance.ProviderRead, error) {
+	if typed, ok := r.reader.(assurance.SourceReader); ok {
+		return typed.ReadUncached(ctx, request)
+	}
+	if request.Consistency == assurance.ConsistencyRevisionPinned {
+		return assurance.ProviderRead{}, fmt.Errorf("revision-pinned reads are unsupported")
+	}
+	fields := []string{"cells.value", "cells.calculatedValue"}
+	var data *workiva.SheetData
+	var err error
+	if typed, ok := r.reader.(interface {
+		GetSheetDataTyped(context.Context, string, string, string, []string) (*workiva.SheetData, error)
+	}); ok {
+		data, err = typed.GetSheetDataTyped(ctx, request.ExternalResourceID, request.SubresourceID, request.Locator, fields)
+	} else {
+		data, err = r.reader.GetSheetData(ctx, request.ExternalResourceID, request.SubresourceID, request.Locator, fields)
+	}
+	if err != nil {
+		return assurance.ProviderRead{}, err
+	}
+	if data == nil || len(data.Cells) != 1 || len(data.Cells[0]) != 1 {
+		return assurance.ProviderRead{}, fmt.Errorf("uncached assurance source must resolve to exactly one cell")
+	}
+	cell := data.Cells[0][0]
+	value := assurance.ProviderValue{Value: cell.Value}
+	if formula, ok := cell.Value.(string); ok && strings.HasPrefix(formula, "=") {
+		value.Formula = formula
+		value.CalculatedValue = cell.CalculatedValue
+	}
+	return assurance.ProviderRead{
+		Value:            value,
+		ProviderRevision: assurance.ProviderRevision{Strength: assurance.RevisionUnavailable},
+		CacheBypassed:    true,
+	}, nil
+}
+
+// SupportsRevisionPinning is false until a provider returns and enforces a
+// real revision/ETag contract. It must never be inferred from timestamps.
+func (r *Router) SupportsRevisionPinning() bool {
+	if capability, ok := r.reader.(assurance.RevisionPinCapability); ok {
+		return capability.SupportsRevisionPinning()
+	}
+	return false
 }
 
 func (r *Router) UpdateSheetWithRetryAfter(ctx context.Context, spreadsheetID, sheetID string, update workiva.SheetUpdate) (string, time.Duration, error) {

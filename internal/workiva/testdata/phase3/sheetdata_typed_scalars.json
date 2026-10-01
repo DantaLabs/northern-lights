@@ -1,0 +1,13 @@
+{
+  "data": {
+    "range": {"startRow": 0, "startColumn": 0, "stopRow": 0, "stopColumn": 5},
+    "cells": [[
+      {"value": null},
+      {"value": 0},
+      {"value": 123.4500},
+      {"value": true},
+      {"value": "2026-09-30"},
+      {"value": "EUR"}
+    ]]
+  }
+}

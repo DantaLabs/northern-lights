@@ -148,6 +148,7 @@ func TestToolPermissionMappingCoversSevenTools(t *testing.T) {
 		{name: "workiva_update_field", arguments: json.RawMessage(`{"name":"field","value":"1"}`), confirmationRequired: false, want: identity.PermissionWorkivaWriteConfirm},
 		{name: "workiva_sync_mapping", want: identity.PermissionMappingSync},
 		{name: "workiva_audit_trail", want: identity.PermissionAuditRead},
+		{name: "workiva_snapshot_report", want: identity.PermissionAssuranceSnapshot},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name+"/"+string(tc.want), func(t *testing.T) {
