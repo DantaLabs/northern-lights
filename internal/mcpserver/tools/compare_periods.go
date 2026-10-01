@@ -54,7 +54,12 @@ func (comparePeriodsTool) RegisterSDK(server *mcp.Server, deps mcpserver.Deps) {
 
 func comparisonErrorResponse(ctx context.Context, err error) assurance.ComparisonResponse {
 	_, status := structuredFailure(err, mcpserver.AuditIDFromContext(ctx))
-	return assurance.ComparisonResponse{NLAuditID: mcpserver.AuditIDFromContext(ctx), Status: status}
+	return assurance.ComparisonResponse{
+		NLAuditID: mcpserver.AuditIDFromContext(ctx), Status: status,
+		ComparisonID: "not_created", CurrentSnapshotID: "not_created", PriorSnapshotID: "not_created", ComparisonBasis: assurance.ComparisonBasisUnion, MaterialityPolicyID: "not_created",
+		Completeness: assurance.CompletenessNotEvaluable, MaterialityRevision: 1,
+		Changes: []assurance.ComparisonItem{},
+	}
 }
 
 func comparePeriodsInputSchema() map[string]any {

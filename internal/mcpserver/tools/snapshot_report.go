@@ -129,7 +129,12 @@ func snapshotReportOutputSchema() map[string]any {
 
 func snapshotErrorResponse(ctx context.Context, err error) assurance.SnapshotResponse {
 	_, status := structuredFailure(err, mcpserver.AuditIDFromContext(ctx))
-	return assurance.SnapshotResponse{NLAuditID: mcpserver.AuditIDFromContext(ctx), Status: assurance.SnapshotStatus(status)}
+	return assurance.SnapshotResponse{
+		NLAuditID: mcpserver.AuditIDFromContext(ctx), Status: assurance.SnapshotStatus(status),
+		SnapshotID: "not_created", ReportID: "not_created", CapturedAt: "not_created",
+		DefinitionRevision: 1, Completeness: assurance.CompletenessNotCreated,
+		Observations: []assurance.SnapshotObservation{}, ItemErrors: []assurance.SnapshotItemError{},
+	}
 }
 
 func (snapshotReportTool) RegisterSDK(server *mcp.Server, deps mcpserver.Deps) {

@@ -80,6 +80,39 @@ func TestAuthorizationHeaderShapes(t *testing.T) {
 	}
 }
 
+func TestAPIKeyDenialIsBoundedJSONWithAuditID(t *testing.T) {
+	handler := bearerAuthHandler("phase-one-key", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Fatal("invalid API key reached downstream")
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))
+	req.Header.Set("Authorization", "Bearer wrong-key")
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	if res.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", res.Code)
+	}
+	if got := res.Header().Get("Content-Type"); !strings.HasPrefix(got, "application/json") {
+		t.Fatalf("Content-Type = %q, want application/json", got)
+	}
+	if got := res.Header().Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", got)
+	}
+	var body struct {
+		Status  string `json:"status"`
+		AuditID string `json:"nl_audit_id"`
+		Error   struct {
+			Code    string `json:"code"`
+			AuditID string `json:"nl_audit_id"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("denial body is not JSON: %v", err)
+	}
+	if body.Status != "error" || body.Error.Code != "authentication_failed" || body.AuditID == "" || body.Error.AuditID != body.AuditID {
+		t.Fatalf("denial body = %#v, want bounded correlated authentication_failed envelope", body)
+	}
+}
+
 func ptr(s string) *string { return &s }
 
 func TestHealthEndpointsDoNotRequireBearerToken(t *testing.T) {
@@ -407,8 +440,8 @@ func TestDebugHeaderLoggingOnlyWithFlag(t *testing.T) {
 			if tc.wantLog && !strings.Contains(got, "configured key_sha256="+keyFingerprint("test-token")) {
 				t.Fatalf("startup line lacks the configured key fingerprint: %q", got)
 			}
-			if tc.wantLog && !strings.Contains(got, `status=401 error="unauthorized: missing or invalid bearer token"`) {
-				t.Fatalf("debug line lacks status and error text: %q", got)
+			if tc.wantLog && (!strings.Contains(got, "status=401") || !strings.Contains(got, `authentication_failed`)) {
+				t.Fatalf("debug line lacks status and authentication error text: %q", got)
 			}
 			if strings.Contains(got, "nl-debug-headers") != tc.wantLog {
 				t.Fatalf("debug line logged=%v, want %v: %q", !tc.wantLog, tc.wantLog, got)

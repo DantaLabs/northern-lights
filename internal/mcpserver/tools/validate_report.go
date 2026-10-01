@@ -54,7 +54,12 @@ func (validateReportTool) RegisterSDK(server *mcp.Server, deps mcpserver.Deps) {
 
 func validationErrorResponse(ctx context.Context, err error) assurance.ValidationResponse {
 	_, status := structuredFailure(err, mcpserver.AuditIDFromContext(ctx))
-	return assurance.ValidationResponse{NLAuditID: mcpserver.AuditIDFromContext(ctx), Status: status}
+	return assurance.ValidationResponse{
+		NLAuditID: mcpserver.AuditIDFromContext(ctx), Status: status,
+		ValidationRunID: "not_created", SnapshotID: "not_created", RuleSetID: "not_created", RuleSetRevision: 1,
+		Counts:  map[string]int{"pass": 0, "fail": 0, "warn": 0, "not_evaluable": 0, "error": 0},
+		Results: []assurance.ValidationResult{},
+	}
 }
 
 func validateReportInputSchema() map[string]any {

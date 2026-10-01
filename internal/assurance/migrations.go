@@ -306,7 +306,38 @@ CREATE TABLE assurance_evidence_cleanup (
 CREATE INDEX idx_assurance_evidence_cleanup_record ON assurance_evidence_cleanup(tenant_id, record_id, state);
 `
 
-var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11}
+const migrationV12 = `
+DROP TRIGGER IF EXISTS assurance_snapshot_terminal_immutable;
+DROP TRIGGER IF EXISTS assurance_snapshot_no_delete;
+DROP TRIGGER IF EXISTS assurance_observation_no_update;
+DROP TRIGGER IF EXISTS assurance_observation_no_delete;
+DROP TRIGGER IF EXISTS assurance_failure_no_update;
+DROP TRIGGER IF EXISTS assurance_failure_no_delete;
+DROP INDEX IF EXISTS idx_assurance_snapshots_tenant_report_period;
+ALTER TABLE assurance_snapshots RENAME TO assurance_snapshots_v11;
+CREATE TABLE assurance_snapshots (
+ tenant_id TEXT NOT NULL, snapshot_id TEXT NOT NULL, idempotency_digest TEXT NOT NULL, report_id TEXT NOT NULL,
+ definition_revision INTEGER NOT NULL, period_json TEXT NOT NULL, status TEXT NOT NULL,
+ completeness TEXT NOT NULL, mapping_set_hash TEXT NOT NULL, provider_route TEXT NOT NULL,
+ content_hash TEXT NOT NULL DEFAULT '', retention_class TEXT NOT NULL, captured_at TEXT NOT NULL DEFAULT '',
+ expires_at TEXT NOT NULL DEFAULT '', audit_id TEXT NOT NULL DEFAULT '', PRIMARY KEY (tenant_id, snapshot_id),
+ CHECK(status IN ('running','completed','partial','failed','expired'))
+);
+INSERT INTO assurance_snapshots (tenant_id, snapshot_id, idempotency_digest, report_id, definition_revision, period_json, status, completeness, mapping_set_hash, provider_route, content_hash, retention_class, captured_at, expires_at, audit_id)
+ SELECT tenant_id, snapshot_id, idempotency_digest, report_id, definition_revision, period_json, status, completeness, mapping_set_hash, provider_route, content_hash, retention_class, captured_at, expires_at, audit_id
+ FROM assurance_snapshots_v11;
+DROP TABLE assurance_snapshots_v11;
+CREATE INDEX idx_assurance_snapshots_tenant_report_period ON assurance_snapshots(tenant_id, report_id, definition_revision);
+CREATE TRIGGER assurance_snapshot_terminal_immutable BEFORE UPDATE ON assurance_snapshots
+ WHEN OLD.status IN ('completed','partial','failed','expired') BEGIN SELECT RAISE(ABORT, 'immutable assurance snapshot'); END;
+CREATE TRIGGER assurance_snapshot_no_delete BEFORE DELETE ON assurance_snapshots BEGIN SELECT RAISE(ABORT, 'immutable assurance snapshot'); END;
+CREATE TRIGGER assurance_observation_no_update BEFORE UPDATE ON assurance_snapshot_observations BEGIN SELECT RAISE(ABORT, 'immutable assurance observation'); END;
+CREATE TRIGGER assurance_observation_no_delete BEFORE DELETE ON assurance_snapshot_observations BEGIN SELECT RAISE(ABORT, 'immutable assurance observation'); END;
+CREATE TRIGGER assurance_failure_no_update BEFORE UPDATE ON assurance_snapshot_failures BEGIN SELECT RAISE(ABORT, 'immutable assurance failure'); END;
+CREATE TRIGGER assurance_failure_no_delete BEFORE DELETE ON assurance_snapshot_failures BEGIN SELECT RAISE(ABORT, 'immutable assurance failure'); END;
+`
+
+var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11, migrationV12}
 
 // Migrate installs the complete contiguous assurance schema family.
 func Migrate(ctx context.Context, db *sql.DB) error {

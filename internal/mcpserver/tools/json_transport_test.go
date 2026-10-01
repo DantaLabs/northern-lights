@@ -14,10 +14,12 @@ import (
 // rawMCPClient speaks JSON-RPC over plain HTTP so the response
 // Content-Type can be inspected, which the SDK client hides.
 type rawMCPClient struct {
-	t       *testing.T
-	url     string
-	session string
-	nextID  int
+	t         *testing.T
+	url       string
+	session   string
+	nextID    int
+	authToken string
+	actor     string
 }
 
 // post sends one JSON-RPC message with the Accept header Copilot Studio
@@ -42,8 +44,18 @@ func (c *rawMCPClient) post(method string, params any) (*http.Response, []byte) 
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json, text/event-stream")
-	req.Header.Set("Authorization", "Bearer test-token")
-	req.Header.Set(mcpserver.ActorHeader, "raw-tester@example.com")
+	req.Header.Set("Authorization", "Bearer "+func() string {
+		if c.authToken != "" {
+			return c.authToken
+		}
+		return "test-token"
+	}())
+	req.Header.Set(mcpserver.ActorHeader, func() string {
+		if c.actor != "" {
+			return c.actor
+		}
+		return "raw-tester@example.com"
+	}())
 	if c.session != "" {
 		req.Header.Set("Mcp-Session-Id", c.session)
 	}
@@ -89,8 +101,8 @@ func (c *rawMCPClient) call(name string, args map[string]any) map[string]any {
 	return rpc.Result.StructuredContent
 }
 
-// TestPostMCPAnswersJSONForEveryTool drives initialize, tools/list and all 7
-// tools (including the two-phase write with its operation poll) over raw
+// TestPostMCPAnswersJSONForEveryTool drives initialize, tools/list and all
+// seven legacy tool names (including the two-phase write with its operation poll) over raw
 // HTTP and requires application/json on each response, then checks GET
 // /mcp is refused with 405.
 func TestPostMCPAnswersJSONForEveryTool(t *testing.T) {
@@ -186,6 +198,7 @@ func TestRawJSONRPCWave2ToolsReturnStructuredErrorsOverJSON(t *testing.T) {
 		t.Fatalf("initialize: %d: %s", resp.StatusCode, body)
 	}
 	_, _ = c.post("notifications/initialized", nil)
+	schemas := rawToolSchemas(t, c)
 
 	cases := []struct {
 		name string
@@ -215,6 +228,9 @@ func TestRawJSONRPCWave2ToolsReturnStructuredErrorsOverJSON(t *testing.T) {
 		}
 		if !rpc.Result.IsError || rpc.Result.StructuredContent["status"] != "error" {
 			t.Fatalf("%s: untyped result: %s", tc.name, body)
+		}
+		if err := validateJSONSchema(schemas[tc.name], rpc.Result.StructuredContent); err != nil {
+			t.Fatalf("%s: structured error violates advertised output schema: %v", tc.name, err)
 		}
 		auditID, _ := rpc.Result.StructuredContent["nl_audit_id"].(string)
 		if auditID == "" || len(rpc.Result.Content) == 0 || !strings.Contains(rpc.Result.Content[0].Text, auditID) {

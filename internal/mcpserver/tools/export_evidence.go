@@ -52,7 +52,16 @@ func (exportEvidenceTool) RegisterSDK(server *mcp.Server, deps mcpserver.Deps) {
 
 func evidenceErrorResponse(ctx context.Context, err error) assurance.EvidenceResponse {
 	_, status := structuredFailure(err, mcpserver.AuditIDFromContext(ctx))
-	return assurance.EvidenceResponse{NLAuditID: mcpserver.AuditIDFromContext(ctx), Status: status, Artifacts: []assurance.EvidenceArtifact{}}
+	return assurance.EvidenceResponse{
+		NLAuditID: mcpserver.AuditIDFromContext(ctx), Status: status, ManifestVersion: 1,
+		EvidenceManifestID: "not_created", PackageHash: "unknown", ExpiresAt: "unknown",
+		Artifacts: []assurance.EvidenceArtifact{}, Audit: assurance.AuditManifest{
+			Integrity:    assurance.AuditIntegrity{Scope: "unknown", ChainVerified: false, HashVersionCoverage: []assurance.HashVersionCoverage{}, TenantIdentityHashed: false},
+			Checkpoint:   assurance.AuditCheckpoint{Status: "not_requested"},
+			Completeness: assurance.AuditCompleteness{Status: "unknown", OmissionsRecorded: false, TerminalAnchor: "unknown"},
+			Caveats:      []string{},
+		},
+	}
 }
 
 func exportEvidenceInputSchema() map[string]any {
@@ -68,5 +77,6 @@ func exportEvidenceOutputSchema() map[string]any {
 	checkpoint := map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"status": boundedEnum("verified", "missing", "mismatch", "unverified", "not_requested"), "checkpoint_id": boundedSchema("checkpoint ID", 128), "sequence": boundedInteger(0, 2147483647), "hash": boundedSchema("checkpoint hash", 64), "external_anchor": boundedSchema("external checkpoint anchor", 256)}, "required": []string{"status"}}
 	completeness := map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"status": boundedEnum("complete", "incomplete", "unknown"), "expected_count": boundedInteger(0, 2147483647), "included_count": boundedInteger(0, 2147483647), "omitted_count": boundedInteger(0, 2147483647), "expected_event_count": boundedInteger(0, 2147483647), "included_event_count": boundedInteger(0, 2147483647), "omission_count": boundedInteger(0, 2147483647), "omissions_recorded": map[string]any{"type": "boolean"}, "terminal_anchor": boundedSchema("terminal anchor state", 32), "terminal_anchor_verified": map[string]any{"type": "boolean"}, "final_row_deletion_detectable": map[string]any{"type": "boolean"}}, "required": []string{"status", "expected_count", "included_count", "omitted_count", "omissions_recorded", "terminal_anchor", "terminal_anchor_verified", "final_row_deletion_detectable"}}
 	audit := map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"first_seq": boundedInteger(0, 2147483647), "last_seq": boundedInteger(0, 2147483647), "first_hash": boundedSchema("first audit hash", 64), "last_hash": boundedSchema("last audit hash", 64), "integrity": integrity, "checkpoint": checkpoint, "completeness": completeness, "caveats": map[string]any{"type": "array", "maxItems": 16, "items": boundedSchema("audit caveat", 512)}}, "required": []string{"integrity", "checkpoint", "completeness", "caveats"}}
-	return map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"nl_audit_id": boundedSchema("audit ID", 128), "status": boundedEnum("completed", "too_large", "denied", "error", "idempotency_replay", "idempotency_in_progress", "idempotency_conflict"), "error": structuredErrorSchema(), "evidence_manifest_id": boundedSchema("manifest ID", 128), "manifest_version": boundedInteger(1, 2), "artifacts": map[string]any{"type": "array", "maxItems": 3, "items": artifact}, "package_hash": boundedSchema("package SHA-256", 64), "audit": audit, "expires_at": boundedSchema("expiry time", 64)}, "required": []string{"nl_audit_id", "status"}}
+	optionalString := func(max int) map[string]any { return map[string]any{"type": "string", "maxLength": max} }
+	return map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"nl_audit_id": boundedSchema("audit ID", 128), "status": boundedEnum("completed", "too_large", "denied", "error", "idempotency_replay", "idempotency_in_progress", "idempotency_conflict"), "error": structuredErrorSchema(), "evidence_manifest_id": optionalString(128), "manifest_version": boundedInteger(1, 2), "artifacts": map[string]any{"type": "array", "maxItems": 3, "items": artifact}, "package_hash": optionalString(64), "audit": audit, "expires_at": optionalString(64)}, "required": []string{"nl_audit_id", "status"}}
 }

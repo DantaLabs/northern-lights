@@ -308,15 +308,11 @@
       "type": "object"
     },
     "evidence_manifest_id": {
-      "description": "manifest ID",
       "maxLength": 128,
-      "minLength": 1,
       "type": "string"
     },
     "expires_at": {
-      "description": "expiry time",
       "maxLength": 64,
-      "minLength": 1,
       "type": "string"
     },
     "manifest_version": {
@@ -331,9 +327,7 @@
       "type": "string"
     },
     "package_hash": {
-      "description": "package SHA-256",
       "maxLength": 64,
-      "minLength": 1,
       "type": "string"
     },
     "status": {

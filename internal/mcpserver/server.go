@@ -356,6 +356,19 @@ func normalizeStructuredToolError(res *mcp.CallToolResult, auditID string) {
 	if value == nil {
 		value = map[string]any{}
 	}
+	if _, hasError := value["error"]; !hasError && len(res.Content) > 0 {
+		if text, ok := res.Content[0].(*mcp.TextContent); ok {
+			var envelope map[string]any
+			if json.Unmarshal([]byte(text.Text), &envelope) == nil {
+				if structured, ok := envelope["error"].(map[string]any); ok {
+					value["error"] = structured
+				}
+				if status, ok := envelope["status"].(string); ok {
+					value["status"] = status
+				}
+			}
+		}
+	}
 	value["nl_audit_id"] = auditID
 	if _, ok := value["status"]; !ok {
 		value["status"] = "error"
@@ -531,7 +544,7 @@ func keyFingerprint(key string) string {
 }
 
 // maxErrorText caps the response text kept for the debug line.
-const maxErrorText = 200
+const maxErrorText = 1024
 
 // statusRecorder captures the response status and, for responses other
 // than 200 and 202, the start of the server's own response text so the
@@ -805,16 +818,13 @@ func entraAuthHandler(verifier identity.TokenVerifier, next http.Handler) http.H
 // bearerAuthHandler gates every request behind the API key compared in
 // constant time (see authorizationKey for the accepted header shapes). A
 // rejected request is answered here and never reaches the MCP server, so
-// no Workiva call can result from it. The 401 body is plain text so
-// accidental hits from browsers are self-explanatory.
+// no Workiva call can result from it.
 func bearerAuthHandler(token string, next http.Handler) http.Handler {
 	expected := []byte(token)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key, ok := authorizationKey(r.Header.Get("Authorization"))
 		if !ok || subtle.ConstantTimeCompare([]byte(key), expected) != 1 {
-			w.Header().Set("Cache-Control", "no-store")
-			w.Header().Set("WWW-Authenticate", `Bearer realm="northern-lights"`)
-			http.Error(w, "unauthorized: missing or invalid bearer token", http.StatusUnauthorized)
+			writeHTTPStructuredError(w, http.StatusUnauthorized, uuid.NewString(), "authentication_failed", "missing or invalid API key", false, false)
 			return
 		}
 		next.ServeHTTP(w, r)
