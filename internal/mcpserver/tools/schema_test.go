@@ -48,8 +48,8 @@ func listAllTools(t *testing.T) []*mcp.Tool {
 // warnings because Copilot Studio treats them as plain strings.
 func TestToolSchemasAreCopilotStudioCompatible(t *testing.T) {
 	tools := listAllTools(t)
-	if len(tools) != 11 {
-		t.Fatalf("tools/list returned %d tools, want 11", len(tools))
+	if len(tools) != 12 {
+		t.Fatalf("tools/list returned %d tools, want 12", len(tools))
 	}
 	for _, tool := range tools {
 		schema, ok := tool.InputSchema.(map[string]any)
@@ -172,7 +172,7 @@ func verifyClosedBoundedSchema(t *testing.T, path string, node any) {
 }
 
 func TestWave2ToolNamesReserveExactFinalContract(t *testing.T) {
-	want := []string{"workiva_list_spreadsheets", "workiva_read_range", "workiva_search_fields", "workiva_get_field", "workiva_update_field", "workiva_sync_mapping", "workiva_audit_trail", "workiva_snapshot_report", "workiva_validate_report", "workiva_compare_periods", "workiva_export_evidence"}
+	want := []string{"workiva_list_spreadsheets", "workiva_read_range", "workiva_search_fields", "workiva_get_field", "workiva_update_field", "workiva_sync_mapping", "workiva_audit_trail", "workiva_snapshot_report", "workiva_validate_report", "workiva_compare_periods", "workiva_export_evidence", "workiva_transfer_value"}
 	tools := All()
 	if len(tools) != len(want) {
 		t.Fatalf("All() returned %d tools, want %d", len(tools), len(want))
@@ -190,8 +190,8 @@ func TestWave3FinalToolNamesAreContractFixtureOnly(t *testing.T) {
 	if len(final) != 13 || final[11] != "workiva_discover_relationships" || final[12] != "workiva_transfer_value" {
 		t.Fatalf("final-name fixture = %v", final)
 	}
-	if len(All()) != 11 {
-		t.Fatalf("Wave 3 fixture must not register tools; All() returned %d", len(All()))
+	if len(All()) != 12 {
+		t.Fatalf("isolated transfer branch must register 12 tools; All() returned %d", len(All()))
 	}
 }
 

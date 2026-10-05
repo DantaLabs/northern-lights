@@ -16,5 +16,6 @@ func All() []mcpserver.Tool {
 		ValidateReport(),
 		ComparePeriods(),
 		ExportEvidence(),
+		TransferValue(),
 	}
 }

@@ -239,8 +239,8 @@ func rawToolSchemas(t *testing.T, c *rawMCPClient) map[string]map[string]any {
 	if err := json.Unmarshal(body, &list); err != nil {
 		t.Fatalf("tools/list JSON: %v", err)
 	}
-	if len(list.Result.Tools) != 11 {
-		t.Fatalf("tools/list returned %d tools, want exactly 11", len(list.Result.Tools))
+	if len(list.Result.Tools) != 12 {
+		t.Fatalf("tools/list returned %d tools, want exactly 12", len(list.Result.Tools))
 	}
 	result := make(map[string]map[string]any, len(list.Result.Tools))
 	for _, tool := range list.Result.Tools {

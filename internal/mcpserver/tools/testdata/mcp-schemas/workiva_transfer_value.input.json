@@ -1,0 +1,232 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "description": "inspect_operation, read_back, classify, or close.",
+      "maxLength": 32,
+      "minLength": 1,
+      "type": "string"
+    },
+    "classification": {
+      "description": "confirmed_applied, confirmed_not_applied, conflicting_value, still_unknown, or provider_evidence_inconsistent.",
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "confirmation_token": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "type": "string"
+    },
+    "conversion_policy_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "eligible_row_ids": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 100,
+      "type": "array"
+    },
+    "idempotency_key": {
+      "description": "Required after authentication; scoped to trusted tenant, actor, tool, and phase.",
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "max_cells": {
+      "description": "Bulk-stage request bound; absolute server cap 100.",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_rows": {
+      "description": "Bulk-stage request bound; absolute server cap 100.",
+      "maximum": 100,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "note": {
+      "maxLength": 2000,
+      "type": "string"
+    },
+    "observation": {
+      "description": "matches, mismatch, not_visible, or not_checked.",
+      "maxLength": 32,
+      "minLength": 1,
+      "type": "string"
+    },
+    "observed_value": {
+      "additionalProperties": false,
+      "properties": {
+        "boolean": {
+          "type": "boolean"
+        },
+        "error_code": {
+          "maxLength": 128,
+          "type": "string"
+        },
+        "formula": {
+          "type": "boolean"
+        },
+        "kind": {
+          "maxLength": 32,
+          "minLength": 1,
+          "type": "string"
+        },
+        "number": {
+          "maxLength": 256,
+          "type": "string"
+        },
+        "precision": {
+          "maximum": 38,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "scale": {
+          "maxLength": 64,
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 4096,
+          "type": "string"
+        },
+        "unit": {
+          "maxLength": 128,
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "phase": {
+      "description": "Required server vocabulary: stage, confirm, acknowledge, reconcile, bulk_stage, or bulk_confirm.",
+      "maxLength": 32,
+      "minLength": 1,
+      "type": "string"
+    },
+    "reason": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "type": "string"
+    },
+    "refresh_override_reason": {
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "refreshed": {
+      "type": "boolean"
+    },
+    "selection": {
+      "additionalProperties": false,
+      "properties": {
+        "frozen_transfer_ids": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "report_field_ids": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 1000,
+          "type": "array"
+        },
+        "selection_digest": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "mapping_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "resource_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "target": {
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "resource_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [],
+      "type": "object"
+    },
+    "target_template_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "transfer_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "ui_location": {
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "resource_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "resource_id",
+        "locator"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "phase",
+    "idempotency_key"
+  ],
+  "type": "object"
+}

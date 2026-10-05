@@ -56,6 +56,8 @@ type Bundle struct {
 	MaterialityPolicies []MaterialityPolicy `json:"materiality_policies,omitempty" yaml:"materiality_policies,omitempty"`
 	ExportProfiles      []ExportProfile     `json:"export_profiles,omitempty" yaml:"export_profiles,omitempty"`
 	RetentionPolicies   []RetentionPolicy   `json:"retention_policies,omitempty" yaml:"retention_policies,omitempty"`
+	TransferRoutes      []TransferRoute     `json:"transfer_routes,omitempty" yaml:"transfer_routes,omitempty"`
+	ConversionPolicies  []ConversionPolicy  `json:"conversion_policies,omitempty" yaml:"conversion_policies,omitempty"`
 }
 
 // ReportRevision is one immutable server-owned report definition revision.
@@ -408,6 +410,51 @@ func validateBundleObject(bundle *Bundle, expectedTenant string) error {
 			return domainError("bundle_reference_unresolved", fmt.Sprintf("report %s references an unavailable retention policy", report.ReportID))
 		}
 	}
+	conversionPolicies := map[string]ConversionPolicy{}
+	for i := range bundle.ConversionPolicies {
+		p := &bundle.ConversionPolicies[i]
+		if err := validateConversionPolicy(*p); err != nil {
+			return domainError("bundle_invalid_conversion_policy", err.Error())
+		}
+		key := fmt.Sprintf("%s/%d", p.PolicyID, p.Revision)
+		if _, ok := policies[key]; ok {
+			return domainError("bundle_duplicate_conversion_policy", "conversion policy revisions must be unique")
+		}
+		canonical, err := CanonicalJSON(conversionPolicyContent(*p))
+		if err != nil {
+			return err
+		}
+		hash := digestHex(HashBytes(canonical))
+		if p.ContentHash != "" && p.ContentHash != hash {
+			return domainError("bundle_hash_invalid", "conversion policy content hash does not match")
+		}
+		p.ContentHash = hash
+		conversionPolicies[key] = *p
+	}
+	seenRoutes := map[string]bool{}
+	for i := range bundle.TransferRoutes {
+		r := &bundle.TransferRoutes[i]
+		if err := validateTransferRoute(*r); err != nil {
+			return domainError("bundle_invalid_transfer_route", err.Error())
+		}
+		key := fmt.Sprintf("%s/%d", r.RouteID, r.Revision)
+		if seenRoutes[key] {
+			return domainError("bundle_duplicate_transfer_route", "transfer route revisions must be unique")
+		}
+		seenRoutes[key] = true
+		if _, ok := conversionPolicies[fmt.Sprintf("%s/%d", r.ConversionPolicyID, r.ConversionPolicyVersion)]; !ok {
+			return domainError("bundle_reference_unresolved", "transfer route conversion policy exact revision is missing")
+		}
+		canonical, err := CanonicalJSON(transferRouteContent(*r))
+		if err != nil {
+			return err
+		}
+		hash := digestHex(HashBytes(canonical))
+		if r.ContentHash != "" && r.ContentHash != hash {
+			return domainError("bundle_hash_invalid", "transfer route content hash does not match")
+		}
+		r.ContentHash = hash
+	}
 	return nil
 }
 
@@ -518,6 +565,28 @@ func (s *Store) StageBundle(ctx context.Context, bundle *ValidatedBundle) error 
 		}
 		if err == nil && (report.Revision < existingRevision || report.Revision == existingRevision && report.ContentHash != existingHash) {
 			return domainError("bundle_revision_non_monotonic", fmt.Sprintf("report %s revision is not a valid immutable successor", report.ReportID))
+		}
+	}
+	for _, policy := range bundle.Bundle.ConversionPolicies {
+		var latest int
+		var hash string
+		err := s.db.QueryRowContext(ctx, `SELECT revision,content_hash FROM assurance_conversion_policy_revisions WHERE tenant_id=? AND policy_id=? ORDER BY revision DESC LIMIT 1`, tenant, policy.PolicyID).Scan(&latest, &hash)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if err == nil && (policy.Revision < latest || policy.Revision == latest && policy.ContentHash != hash) {
+			return domainError("bundle_revision_non_monotonic", "conversion policy revision is not a valid immutable successor")
+		}
+	}
+	for _, route := range bundle.Bundle.TransferRoutes {
+		var latestRevision int
+		var existing string
+		err := s.db.QueryRowContext(ctx, `SELECT revision, content_hash FROM assurance_transfer_route_revisions WHERE tenant_id=? AND route_id=? ORDER BY revision DESC LIMIT 1`, tenant, route.RouteID).Scan(&latestRevision, &existing)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if err == nil && (route.Revision < latestRevision || (route.Revision == latestRevision && route.ContentHash != existing)) {
+			return domainError("bundle_revision_non_monotonic", "transfer route revision is not a valid immutable successor")
 		}
 	}
 	checkRevision := func(table, idColumn string, id string, revision int, contentHash string) error {
@@ -722,6 +791,50 @@ func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) err
 	addActiveObject := func(kind, id string, revision int, version int) error {
 		_, err := tx.ExecContext(ctx, `INSERT INTO assurance_active_bundle_objects (tenant_id, object_kind, object_id, object_revision, bundle_version) VALUES (?, ?, ?, ?, ?)`, tenant, kind, id, revision, version)
 		return err
+	}
+	for _, policy := range bundle.Bundle.ConversionPolicies {
+		raw, err := marshalCanonical(policy)
+		if err != nil {
+			return err
+		}
+		var existing string
+		err = tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_conversion_policy_revisions WHERE tenant_id=? AND policy_id=? AND revision=?`, tenant, policy.PolicyID, policy.Revision).Scan(&existing)
+		if err == nil && existing != policy.ContentHash {
+			return domainError("bundle_revision_hash_conflict", "conversion policy revision content changed")
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_conversion_policy_revisions (tenant_id,policy_id,revision,content_hash,policy_json) VALUES (?,?,?,?,?)`, tenant, policy.PolicyID, policy.Revision, policy.ContentHash, raw); err != nil {
+				return err
+			}
+		}
+		if err := addActiveObject("conversion_policy", policy.PolicyID, policy.Revision, bundle.Bundle.BundleVersion); err != nil {
+			return err
+		}
+	}
+	for _, route := range bundle.Bundle.TransferRoutes {
+		raw, err := marshalCanonical(route)
+		if err != nil {
+			return err
+		}
+		var existing string
+		err = tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_transfer_route_revisions WHERE tenant_id=? AND route_id=? AND revision=?`, tenant, route.RouteID, route.Revision).Scan(&existing)
+		if err == nil && existing != route.ContentHash {
+			return domainError("bundle_revision_hash_conflict", "transfer route revision content changed")
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_transfer_route_revisions (tenant_id,route_id,revision,content_hash,route_json) VALUES (?,?,?,?,?)`, tenant, route.RouteID, route.Revision, route.ContentHash, raw); err != nil {
+				return err
+			}
+		}
+		if err := addActiveObject("transfer_route", route.RouteID, route.Revision, bundle.Bundle.BundleVersion); err != nil {
+			return err
+		}
 	}
 	for _, ruleSet := range bundle.Bundle.RuleSets {
 		definitionJSON, err := marshalCanonical(ruleSet)

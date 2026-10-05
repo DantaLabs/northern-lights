@@ -377,7 +377,71 @@ FROM assurance_evidence_manifests_v13;
 DROP TABLE assurance_evidence_manifests_v13;
 `
 
-var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11, migrationV12, migrationV13}
+const migrationV14 = `
+CREATE TABLE transfer_intents (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, actor_id TEXT NOT NULL, permission TEXT NOT NULL,
+ intent_json TEXT NOT NULL, state TEXT NOT NULL, token_digest TEXT NOT NULL, idempotency_digest TEXT NOT NULL,
+ request_digest TEXT NOT NULL, expires_at TEXT NOT NULL, lease_id TEXT NOT NULL DEFAULT '', lease_expires_at TEXT NOT NULL DEFAULT '',
+ claim_fence_digest TEXT NOT NULL DEFAULT '', terminal_fence_digest TEXT NOT NULL DEFAULT '', recovery_reason TEXT NOT NULL DEFAULT '',
+ operation_reference TEXT NOT NULL DEFAULT '', operation_completed INTEGER NOT NULL DEFAULT 0, submission_started_at TEXT NOT NULL DEFAULT '',
+ submissions INTEGER NOT NULL DEFAULT 0, row_version INTEGER NOT NULL DEFAULT 1,
+ machine_outcome TEXT NOT NULL DEFAULT 'not_applicable', machine_outcome_provenance TEXT NOT NULL DEFAULT 'not_applicable',
+ visual_state TEXT NOT NULL DEFAULT 'pending',
+ PRIMARY KEY(tenant_id,transfer_id), UNIQUE(tenant_id,actor_id,idempotency_digest)
+);
+CREATE INDEX idx_transfer_intents_tenant_state ON transfer_intents(tenant_id,state,lease_expires_at);
+CREATE TABLE transfer_audit_events (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, event_id TEXT NOT NULL, disposition TEXT NOT NULL,
+ details TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(tenant_id,event_id)
+);
+CREATE TABLE transfer_visual_acknowledgements (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, ack_actor_id TEXT NOT NULL, observation TEXT NOT NULL,
+ ui_location TEXT NOT NULL, refreshed INTEGER NOT NULL, observed_value TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,transfer_id,ack_actor_id,created_at)
+);
+CREATE TABLE transfer_reconciliations (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, reason TEXT NOT NULL, classification TEXT NOT NULL,
+ evidence_ref TEXT NOT NULL, disposition TEXT NOT NULL, created_at TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,transfer_id,created_at)
+);
+CREATE TABLE assurance_transfer_fences (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, fence_kind TEXT NOT NULL CHECK(fence_kind IN ('claim','terminal')),
+ fence_digest TEXT NOT NULL, binding_json TEXT NOT NULL, created_at TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,transfer_id,fence_kind)
+);
+CREATE TABLE assurance_transfer_visual_evidence (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, acknowledgement_id TEXT NOT NULL, confirmer_actor_id TEXT NOT NULL,
+ ack_actor_id TEXT NOT NULL, observation TEXT NOT NULL, ui_location TEXT NOT NULL, refreshed INTEGER NOT NULL,
+ observed_value_json TEXT NOT NULL DEFAULT '', observed_digest TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,acknowledgement_id)
+);
+CREATE TABLE assurance_transfer_reconciliation_evidence (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, reconciliation_id TEXT NOT NULL, reason TEXT NOT NULL,
+ classification TEXT NOT NULL, evidence_ref TEXT NOT NULL DEFAULT '', disposition TEXT NOT NULL, created_at TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,reconciliation_id)
+);
+CREATE INDEX idx_assurance_transfer_recon_tenant_state ON assurance_transfer_reconciliation_evidence(tenant_id,transfer_id,disposition);
+`
+
+const migrationV15 = `
+CREATE TABLE assurance_transfer_route_revisions (
+ tenant_id TEXT NOT NULL, route_id TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision > 0),
+ content_hash TEXT NOT NULL, route_json TEXT NOT NULL,
+ PRIMARY KEY(tenant_id, route_id, revision)
+);
+CREATE INDEX idx_transfer_routes_tenant_id ON assurance_transfer_route_revisions(tenant_id, route_id, revision);
+`
+
+const migrationV16 = `
+CREATE TABLE assurance_conversion_policy_revisions (
+ tenant_id TEXT NOT NULL, policy_id TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision > 0),
+ content_hash TEXT NOT NULL, policy_json TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,policy_id,revision)
+);
+CREATE INDEX idx_conversion_policies_tenant_id ON assurance_conversion_policy_revisions(tenant_id,policy_id,revision);
+`
+
+var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11, migrationV12, migrationV13, migrationV14, migrationV15, migrationV16}
 
 // Migrate installs the complete contiguous assurance schema family.
 func Migrate(ctx context.Context, db *sql.DB) error {
@@ -402,6 +466,8 @@ func assuranceTables() []string {
 		"assurance_retention_policies", "assurance_idempotency_records", "assurance_audit_links", "assurance_checkpoints",
 		"assurance_materiality_policies", "assurance_export_profiles", "assurance_legal_holds", "assurance_evidence_tombstones",
 		"assurance_active_bundle_objects", "assurance_retention_policy_revisions",
-		"assurance_evidence_cleanup",
+		"assurance_evidence_cleanup", "assurance_transfer_fences", "assurance_transfer_visual_evidence", "assurance_transfer_reconciliation_evidence",
+		"transfer_intents", "transfer_audit_events", "transfer_visual_acknowledgements", "transfer_reconciliations",
+		"assurance_transfer_route_revisions", "assurance_conversion_policy_revisions",
 	}
 }

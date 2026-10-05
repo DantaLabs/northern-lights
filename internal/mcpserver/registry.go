@@ -13,6 +13,7 @@ import (
 	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/config"
 	"github.com/dantalabs/northern-lights/internal/mapping"
+	"github.com/dantalabs/northern-lights/internal/transfer"
 	"github.com/dantalabs/northern-lights/internal/workivaprovider"
 )
 
@@ -24,6 +25,7 @@ type Deps struct {
 	Store     *mapping.Store
 	Audit     *audit.Log
 	Assurance *assurance.Store
+	Transfer  *transfer.Service
 	Cfg       *config.Config
 	// ActorHeader is populated by New before tools are bound so middleware
 	// and rich mutation audit entries use the same identity source.

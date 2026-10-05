@@ -369,6 +369,30 @@ Fixed and verified by tests:
 - ISSUE-019 CI runs golangci-lint
 - ISSUE-020 repository published: github.com/DantaLabs/northern-lights
 
+## Wave 3 transfer local service stage (2026-10-03)
+
+- Added/continued `internal/transfer` local service implementation behind the
+  existing `internal/workivaprovider.Router`; provider reads use its uncached
+  route and mutations/polling use the routed writer. The local `Fence` seam is
+  injected. `FakeFence` reports `Durable() == false`, so production constructor
+  `NewService` fails closed unless a verified durable fence is supplied. No
+  Azure Blob backend/durability is implemented or claimed (planned Wave 5).
+- Focused tests exercise stage's authoritative source/target reads with no POST,
+  token-free replay, stale source with zero POST, actor/permission/token CAS,
+  verified fake claim/terminal fence path, 100 concurrent confirms at-most-one
+  POST, ambiguous send timeout freezing/no repeat, persisted operation reference
+  on poll timeout, and exact target spreadsheet/sheet/cell edit payload.
+- Fixed target routing so the parsed locator coordinates and exact staged sheet
+  ID, rather than A1/sheet-empty constants, reach the existing router.
+- Evidence: `go test ./internal/transfer ./internal/workivaprovider -count=1`
+  passed after fixes; focused transfer tests passed again after adding the poll
+  timeout/reference test. No commit or push.
+- Remaining: run full race/static/test suite; independent review the local
+  service/fence protocol; finish missing local failure-injection cases and
+  make constructor/wiring enforce production fail-closed configuration.
+  Wave 5 create-only Blob fence, backup/restore, fence scan/join, and live Azure
+  durability acceptance remain unimplemented and unverified.
+
 Rejected after verification:
 
 - ISSUE-008 (write proceeds when before-read fails): FALSE POSITIVE.
