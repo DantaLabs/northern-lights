@@ -67,6 +67,8 @@ func TestPermissionValuesAreExact(t *testing.T) {
 		PermissionAssuranceSnapshot,
 		PermissionAssuranceValidate,
 		PermissionAssuranceCompare,
+		PermissionAssuranceRelationshipRead,
+		PermissionAssuranceRelationshipRefresh,
 		PermissionEvidenceExport,
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -82,6 +84,8 @@ func TestPermissionValuesAreExact(t *testing.T) {
 		"assurance.snapshot",
 		"assurance.validate",
 		"assurance.compare",
+		"assurance.relationship.read",
+		"assurance.relationship.refresh",
 		"evidence.export",
 	}
 	for i, permission := range got {

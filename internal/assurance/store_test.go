@@ -123,8 +123,8 @@ func TestC066AssuranceMigrationsAreContiguousV1ThroughV13AndTenantFirst(t *testi
 		}
 		versions = append(versions, version)
 	}
-	if got := strings.Trim(strings.ReplaceAll(strings.TrimSpace(toJSON(versions)), ",", " "), "[]"); got != "1 2 3 4 5 6 7 8 9 10 11 12 13" {
-		t.Fatalf("assurance versions = %v, want 1..13", versions)
+	if got := strings.Trim(strings.ReplaceAll(strings.TrimSpace(toJSON(versions)), ",", " "), "[]"); got != "1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16" {
+		t.Fatalf("assurance versions = %v, want 1..16", versions)
 	}
 	for _, table := range assuranceTables() {
 		columns, err := tableColumns(db, table)

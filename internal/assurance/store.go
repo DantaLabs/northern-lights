@@ -69,6 +69,13 @@ func (s *Store) requireRichAudit(logs ...*audit.Log) error {
 	return nil
 }
 
+func (s *Store) DB() *sql.DB {
+	if s == nil {
+		return nil
+	}
+	return s.db
+}
+
 // Close is a no-op because Store never owns the shared database handle.
 func (s *Store) Close() error { return nil }
 

@@ -70,7 +70,7 @@ func TestV13ActorScopedMaterializationsPreserveRowsChildrenAndLegalHold(t *testi
 	if err := Migrate(ctx, db); err != nil {
 		t.Fatalf("migrate v12 to v13: %v", err)
 	}
-	assertAssuranceVersion(t, db, 13)
+	assertAssuranceVersion(t, db, 16)
 	if got := snapshotTableColumns(t, db, materializedTables); !reflect.DeepEqual(got, beforeColumns) {
 		t.Fatalf("materialized columns changed: before=%v after=%v", beforeColumns, got)
 	}
@@ -83,7 +83,7 @@ func TestV13ActorScopedMaterializationsPreserveRowsChildrenAndLegalHold(t *testi
 	if err := Migrate(ctx, db); err != nil {
 		t.Fatalf("idempotent v13 reopen: %v", err)
 	}
-	assertAssuranceVersion(t, db, 13)
+	assertAssuranceVersion(t, db, 16)
 }
 
 func TestV13MigrationFailureRollsBackMarkerAndOriginalTables(t *testing.T) {

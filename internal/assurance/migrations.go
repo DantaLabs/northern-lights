@@ -377,7 +377,58 @@ FROM assurance_evidence_manifests_v13;
 DROP TABLE assurance_evidence_manifests_v13;
 `
 
-var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11, migrationV12, migrationV13}
+const migrationV14 = `
+ALTER TABLE assurance_relationship_edges ADD COLUMN scope_digest TEXT NOT NULL DEFAULT '';
+CREATE INDEX idx_assurance_edges_tenant_scope_active ON assurance_relationship_edges(tenant_id, scope_digest, active);
+CREATE TABLE assurance_relationship_graph_state (
+ tenant_id TEXT NOT NULL PRIMARY KEY,
+ graph_version INTEGER NOT NULL DEFAULT 0 CHECK(graph_version >= 0)
+);
+`
+
+const migrationV15 = `
+CREATE TABLE assurance_relationship_resource_allowlist (
+ tenant_id TEXT NOT NULL,
+ actor_id TEXT NOT NULL,
+ capability TEXT NOT NULL,
+ resource_id TEXT NOT NULL,
+ status TEXT NOT NULL CHECK(status IN ('active','revoked')),
+ policy_version TEXT NOT NULL,
+ provisioned_by TEXT NOT NULL,
+ provisioned_at TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, actor_id, capability, resource_id)
+);
+CREATE INDEX idx_assurance_relationship_allowlist_lookup
+ ON assurance_relationship_resource_allowlist(tenant_id, actor_id, capability, status, resource_id);
+`
+
+// migrationV16 supersedes the mutable v15 compatibility table with immutable
+// signed-bundle revisions. Active membership is held by
+// assurance_active_bundle_objects; historical rows are append-only.
+const migrationV16 = `
+CREATE TABLE assurance_relationship_allowlist_revisions (
+ tenant_id TEXT NOT NULL,
+ entry_id TEXT NOT NULL,
+ revision INTEGER NOT NULL CHECK(revision > 0),
+ actor_id TEXT NOT NULL,
+ capability TEXT NOT NULL,
+ resource_id TEXT NOT NULL,
+ definition_json TEXT NOT NULL,
+ content_hash TEXT NOT NULL,
+ provisioned_at TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, entry_id, revision)
+);
+CREATE INDEX idx_assurance_relationship_allowlist_revision_lookup
+ ON assurance_relationship_allowlist_revisions(tenant_id, actor_id, capability, resource_id, entry_id, revision);
+CREATE TRIGGER assurance_relationship_allowlist_no_update
+ BEFORE UPDATE ON assurance_relationship_allowlist_revisions
+ BEGIN SELECT RAISE(ABORT, 'immutable relationship allowlist revision'); END;
+CREATE TRIGGER assurance_relationship_allowlist_no_delete
+ BEFORE DELETE ON assurance_relationship_allowlist_revisions
+ BEGIN SELECT RAISE(ABORT, 'immutable relationship allowlist revision'); END;
+`
+
+var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11, migrationV12, migrationV13, migrationV14, migrationV15, migrationV16}
 
 // Migrate installs the complete contiguous assurance schema family.
 func Migrate(ctx context.Context, db *sql.DB) error {
@@ -392,7 +443,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 
 func assuranceTables() []string {
 	return []string{
-		"assurance_resources", "assurance_mappings", "assurance_mapping_revisions", "assurance_relationship_edges", "assurance_relationship_discovery_runs",
+		"assurance_resources", "assurance_mappings", "assurance_mapping_revisions", "assurance_relationship_edges", "assurance_relationship_discovery_runs", "assurance_relationship_graph_state", "assurance_relationship_resource_allowlist", "assurance_relationship_allowlist_revisions",
 		"assurance_bundle_candidates", "assurance_active_bundles", "assurance_report_definitions", "assurance_report_revisions", "assurance_report_fields",
 		"assurance_snapshots", "assurance_snapshot_observations", "assurance_snapshot_failures",
 		"assurance_rule_sets", "assurance_rule_set_rules", "assurance_validation_runs", "assurance_validation_results", "assurance_comparisons", "assurance_comparison_items",

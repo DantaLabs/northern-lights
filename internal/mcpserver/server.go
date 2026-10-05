@@ -188,12 +188,13 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 // writeTools mutate state and must never execute when the audit log is
 // unavailable; an unaudited write is an EU AI Act Art. 12 violation.
 var writeTools = map[string]bool{
-	"workiva_update_field":    true,
-	"workiva_sync_mapping":    true,
-	"workiva_snapshot_report": true,
-	"workiva_validate_report": true,
-	"workiva_compare_periods": true,
-	"workiva_export_evidence": true,
+	"workiva_update_field":           true,
+	"workiva_sync_mapping":           true,
+	"workiva_snapshot_report":        true,
+	"workiva_validate_report":        true,
+	"workiva_compare_periods":        true,
+	"workiva_export_evidence":        true,
+	"workiva_discover_relationships": true,
 }
 
 func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
@@ -668,6 +669,8 @@ func requiredPermission(tool string, arguments json.RawMessage, requireConfirmat
 		return identity.PermissionAssuranceCompare, nil
 	case "workiva_export_evidence":
 		return identity.PermissionEvidenceExport, nil
+	case "workiva_discover_relationships":
+		return identity.PermissionAssuranceRelationshipRead, nil
 	default:
 		return "", fmt.Errorf("authorization: tool %q has no permission mapping", tool)
 	}

@@ -1,0 +1,83 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "direction": {
+      "description": "Lineage vocabulary: upstream, downstream, or both. Default both. Ignored for discover.",
+      "maxLength": 16,
+      "minLength": 1,
+      "type": "string"
+    },
+    "idempotency_key": {
+      "description": "Required after authentication; scoped to trusted tenant, actor, tool, and operation.",
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "include_documents": {
+      "description": "Default false; only an approved read-only document capability may honor true.",
+      "type": "boolean"
+    },
+    "max_depth": {
+      "description": "Lineage traversal depth. Default 3; absolute server cap 8.",
+      "maximum": 8,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "max_edges": {
+      "description": "Traversal/edge response bound. Default and absolute server cap 5000.",
+      "maximum": 5000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "max_nodes": {
+      "description": "Traversal/node response bound. Default and absolute server cap 1000.",
+      "maximum": 1000,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "operation": {
+      "description": "Required server vocabulary: discover or lineage. Conditional rules are server-enforced.",
+      "maxLength": 16,
+      "minLength": 1,
+      "type": "string"
+    },
+    "refresh": {
+      "description": "Default false. False is explicitly read-only; true requests a complete exact-scope refresh and requires the refresh capability.",
+      "type": "boolean"
+    },
+    "resource_ids": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 1000,
+      "minItems": 1,
+      "type": "array"
+    },
+    "root": {
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "resource_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "resource_id"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "operation",
+    "idempotency_key"
+  ],
+  "type": "object"
+}

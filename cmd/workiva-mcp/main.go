@@ -27,6 +27,7 @@ import (
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 	"github.com/dantalabs/northern-lights/internal/mcpserver/tools"
 	"github.com/dantalabs/northern-lights/internal/ratelimit"
+	"github.com/dantalabs/northern-lights/internal/relationships"
 	"github.com/dantalabs/northern-lights/internal/sqlitedb"
 	"github.com/dantalabs/northern-lights/internal/workiva"
 	"github.com/dantalabs/northern-lights/internal/workivaprovider"
@@ -295,14 +296,20 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		registry.Register(tool)
 	}
 
+	graphStore, err := relationships.NewStore(assuranceStore.DB(), assuranceStore.Ready)
+	if err != nil {
+		cleanup()
+		return nil, nil, nil, err
+	}
 	authOptions.Version = version
 	authOptions.DisableLocalhostProtection = cfg.DisableLocalhostProtection
 	handler, err := mcpserver.New(mcpserver.Deps{
-		Client:    workivaBackend,
-		Store:     store,
-		Audit:     auditLog,
-		Assurance: assuranceStore,
-		Cfg:       cfg,
+		Client:        workivaBackend,
+		Store:         store,
+		Audit:         auditLog,
+		Assurance:     assuranceStore,
+		Relationships: graphStore,
+		Cfg:           cfg,
 	}, registry, &authOptions)
 	if err != nil {
 		cleanup()

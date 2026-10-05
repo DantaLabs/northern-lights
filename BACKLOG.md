@@ -376,3 +376,30 @@ Rejected after verification:
   claim does not reproduce. `gridValue` ignores its error only after a
   successful read, yielding an empty before value for empty cells, which
   is correct behavior.
+
+Wave 3 relationship implementation, partial (2026-10-02): registered
+`workiva_discover_relationships`, connected `graph.Store` to the shared assurance
+DB, added capability authorization and bounded persisted-graph lineage. Refresh
+and provider discovery fail closed with `spike_required`; no provider results
+are fabricated. Focused relationship-store tests pass. MCP/tool tests currently
+fail because existing contract fixtures assert Wave 2 must have 11 tools and
+Wave 3 registration is fixture-only; update those tests/goldens as part of the
+contract registration work. Not implemented/verified: exact §4.6 output parity
+(raw result fields have gaps), discover resource-policy enforcement, trusted
+Entra-only refresh+idempotency ordering, refresh=false idempotency contract,
+required negative selector/zero-call tests, recursive schema closure tests,
+raw JSON-RPC success/error validation, and full build/test gate. Uncommitted
+assurance/migration v14 and graph worktree changes were preserved. No commit or
+push.
+
+Wave 3 resource authorization follow-up (2026-10-03): added assurance migration
+v15 and `assurance_relationship_resource_allowlist`, a tenant+actor+capability+
+resource keyed server-owned table. Relationship traversal requires an active
+`assurance.relationship.read` record for the root and both endpoints of every
+returned edge/node. Root misses fail the call before response data; denied
+non-root branches are omitted with `resource_not_allowlisted` reason and do not
+emit their edge. No access is inferred from graph edges. `ProvisionAllowlist` is
+a server-side operator provisioning API, not exposed via MCP; no rows/default
+grants are created by migration. Raw MCP lineage test verifies persisted data
+is served with zero provider API calls. Discovery/refresh remains
+`spike_required` pending provider verification. Focused tests passed for relationships, MCP tools, assurance, and SQLite migration. `go test ./...`, `go vet ./...`, and `git diff --check` all pass. No commit or push.

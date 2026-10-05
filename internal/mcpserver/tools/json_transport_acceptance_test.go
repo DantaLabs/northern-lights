@@ -11,6 +11,8 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -23,6 +25,7 @@ import (
 	"github.com/dantalabs/northern-lights/internal/config"
 	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
+	"github.com/dantalabs/northern-lights/internal/relationships"
 	"github.com/dantalabs/northern-lights/internal/workivaprovider"
 )
 
@@ -239,8 +242,8 @@ func rawToolSchemas(t *testing.T, c *rawMCPClient) map[string]map[string]any {
 	if err := json.Unmarshal(body, &list); err != nil {
 		t.Fatalf("tools/list JSON: %v", err)
 	}
-	if len(list.Result.Tools) != 11 {
-		t.Fatalf("tools/list returned %d tools, want exactly 11", len(list.Result.Tools))
+	if len(list.Result.Tools) != 12 {
+		t.Fatalf("tools/list returned %d tools, want exactly 12", len(list.Result.Tools))
 	}
 	result := make(map[string]map[string]any, len(list.Result.Tools))
 	for _, tool := range list.Result.Tools {
@@ -381,6 +384,10 @@ func provisionRawWave2Bundle(t *testing.T, store *assurance.Store) {
 		RuleSets: []assurance.RuleSet{rules}, MaterialityPolicies: []assurance.MaterialityPolicy{policy}, ExportProfiles: []assurance.ExportProfile{profile},
 		RetentionPolicies: []assurance.RetentionPolicy{{TenantID: tenant, Revision: 1, RetentionClass: "standard", DurationSeconds: 3600, Status: "active"}, {TenantID: tenant, Revision: 1, RetentionClass: "long_term", DurationSeconds: 86400, Status: "active"}},
 		Reports:           []assurance.ReportRevision{{ReportID: "energy-report", Revision: 1, Name: "Energy", Owner: "owner", Status: "active", RetentionClass: "standard", ResourcePolicyHash: strings.Repeat("a", 64), RuleSetID: rules.RuleSetID, MaterialityPolicyID: policy.PolicyID, ExportProfiles: []string{profile.ProfileID}, Periods: []assurance.Period{{Key: "2026-Q2", Label: "Q2 2026", Start: "2026-04-01", End: "2026-06-30"}, {Key: "2026-Q3", Label: "Q3 2026", Start: "2026-07-01", End: "2026-09-30"}}, Fields: []assurance.FieldDefinition{{FieldID: "scope2-kwh", ResourceID: "resource-1", ExternalResourceID: "sp-1", SubresourceID: "sh-1", Locator: "B3", Kind: assurance.ValueNumber, Unit: "kWh", Scale: "ones", Required: true, Order: 1}}}},
+		RelationshipAllowlist: []assurance.RelationshipAllowlistEntry{
+			{EntryID: "actor-a-resource-1", Revision: 1, ActorID: "actor-a", Capability: assurance.RelationshipCapabilityRead, ResourceID: "resource-1"},
+			{EntryID: "actor-a-resource-2", Revision: 1, ActorID: "actor-a", Capability: assurance.RelationshipCapabilityRead, ResourceID: "resource-2"},
+		},
 	}
 	if err := assurance.ValidateRuleSet(rules); err != nil {
 		t.Fatal(err)
@@ -458,6 +465,183 @@ func auditRecord(t *testing.T, db *sql.DB, auditID string) {
 	}
 	if count == 0 {
 		t.Fatalf("audit log has no record for %s", auditID)
+	}
+}
+
+func TestRawRelationshipToolsListSchemaMatchesContract(t *testing.T) {
+	fixture := newRawWave2Fixture(t)
+	server, _ := startRawEntraServer(t, fixture)
+	client := &rawMCPClient{t: t, url: server.URL + "/mcp", authToken: "actor-a-token"}
+	initializeRaw(t, client)
+	resp, body := client.post("tools/list", map[string]any{})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("tools/list status %d: %s", resp.StatusCode, body)
+	}
+	var listed struct {
+		Result struct {
+			Tools []struct {
+				Name         string         `json:"name"`
+				InputSchema  map[string]any `json:"inputSchema"`
+				OutputSchema map[string]any `json:"outputSchema"`
+			} `json:"tools"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(body, &listed); err != nil {
+		t.Fatal(err)
+	}
+	var relationship *struct {
+		InputSchema  map[string]any `json:"inputSchema"`
+		OutputSchema map[string]any `json:"outputSchema"`
+	}
+	for _, tool := range listed.Result.Tools {
+		if tool.Name == "workiva_discover_relationships" {
+			relationship = &struct {
+				InputSchema  map[string]any `json:"inputSchema"`
+				OutputSchema map[string]any `json:"outputSchema"`
+			}{tool.InputSchema, tool.OutputSchema}
+		}
+	}
+	if relationship == nil {
+		t.Fatal("relationship tool absent from tools/list")
+	}
+	for label, schema := range map[string]map[string]any{"input": relationship.InputSchema, "output": relationship.OutputSchema} {
+		if err := assertSchemaRecursivelyClosedAndBounded("$", schema); err != nil {
+			t.Errorf("%s schema: %v", label, err)
+		}
+		fixtureBytes, err := os.ReadFile("testdata/mcp-schemas/workiva_discover_relationships." + label + ".json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var expected map[string]any
+		if err := json.Unmarshal(fixtureBytes, &expected); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(schema, expected) {
+			t.Errorf("advertised %s schema differs from §4.6 fixture", label)
+		}
+	}
+}
+
+func assertSchemaRecursivelyClosedAndBounded(path string, schema map[string]any) error {
+	switch schema["type"] {
+	case "object":
+		if schema["additionalProperties"] != false {
+			return fmt.Errorf("%s object is not closed", path)
+		}
+		props, _ := schema["properties"].(map[string]any)
+		for name, raw := range props {
+			child, ok := raw.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%s.%s has invalid schema", path, name)
+			}
+			if err := assertSchemaRecursivelyClosedAndBounded(path+"."+name, child); err != nil {
+				return err
+			}
+		}
+	case "array":
+		if _, ok := schema["maxItems"]; !ok {
+			return fmt.Errorf("%s array has no maxItems", path)
+		}
+		if child, ok := schema["items"].(map[string]any); ok {
+			return assertSchemaRecursivelyClosedAndBounded(path+"[]", child)
+		}
+	}
+	return nil
+}
+
+func TestRawRelationshipCallRejectsAllowlistMutationInputWithoutWrites(t *testing.T) {
+	fixture := newRawWave2Fixture(t)
+	graph, err := relationships.NewStore(fixture.db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture.env.deps.Relationships = graph
+	server, _ := startRawEntraServer(t, fixture)
+	client := &rawMCPClient{t: t, url: server.URL + "/mcp", authToken: "actor-a-token"}
+	initializeRaw(t, client)
+	var before int
+	if err := fixture.db.QueryRow(`SELECT count(*) FROM assurance_relationship_allowlist_revisions`).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	resp, body := client.post("tools/call", map[string]any{"name": "workiva_discover_relationships", "arguments": map[string]any{
+		"operation": "lineage", "root": map[string]any{"resource_id": "resource-1"}, "idempotency_key": "no-mutation",
+		"relationship_allowlist": []any{map[string]any{"actor_id": "actor-a", "resource_id": "resource-3"}},
+	}})
+	lowerBody := strings.ToLower(string(body))
+	if resp.StatusCode != http.StatusOK || !strings.Contains(lowerBody, "relationship_allowlist") || !strings.Contains(lowerBody, "additional") {
+		t.Fatalf("relationship allowlist mutation input was not rejected as an additional property: status=%d body=%s", resp.StatusCode, body)
+	}
+	var after int
+	if err := fixture.db.QueryRow(`SELECT count(*) FROM assurance_relationship_allowlist_revisions`).Scan(&after); err != nil {
+		t.Fatal(err)
+	}
+	if after != before || fixture.env.apiCalls.Load() != 0 {
+		t.Fatalf("rejected MCP mutation changed state or called provider: before=%d after=%d provider_calls=%d", before, after, fixture.env.apiCalls.Load())
+	}
+}
+
+func TestRawRelationshipCallSchemasAndDenialAreClosed(t *testing.T) {
+	fixture := newRawWave2Fixture(t)
+	graph, err := relationships.NewStore(fixture.db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture.env.deps.Relationships = graph
+	_, err = graph.Refresh(context.Background(), identity.LegacyTenantID, relationships.Scope{RootID: "resource-1"}, relationships.Discovery{Complete: true, EndOfScope: true, Nodes: []relationships.Node{{ResourceID: "resource-1", Kind: "report", ExternalID: "external-1", Provenance: "observed", Confidence: "high"}, {ResourceID: "resource-2", Kind: "spreadsheet", ExternalID: "external-2", Provenance: "observed", Confidence: "high"}}, Edges: []relationships.Edge{{From: "resource-1", To: "resource-2", Relation: "derived_from", Provenance: "observed", Confidence: "high"}}}, "actor-a", "seed-audit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, _ := startRawEntraServer(t, fixture)
+	client := &rawMCPClient{t: t, url: server.URL + "/mcp", authToken: "actor-a-token"}
+	initializeRaw(t, client)
+	schemas := rawToolSchemas(t, client)
+	args := map[string]any{"operation": "lineage", "root": map[string]any{"resource_id": "resource-1"}, "idempotency_key": "relationship-lineage-test"}
+	result := rawCall(t, client, "workiva_discover_relationships", args)
+	body := assertRawPayload(t, "workiva_discover_relationships", schemas["workiva_discover_relationships"], result, false)
+	if body["status"] != "completed" || len(body["nodes"].([]any)) != 2 || len(body["edges"].([]any)) != 1 {
+		t.Fatalf("lineage response should contain persisted path, got %#v", body)
+	}
+	auditRecord(t, fixture.db, body["nl_audit_id"].(string))
+	if fixture.env.apiCalls.Load() != 0 {
+		t.Fatalf("lineage reached provider: %d calls", fixture.env.apiCalls.Load())
+	}
+}
+
+func TestRawRelationshipAuthorizationDenialHasArraysAndNoProviderCalls(t *testing.T) {
+	fixture := newRawWave2Fixture(t)
+	principal := identity.Principal{TenantID: identity.LegacyTenantID, ObjectID: "read-denied", Permissions: []identity.Permission{identity.PermissionAssuranceSnapshot}}
+	principals := map[string]identity.Principal{"denied-token": principal}
+	reg := mcpserver.NewRegistry()
+	for _, tool := range All() {
+		reg.Register(tool)
+	}
+	handler, err := mcpserver.New(fixture.env.deps, reg, &mcpserver.Options{AuthMode: config.AuthModeEntra, TokenVerifier: rawTokenVerifier{principals: principals}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(handler)
+	t.Cleanup(server.Close)
+	client := &rawMCPClient{t: t, url: server.URL + "/mcp", authToken: "denied-token"}
+	initializeRaw(t, client)
+	resp, body := client.post("tools/call", map[string]any{"name": "workiva_discover_relationships", "arguments": map[string]any{"operation": "lineage", "root": map[string]any{"resource_id": "resource-1"}, "idempotency_key": "denied"}})
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("transport authorization status = %d, want 403: %s", resp.StatusCode, body)
+	}
+	var denial struct {
+		Status string `json:"status"`
+		Error  struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &denial); err != nil {
+		t.Fatalf("transport authorization body is not JSON: %v: %s", err, body)
+	}
+	if denial.Status != "denied" || denial.Error.Code != "permission_denied" || denial.Error.Message == "" {
+		t.Fatalf("unexpected generic transport denial: %s", body)
+	}
+	if fixture.env.apiCalls.Load() != 0 {
+		t.Fatalf("denied call reached provider: %d calls", fixture.env.apiCalls.Load())
 	}
 }
 
