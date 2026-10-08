@@ -27,7 +27,7 @@ Copilot Studio (MCP client)
   |  streamable HTTP, bearer auth
   v
 Northern Lights (this software)
-  |  internal/mcpserver: 11 current Wave 2 tools (13 final contract), bearer auth middleware, audit
+  |  internal/mcpserver: 13 registered tools; Phase 3 capabilities are feature- and production-gated
   |  internal/mapping: SQLite field mapping + cell cache
   |  internal/audit: hash-chained log
   |  internal/workiva: OAuth2 client, rate-limited, retrying
@@ -35,9 +35,19 @@ Northern Lights (this software)
 Workiva Spreadsheets API (2026-01-01)
 ```
 
-All data at rest is in a single SQLite database on the operator's
-infrastructure. No data is sent to third parties other than the Workiva API
-or identity service and the MCP client.
+Application and audit state is persisted in a single SQLite database on the
+operator's infrastructure. Optional production paths can also send or store
+data with Azure: Blob Storage holds signed backup envelopes, transfer-fence
+objects, and exported evidence artifacts when their respective opt-ins are
+enabled; Azure Key Vault can supply a version-pinned backup-signing key.
+The Key Vault option provisions that key into a private ephemeral file for
+runtime use and removes it during cleanup. These code paths are optional and
+do not establish that they are enabled or accepted in a particular deployment.
+The supported service boundary is single-tenant and single-replica. Azure
+Files is not used for SQLite or WAL; any stated RPO/RTO values are operational
+targets, not guarantees. Workiva, the identity service, the MCP client, Azure
+Blob Storage, and (when configured) Azure Key Vault are the external systems
+that may participate in these flows.
 
 ## 3. Intended use
 
@@ -93,6 +103,10 @@ or identity service and the MCP client.
 | Cell values | Workiva sheetdata endpoint | SQLite (snapshots table) | Overwritten on each read, controlled by `read_cache_ttl` |
 | Audit entries | Tool-call and mutation audit records | SQLite (audit_log table) | Default 10-year guidance, operator-managed |
 | Pending writes | SHA-256 confirmation-token digest plus tenant, actor, permission, target, value digest, and expiry bindings | SQLite (pending_writes table) | Until atomic consumption or expiry cleanup |
+| Signed database backups and restore reads | Operator-selected SQLite backup envelope and signed manifest | Private Azure Blob backup namespace, then a fresh local SQLite destination | Optional backup maintenance/startup-restore paths; deployment acceptance is separate (`cmd/workiva-mcp/backup_config.go`, `cmd/workiva-mcp/startup_restore.go`, `internal/assurance/azure_backup.go`) |
+| Transfer fence records and restore scans | Transfer claim/terminal evidence bound to tenant and environment | The same private Azure Blob namespace used for backup/restore, under a separate `fences/` object prefix | Create-only fence writes require production transfer; startup restore scans the selected restore namespace before readiness even when transfer production is disabled. Fences supplement rather than replace SQLite and audit state (`cmd/workiva-mcp/transfer_config.go`, `cmd/workiva-mcp/startup_restore.go`, `internal/transfer/azure_fence.go`) |
+| Exported evidence artifacts | Authorized assurance subject and its sealed manifest/artifacts | Private Azure Blob evidence container, physically separate from the backup/restore container | Optional `NL_EVIDENCE_BLOB_DELIVERY` path; live deployment acceptance remains separate (`cmd/workiva-mcp/evidence_config.go`, `internal/assurance/azure_evidence_storage.go`) |
+| Backup-signing key (Key Vault option) | Version-pinned `NL_BACKUP_SIGNING_KEY_SECRET_ID` reference | Azure Key Vault to process memory and a private ephemeral runtime file | Read at startup; normal cleanup removes the file and clears the in-memory copy. A protected local key-file configuration is also supported (`cmd/workiva-mcp/backup_key_provisioning.go`) |
 
 ## 6. Human oversight measures
 

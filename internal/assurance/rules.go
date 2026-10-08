@@ -233,7 +233,7 @@ func ValidateExportProfile(profile ExportProfile) error {
 	}
 	seen := make(map[string]struct{}, len(profile.PermittedSubjects))
 	for _, subject := range profile.PermittedSubjects {
-		if subject != "snapshot" && subject != "validation_run" && subject != "comparison" {
+		if subject != "snapshot" && subject != "validation_run" && subject != "comparison" && subject != "transfer" {
 			return fmt.Errorf("unsupported evidence subject %q", subject)
 		}
 		if _, exists := seen[subject]; exists {

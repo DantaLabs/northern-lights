@@ -1,5 +1,351 @@
 # Backlog
 
+## Current release track — 2026-10-09 (authoritative bounded acceptance)
+
+The detailed dated narratives below are preserved as history and are not the
+current acceptance verdict. In particular, old audit4 selectors, blocked
+cutover/preservation-pending statements, and connection-repair concerns are
+superseded by the current evidence below. The current matrix is
+[`docs/validation/WAVE3_CURRENT_ACCEPTANCE_2026-10-08.md`](docs/validation/WAVE3_CURRENT_ACCEPTANCE_2026-10-08.md).
+
+- **Source and publication:** feature source remains
+  `b0b8ca2d9253be289c75da090037ef2ca1a41503`; local integrated gates and
+  independent source reviews passed, and draft PR11 run `37753676804` passed.
+  Documentation publication was requested; the feature code/image remains
+  `b0b8ca2`. Publication SHA/CI status must be verified separately in the
+  operator handoff and Git. `main` remains unchanged unless that readback says
+  otherwise; no merge is authorized or claimed here.
+- **Canonical app cutover:** revision
+  `ca-northern-lights-wave2--p3-b0b8ca2-maint-a54` cold-started from the final
+  selected backup with the same `b0b8ca2` source and image. `/readyz` and the
+  canonical route returned HTTP 200; the app managed identity remained
+  `SystemAssigned`. Readback showed one active revision and eight older
+  revisions inactive at zero replicas. Captured app body SHA-256
+  `66443c02beadeff4d46c4b4a134d37127f1d55e8217a8f9bcae15be26b163250` matched
+  the normalized template except for the authorized revision suffix and five
+  final restore selectors. The final selector is envelope
+  `5c8017c6ebb1c93ee1d6a4b139b89bf7` / audit high-water 54 / checkpoint
+  `d1158818-928a-4c68-b88b-29873ced2de9`; the former envelope `0547...0419` /
+  audit4 selector is historical and stale. Final deployment/readback receipt
+  SHA-256: `1ec4172c818ce504eeb95bf61f564495e78a61f742b53d9b2a65ac8ffd1a289c`.
+- **Final backup recovery:** final manual execution
+  `job-nl-phase3-backup-ennjmo4` succeeded and sealed the selected envelope
+  above. Receipt SHA-256:
+  `9e8453b6b2ecc4c9a57a4f76fc5aae40ecc563f8dd9de84431816b88ce922938`.
+  The exact envelope was independently SDK-restored and fence-scanned twice;
+  latest proof SHA-256 is
+  `a7e9e59a16ae38c83b83887578392d91fc3d8dc8234ef2793a97dee81245d765`.
+  Signed v2 bootstrap, audit chain/high-water/checkpoint, all six sealed domain
+  operations and rich links, JSON/CSV pins, active transfer/readbacks,
+  reconciliation/visual evidence, exact Phase 2 restoration audit, and full
+  immutable original-confirm replay with zero provider/fence calls passed.
+  This is one exact backup/restore and restart sequence, not a cadence, RPO, or
+  failure-recovery guarantee.
+- **Backup schedule:** the job was temporarily changed to Manual to create the
+  final stable backup. Root independently read back the restored schedule and
+  verified it deep-equals the original `*/5 * * * *` UTC configuration, with
+  job identity, image, and settings unchanged. This confirms configuration
+  restoration, not a new scheduled execution or cadence/RPO guarantee; no new
+  automatic execution is claimed.
+- **Copilot and Workiva:** prior bounded acceptance remains recorded: all 13
+  connector tools were discovered; audited reads/materializations and JSON/CSV
+  storage checks passed; one human-approved transfer was confirmed once,
+  reconciled without repeat, visibly acknowledged, and separately restored
+  once to B4=0 with final uncached B2:B4 `1200/800/0`. No new Copilot invocation
+  or Workiva call was made after the final maintenance restart, per the stop
+  instruction. The evidence export audit remains limited:
+  `completeness=unknown`, checkpoint missing, terminal anchor unverified, and
+  final-row deletion not detectable; this is not complete audit-history proof.
+- **Open and waived boundaries:** Workiva read-only-grant behavior remains
+  OPEN. Genuine second-tenant/shared-store behavior remains WAIVED/UNVERIFIED.
+  Preservation of the prior Wave 2 sandbox database was explicitly WAIVED, NOT
+  PASSED; the nine-row audit archive is not a database backup or migration.
+- **Disposition:** bounded Wave 3 delivery acceptance PASS for the reviewed
+  source, final backup recovery, and maintenance revision startup/cutover, with
+  the open and waived exceptions above. This is not unconditional full-gate,
+  merge, or closure acceptance. Do not infer a commit SHA, push, merge, or
+  release closure from this acceptance record.
+
+## Historical backlog narratives (superseded for current status)
+
+## Resumed pre-commit review — 2026-10-08
+
+LATEST: MCP-NIL01/GRAPH-ERR01 independently RED-reproduced, narrow worker fixes
+reviewed/imported byte-exact; focused race PASS. All three complete bounded
+pre-commit reviews PASS with zero Blocking/Important. Root full sequential
+normal/race/386/vet/amd64+386 builds/pinned2.13.2 lint0/format/diff PASS on
+508ff68b3f2468a6adc506a4f186630f1260e9ffdca9201d02464316c84abaf8.
+Fresh tracked-only normal/vet/amd64+386 builds PASS; actual released-Wave2
+compatibility race PASS3.734s. Feature commit is eligible, not yet published. Stricter
+secret scan's sole hit is an independently confirmed synthetic test credential.
+Fresh debug marker probes still have empty output, not verified shell access.
+Old DB-preservation authority remains unchanged; explicit user direction pending.
+
+Publication held. All 138 reviewed scope paths explicitly staged; original
+staged patch retained in private snapshots. Tracked-only normal/vet/amd64+386
+builds and actual released-Wave2 compatibility race test PASS on fe30 source.
+Transfer/provider pre-commit subset PASS. MCP-NIL01 (discover nil dependency)
+and GRAPH-ERR01 (swallowed resource lookup DB error) independently RED-reproduced
+by root; two Luna workers correcting narrow scopes before re-review/full gates.
+Additional domain audit-gate interpretation is under requirement review.
+No commit/push/CI/merge/deployment or wave closure yet.
+
+Ordinary old-revision healthcheck exec succeeded; auxiliary debug-container
+access remains broken. The portal shell error does not establish global exec
+failure. Old whole-DB preservation is still required before maintenance cutover.
+Deployed identity/job schedule/real Phase3 Copilot acceptance remain open.
+
+## Authoritative latest — 2026-10-08
+
+FINAL LOCAL: all root sequential full normal/race/386/vet/amd64+386 builds/
+pinned2.13.2 lint0/format/diff PASS on
+`fe30fc471347ceeafb41f39f895de457980e67efa30772d82f07b6f47baa6c27`;
+fresh-context independent source review zero Blocking/Important. Root full race
+transfer300.078s, assurance227.114s, tools185.872s. Fresh remote main unchanged.
+
+Actual SAME selected Azure backup restored-copy continuation PASS7.664s:
+ready/scan-ready true/findings0, normal signed v2 Bootstrap, audit verification,
+exact definition/transfer pins, token-free same-key sealed replay and fresh-key
+no-token refusal, provider_calls=0/fence_calls=0. Root full573-line harness review,
+DIAG02 explicit-zero counters, independently safe race3.698s before live opt-in.
+Receipt `/tmp/nl-live-selected-restore-diagnostic-4018546733/restored-copy-verification.json`.
+No original source DB access/new backup/export/provider/blob mutations. Operator
+Azure credential + synthetic trusted context, not real deployed Entra identity.
+Backup-only removable legal hold remains applied/read back; evidence unchanged.
+
+CUTOVER BLOCKED: user portal execution also failed ClusterExecFailure500; no safe
+old whole-DB archive. Keep old Wave2 running. Audit-only export is not full DB
+preservation; no inferred permission to discard state. Phase3 deployment/job
+identity/scheduled HTTP/Copilot/CI/main/publication/closure still open. No commit
+or push; original staged patch unchanged. Historical checkpoints follow.
+
+LATEST: FENCE-ETAG01 reviewed/imported; root SDK RED-to-GREEN focused race2.229s.
+Go fingerprint `fe30fc471347ceeafb41f39f895de457980e67efa30772d82f07b6f47baa6c27`;
+root final full gates ACTIVE4063, not yet PASS. Same retained actual Azure backup
+restore/fence admission PASS7.826s (ready/scan-ready true, findings0). Private
+`/tmp/nl-live-selected-restore-diagnostic-494663593`. No new backup/export/blob
+mutation/provider/sourceDBaccess. External post-restore Bootstrap/pin/token-free
+replay harness follow-up delegated; not yet accepted. Hold remains applied.
+Historical failures below now superseded; old whole-DB/deployed acceptance open.
+
+- EXPSCHEMA02 imported/reviewed; full root normal/race/386/vet/both builds/
+  pinned2.13.2 lint0/format/diff PASS on Go fingerprint
+  `e47329c7982c1a49224a873f8624b2dec176f5b0ecd6d25db64cba1012c35223`.
+- Actual MCP JSON/CSV export and fresh Azure hash/size reads PASS. Signed selected
+  backup sealed, envelope `724aee62c0ebbbf9f7f5f92ef2962acd`; fence admission FAIL.
+  Private receipts `/tmp/nl-live-transfer-recovery-continue-846676530`.
+- Read-only diagnostic identifies FENCE-ETAG01: Azure list unquoted ETag versus
+  download quoted same strong value. Luna correcting strict comparison and SDK
+  fixtures. No repeat exports/backups/transfer/provider work.
+- BKISO01/BKP-CFG01 physical evidence/recovery-container isolation imported after
+  root RED, fresh scoped review, byte comparison and focused race PASS16.630s.
+  Current Go fingerprint `7b05ad7f64a165c198cc784d024dc76e1a2a2abe825dc6186a04d395522ad010`;
+  final full gate pending fence fix. Backup/fence paths create-only, no delete;
+  enabled evidence cannot share configured recovery containers.
+- Conditional backup-only removable legal hold applied/read back PASS: exact
+  tag `nlphase3acceptance`, protected append false, private container. Evidence
+  container independently unchanged/no hold. No destructive enforcement probe.
+- Old Wave2 whole-DB preservation OPEN: both debug access attempts failed; audit
+  JSONL is not a DB backup. Preserve running old revision before maintenance.
+- No Phase 3 deployment/job live identity acceptance, commit/push/CI/merge/closure.
+  Historical statuses below are superseded by this section.
+
+## Live continuation — restoration PASS; delivery/recovery OPEN (2026-10-08)
+
+Latest: reviewed runtime-key startup imported; root integrated focused race PASS.
+Current source fingerprint `2cf57ab48f71d1ea5736dbb300acc9c6f3d8302c3e1b76e4313fc77f98d9194c`;
+full combined release gates pending. Dedicated backup HTTP caller delivered in
+isolation, fresh independent review before import. Recovery harness corrected
+REC01–05; root safe race fixture PASS, independent review before live opt-in.
+No additional Workiva writes or app/job deployment/publication. Older progress
+statements below are history, not current worker/import status.
+
+SUPERSEDING: dedicated backup caller independently reviewed/imported, focused
+integrated race PASS; source now `ad8d654125ed4783948910cd7ae1b8950998985898f78168d96afd39f5b4250b`.
+Root vet and both architecture builds PASS; final full gates pending EXPCTX01.
+Live recovery sealed a pre-provision Azure backup and activated signed v2, then
+JSON export failed because manifest readback drops trusted request context.
+EXPCTX01 narrow TDD fix delegated. Retained receipts/public key under
+`/tmp/nl-live-transfer-recovery-3043695691`. Do not rerun v1 provisioning: source
+already v2. No Workiva provider calls. Existing-v2 continuation required after fix.
+
+SUPERSEDING: EXPCTX01 corrected/reviewed/imported; root full sequential gates
+PASS on `a9523bfef8e09a6812ea6a417ea139353268cc996362a72938e25f872a413a89`.
+Live v2 continuation then found EXPSCHEMA02: sealed JSON export rejected by MCP
+storage_ref max256, actual Azure refs ~400 (adapter cap512). No automatic retry;
+new schema/golden/transport TDD correction and sealed-export diagnostic assigned.
+Receipt `/tmp/nl-live-transfer-recovery-continue-205452411/export-json-outcome.json`.
+User approved brief single-replica maintenance cutover. Old whole-DB backup and
+backup/fence deletion protection still open; audit-only archive not a DB backup.
+No deployment, job execution, commit or push. Final gates must cover schema fix.
+
+SUPERSEDING: restoration PASS. Root reviewed the corrected narrow harness,
+independently passed its race fixture (exact parser failure with zero POSTs,
+verified identity overrides supplied actor header), then ran one fresh audited
+restoration. B4 is numeric zero via uncached readback, B2 unchanged 1200, distinct
+operation, one POST/poll, matching tenant/object rich audit and chain Verify.
+Receipts retained `/tmp/nl-live-transfer-restore-3536558786`; original copy not
+repeated. The initial failed attempt below remains historical, not current state.
+
+Signed disposable seed/CLI + actual Azure production backup PASS after local
+SEED05 principal regression. Retained source/receipt:
+`evidence/production-seed-probe-1691347969`; independent backup public trust and
+separate bundle key preserved. Operator Azure credential/synthetic context, not
+deployed identity. Fresh live app remains Wave2/0000005.
+Key startup is in final scoped re-review; HTTP-only dedicated job client is
+delegated in isolation. Original transfer recovery needs explicit operator
+reprovisioning because its harness failed before retaining the bundle public
+key; no bypass of signatures, repeated copy, or claim of original-key recovery.
+
+- Root's single authorized live transfer copied numeric B2=1200 to B4 and
+  returned API-verified machine success. The separately audited Phase 2 restore
+  call errored without an operation reference; no retry was issued. Fresh
+  read confirms B4 is still numeric 1200. Restore to numeric zero before closure.
+- External harness incorrectly used a qualified `Sheet1!B4` Phase 2 mapping;
+  legacy write parsing expects `B4` and rejects before provider submission.
+  Require exact local zero-POST reproduction plus narrow reviewed fresh
+  restoration, not another full copy run or untracked REST write.
+- Private forensic SQLite and receipts retained at
+  `/tmp/nl-live-transfer-probe-2331302076`; live evidence/backup stages not reached.
+  Local frozen source gates remain valid only for their previous source scope.
+- Three current Luna tasks: isolated key admission, seed harness completion,
+  and bounded restoration preparation. Root is independent reviewer/executor.
+  Phase 3 Azure deployment, dedicated job execution and final release remain open.
+
+## Production delivery and live acceptance — IN PROGRESS (2026-10-07)
+
+User expanded scope beyond local tests: production delivery AND real live
+acceptance are required before closure. Luna's durable Azure Blob evidence
+adapter, fail-closed private-policy/tenant/reference checks, opt-in production
+wiring and post-upload cleanup/replay regressions are independently inspected
+and imported. Root focused tests PASS; full integrated gates are not yet complete.
+
+- REAL Azure component recovery probe PASS: production backup operation against
+  a disposable synthetic local DB, signed private Blob seal/readback, checked
+  source destruction, actual startup restore/fence admission and checkpoint.
+  This does not prove a deployed revision restart, live identity, or old-transfer
+  no-repeat behavior. Exact private receipts/probes remain outside the public repo.
+- Private test containers and container-only Blob data roles for the existing app
+  managed identity and acceptance operator are provisioned/read back. The existing
+  Wave 2 app/ephemeral DB is unchanged. Health/readiness/unauthenticated-boundary
+  checks PASS; no Phase 3 deployment or Git publication occurred.
+- Real Azure evidence-adapter probe PASS: synthetic create-only artifact and
+  exact hash/ETag/bytes readback through a fresh adapter; cross-tenant/malformed
+  opaque-reference denial. Operator credential, not deployed MI/tool proof.
+- Full normal and 386 suites/builds, amd64 build, vet and pinned lint PASS before
+  factory import. Subsequent full race FAILED at a one-second whole-restore test
+  fixture deadline under concurrent gates. Exact race count=3 passed sequentially;
+  reviewed test-only fixture now matches production's existing 90-second budget,
+  explicit deadline test remains, after-fix count=3 PASS. No production timeout
+  change. Final frozen full race PASS (transfer 299.285s); sequential full normal/
+  386 suites, both builds, vet, format/diff and pinned lint v2.13.2 zero issues PASS.
+  Frozen fingerprint unchanged; see WAVE3_PRODUCTION_FACTORY_LOCAL_2026-10-07.md.
+- Workiva pinned-grant OAuth, discovery and narrow read PASS with no mutations.
+  User approved Testing MCP/Sheet1 for bounded tests with every changed cell
+  restored, and approved the existing grant while read-only-grant acceptance stays
+  OPEN. Effective grant remains read/write, not a proven read-only grant.
+- Browser signed in; fresh directory, billing/environment/bot and Invoker binding
+  readbacks PASS. Old Maker connector is already disabled. Real Wave 2 browser
+  calls reach backend, but B4 read is refused because tenant-owned mappings are
+  absent. In-container audit export now proves actual immutable signed-in actor
+  attribution; audit verify PASS. Normal Copilot mapping sync registered three
+  approved local fields and subsequent read produced matching successful read
+  audit. No Workiva cell writes. Browser final response still streaming/blank.
+  User approved report/evidence permissions on sandbox Write; keep Read/admin
+  separate. Defer this policy to Phase 3 revision: old binary rejects new names.
+  Phase 3 acceptance remains open.
+- Pending full-Service recovery and exact older released-binary tests are delegated
+  complete and independently pass normal/race, including root rebuilt exact older
+  source. Luna's completed factory main/helper/tests independently read/imported;
+  focused command normal/race PASS. Actual admitted durable fence/shared gate,
+  refusal, enabled assembly and cancel/join lifecycle covered. Opt-in defaults OFF;
+  no deployment. Fresh scoped factory review PASS, zero Blocking/Important.
+  Runtime key design read; user approved version-pinned KV/app-MI/private-file and
+  exclusive signed disposable seed-and-backup path. Isolated Luna TDD key worker
+  active, not imported. Native Luna completing external live harness after two
+  incomplete CLI preparations; no opt-in enabled, no live transfer performed.
+- EVID-01/02 fixes imported and independently focused/race PASS: admin-only
+  verified ambiguous-object cleanup; genuine 404-only absence; nil successful body
+  stays pending. Fresh independent scoped re-review PASS, zero Blocking/Important.
+- RECOVERY-03 candidate withdrawn: direct source read/reproduction confirms
+  newer-than-backup fences fail readiness closed, not silently skip. Regression
+  covers actual backup-before-confirm timeline; no production fix required.
+- User approved dedicated backup-job HTTP caller, separate from Copilot. Identity
+  created, Application-only backup role and optional idtyp claim added/read back;
+  exact role assignment created. No signing-key/KV/Blob access granted to caller.
+  Role/client runtime policy prepared outside public repo, not deployed/applied.
+  User reports completed sync/read results visible; bridge final reply still blank.
+- Dedicated backup role assignment read-back PASS; caller Azure RBAC list empty.
+  Approved backup/checkpoint key generated privately and stored in a new pinned
+  KV version; only metadata/ID output. App MI existing KV read/ACR/two-container
+  roles verified. No runtime key retrieval, job/deployment or new-source import.
+  Three Luna tasks active: isolated key startup TDD and external live/seed harness.
+  Root found/routed six live-harness safety/preflight corrections before any run.
+- Frozen pre-provisioning local boundary saved outside public repo: full tracked
+  binary patch, unchanged original index, all77untracked files count/byte verified,
+  canonical planning archive. See external factory-frozen snapshot manifest.
+- Remaining: frozen full gates/release review, safe runtime key provisioning and
+  signed deployment bundle, committed-only review/gates, remote CI, immutable
+  Azure revision destroy/restore/no-repeat/rollback, Workiva and Copilot acceptance.
+
+## Latest Wave 3 continuation — local implementation/tests COMPLETE
+
+Three Luna workstreams completed local transfer evidence export, opt-in production
+backup wiring and all five exact fault-window tests. Root independently reviewed
+and imported the deltas. Final full normal/race/386 suites, builds, vet and pinned
+lint (zero issues), format/diff checks all pass on the frozen source tree. See
+[`WAVE3_EXPORT_FAULT_BACKUP_CONTINUATION_2026-10-07.md`](docs/validation/WAVE3_EXPORT_FAULT_BACKUP_CONTINUATION_2026-10-07.md).
+
+- Evidence export: independent raw MCP JSON/CSV, profile revocation, operation
+  reference safety, targeted race/386 and integrated three-package tests pass.
+  Production durable evidence storage remains open; memory storage is test-only.
+- Backup wiring: authenticated same-tenant admin trigger, full shared drain,
+  signed checkpoint/service-Date high-water, create-only Blob sealing, failure/
+  cancellation/concurrent-trigger handling and receipt-selected actual startup
+  restore/private-container admission pass locally. Source DB/sidecars/staging
+  are destroyed before restore. Production configuration is opt-in, not deployed.
+- Fault windows: all five exact windows pass with durable quarantine, checked
+  local-envelope absence, exact replay refusal and unchanged fence bytes/ETags.
+- Blocked native backup/fault workers were replaced by normal Hermes Luna
+  sessions, then preserved stalled partial results were finished by the productive
+  native Luna. No worker remains active on source. No sandbox or credential-directory
+  changes were made. Original integration staging remains byte-identical.
+- No commit, push, merge, deployment, or live Azure acceptance. Production
+  transfer remains disabled. The accepted baseline below is historical evidence
+  for that scope only. Live gates, durable evidence delivery, older-binary/pending
+  full-Service compatibility and fresh whole-integration release review stay open.
+
+## Current Phase 3 Wave 3 checkpoint — 2026-10-07
+
+The requested **local recovery test pass is complete**, independently reviewed
+and verified by the coordinator. RECOVERY-01/02 are fixed: restore claims bind
+to the actual sealed confirmation reservation, and typed intent/readback/fence
+hashing uses one canonical encoding. Missing, ambiguous, wrongly scoped and
+mismatched evidence, including legacy readback-hash disagreement, still
+quarantines. See
+[`WAVE3_RECOVERY_BINDING_FIXES_2026-10-07.md`](docs/validation/WAVE3_RECOVERY_BINDING_FIXES_2026-10-07.md).
+
+- Done locally: real Service/provider lifecycle through signed Blob backup,
+  disposable destruction, restore/fence admission, token-free sealed replay,
+  old-token rejection with a new key, and zero post-restore provider work.
+  All six recovery fault-matrix cases and eleven confirmation-binding negatives
+  pass. Full Go/race/386 suites, amd64/386 builds, vet, pinned lint (0 issues),
+  format and diff checks pass. Existing staging and migration bytes preserved.
+- Next implementation dependency: transfer evidence export and authenticated
+  production backup trigger, authoritative private Blob selection and evidence
+  delivery. Local drain/startup scan wiring and fake-HTTP Blob transport tests
+  exist; they are not live operational acceptance.
+- Remaining test/release gates: remaining crash/fault windows, pending full-Service
+  execution and older released-binary compatibility; provider-dependent
+  relationship spike; live Azure/Workiva/Copilot acceptance; fresh zero-Blocking/
+  Important whole-integration review; committed-checkout and remote CI checks.
+- Production transfer remains disabled. No commit, push, merge or deployment.
+  Evaluate this position with the user before expanding scope or publishing.
+
+Older entries below preserve historical checkpoint evidence and are superseded
+by this section for current local recovery status. Full Wave 3 acceptance stays
+open.
+
 ## Open
 
 0. **Official Workiva MCP readiness, Northern Lights remains primary**:
@@ -369,6 +715,30 @@ Fixed and verified by tests:
 - ISSUE-019 CI runs golangci-lint
 - ISSUE-020 repository published: github.com/DantaLabs/northern-lights
 
+## Wave 3 transfer local service stage (2026-10-03)
+
+- Added/continued `internal/transfer` local service implementation behind the
+  existing `internal/workivaprovider.Router`; provider reads use its uncached
+  route and mutations/polling use the routed writer. The local `Fence` seam is
+  injected. `FakeFence` reports `Durable() == false`, so production constructor
+  `NewService` fails closed unless a verified durable fence is supplied. No
+  Azure Blob backend/durability is implemented or claimed (planned Wave 5).
+- Focused tests exercise stage's authoritative source/target reads with no POST,
+  token-free replay, stale source with zero POST, actor/permission/token CAS,
+  verified fake claim/terminal fence path, 100 concurrent confirms at-most-one
+  POST, ambiguous send timeout freezing/no repeat, persisted operation reference
+  on poll timeout, and exact target spreadsheet/sheet/cell edit payload.
+- Fixed target routing so the parsed locator coordinates and exact staged sheet
+  ID, rather than A1/sheet-empty constants, reach the existing router.
+- Evidence: `go test ./internal/transfer ./internal/workivaprovider -count=1`
+  passed after fixes; focused transfer tests passed again after adding the poll
+  timeout/reference test. No commit or push.
+- Remaining: run full race/static/test suite; independent review the local
+  service/fence protocol; finish missing local failure-injection cases and
+  make constructor/wiring enforce production fail-closed configuration.
+  Wave 5 create-only Blob fence, backup/restore, fence scan/join, and live Azure
+  durability acceptance remain unimplemented and unverified.
+
 Rejected after verification:
 
 - ISSUE-008 (write proceeds when before-read fails): FALSE POSITIVE.
@@ -376,3 +746,107 @@ Rejected after verification:
   claim does not reproduce. `gridValue` ignores its error only after a
   successful read, yielding an empty before value for empty cells, which
   is correct behavior.
+
+Wave 3 relationship implementation, partial (2026-10-02): registered
+`workiva_discover_relationships`, connected `graph.Store` to the shared assurance
+DB, added capability authorization and bounded persisted-graph lineage. Refresh
+and provider discovery fail closed with `spike_required`; no provider results
+are fabricated. Focused relationship-store tests pass. MCP/tool tests currently
+fail because existing contract fixtures assert Wave 2 must have 11 tools and
+Wave 3 registration is fixture-only; update those tests/goldens as part of the
+contract registration work. Not implemented/verified: exact §4.6 output parity
+(raw result fields have gaps), discover resource-policy enforcement, trusted
+Entra-only refresh+idempotency ordering, refresh=false idempotency contract,
+required negative selector/zero-call tests, recursive schema closure tests,
+raw JSON-RPC success/error validation, and full build/test gate. Uncommitted
+assurance/migration v14 and graph worktree changes were preserved. No commit or
+push.
+
+Wave 3 resource authorization follow-up (2026-10-03): added assurance migration
+v15 and `assurance_relationship_resource_allowlist`, a tenant+actor+capability+
+resource keyed server-owned table. Relationship traversal requires an active
+`assurance.relationship.read` record for the root and both endpoints of every
+returned edge/node. Root misses fail the call before response data; denied
+non-root branches are omitted with `resource_not_allowlisted` reason and do not
+emit their edge. No access is inferred from graph edges. `ProvisionAllowlist` is
+a server-side operator provisioning API, not exposed via MCP; no rows/default
+grants are created by migration. Raw MCP lineage test verifies persisted data
+is served with zero provider API calls. Discovery/refresh remains
+`spike_required` pending provider verification. Focused tests passed for relationships, MCP tools, assurance, and SQLite migration. `go test ./...`, `go vet ./...`, and `git diff --check` all pass. No commit or push.
+
+## Wave 3 integrated acceptance review (open, push blocked)
+
+Integration candidate: `versions/wave3-integrated`, branch
+`feat/phase3-wave3-integrated`, based on main `129fa64`. Shared conflicts are
+reconciled locally: relationship migration v14, transfer migration v15, both
+signed bundle extensions/dependencies, and all thirteen tool registrations.
+Recovered the missing untracked `internal/relationships/graph.go` and
+`graph_test.go` from the relationship worktree. The original branch commit did
+not include those required files.
+
+Existing tests, race tests, 386 tests/build, vet, build, formatting, diff checks,
+and golangci-lint 2.14.0 pass. Independent requirement probes fail 23 tests;
+these are recorded outside the candidate's default suite and are not waived.
+Not every failure represents public exploitability: public transfer execution
+and provider relationship refresh remain disabled.
+
+Acceptance blockers and bounded remediation:
+
+- T-01 through T-07: trusted confirm identity/capability, pre-provider stage
+  reservation/replay, unrelated transfer/token IDs, mapping/policy rechecks,
+  persisted verified read-back, shared rich audit/finalization, malformed lease
+  quarantine.
+- T-08 through T-13: classification-specific reconciliation evidence, closed
+  typed scalar values, canonical decimal equality, checked coordinate bounds,
+  duplicate conversion-policy rejection, route content-hash verification.
+- R-01 through R-09: discovery readiness, allowlist reference validation,
+  resource-kind accuracy, honored discovery limits, refresh capability denial,
+  exact-scope graph preservation, persisted schema bounds, locator narrowing,
+  denial response contract.
+- Public MCP stage/confirm/ack/reconcile execution, distinct acknowledgement and
+  reconciliation permissions, successful raw transport coverage, transfer
+  evidence export, full crash/fence/lease semantics remain incomplete.
+- Azure create-only Blob fences, verified coordinated backup/restore,
+  startup fence scan/join/quarantine and Wave 5 remain external/unverified.
+- Interrupted model reviews count as no approval; the executed Hermes review
+  rejects Wave 3 acceptance. No push, main merge or deployment.
+
+Exact mechanisms, reproduced test names, conflict decisions and evidence paths:
+`docs/validation/WAVE3_INTEGRATION_REVIEW.md`. Close findings using RED/GREEN
+repros in bounded subsystem passes, then require a fresh independent approval
+and the full gate before commit/push. Do not enable public writes just to
+replace the placeholder while these findings remain open.
+
+## Wave 3 integrated remediation progress (local only)
+
+The dirty integration candidate now passes full Go, race, 386, vet, build,
+formatting, diff, and pinned golangci-lint (0 issues), independently rerun in
+the integration worktree. Earlier 23 red probes are addressed except the
+contradictory verified-readback fixture: it stages source 2 while its mock
+returns target 1 after POST, so reconciliation is the correct outcome; an
+isolated corrected equal-value fixture passes. Applied migration SQL v1–v13
+remains unchanged; v14 and v15 are additive.
+
+Implemented locally: bundle/readiness/relationship scope/caps and exact-scope
+graph preservation; trusted transfer identity, independent token/transfer IDs,
+typed values, route/policy recheck, reservation/replay, rich audit and typed
+read-back transactions, lease quarantine and renewal, and explicit unknown/
+no-repeat responses. The create-only Azure Blob fence adapter passes local HTTP
+contract tests. A signed SQLite backup/restore primitive exists, but its drain
+gate is not wired across production writers. Test-injected raw MCP stage,
+confirm, acknowledge and reconcile success/denial/replay paths validate against
+the advertised schema; production main supplies no transfer service. Bulk and
+provider-dependent relationship refresh remain disabled. Azure still runs the
+accepted Wave 2 image.
+
+Fresh independent review rejected acceptance: private Blob backup/evidence
+upload, complete production drain, restore-on-start fence scan/join/quarantine,
+and fault-injected destroy/restore remain absent. A later review found two
+reconciliation exits needing correction: generic failed operation status does
+not prove no mutation, and confirmed_applied needs fresh reconciliation read-back
+evidence rather than an older equal row. Both now fail closed or require fresh
+persisted read-back via additive v16; confirmed_not_applied remains disabled
+until provider no-effect semantics are verified. Transfer evidence export,
+relationship live spike, Copilot Studio and Workiva sandbox end-to-end, and
+fresh zero-BLOCKING/IMPORTANT integrated review remain unverified. No integration
+commit, push, main merge, or deployment occurred.

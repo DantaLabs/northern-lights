@@ -70,7 +70,7 @@ func TestV13ActorScopedMaterializationsPreserveRowsChildrenAndLegalHold(t *testi
 	if err := Migrate(ctx, db); err != nil {
 		t.Fatalf("migrate v12 to v13: %v", err)
 	}
-	assertAssuranceVersion(t, db, 13)
+	assertAssuranceVersion(t, db, 17)
 	if got := snapshotTableColumns(t, db, materializedTables); !reflect.DeepEqual(got, beforeColumns) {
 		t.Fatalf("materialized columns changed: before=%v after=%v", beforeColumns, got)
 	}
@@ -83,7 +83,7 @@ func TestV13ActorScopedMaterializationsPreserveRowsChildrenAndLegalHold(t *testi
 	if err := Migrate(ctx, db); err != nil {
 		t.Fatalf("idempotent v13 reopen: %v", err)
 	}
-	assertAssuranceVersion(t, db, 13)
+	assertAssuranceVersion(t, db, 17)
 }
 
 func TestV13MigrationFailureRollsBackMarkerAndOriginalTables(t *testing.T) {
@@ -225,7 +225,7 @@ func TestEvidenceActorScopedIdempotencyHasIndependentManifestsReplaysAndAuditAct
 	if replayA.Status != EvidenceIdempotencyReplay || replayA.EvidenceManifestID != firstA.EvidenceManifestID || replayB.Status != EvidenceIdempotencyReplay || replayB.EvidenceManifestID != firstB.EvidenceManifestID {
 		t.Fatalf("evidence replays A=%#v B=%#v", replayA, replayB)
 	}
-	assertMaterializedAuditActors(t, db, "evidence_manifest", firstA.EvidenceManifestID, "actor-a", firstB.EvidenceManifestID, "actor-b")
+	assertMaterializedAuditActors(t, db, "evidence_manifest", firstA.EvidenceManifestID, testTenant+"/actor-a", firstB.EvidenceManifestID, testTenant+"/actor-b")
 }
 
 func seedV12MaterializedRows(t *testing.T, db *sql.DB) {

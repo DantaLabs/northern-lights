@@ -133,13 +133,37 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 	mcpHandler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 		return server
 	}, streamableOpts)
-
 	var mcpEndpoint http.Handler
 	if authMode == config.AuthModeEntra {
 		mcpEndpoint = entraAuthHandler(opts.TokenVerifier,
 			authorizationHTTPHandler(deps.Audit, confirmationRequired(deps), mcpHandler))
 	} else {
 		mcpEndpoint = bearerAuthHandler(opts.APIToken, mcpHandler)
+	}
+	// Include authentication/authorization audit writes in the same admission
+	// interval, rather than allowing pre-handler SQLite writes during a drain.
+	if deps.DrainGate != nil {
+		next := mcpEndpoint
+		mcpEndpoint = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				next.ServeHTTP(w, r)
+				return
+			}
+			// An admitted restore may lose readiness after startup. Do not let
+			// transfer-capable POSTs bypass the quarantine/readiness latch.
+			if deps.Transfer != nil && (deps.Assurance == nil || deps.Assurance.Ready() != nil) {
+				http.Error(w, "restore admission unavailable", http.StatusServiceUnavailable)
+				return
+			}
+			release, err := deps.DrainGate.EnterWrite(r.Context())
+			if err != nil {
+				w.Header().Set("Retry-After", "1")
+				http.Error(w, "database maintenance in progress", http.StatusServiceUnavailable)
+				return
+			}
+			defer release()
+			next.ServeHTTP(w, r)
+		})
 	}
 	if os.Getenv(debugHeadersEnv) == "1" {
 		// Outside auth on purpose: a 401 from a malformed connector key is
@@ -170,7 +194,7 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		assuranceReady := deps.Cfg == nil || !deps.Cfg.AssuranceEnabled || (deps.Assurance != nil && deps.Assurance.Ready() == nil)
-		if deps.Store == nil || deps.Audit == nil || deps.Store.Ping(r.Context()) != nil || deps.Audit.Ping(r.Context()) != nil || !assuranceReady {
+		if (deps.DrainGate != nil && deps.DrainGate.Draining()) || deps.Store == nil || deps.Audit == nil || deps.Store.Ping(r.Context()) != nil || deps.Audit.Ping(r.Context()) != nil || !assuranceReady {
 			http.Error(w, "not ready", http.StatusServiceUnavailable)
 			return
 		}
@@ -188,12 +212,14 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 // writeTools mutate state and must never execute when the audit log is
 // unavailable; an unaudited write is an EU AI Act Art. 12 violation.
 var writeTools = map[string]bool{
-	"workiva_update_field":    true,
-	"workiva_sync_mapping":    true,
-	"workiva_snapshot_report": true,
-	"workiva_validate_report": true,
-	"workiva_compare_periods": true,
-	"workiva_export_evidence": true,
+	"workiva_update_field":           true,
+	"workiva_sync_mapping":           true,
+	"workiva_snapshot_report":        true,
+	"workiva_validate_report":        true,
+	"workiva_compare_periods":        true,
+	"workiva_export_evidence":        true,
+	"workiva_discover_relationships": true,
+	"workiva_transfer_value":         true,
 }
 
 func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
@@ -208,6 +234,14 @@ func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
 			ctx = context.WithValue(ctx, auditIDKey{}, auditID)
 			ctx = context.WithValue(ctx, requestIDKey{}, requestID)
 			actor := ActorFromContextOrRequest(ctx, req, actorHeader)
+			// Transfer actions perform their trusted-scope idempotency lookup in
+			// the transfer service before rich-audit readiness is consulted. A
+			// generic pre-handler audit row would violate that replay ordering;
+			// successful transfer actions append their rich audit atomically with
+			// their evidence, while authorization middleware audits denials.
+			if params.Name == "workiva_transfer_value" {
+				return next(ctx, method, req)
+			}
 			if writeTools[params.Name] && actor == DefaultActor {
 				if !wave2AssuranceTool(params.Name) {
 					return nil, fmt.Errorf("%s requires the %s header identifying the calling user; refusing unattributed write", params.Name, ActorHeader)
@@ -266,6 +300,17 @@ func finishCallToolResult(result mcp.Result, err error, auditID string) mcp.Resu
 type auditIDKey struct{}
 
 type requestIDKey struct{}
+
+type apiKeyRequestKey struct{}
+
+// IsAPIKeyRequest reports whether the inbound MCP request passed through the
+// legacy static API-key boundary. It lets high-impact tools refuse the
+// caller-asserted identity mode without treating direct unit-test calls as
+// authenticated API-key requests.
+func IsAPIKeyRequest(ctx context.Context) bool {
+	marked, _ := ctx.Value(apiKeyRequestKey{}).(bool)
+	return marked
+}
 
 // AuditIDFromContext returns the audit ID of the tools/call being handled,
 // or "" outside a tool call. Tools that append their own rich audit entries
@@ -668,6 +713,30 @@ func requiredPermission(tool string, arguments json.RawMessage, requireConfirmat
 		return identity.PermissionAssuranceCompare, nil
 	case "workiva_export_evidence":
 		return identity.PermissionEvidenceExport, nil
+	case "workiva_discover_relationships":
+		return identity.PermissionAssuranceRelationshipRead, nil
+	case "workiva_transfer_value":
+		var input struct {
+			Phase string `json:"phase"`
+		}
+		if len(arguments) > 0 && json.Unmarshal(arguments, &input) != nil {
+			return "", errors.New("authorization: malformed transfer arguments")
+		}
+		switch input.Phase {
+		case "confirm":
+			return identity.PermissionWorkivaWriteConfirm, nil
+		case "acknowledge":
+			return identity.PermissionWorkivaVisualAck, nil
+		case "reconcile":
+			return identity.PermissionReconciliationManage, nil
+		case "stage", "bulk_stage", "bulk_confirm":
+			// Bulk keeps the preview mapping so authorization does not
+			// masquerade as a missing capability; the handler's durable
+			// feature gate returns feature_disabled before any service call.
+			return identity.PermissionWorkivaWritePreview, nil
+		default:
+			return "", errors.New("authorization: unsupported transfer phase")
+		}
 	default:
 		return "", fmt.Errorf("authorization: tool %q has no permission mapping", tool)
 	}
@@ -766,11 +835,65 @@ func authorizationHTTPHandler(log *audit.Log, requireConfirmation bool, next htt
 		params := &mcp.CallToolParamsRaw{Name: message.Params.Name, Arguments: message.Params.Arguments}
 		recordAuthorizationDenial(ctx, log, principal, params)
 		if permissionErr != nil {
-			writeHTTPStructuredError(w, http.StatusForbidden, auditID, "permission_denied", "tool is not authorized", false, false)
+			writeHTTPAuthorizationError(w, http.StatusForbidden, auditID, message.Params.Name, message.Params.Arguments, "permission_denied", "tool is not authorized", false, false)
 			return
 		}
-		writeHTTPStructuredError(w, http.StatusForbidden, auditID, "permission_denied", "required permission is not granted", false, false)
+		writeHTTPAuthorizationError(w, http.StatusForbidden, auditID, message.Params.Name, message.Params.Arguments, "permission_denied", "required permission is not granted", false, false)
 	})
+}
+
+func writeHTTPAuthorizationError(w http.ResponseWriter, status int, auditID, tool string, arguments json.RawMessage, code, message string, retryable, reconciliation bool) {
+	if tool == "workiva_transfer_value" {
+		writeHTTPTransferAuthorizationError(w, status, auditID, arguments, code, message, retryable, reconciliation)
+		return
+	}
+	if tool != "workiva_discover_relationships" {
+		writeHTTPStructuredError(w, status, auditID, code, message, retryable, reconciliation)
+		return
+	}
+	operation := "discover"
+	var input struct {
+		Operation string `json:"operation"`
+	}
+	if json.Unmarshal(arguments, &input) == nil && (input.Operation == "discover" || input.Operation == "lineage") {
+		operation = input.Operation
+	}
+	errorObject := map[string]any{"code": code, "message": boundedStructuredMessage(message), "retryable": retryable, "reconciliation_required": reconciliation, "nl_audit_id": auditID}
+	payload := map[string]any{
+		"nl_audit_id": auditID, "operation": operation, "status": "denied", "completeness": "not_created",
+		"nodes": []any{}, "edges": []any{}, "omitted_branches": []any{}, "cycle_markers": []any{},
+		"ignored_fields": []any{}, "errors": []any{errorObject}, "error": errorObject,
+		"reconciliation_required": reconciliation,
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("WWW-Authenticate", `Bearer realm="northern-lights"`)
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func writeHTTPTransferAuthorizationError(w http.ResponseWriter, status int, auditID string, arguments json.RawMessage, code, message string, retryable, reconciliation bool) {
+	phase := "unknown"
+	var input struct {
+		Phase string `json:"phase"`
+	}
+	if json.Unmarshal(arguments, &input) == nil {
+		switch input.Phase {
+		case "stage", "confirm", "acknowledge", "reconcile", "bulk_stage", "bulk_confirm":
+			phase = input.Phase
+		}
+	}
+	errorObject := map[string]any{"code": code, "message": boundedStructuredMessage(message), "retryable": retryable}
+	payload := map[string]any{
+		"nl_audit_id": auditID, "phase": phase, "status": "denied",
+		"no_mutation_submitted": true, "reconciliation_required": reconciliation,
+		"ignored_fields": []any{}, "errors": []any{errorObject}, "error": errorObject,
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("WWW-Authenticate", `Bearer realm="northern-lights"`)
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
 }
 
 func writeHTTPStructuredError(w http.ResponseWriter, status int, auditID, code, message string, retryable, reconciliation bool) {
@@ -827,7 +950,7 @@ func bearerAuthHandler(token string, next http.Handler) http.Handler {
 			writeHTTPStructuredError(w, http.StatusUnauthorized, uuid.NewString(), "authentication_failed", "missing or invalid API key", false, false)
 			return
 		}
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), apiKeyRequestKey{}, true)))
 	})
 }
 

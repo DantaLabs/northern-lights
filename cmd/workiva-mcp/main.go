@@ -27,7 +27,9 @@ import (
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 	"github.com/dantalabs/northern-lights/internal/mcpserver/tools"
 	"github.com/dantalabs/northern-lights/internal/ratelimit"
+	"github.com/dantalabs/northern-lights/internal/relationships"
 	"github.com/dantalabs/northern-lights/internal/sqlitedb"
+	"github.com/dantalabs/northern-lights/internal/transfer"
 	"github.com/dantalabs/northern-lights/internal/workiva"
 	"github.com/dantalabs/northern-lights/internal/workivaprovider"
 )
@@ -132,11 +134,67 @@ func checkHealth(ctx context.Context, client *http.Client, endpoint string) erro
 // store and audit log. It is extracted so integration tests can construct
 // the same handler the binary serves without starting a listener.
 func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler, func(), error) {
+	transferEnabled, err := transferProductionEnabled()
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("load config: %w", err)
 	}
+	var provisionedKey *provisionedBackupKey
+	backupEnabled := os.Getenv("NL_BACKUP_MAINTENANCE") == "true"
+	if rawOptIn, present := os.LookupEnv("NL_BACKUP_MAINTENANCE"); present {
+		enabled, optErr := backupMaintenanceOptIn(rawOptIn)
+		if optErr != nil {
+			return nil, nil, nil, optErr
+		}
+		backupEnabled = enabled
+	}
+	if backupEnabled {
+		secretID, hasSecretID := os.LookupEnv(backupSigningKeySecretIDEnv)
+		_, hasFile := os.LookupEnv("NL_BACKUP_SIGNING_KEY_FILE")
+		_, hasParent := os.LookupEnv("NL_BACKUP_TEMP_PARENT")
+		if hasSecretID && (hasFile || hasParent) {
+			return nil, nil, nil, errors.New("backup signing key secret ID cannot be combined with legacy key file or temporary parent")
+		}
+		if hasSecretID {
+			parent := os.TempDir()
+			if parent != "/tmp" {
+				return nil, nil, nil, errors.New("backup signing key requires /tmp ephemeral storage")
+			}
+			var provisionErr error
+			provisionedKey, provisionErr = provisionRuntimeBackupSigningKey(context.Background(), cfg, secretID, productionBackupKeySecretReader, parent)
+			if provisionErr != nil {
+				return nil, nil, nil, provisionErr
+			}
+		}
+	}
+	provisionCleanupOnFailure := true
+	defer func() {
+		if provisionCleanupOnFailure && provisionedKey != nil {
+			provisionedKey.cleanup()
+		}
+	}()
 	storageCtx := storageContextForConfig(cfg)
+	var startupFence *transfer.AzureBlobFence
+	if transferEnabled && os.Getenv("NL_STARTUP_RESTORE_ADMISSION") != "true" {
+		return nil, nil, nil, errors.New("transfer production requires NL_STARTUP_RESTORE_ADMISSION=true")
+	}
+	if restoreOptIn() {
+		startupFence, err = admitStartupRestore(storageCtx, cfg)
+		if err != nil {
+			if transferEnabled {
+				return nil, nil, nil, fmt.Errorf("transfer production startup restore admission: %w", err)
+			}
+			log.Printf("startup restore blocked: %v", err)
+			if provisionedKey != nil {
+				provisionedKey.cleanup()
+				provisionCleanupOnFailure = false
+			}
+			return cfg, blockedStartup(), func() {}, nil
+		}
+	}
 
 	apiToken := ""
 	if cfg.AuthMode == config.AuthModeAPIKey {
@@ -153,10 +211,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		}
 	}
 
-	authOptions, err := buildAuthOptions(context.Background(), cfg, apiToken,
-		func(ctx context.Context, verifierConfig identity.EntraVerifierConfig, client *http.Client) (identity.TokenVerifier, error) {
-			return identity.NewDiscoveredEntraVerifier(ctx, verifierConfig, client)
-		})
+	authOptions, err := buildAuthOptions(context.Background(), cfg, apiToken, startupEntraVerifierFactory)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -180,6 +235,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("open shared database: %w", err)
 	}
+	maintenance := newMaintenanceCoordinator(db)
 	closeDB := func() {
 		if err := db.Close(); err != nil {
 			log.Printf("close shared database: %v", err)
@@ -212,17 +268,38 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 			return nil, nil, nil, fmt.Errorf("bootstrap assurance definitions: %w", err)
 		}
 	}
+	if err := configureProductionEvidenceStorage(storageCtx, cfg, assuranceStore); err != nil {
+		closeDB()
+		return nil, nil, nil, fmt.Errorf("configure production evidence storage: %w", err)
+	}
+	backupKeyPath, backupTempParent := "", ""
+	if provisionedKey != nil {
+		backupKeyPath, backupTempParent = provisionedKey.keyPath, provisionedKey.stage
+	}
+	backupMaintenance, err := configureProductionBackupWithKeyPaths(storageCtx, cfg, authOptions, maintenance, auditLog, defaultBackupDependencyFactory, backupKeyPath, backupTempParent)
+	if err != nil {
+		closeDB()
+		return nil, nil, nil, fmt.Errorf("configure production backup maintenance: %w", err)
+	}
 	janitorCtx, cancelJanitor := context.WithCancel(storageCtx)
 	janitorDone := make(chan struct{})
+	var stopTransferJanitor func()
 	go func() {
 		defer close(janitorDone)
-		assuranceStore.RunJanitor(janitorCtx, 10*time.Second)
+		assuranceStore.RunJanitorGated(janitorCtx, 10*time.Second, maintenance.gate)
 	}()
 	cleanup := func() {
 		cancelJanitor()
 		<-janitorDone
+		if stopTransferJanitor != nil {
+			stopTransferJanitor()
+		}
+		if provisionedKey != nil {
+			provisionedKey.cleanup()
+		}
 		closeDB()
 	}
+	provisionCleanupOnFailure = false
 
 	// from the built-in demo fixture when running in demo mode.
 	path := mappingsPath
@@ -289,27 +366,51 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	// router is the transport seam for selectively adopting Workiva's official
 	// MCP capabilities later without changing our public tools or governance.
 	workivaBackend := workivaprovider.NewRouter(client)
+	restoreNS := blobNamespace{accountURL: os.Getenv("NL_RESTORE_BLOB_SERVICE_URL"), container: os.Getenv("NL_RESTORE_BLOB_CONTAINER"), environment: os.Getenv("NL_RESTORE_ENVIRONMENT_DIGEST")}
+	backupNS := blobNamespace{accountURL: os.Getenv("NL_BACKUP_BLOB_SERVICE_URL"), container: os.Getenv("NL_BACKUP_BLOB_CONTAINER"), environment: os.Getenv("NL_BACKUP_ENVIRONMENT_DIGEST")}
+	evidenceNS := blobNamespace{accountURL: os.Getenv("NL_EVIDENCE_BLOB_SERVICE_URL"), container: os.Getenv("NL_EVIDENCE_BLOB_CONTAINER"), environment: os.Getenv("NL_EVIDENCE_ENVIRONMENT_DIGEST")}
+	transferService, transferStop, err := configureProductionTransfer(storageCtx, productionTransferConfig{
+		enabled: transferEnabled, restoreNamespace: restoreNS, backupNamespace: backupNS, evidenceNamespace: evidenceNS,
+		authMode: cfg.AuthMode, demoMode: cfg.DemoMode, assuranceEnabled: cfg.AssuranceEnabled, startupFence: startupFence,
+		backupConfigured:   backupMaintenance != nil && os.Getenv("NL_BACKUP_MAINTENANCE") == "true",
+		evidenceConfigured: os.Getenv(evidenceStorageOptInEnv) == "true",
+		assuranceStore:     assuranceStore, audit: auditLog, db: db, provider: workivaBackend, gate: maintenance.gate,
+	})
+	if err != nil {
+		cleanup()
+		return nil, nil, nil, err
+	}
+	stopTransferJanitor = transferStop
 
 	registry := mcpserver.NewRegistry()
 	for _, tool := range tools.All() {
 		registry.Register(tool)
 	}
 
+	graphStore, err := relationships.NewStore(assuranceStore.DB(), assuranceStore.Ready)
+	if err != nil {
+		cleanup()
+		return nil, nil, nil, err
+	}
+	// Production transfer remains opt-in; enabling it is not release acceptance.
 	authOptions.Version = version
 	authOptions.DisableLocalhostProtection = cfg.DisableLocalhostProtection
 	handler, err := mcpserver.New(mcpserver.Deps{
-		Client:    workivaBackend,
-		Store:     store,
-		Audit:     auditLog,
-		Assurance: assuranceStore,
-		Cfg:       cfg,
+		Client:        workivaBackend,
+		Store:         store,
+		Audit:         auditLog,
+		Assurance:     assuranceStore,
+		Relationships: graphStore,
+		Transfer:      transferService,
+		DrainGate:     maintenance.gate,
+		Cfg:           cfg,
 	}, registry, &authOptions)
 	if err != nil {
 		cleanup()
 		return nil, nil, nil, err
 	}
 
-	return cfg, handler, cleanup, nil
+	return cfg, &productionHandler{Handler: handler, maintenance: maintenance, backupMaintenance: backupMaintenance}, cleanup, nil
 }
 
 // storageContextForConfig supplies startup/bootstrap work with the same
@@ -324,6 +425,10 @@ func storageContextForConfig(cfg *config.Config) context.Context {
 }
 
 type entraVerifierFactory func(context.Context, identity.EntraVerifierConfig, *http.Client) (identity.TokenVerifier, error)
+
+var startupEntraVerifierFactory entraVerifierFactory = func(ctx context.Context, cfg identity.EntraVerifierConfig, client *http.Client) (identity.TokenVerifier, error) {
+	return identity.NewDiscoveredEntraVerifier(ctx, cfg, client)
+}
 
 func buildAuthOptions(ctx context.Context, cfg *config.Config, apiToken string, factory entraVerifierFactory) (mcpserver.Options, error) {
 	mode := cfg.AuthMode

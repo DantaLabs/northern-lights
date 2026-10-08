@@ -272,7 +272,7 @@ func TestP3W2_015_MigrationUpgradeFailureRollsBackMarker(t *testing.T) {
 		t.Fatalf("v1-v8 upgrade failed: %v", err)
 	}
 	var version int
-	if err := db.QueryRow(`SELECT max(version) FROM schema_migrations WHERE app='assurance'`).Scan(&version); err != nil || version != 13 {
+	if err := db.QueryRow(`SELECT max(version) FROM schema_migrations WHERE app='assurance'`).Scan(&version); err != nil || version != 17 {
 		t.Fatalf("migration marker = %d, %v", version, err)
 	}
 	var count int

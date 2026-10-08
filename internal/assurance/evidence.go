@@ -207,16 +207,13 @@ func (s *Store) BuildManifest(ctx context.Context, subjectKind, subjectID string
 	if profile != RedactionStandard && profile != RedactionStrict {
 		return EvidenceManifest{}, domainError("redaction_profile_invalid", "redaction profile must be standard or strict")
 	}
-	if subjectKind == "transfer" {
-		return EvidenceManifest{}, domainError("subject_unavailable", "transfer evidence is unavailable until Wave 3 transfer state exists")
-	}
 	if _, err := s.subjectJSON(ctx, subjectKind, subjectID); err != nil {
 		return EvidenceManifest{}, err
 	}
 	return EvidenceManifest{ManifestID: uuid.NewString(), ManifestVersion: 2, SubjectKind: subjectKind, SubjectID: subjectID, Artifacts: []EvidenceArtifact{}, Audit: defaultAuditManifest(), Redactions: []RedactionRecord{{Profile: string(profile), Action: "allowlisted canonical subject"}}, Omissions: []OmissionRecord{}}, nil
 }
 
-func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, request EvidenceRequest, storages ...EvidenceStorage) (EvidenceResponse, error) {
+func (s *Store) ExportEvidence(ctx context.Context, _ string, auditID string, request EvidenceRequest, storages ...EvidenceStorage) (EvidenceResponse, error) {
 	if s == nil {
 		return EvidenceResponse{}, domainError("dependency_unavailable", "assurance store is unavailable")
 	}
@@ -224,12 +221,7 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	if !ok || principal.TenantID == "" || principal.ObjectID == "" || !principal.HasPermission(identity.PermissionEvidenceExport) {
 		return EvidenceResponse{}, domainError("strong_identity_required", "validated Entra tid/oid and evidence.export authorization are required")
 	}
-	if err := s.Ready(); err != nil {
-		return EvidenceResponse{}, err
-	}
-	if err := s.requireRichAudit(); err != nil {
-		return EvidenceResponse{}, err
-	}
+	actorID := principal.AuditActor()
 	var configuredStorage EvidenceStorage
 	if request.RetentionClass == "" {
 		request.RetentionClass = "long_term"
@@ -261,40 +253,71 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	if err != nil {
 		return EvidenceResponse{}, err
 	}
-	reservation, err := s.Reserve(ctx, ReservationRequest{ActorID: actorID, Tool: "workiva_export_evidence", Action: "export", IdempotencyDigest: DigestIdempotencyKey(request.IdempotencyKey), RequestDigest: HashBytes(canonicalRequest), RetentionClass: request.RetentionClass}, time.Now().UTC())
+	reservationRequest := ReservationRequest{ActorID: actorID, Tool: "workiva_export_evidence", Action: "export", IdempotencyDigest: DigestIdempotencyKey(request.IdempotencyKey), RequestDigest: HashBytes(canonicalRequest), RetentionClass: request.RetentionClass}
+	classify := func(reservation ReservationResult) (EvidenceResponse, bool, error) {
+		switch reservation.Disposition {
+		case ReservationConflict:
+			return EvidenceResponse{}, true, domainError("idempotency_conflict", "idempotency key was already used for a different canonical request")
+		case ReservationInProgress:
+			e := domainError("idempotency_in_progress", "an identical request is still in progress")
+			e.Retryable = true
+			return EvidenceResponse{}, true, e
+		case ReservationReplay:
+			if reservation.State == ReservationStateFailed || reservation.State == ReservationStateExpired {
+				var failure StructuredError
+				if decodeErr := json.Unmarshal(reservation.Envelope, &failure); decodeErr != nil || failure.Code == "" {
+					return EvidenceResponse{}, true, domainError("idempotency_envelope_invalid", "failed export replay envelope is invalid")
+				}
+				e := domainError(failure.Code, failure.Message)
+				e.Retryable, e.ReconciliationRequired = failure.Retryable, failure.ReconciliationRequired
+				return EvidenceResponse{}, true, e
+			}
+			response, decodeErr := decodeEnvelope[EvidenceResponse](reservation.Envelope)
+			if decodeErr != nil {
+				return EvidenceResponse{}, true, decodeErr
+			}
+			response.Status = EvidenceIdempotencyReplay
+			return response, true, nil
+		case ReservationOwned:
+			return EvidenceResponse{}, false, nil
+		default:
+			return EvidenceResponse{}, true, domainError("idempotency_state_invalid", "reservation disposition is invalid")
+		}
+	}
+	prior, found, err := s.LookupReservation(ctx, reservationRequest)
+	if err != nil {
+		return EvidenceResponse{}, err
+	}
+	if found {
+		response, _, classifyErr := classify(prior)
+		return response, classifyErr
+	}
+	// New work is gated before reserving a key. The second classification after
+	// Reserve handles the race where another request seals between lookup and
+	// reserve, without consulting execution dependencies on that replay.
+	if err := s.Ready(); err != nil {
+		return EvidenceResponse{}, err
+	}
+	if err := s.requireRichAudit(); err != nil {
+		return EvidenceResponse{}, err
+	}
+	reservation, err := s.Reserve(ctx, reservationRequest, time.Now().UTC())
 	request.IdempotencyKey = ""
 	if err != nil {
 		return EvidenceResponse{}, err
 	}
-	switch reservation.Disposition {
-	case ReservationConflict:
-		return EvidenceResponse{}, domainError("idempotency_conflict", "idempotency key was already used for a different canonical request")
-	case ReservationInProgress:
-		e := domainError("idempotency_in_progress", "an identical request is still in progress")
-		e.Retryable = true
-		return EvidenceResponse{}, e
-	case ReservationReplay:
-		response, decodeErr := decodeEnvelope[EvidenceResponse](reservation.Envelope)
-		if decodeErr != nil {
-			return EvidenceResponse{}, decodeErr
-		}
-		response.Status = EvidenceIdempotencyReplay
-		return response, nil
-	case ReservationOwned:
-	default:
-		return EvidenceResponse{}, domainError("idempotency_state_invalid", "reservation disposition is invalid")
-	}
-	if request.SubjectKind == "transfer" {
-		failure := domainError("subject_unavailable", "transfer evidence is unavailable until Wave 3 transfer state exists")
-		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
-		return EvidenceResponse{}, failure
+	response, terminal, classifyErr := classify(reservation)
+	if terminal {
+		return response, classifyErr
 	}
 	configuredStorage = s.evidenceStorage
 	if len(storages) == 1 {
 		configuredStorage = storages[0]
 	}
 	if configuredStorage == nil {
-		return EvidenceResponse{}, domainError("evidence_storage_unconfigured", "a durable evidence storage adapter must be explicitly configured")
+		failure := domainError("evidence_storage_unconfigured", "a durable evidence storage adapter must be explicitly configured")
+		_ = s.FailReservation(ctx, reservation.RecordID, reservation.OwnerNonce, asStructured(failure, auditID), time.Now().UTC())
+		return EvidenceResponse{}, failure
 	}
 	storage := configuredStorage
 	policy, err := s.ResolveRetentionPolicy(ctx, request.RetentionClass)
@@ -406,6 +429,9 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	}
 	subjectRef, err := storage.Put(ctx, "subject.json", "application/json", redacted)
 	if err != nil {
+		if subjectRef != "" {
+			createdRefs = append(createdRefs, subjectRef)
+		}
 		return failMaterialization(err)
 	}
 	createdRefs = append(createdRefs, subjectRef)
@@ -427,6 +453,9 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 		}
 		ref, putErr := storage.Put(ctx, "subject.csv", "text/csv", csvData)
 		if putErr != nil {
+			if ref != "" {
+				createdRefs = append(createdRefs, ref)
+			}
 			return failMaterialization(putErr)
 		}
 		createdRefs = append(createdRefs, ref)
@@ -449,6 +478,9 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	}
 	manifestRef, err := storage.Put(ctx, "manifest.json", "application/json", manifestWithoutSelf)
 	if err != nil {
+		if manifestRef != "" {
+			createdRefs = append(createdRefs, manifestRef)
+		}
 		return failMaterialization(err)
 	}
 	createdRefs = append(createdRefs, manifestRef)
@@ -462,19 +494,19 @@ func (s *Store) ExportEvidence(ctx context.Context, actorID, auditID string, req
 	if err := s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
 		return failMaterialization(err)
 	}
-	if err := VerifyManifestWithRenewal(manifest, append([]EvidenceArtifact{manifestArtifact}, manifest.Artifacts...), storage, func() error {
+	if err := VerifyManifestWithRenewalContext(ctx, manifest, append([]EvidenceArtifact{manifestArtifact}, manifest.Artifacts...), storage, func() error {
 		return s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC())
 	}); err != nil {
 		return failMaterialization(err)
 	}
-	response := EvidenceResponse{NLAuditID: auditID, Status: EvidenceCompleted, EvidenceManifestID: manifest.ManifestID, ManifestVersion: 2, Manifest: manifest, Artifacts: append([]EvidenceArtifact{manifestArtifact}, manifest.Artifacts...), PackageHash: manifest.PackageHash, Audit: manifest.Audit, ExpiresAt: manifest.ExpiresAt}
+	completedResponse := EvidenceResponse{NLAuditID: auditID, Status: EvidenceCompleted, EvidenceManifestID: manifest.ManifestID, ManifestVersion: 2, Manifest: manifest, Artifacts: append([]EvidenceArtifact{manifestArtifact}, manifest.Artifacts...), PackageHash: manifest.PackageHash, Audit: manifest.Audit, ExpiresAt: manifest.ExpiresAt}
 	if err := s.RenewReservation(ctx, reservation.RecordID, reservation.OwnerNonce, time.Now().UTC()); err != nil {
 		return failMaterialization(err)
 	}
-	if err := s.finalizeEvidence(ctx, reservation, response, actorID, time.Now().UTC()); err != nil {
+	if err := s.finalizeEvidence(ctx, reservation, completedResponse, actorID, time.Now().UTC()); err != nil {
 		return failMaterialization(err)
 	}
-	return response, nil
+	return completedResponse, nil
 }
 
 func (s *Store) subjectAuditIDs(ctx context.Context, subjectKind, subjectID string) ([]string, error) {
@@ -671,6 +703,9 @@ func (s *Store) cleanupAndSealTooLarge(ctx context.Context, reservation Reservat
 
 func (s *Store) resolveExportProfile(ctx context.Context, kind, id string, requested RedactionProfile, retention string) (ExportProfile, error) {
 	tenant := identity.StorageTenant(ctx)
+	if kind == "transfer" {
+		return s.resolveTransferExportProfile(ctx, tenant, id, requested, retention)
+	}
 	var snapshotID string
 	switch kind {
 	case "snapshot":
@@ -752,14 +787,28 @@ func CanonicalManifestJSON(manifest EvidenceManifest) ([]byte, error) {
 }
 
 func VerifyManifest(manifest EvidenceManifest, artifacts []EvidenceArtifact, storage ...EvidenceStorage) error {
-	return verifyManifest(manifest, artifacts, nil, storage...)
+	return verifyManifest(context.Background(), manifest, artifacts, nil, storage...)
 }
 
 func VerifyManifestWithRenewal(manifest EvidenceManifest, artifacts []EvidenceArtifact, storage EvidenceStorage, beforeRead func() error) error {
-	return verifyManifest(manifest, artifacts, beforeRead, storage)
+	return verifyManifest(context.Background(), manifest, artifacts, beforeRead, storage)
 }
 
-func verifyManifest(manifest EvidenceManifest, artifacts []EvidenceArtifact, beforeRead func() error, storage ...EvidenceStorage) error {
+// VerifyManifestWithRenewalContext verifies stored manifest artifacts using
+// the caller's authorization and cancellation context. Materializing export
+// paths must use this API so tenant-scoped storage reads retain trusted
+// identity through final read-back verification.
+func VerifyManifestWithRenewalContext(ctx context.Context, manifest EvidenceManifest, artifacts []EvidenceArtifact, storage EvidenceStorage, beforeRead func() error) error {
+	return verifyManifest(ctx, manifest, artifacts, beforeRead, storage)
+}
+
+func verifyManifest(ctx context.Context, manifest EvidenceManifest, artifacts []EvidenceArtifact, beforeRead func() error, storage ...EvidenceStorage) error {
+	if ctx == nil {
+		return errors.New("evidence verification context is required")
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if manifest.ManifestVersion != 2 || manifest.ManifestID == "" || manifest.SubjectKind == "" || manifest.SubjectID == "" {
 		return fmt.Errorf("invalid evidence manifest")
 	}
@@ -803,9 +852,15 @@ func verifyManifest(manifest EvidenceManifest, artifacts []EvidenceArtifact, bef
 					return err
 				}
 			}
-			data, err := storage[0].Read(context.Background(), artifact.StorageRef)
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			data, err := storage[0].Read(ctx, artifact.StorageRef)
 			if err != nil {
 				return fmt.Errorf("read artifact %s: %w", artifact.Name, err)
+			}
+			if err := ctx.Err(); err != nil {
+				return err
 			}
 			if len(data) != artifact.ByteCount || digestHex(HashBytes(data)) != artifact.SHA256 {
 				return fmt.Errorf("artifact %s failed read-back hash verification", artifact.Name)
@@ -880,6 +935,10 @@ func redactValue(value any, profile RedactionProfile) {
 				delete(typed, key)
 				continue
 			}
+			if strictEvidenceFieldRedacted(lower, profile) {
+				delete(typed, key)
+				continue
+			}
 			if profile == RedactionStrict && (lower == "formula_text" || lower == "provider_revision") {
 				delete(typed, key)
 				continue
@@ -890,6 +949,18 @@ func redactValue(value any, profile RedactionProfile) {
 		for _, item := range typed {
 			redactValue(item, profile)
 		}
+	}
+}
+
+func strictEvidenceFieldRedacted(key string, profile RedactionProfile) bool {
+	if profile != RedactionStrict {
+		return false
+	}
+	switch strings.ToLower(key) {
+	case "formula_text", "provider_revision", "before", "intended", "uncached_readbacks", "observed_value", "observed_value_json":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -932,7 +1003,7 @@ func collectRedactionRecords(raw []byte, profile RedactionProfile) []RedactionRe
 				if path != "" {
 					field = path + "." + key
 				}
-				if redactEvidenceKey(key) || (profile == RedactionStrict && (strings.EqualFold(key, "formula_text") || strings.EqualFold(key, "provider_revision"))) {
+				if redactEvidenceKey(key) || strictEvidenceFieldRedacted(key, profile) {
 					if len(records) < 100 {
 						records = append(records, RedactionRecord{Profile: string(profile), Field: field, Action: "removed"})
 					}
@@ -1011,6 +1082,8 @@ func CSVSafeValue(value string) string {
 
 func (s *Store) subjectJSON(ctx context.Context, kind, id string) ([]byte, error) {
 	switch kind {
+	case "transfer":
+		return s.transferSubjectJSON(ctx, id)
 	case "snapshot":
 		response, err := s.Snapshot(ctx, id)
 		if err != nil {

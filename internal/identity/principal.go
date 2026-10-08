@@ -23,16 +23,20 @@ const (
 type Permission string
 
 const (
-	PermissionWorkivaRead         Permission = "workiva.read"
-	PermissionWorkivaWritePreview Permission = "workiva.write.preview"
-	PermissionWorkivaWriteConfirm Permission = "workiva.write.confirm"
-	PermissionMappingSync         Permission = "mapping.sync"
-	PermissionAuditRead           Permission = "audit.read"
-	PermissionTenantAdmin         Permission = "tenant.admin"
-	PermissionAssuranceSnapshot   Permission = "assurance.snapshot"
-	PermissionAssuranceValidate   Permission = "assurance.validate"
-	PermissionAssuranceCompare    Permission = "assurance.compare"
-	PermissionEvidenceExport      Permission = "evidence.export"
+	PermissionWorkivaRead                  Permission = "workiva.read"
+	PermissionWorkivaWritePreview          Permission = "workiva.write.preview"
+	PermissionWorkivaWriteConfirm          Permission = "workiva.write.confirm"
+	PermissionMappingSync                  Permission = "mapping.sync"
+	PermissionAuditRead                    Permission = "audit.read"
+	PermissionTenantAdmin                  Permission = "tenant.admin"
+	PermissionAssuranceSnapshot            Permission = "assurance.snapshot"
+	PermissionAssuranceValidate            Permission = "assurance.validate"
+	PermissionAssuranceCompare             Permission = "assurance.compare"
+	PermissionAssuranceRelationshipRead    Permission = "assurance.relationship.read"
+	PermissionAssuranceRelationshipRefresh Permission = "assurance.relationship.refresh"
+	PermissionEvidenceExport               Permission = "evidence.export"
+	PermissionWorkivaVisualAck             Permission = "workiva.visual_ack"
+	PermissionReconciliationManage         Permission = "reconciliation.manage"
 )
 
 var allPermissions = []Permission{
@@ -45,7 +49,11 @@ var allPermissions = []Permission{
 	PermissionAssuranceSnapshot,
 	PermissionAssuranceValidate,
 	PermissionAssuranceCompare,
+	PermissionAssuranceRelationshipRead,
+	PermissionAssuranceRelationshipRefresh,
 	PermissionEvidenceExport,
+	PermissionWorkivaVisualAck,
+	PermissionReconciliationManage,
 }
 
 // AllPermissions returns the complete permission vocabulary in stable order.

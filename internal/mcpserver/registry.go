@@ -13,6 +13,8 @@ import (
 	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/config"
 	"github.com/dantalabs/northern-lights/internal/mapping"
+	"github.com/dantalabs/northern-lights/internal/relationships"
+	"github.com/dantalabs/northern-lights/internal/transfer"
 	"github.com/dantalabs/northern-lights/internal/workivaprovider"
 )
 
@@ -20,10 +22,15 @@ import (
 // that do not need them; tools should fail gracefully with a clear error
 // rather than panic when a dependency they require is missing.
 type Deps struct {
-	Client    workivaprovider.Backend
-	Store     *mapping.Store
-	Audit     *audit.Log
-	Assurance *assurance.Store
+	Client        workivaprovider.Backend
+	Store         *mapping.Store
+	Audit         *audit.Log
+	Assurance     *assurance.Store
+	Relationships *relationships.Store
+	Transfer      *transfer.Service
+	// DrainGate is shared with the production backup coordinator and janitor.
+	// Nil is permitted only for isolated handlers without backup maintenance.
+	DrainGate *assurance.DrainGate
 	Cfg       *config.Config
 	// ActorHeader is populated by New before tools are bound so middleware
 	// and rich mutation audit entries use the same identity source.

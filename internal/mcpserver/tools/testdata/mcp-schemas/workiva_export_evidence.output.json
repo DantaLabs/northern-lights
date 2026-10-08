@@ -36,7 +36,7 @@
           },
           "storage_ref": {
             "description": "opaque storage reference",
-            "maxLength": 256,
+            "maxLength": 512,
             "minLength": 1,
             "type": "string"
           }

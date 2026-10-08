@@ -114,6 +114,73 @@ func (s *Store) LoadReportRevision(ctx context.Context, reportID string, revisio
 	return report, nil
 }
 
+type ApprovedRelationshipNode struct {
+	ResourceID string `json:"resource_id"`
+	Kind       string `json:"kind"`
+	ExternalID string `json:"external_id"`
+	Provenance string `json:"provenance"`
+	Confidence string `json:"confidence"`
+}
+
+func (s *Store) ApprovedRelationshipResources(ctx context.Context, tenant, actor string, requested []string) ([]ApprovedRelationshipNode, error) {
+	if err := s.Ready(); err != nil {
+		return nil, err
+	}
+	if tenant == "" || actor == "" || len(requested) == 0 || len(requested) > 1000 {
+		return nil, errors.New("trusted tenant, actor, and bounded selectors required")
+	}
+	seen := map[string]bool{}
+	for _, id := range requested {
+		if id == "" || len(id) > maxResourceIDLength || seen[id] {
+			return nil, errors.New("invalid or duplicate selector")
+		}
+		seen[id] = true
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT DISTINCT f.resource_id FROM assurance_report_fields f JOIN assurance_report_revisions r ON r.tenant_id=f.tenant_id AND r.report_id=f.report_id AND r.revision=f.revision JOIN assurance_active_bundle_objects a ON a.tenant_id=r.tenant_id AND a.object_kind='report' AND a.object_id=r.report_id AND a.object_revision=r.revision WHERE f.tenant_id=? AND r.status='active'`, tenant)
+	if err != nil {
+		return nil, err
+	}
+	approved := map[string]bool{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			if err := rows.Close(); err != nil {
+				return nil, err
+			}
+			return nil, err
+		}
+		approved[id] = true
+	}
+	err = rows.Err()
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ApprovedRelationshipNode, 0, len(requested))
+	for _, id := range requested {
+		if !approved[id] {
+			return nil, errors.New("resource outside active approved report definitions")
+		}
+		var ok int
+		err = s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM assurance_relationship_allowlist_revisions g JOIN assurance_active_bundle_objects a ON a.tenant_id=g.tenant_id AND a.object_kind='relationship_allowlist' AND a.object_id=g.entry_id AND a.object_revision=g.revision WHERE g.tenant_id=? AND g.actor_id=? AND g.capability=? AND g.resource_id=?)`, tenant, actor, RelationshipCapabilityRead, id).Scan(&ok)
+		if err != nil {
+			return nil, err
+		}
+		if ok != 1 {
+			return nil, errors.New("resource not allowlisted for actor")
+		}
+		var kind, external string
+		err = s.db.QueryRowContext(ctx, `SELECT COALESCE(resource.kind,'spreadsheet'), f.external_resource_id FROM assurance_report_fields f JOIN assurance_report_revisions r ON r.tenant_id=f.tenant_id AND r.report_id=f.report_id AND r.revision=f.revision JOIN assurance_active_bundle_objects a ON a.tenant_id=r.tenant_id AND a.object_kind='report' AND a.object_id=r.report_id AND a.object_revision=r.revision LEFT JOIN assurance_resources resource ON resource.tenant_id=f.tenant_id AND resource.resource_id=f.resource_id AND resource.status='active' WHERE f.tenant_id=? AND f.resource_id=? AND r.status='active' ORDER BY r.revision DESC,f.field_order LIMIT 1`, tenant, id).Scan(&kind, &external)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, ApprovedRelationshipNode{id, kind, external, "operator", "high"})
+	}
+	return out, nil
+}
+
 func (s *Store) SnapshotForAnalysis(ctx context.Context, id string) (SnapshotAnalysis, error) {
 	if err := s.Ready(); err != nil {
 		return SnapshotAnalysis{}, err
