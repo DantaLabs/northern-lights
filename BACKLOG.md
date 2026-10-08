@@ -1,5 +1,73 @@
 # Backlog
 
+## Current release track — 2026-10-09 (authoritative bounded acceptance)
+
+The detailed dated narratives below are preserved as history and are not the
+current acceptance verdict. In particular, old audit4 selectors, blocked
+cutover/preservation-pending statements, and connection-repair concerns are
+superseded by the current evidence below. The current matrix is
+[`docs/validation/WAVE3_CURRENT_ACCEPTANCE_2026-10-08.md`](docs/validation/WAVE3_CURRENT_ACCEPTANCE_2026-10-08.md).
+
+- **Source and publication:** feature source remains
+  `b0b8ca2d9253be289c75da090037ef2ca1a41503`; local integrated gates and
+  independent source reviews passed, and draft PR11 run `37753676804` passed.
+  Documentation publication was requested; the feature code/image remains
+  `b0b8ca2`. Publication SHA/CI status must be verified separately in the
+  operator handoff and Git. `main` remains unchanged unless that readback says
+  otherwise; no merge is authorized or claimed here.
+- **Canonical app cutover:** revision
+  `ca-northern-lights-wave2--p3-b0b8ca2-maint-a54` cold-started from the final
+  selected backup with the same `b0b8ca2` source and image. `/readyz` and the
+  canonical route returned HTTP 200; the app managed identity remained
+  `SystemAssigned`. Readback showed one active revision and eight older
+  revisions inactive at zero replicas. Captured app body SHA-256
+  `66443c02beadeff4d46c4b4a134d37127f1d55e8217a8f9bcae15be26b163250` matched
+  the normalized template except for the authorized revision suffix and five
+  final restore selectors. The final selector is envelope
+  `5c8017c6ebb1c93ee1d6a4b139b89bf7` / audit high-water 54 / checkpoint
+  `d1158818-928a-4c68-b88b-29873ced2de9`; the former envelope `0547...0419` /
+  audit4 selector is historical and stale. Final deployment/readback receipt
+  SHA-256: `1ec4172c818ce504eeb95bf61f564495e78a61f742b53d9b2a65ac8ffd1a289c`.
+- **Final backup recovery:** final manual execution
+  `job-nl-phase3-backup-ennjmo4` succeeded and sealed the selected envelope
+  above. Receipt SHA-256:
+  `9e8453b6b2ecc4c9a57a4f76fc5aae40ecc563f8dd9de84431816b88ce922938`.
+  The exact envelope was independently SDK-restored and fence-scanned twice;
+  latest proof SHA-256 is
+  `a7e9e59a16ae38c83b83887578392d91fc3d8dc8234ef2793a97dee81245d765`.
+  Signed v2 bootstrap, audit chain/high-water/checkpoint, all six sealed domain
+  operations and rich links, JSON/CSV pins, active transfer/readbacks,
+  reconciliation/visual evidence, exact Phase 2 restoration audit, and full
+  immutable original-confirm replay with zero provider/fence calls passed.
+  This is one exact backup/restore and restart sequence, not a cadence, RPO, or
+  failure-recovery guarantee.
+- **Backup schedule:** the job was temporarily changed to Manual to create the
+  final stable backup. Root independently read back the restored schedule and
+  verified it deep-equals the original `*/5 * * * *` UTC configuration, with
+  job identity, image, and settings unchanged. This confirms configuration
+  restoration, not a new scheduled execution or cadence/RPO guarantee; no new
+  automatic execution is claimed.
+- **Copilot and Workiva:** prior bounded acceptance remains recorded: all 13
+  connector tools were discovered; audited reads/materializations and JSON/CSV
+  storage checks passed; one human-approved transfer was confirmed once,
+  reconciled without repeat, visibly acknowledged, and separately restored
+  once to B4=0 with final uncached B2:B4 `1200/800/0`. No new Copilot invocation
+  or Workiva call was made after the final maintenance restart, per the stop
+  instruction. The evidence export audit remains limited:
+  `completeness=unknown`, checkpoint missing, terminal anchor unverified, and
+  final-row deletion not detectable; this is not complete audit-history proof.
+- **Open and waived boundaries:** Workiva read-only-grant behavior remains
+  OPEN. Genuine second-tenant/shared-store behavior remains WAIVED/UNVERIFIED.
+  Preservation of the prior Wave 2 sandbox database was explicitly WAIVED, NOT
+  PASSED; the nine-row audit archive is not a database backup or migration.
+- **Disposition:** bounded Wave 3 delivery acceptance PASS for the reviewed
+  source, final backup recovery, and maintenance revision startup/cutover, with
+  the open and waived exceptions above. This is not unconditional full-gate,
+  merge, or closure acceptance. Do not infer a commit SHA, push, merge, or
+  release closure from this acceptance record.
+
+## Historical backlog narratives (superseded for current status)
+
 ## Resumed pre-commit review — 2026-10-08
 
 LATEST: MCP-NIL01/GRAPH-ERR01 independently RED-reproduced, narrow worker fixes

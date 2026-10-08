@@ -1,5 +1,17 @@
 # Copilot Studio test runbook
 
+> **Historical Wave 2 procedure — not current Phase 3 guidance.** This
+> 2026-09-17 runbook describes a local Quick Tunnel, API-key authentication,
+> Maker credentials, and a caller-supplied actor header. Do not use those steps
+> to configure or diagnose the current Entra-authenticated Phase 3 Invoker
+> connection. Current Entra Invoker acceptance and historical
+> connection-repair context (the replacement Invoker component/connection
+> currently works) are tracked in
+> [`validation/WAVE3_CURRENT_ACCEPTANCE_2026-10-08.md`](validation/WAVE3_CURRENT_ACCEPTANCE_2026-10-08.md).
+> No current Phase 3 connection repair is authorized by this historical
+> checklist; follow the current operator handoff and preserve the existing tool,
+> Invoker mode, Entra settings, and permission mapping.
+
 Browser steps for the "Copilot Studio integration and auth" milestone. Sam
 runs these; the repo side (server, connector file, verify script, KQL) is
 already prepared. Tick each box only when its pass condition holds.

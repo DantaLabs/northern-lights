@@ -1,5 +1,14 @@
 # Northern Lights Validation Plan and Findings
 
+> **Historical snapshot (2026-09-15; commit `26b136f`).** The statuses and
+> Copilot/API-key setup below describe that earlier Phase 2 test, not the
+> current Phase 3 deployment. Do not use its Maker/API-key/actor-header steps
+> as Entra Invoker instructions. The current release matrix is
+> [`WAVE3_CURRENT_ACCEPTANCE_2026-10-08.md`](WAVE3_CURRENT_ACCEPTANCE_2026-10-08.md);
+> it records bounded final audit-54 restore/restart acceptance and the remaining
+> open/waived limits, superseding this report for current status while preserving
+> the historical results here.
+
 Date: 2026-09-15
 Commit under test: `26b136fdc6a8a489277049af9a5187948dd8dee9`
 Validation branch: `test/live-validation-2026-09-15`
