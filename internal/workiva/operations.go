@@ -23,6 +23,14 @@ type operationResponse struct {
 	Error       *operationError `json:"error,omitempty"`
 }
 
+// OperationInspection is the public read-only operation evidence returned by
+// InspectOperation. It contains no credentials and is never used to submit.
+type OperationInspection struct {
+	Reference   string
+	Status      string
+	ResourceURL string
+}
+
 type operationError struct {
 	Message string `json:"message"`
 }
@@ -43,6 +51,31 @@ func (e *OperationFailedError) Error() string {
 // failed is an error and stops polling immediately.
 func (c *Client) WaitOperation(ctx context.Context, opURL string) (string, error) {
 	return c.WaitOperationWithInitialRetryAfter(ctx, opURL, 0)
+}
+
+// InspectOperation performs one bounded, read-only GET of an existing
+// operation. It never waits, retries via POST, or changes provider state.
+func (c *Client) InspectOperation(ctx context.Context, opURL string) (OperationInspection, error) {
+	resp, err := c.Do(ctx, http.MethodGet, opURL, nil, ratelimit.CategoryOperations)
+	if err != nil {
+		return OperationInspection{}, fmt.Errorf("inspect operation: %w", err)
+	}
+	var op operationResponse
+	decodeErr := json.NewDecoder(resp.Body).Decode(&op)
+	closeErr := resp.Body.Close()
+	if decodeErr != nil {
+		if closeErr != nil {
+			decodeErr = errors.Join(decodeErr, closeErr)
+		}
+		return OperationInspection{}, fmt.Errorf("decode operation inspection: %w", decodeErr)
+	}
+	if closeErr != nil {
+		return OperationInspection{}, fmt.Errorf("close operation inspection: %w", closeErr)
+	}
+	if op.ID == "" || op.Status == "" {
+		return OperationInspection{}, errors.New("inspect operation: provider returned incomplete operation")
+	}
+	return OperationInspection{Reference: opURL, Status: op.Status, ResourceURL: op.ResourceURL}, nil
 }
 
 // WaitOperationWithInitialRetryAfter polls an async operation, honoring the

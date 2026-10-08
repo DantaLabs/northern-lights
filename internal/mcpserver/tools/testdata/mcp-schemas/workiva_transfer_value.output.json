@@ -1,0 +1,516 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "confirmation_token": {
+      "description": "Only in the first successful stage response. Empty on stage replay; omitted in other responses.",
+      "maxLength": 4096,
+      "minLength": 0,
+      "type": "string"
+    },
+    "error": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "field": {
+          "maxLength": 128,
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        "nl_audit_id": {
+          "maxLength": 128,
+          "type": "string"
+        },
+        "reconciliation_required": {
+          "type": "boolean"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "type": "object"
+    },
+    "errors": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "field": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          },
+          "nl_audit_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "reconciliation_required": {
+            "type": "boolean"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "row_id": {
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "type": "object"
+      },
+      "maxItems": 32,
+      "type": "array"
+    },
+    "expires_at": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "ignored_fields": {
+      "items": {
+        "maxLength": 128,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 32,
+      "type": "array"
+    },
+    "machine_outcome": {
+      "description": "api_verified, written, write_outcome_unknown, or not_applicable.",
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "machine_outcome_provenance": {
+      "description": "provider_read_back, reconciliation, or not_applicable.",
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "next_action": {
+      "maxLength": 256,
+      "type": "string"
+    },
+    "nl_audit_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "no_mutation_submitted": {
+      "type": "boolean"
+    },
+    "operation_reference": {
+      "maxLength": 1024,
+      "type": "string"
+    },
+    "phase": {
+      "maxLength": 32,
+      "minLength": 1,
+      "type": "string"
+    },
+    "readback_cache_bypassed": {
+      "type": "boolean"
+    },
+    "readback_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "reconciliation_classification": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "reconciliation_required": {
+      "type": "boolean"
+    },
+    "replay_requires_restage": {
+      "type": "boolean"
+    },
+    "retry_after_ms": {
+      "maximum": 60000,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "row_outcomes": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "field": {
+                "maxLength": 128,
+                "type": "string"
+              },
+              "message": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "maxLength": 128,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable"
+            ],
+            "type": "object"
+          },
+          "no_mutation_submitted": {
+            "type": "boolean"
+          },
+          "operation_reference": {
+            "maxLength": 1024,
+            "type": "string"
+          },
+          "reconciliation_required": {
+            "type": "boolean"
+          },
+          "row_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "transfer_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "row_id",
+          "status",
+          "no_mutation_submitted",
+          "reconciliation_required"
+        ],
+        "type": "object"
+      },
+      "maxItems": 100,
+      "type": "array"
+    },
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "mapping_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "mapping_revision_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "observed_at": {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        "provider_revision": {
+          "maxLength": 256,
+          "type": "string"
+        },
+        "resource_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_fingerprint": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "value": {
+          "additionalProperties": false,
+          "properties": {
+            "boolean": {
+              "type": "boolean"
+            },
+            "error_code": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "formula": {
+              "type": "boolean"
+            },
+            "kind": {
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            },
+            "number": {
+              "maxLength": 256,
+              "type": "string"
+            },
+            "precision": {
+              "maximum": 38,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "scale": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "text": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "unit": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "resource_id",
+        "locator",
+        "value",
+        "source_fingerprint",
+        "observed_at"
+      ],
+      "type": "object"
+    },
+    "status": {
+      "description": "staged, machine_verified_visual_ack_pending, visually_acknowledged, ack_rejected, reconciliation_required, reconciled_not_applied, stale_source, stale_target, write_rejected, write_failed, write_outcome_unknown, partial_reconciliation_required, feature_disabled, unavailable, denied, idempotency_in_progress, idempotency_replay, idempotency_conflict, or error.",
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "target": {
+      "additionalProperties": false,
+      "properties": {
+        "after": {
+          "additionalProperties": false,
+          "properties": {
+            "boolean": {
+              "type": "boolean"
+            },
+            "error_code": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "formula": {
+              "type": "boolean"
+            },
+            "kind": {
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            },
+            "number": {
+              "maxLength": 256,
+              "type": "string"
+            },
+            "precision": {
+              "maximum": 38,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "scale": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "text": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "unit": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "before": {
+          "additionalProperties": false,
+          "properties": {
+            "boolean": {
+              "type": "boolean"
+            },
+            "error_code": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "formula": {
+              "type": "boolean"
+            },
+            "kind": {
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            },
+            "number": {
+              "maxLength": 256,
+              "type": "string"
+            },
+            "precision": {
+              "maximum": 38,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "scale": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "text": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "unit": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "locator": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "read_back": {
+          "additionalProperties": false,
+          "properties": {
+            "boolean": {
+              "type": "boolean"
+            },
+            "error_code": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "formula": {
+              "type": "boolean"
+            },
+            "kind": {
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            },
+            "number": {
+              "maxLength": 256,
+              "type": "string"
+            },
+            "precision": {
+              "maximum": 38,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "scale": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "text": {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            "unit": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "resource_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "resource_id",
+        "locator"
+      ],
+      "type": "object"
+    },
+    "terminal": {
+      "type": "boolean"
+    },
+    "token_recoverable": {
+      "type": "boolean"
+    },
+    "transfer_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "visual_state": {
+      "description": "pending, visually_acknowledged, mismatch, not_visible, or not_checked.",
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "nl_audit_id",
+    "phase",
+    "status",
+    "no_mutation_submitted",
+    "reconciliation_required",
+    "ignored_fields",
+    "errors"
+  ],
+  "type": "object"
+}

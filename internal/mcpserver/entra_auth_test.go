@@ -152,6 +152,12 @@ func TestToolPermissionMappingCoversWave2Tools(t *testing.T) {
 		{name: "workiva_validate_report", want: identity.PermissionAssuranceValidate},
 		{name: "workiva_compare_periods", want: identity.PermissionAssuranceCompare},
 		{name: "workiva_export_evidence", want: identity.PermissionEvidenceExport},
+		{name: "workiva_transfer_value", arguments: json.RawMessage(`{"phase":"stage"}`), want: identity.PermissionWorkivaWritePreview},
+		{name: "workiva_transfer_value", arguments: json.RawMessage(`{"phase":"confirm"}`), want: identity.PermissionWorkivaWriteConfirm},
+		{name: "workiva_transfer_value", arguments: json.RawMessage(`{"phase":"acknowledge"}`), want: identity.PermissionWorkivaVisualAck},
+		{name: "workiva_transfer_value", arguments: json.RawMessage(`{"phase":"reconcile"}`), want: identity.PermissionReconciliationManage},
+		{name: "workiva_transfer_value", arguments: json.RawMessage(`{"phase":"bulk_stage"}`), want: identity.PermissionWorkivaWritePreview},
+		{name: "workiva_transfer_value", arguments: json.RawMessage(`{"phase":"bulk_confirm"}`), want: identity.PermissionWorkivaWritePreview},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name+"/"+string(tc.want), func(t *testing.T) {

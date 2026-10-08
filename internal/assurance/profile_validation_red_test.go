@@ -6,7 +6,7 @@ func TestExportProfileRejectsInvalidVocabulariesAndDuplicateSubjects(t *testing.
 	base := ExportProfile{ProfileID: "p", Revision: 1, Status: "active", PermittedSubjects: []string{"snapshot", "comparison"}, RedactionProfile: "standard", RetentionClass: "long_term", MaxRows: 10, MaxBytes: 100, DeliveryPolicy: "opaque_reference"}
 	for name, mutate := range map[string]func(*ExportProfile){
 		"duplicate subject":   func(p *ExportProfile) { p.PermittedSubjects = []string{"snapshot", "snapshot"} },
-		"unsupported subject": func(p *ExportProfile) { p.PermittedSubjects = []string{"transfer"} },
+		"unsupported subject": func(p *ExportProfile) { p.PermittedSubjects = []string{"bundle"} },
 		"invalid retention":   func(p *ExportProfile) { p.RetentionClass = "" },
 		"invalid delivery":    func(p *ExportProfile) { p.DeliveryPolicy = "url" },
 		"zero rows":           func(p *ExportProfile) { p.MaxRows = 0 },

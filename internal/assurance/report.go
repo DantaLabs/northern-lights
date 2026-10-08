@@ -40,6 +40,7 @@ const (
 	maxExportProfiles    = 32
 	maxFieldCount        = 1000
 	maxPeriodCount       = 100
+	maxAllowlistEntries  = 5000
 	maxPrecision         = 38
 	maxRevision          = 1_000_000
 )
@@ -47,15 +48,32 @@ const (
 // Bundle is the signed tenant-bound provisioning unit. It intentionally has no
 // provider credentials or runtime secrets.
 type Bundle struct {
-	SchemaVersion       int                 `json:"schema_version" yaml:"schema_version"`
-	BundleID            string              `json:"bundle_id" yaml:"bundle_id"`
-	BundleVersion       int                 `json:"bundle_version" yaml:"bundle_version"`
-	TenantID            string              `json:"tenant_id" yaml:"tenant_id"`
-	Reports             []ReportRevision    `json:"reports" yaml:"reports"`
-	RuleSets            []RuleSet           `json:"rule_sets,omitempty" yaml:"rule_sets,omitempty"`
-	MaterialityPolicies []MaterialityPolicy `json:"materiality_policies,omitempty" yaml:"materiality_policies,omitempty"`
-	ExportProfiles      []ExportProfile     `json:"export_profiles,omitempty" yaml:"export_profiles,omitempty"`
-	RetentionPolicies   []RetentionPolicy   `json:"retention_policies,omitempty" yaml:"retention_policies,omitempty"`
+	SchemaVersion         int                          `json:"schema_version" yaml:"schema_version"`
+	BundleID              string                       `json:"bundle_id" yaml:"bundle_id"`
+	BundleVersion         int                          `json:"bundle_version" yaml:"bundle_version"`
+	TenantID              string                       `json:"tenant_id" yaml:"tenant_id"`
+	Reports               []ReportRevision             `json:"reports" yaml:"reports"`
+	RuleSets              []RuleSet                    `json:"rule_sets,omitempty" yaml:"rule_sets,omitempty"`
+	MaterialityPolicies   []MaterialityPolicy          `json:"materiality_policies,omitempty" yaml:"materiality_policies,omitempty"`
+	ExportProfiles        []ExportProfile              `json:"export_profiles,omitempty" yaml:"export_profiles,omitempty"`
+	RetentionPolicies     []RetentionPolicy            `json:"retention_policies,omitempty" yaml:"retention_policies,omitempty"`
+	RelationshipAllowlist []RelationshipAllowlistEntry `json:"relationship_allowlist,omitempty" yaml:"relationship_allowlist,omitempty"`
+	TransferRoutes        []TransferRoute              `json:"transfer_routes,omitempty" yaml:"transfer_routes,omitempty"`
+	ConversionPolicies    []ConversionPolicy           `json:"conversion_policies,omitempty" yaml:"conversion_policies,omitempty"`
+}
+
+const RelationshipCapabilityRead = "assurance.relationship.read"
+
+// RelationshipAllowlistEntry is one immutable, operator-signed grant revision.
+// The active signed bundle is the complete set: an omitted entry remains in
+// history but is no longer active.
+type RelationshipAllowlistEntry struct {
+	EntryID     string `json:"entry_id" yaml:"entry_id"`
+	Revision    int    `json:"revision" yaml:"revision"`
+	ActorID     string `json:"actor_id" yaml:"actor_id"`
+	Capability  string `json:"capability" yaml:"capability"`
+	ResourceID  string `json:"resource_id" yaml:"resource_id"`
+	ContentHash string `json:"content_hash,omitempty" yaml:"content_hash,omitempty"`
 }
 
 // ReportRevision is one immutable server-owned report definition revision.
@@ -180,6 +198,7 @@ func validateBundleObject(bundle *Bundle, expectedTenant string) error {
 		return domainError("bundle_invalid", "bundle must contain 1 through 100 report revisions")
 	}
 	reports := make(map[string]bool, len(bundle.Reports))
+	reportResources := make(map[string]bool)
 	lastRevisionByReport := make(map[string]int)
 	byReport := make(map[string][]ReportRevision)
 	for reportIndex := range bundle.Reports {
@@ -241,6 +260,7 @@ func validateBundleObject(bundle *Bundle, expectedTenant string) error {
 		fields := make(map[string]bool, len(report.Fields))
 		orders := make(map[int]bool, len(report.Fields))
 		for _, field := range report.Fields {
+			reportResources[field.ResourceID] = true
 			for _, item := range []struct {
 				value    string
 				name     string
@@ -371,6 +391,63 @@ func validateBundleObject(bundle *Bundle, expectedTenant string) error {
 		}
 		retentions[policy.RetentionClass] = *policy
 	}
+	if len(bundle.RelationshipAllowlist) > maxAllowlistEntries {
+		return domainError("bundle_collection_bound", "relationship allowlist contains too many entries")
+	}
+	allowlistKeys := make(map[string]bool, len(bundle.RelationshipAllowlist))
+	lastAllowlistRevision := make(map[string]int, len(bundle.RelationshipAllowlist))
+	latestAllowlist := make(map[string]RelationshipAllowlistEntry, len(bundle.RelationshipAllowlist))
+	for index := range bundle.RelationshipAllowlist {
+		entry := &bundle.RelationshipAllowlist[index]
+		for _, item := range []struct {
+			value string
+			name  string
+			max   int
+		}{
+			{entry.EntryID, "relationship_allowlist.entry_id", maxReferenceLength},
+			{entry.ActorID, "relationship_allowlist.actor_id", maxReferenceLength},
+			{entry.ResourceID, "relationship_allowlist.resource_id", maxResourceIDLength},
+		} {
+			if err := validateBundleString(item.value, item.name, item.max, true); err != nil {
+				return domainError("bundle_invalid_relationship_allowlist", err.Error())
+			}
+		}
+		if entry.Capability != RelationshipCapabilityRead {
+			return domainError("bundle_invalid_relationship_allowlist", "relationship allowlist capability is unsupported")
+		}
+		if !reportResources[entry.ResourceID] {
+			return domainError("bundle_reference_unresolved", fmt.Sprintf("relationship allowlist %s references an unavailable report resource", entry.EntryID))
+		}
+		key := fmt.Sprintf("%s/%d", entry.EntryID, entry.Revision)
+		if entry.Revision <= 0 || entry.Revision > maxRevision || allowlistKeys[key] {
+			return domainError("bundle_duplicate_relationship_allowlist", "relationship allowlist IDs and bounded positive revisions must be unique")
+		}
+		if previous, exists := lastAllowlistRevision[entry.EntryID]; exists && entry.Revision <= previous {
+			return domainError("bundle_revision_non_monotonic", fmt.Sprintf("relationship allowlist %s revisions must increase in declared order", entry.EntryID))
+		}
+		allowlistKeys[key] = true
+		lastAllowlistRevision[entry.EntryID] = entry.Revision
+		suppliedHash := entry.ContentHash
+		entry.ContentHash = ""
+		canonical, err := CanonicalJSON(*entry)
+		if err != nil {
+			return wrapError("bundle_canonicalization_failed", "relationship allowlist revision could not be canonicalized", err)
+		}
+		calculatedHash := digestHex(HashBytes(canonical))
+		if suppliedHash != "" && suppliedHash != calculatedHash {
+			return domainError("bundle_hash_invalid", fmt.Sprintf("relationship allowlist %s content hash does not match", entry.EntryID))
+		}
+		entry.ContentHash = calculatedHash
+		latestAllowlist[entry.EntryID] = *entry
+	}
+	activeGrantTuples := make(map[string]bool, len(latestAllowlist))
+	for _, entry := range latestAllowlist {
+		tuple := entry.ActorID + "\x00" + entry.Capability + "\x00" + entry.ResourceID
+		if activeGrantTuples[tuple] {
+			return domainError("bundle_duplicate_relationship_allowlist", "active relationship allowlist grants must be unique")
+		}
+		activeGrantTuples[tuple] = true
+	}
 	for _, report := range bundle.Reports {
 		if report.RuleSetID != "" && !hasLatestRuleSet(ruleSets, report.RuleSetID) {
 			return domainError("bundle_reference_unresolved", fmt.Sprintf("report %s references an unavailable rule set", report.ReportID))
@@ -407,6 +484,67 @@ func validateBundleObject(bundle *Bundle, expectedTenant string) error {
 		if len(bundle.RetentionPolicies) > 0 && retentions[report.RetentionClass].RetentionClass == "" {
 			return domainError("bundle_reference_unresolved", fmt.Sprintf("report %s references an unavailable retention policy", report.ReportID))
 		}
+	}
+	conversionPolicies := map[string]ConversionPolicy{}
+	for i := range bundle.ConversionPolicies {
+		p := &bundle.ConversionPolicies[i]
+		if err := validateConversionPolicy(*p); err != nil {
+			return domainError("bundle_invalid_conversion_policy", err.Error())
+		}
+		key := fmt.Sprintf("%s/%d", p.PolicyID, p.Revision)
+		if _, ok := conversionPolicies[key]; ok {
+			return domainError("bundle_duplicate_conversion_policy", "conversion policy revisions must be unique")
+		}
+		canonical, err := CanonicalJSON(conversionPolicyContent(*p))
+		if err != nil {
+			return err
+		}
+		hash := digestHex(HashBytes(canonical))
+		if p.ContentHash != "" && p.ContentHash != hash {
+			return domainError("bundle_hash_invalid", "conversion policy content hash does not match")
+		}
+		p.ContentHash = hash
+		conversionPolicies[key] = *p
+	}
+	seenRoutes := map[string]bool{}
+	for i := range bundle.TransferRoutes {
+		r := &bundle.TransferRoutes[i]
+		if err := validateTransferRoute(*r); err != nil {
+			return domainError("bundle_invalid_transfer_route", err.Error())
+		}
+		key := fmt.Sprintf("%s/%d", r.RouteID, r.Revision)
+		if seenRoutes[key] {
+			return domainError("bundle_duplicate_transfer_route", "transfer route revisions must be unique")
+		}
+		seenRoutes[key] = true
+		if _, ok := conversionPolicies[fmt.Sprintf("%s/%d", r.ConversionPolicyID, r.ConversionPolicyVersion)]; !ok {
+			return domainError("bundle_reference_unresolved", "transfer route conversion policy exact revision is missing")
+		}
+		for _, reference := range r.ExportProfiles {
+			approved, exists := profiles[fmt.Sprintf("%s/%d", reference.ProfileID, reference.Revision)]
+			if !exists {
+				return domainError("bundle_reference_unresolved", "transfer route references an unavailable export profile")
+			}
+			permitted := false
+			for _, subject := range approved.PermittedSubjects {
+				if subject == "transfer" {
+					permitted = true
+					break
+				}
+			}
+			if !permitted {
+				return domainError("bundle_reference_unresolved", "transfer route export profile does not permit transfer subjects")
+			}
+		}
+		canonical, err := CanonicalJSON(transferRouteContent(*r))
+		if err != nil {
+			return err
+		}
+		hash := digestHex(HashBytes(canonical))
+		if r.ContentHash != "" && r.ContentHash != hash {
+			return domainError("bundle_hash_invalid", "transfer route content hash does not match")
+		}
+		r.ContentHash = hash
 	}
 	return nil
 }
@@ -520,6 +658,28 @@ func (s *Store) StageBundle(ctx context.Context, bundle *ValidatedBundle) error 
 			return domainError("bundle_revision_non_monotonic", fmt.Sprintf("report %s revision is not a valid immutable successor", report.ReportID))
 		}
 	}
+	for _, policy := range bundle.Bundle.ConversionPolicies {
+		var latest int
+		var hash string
+		err := s.db.QueryRowContext(ctx, `SELECT revision,content_hash FROM assurance_conversion_policy_revisions WHERE tenant_id=? AND policy_id=? ORDER BY revision DESC LIMIT 1`, tenant, policy.PolicyID).Scan(&latest, &hash)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if err == nil && (policy.Revision < latest || policy.Revision == latest && policy.ContentHash != hash) {
+			return domainError("bundle_revision_non_monotonic", "conversion policy revision is not a valid immutable successor")
+		}
+	}
+	for _, route := range bundle.Bundle.TransferRoutes {
+		var latestRevision int
+		var existing string
+		err := s.db.QueryRowContext(ctx, `SELECT revision, content_hash FROM assurance_transfer_route_revisions WHERE tenant_id=? AND route_id=? ORDER BY revision DESC LIMIT 1`, tenant, route.RouteID).Scan(&latestRevision, &existing)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if err == nil && (route.Revision < latestRevision || (route.Revision == latestRevision && route.ContentHash != existing)) {
+			return domainError("bundle_revision_non_monotonic", "transfer route revision is not a valid immutable successor")
+		}
+	}
 	checkRevision := func(table, idColumn string, id string, revision int, contentHash string) error {
 		var existingRevision int
 		var existingHash string
@@ -570,6 +730,11 @@ func (s *Store) StageBundle(ctx context.Context, bundle *ValidatedBundle) error 
 		if err := s.db.QueryRowContext(ctx, `SELECT revision FROM assurance_retention_policy_revisions WHERE tenant_id=? AND retention_class=? AND content_hash=? AND revision<>? LIMIT 1`, tenant, policy.RetentionClass, incomingHash, policy.Revision).Scan(&reusedRevision); err == nil {
 			return domainError("bundle_revision_content_reused", "retention policy content cannot be reused under a different revision")
 		} else if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+	}
+	for _, entry := range bundle.Bundle.RelationshipAllowlist {
+		if err := checkRevision("assurance_relationship_allowlist_revisions", "entry_id", entry.EntryID, entry.Revision, entry.ContentHash); err != nil {
 			return err
 		}
 	}
@@ -723,6 +888,50 @@ func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) err
 		_, err := tx.ExecContext(ctx, `INSERT INTO assurance_active_bundle_objects (tenant_id, object_kind, object_id, object_revision, bundle_version) VALUES (?, ?, ?, ?, ?)`, tenant, kind, id, revision, version)
 		return err
 	}
+	for _, policy := range bundle.Bundle.ConversionPolicies {
+		raw, err := marshalCanonical(policy)
+		if err != nil {
+			return err
+		}
+		var existing string
+		err = tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_conversion_policy_revisions WHERE tenant_id=? AND policy_id=? AND revision=?`, tenant, policy.PolicyID, policy.Revision).Scan(&existing)
+		if err == nil && existing != policy.ContentHash {
+			return domainError("bundle_revision_hash_conflict", "conversion policy revision content changed")
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_conversion_policy_revisions (tenant_id,policy_id,revision,content_hash,policy_json) VALUES (?,?,?,?,?)`, tenant, policy.PolicyID, policy.Revision, policy.ContentHash, raw); err != nil {
+				return err
+			}
+		}
+		if err := addActiveObject("conversion_policy", policy.PolicyID, policy.Revision, bundle.Bundle.BundleVersion); err != nil {
+			return err
+		}
+	}
+	for _, route := range bundle.Bundle.TransferRoutes {
+		raw, err := marshalCanonical(route)
+		if err != nil {
+			return err
+		}
+		var existing string
+		err = tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_transfer_route_revisions WHERE tenant_id=? AND route_id=? AND revision=?`, tenant, route.RouteID, route.Revision).Scan(&existing)
+		if err == nil && existing != route.ContentHash {
+			return domainError("bundle_revision_hash_conflict", "transfer route revision content changed")
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_transfer_route_revisions (tenant_id,route_id,revision,content_hash,route_json) VALUES (?,?,?,?,?)`, tenant, route.RouteID, route.Revision, route.ContentHash, raw); err != nil {
+				return err
+			}
+		}
+		if err := addActiveObject("transfer_route", route.RouteID, route.Revision, bundle.Bundle.BundleVersion); err != nil {
+			return err
+		}
+	}
 	for _, ruleSet := range bundle.Bundle.RuleSets {
 		definitionJSON, err := marshalCanonical(ruleSet)
 		if err != nil {
@@ -844,6 +1053,53 @@ func (s *Store) activateBundle(ctx context.Context, bundle *ValidatedBundle) err
 		}
 		if err := addActiveObject("retention_policy", policy.RetentionClass, policy.Revision, bundle.Bundle.BundleVersion); err != nil {
 			return err
+		}
+	}
+	latestAllowlistRevision := make(map[string]int, len(bundle.Bundle.RelationshipAllowlist))
+	latestAllowlistHash := make(map[string]string, len(bundle.Bundle.RelationshipAllowlist))
+	for _, entry := range bundle.Bundle.RelationshipAllowlist {
+		if entry.Revision > latestAllowlistRevision[entry.EntryID] {
+			latestAllowlistRevision[entry.EntryID] = entry.Revision
+			latestAllowlistHash[entry.EntryID] = entry.ContentHash
+		}
+	}
+	for entryID, incomingRevision := range latestAllowlistRevision {
+		var storedRevision int
+		var storedHash string
+		err := tx.QueryRowContext(ctx, `SELECT revision, content_hash FROM assurance_relationship_allowlist_revisions
+ WHERE tenant_id=? AND entry_id=? ORDER BY revision DESC LIMIT 1`, tenant, entryID).Scan(&storedRevision, &storedHash)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if err == nil && (incomingRevision < storedRevision || incomingRevision == storedRevision && latestAllowlistHash[entryID] != storedHash) {
+			return domainError("bundle_revision_non_monotonic", fmt.Sprintf("relationship allowlist %s revision is not a valid immutable successor", entryID))
+		}
+	}
+	for _, entry := range bundle.Bundle.RelationshipAllowlist {
+		definitionJSON, err := marshalCanonical(entry)
+		if err != nil {
+			return err
+		}
+		var existingHash string
+		err = tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_relationship_allowlist_revisions WHERE tenant_id=? AND entry_id=? AND revision=?`, tenant, entry.EntryID, entry.Revision).Scan(&existingHash)
+		if err == nil && existingHash != entry.ContentHash {
+			return domainError("bundle_revision_hash_conflict", "relationship allowlist revision content changed")
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO assurance_relationship_allowlist_revisions
+ (tenant_id, entry_id, revision, actor_id, capability, resource_id, definition_json, content_hash, provisioned_at)
+ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, tenant, entry.EntryID, entry.Revision, entry.ActorID, entry.Capability,
+				entry.ResourceID, definitionJSON, entry.ContentHash, formatTimestamp(time.Now())); err != nil {
+				return err
+			}
+		}
+		if entry.Revision == latestAllowlistRevision[entry.EntryID] {
+			if err := addActiveObject("relationship_allowlist", entry.EntryID, entry.Revision, bundle.Bundle.BundleVersion); err != nil {
+				return err
+			}
 		}
 	}
 	latestByReport := make(map[string]int, len(bundle.Bundle.Reports))

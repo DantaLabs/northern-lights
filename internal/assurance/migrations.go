@@ -377,7 +377,136 @@ FROM assurance_evidence_manifests_v13;
 DROP TABLE assurance_evidence_manifests_v13;
 `
 
-var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11, migrationV12, migrationV13}
+const migrationV14 = `
+ALTER TABLE assurance_relationship_edges ADD COLUMN scope_digest TEXT NOT NULL DEFAULT '';
+CREATE INDEX idx_assurance_edges_tenant_scope_active ON assurance_relationship_edges(tenant_id, scope_digest, active);
+CREATE TABLE assurance_relationship_graph_state (
+ tenant_id TEXT NOT NULL PRIMARY KEY,
+ graph_version INTEGER NOT NULL DEFAULT 0 CHECK(graph_version >= 0)
+);
+CREATE TABLE assurance_relationship_resource_allowlist (
+ tenant_id TEXT NOT NULL,
+ actor_id TEXT NOT NULL,
+ capability TEXT NOT NULL,
+ resource_id TEXT NOT NULL,
+ status TEXT NOT NULL CHECK(status IN ('active','revoked')),
+ policy_version TEXT NOT NULL,
+ provisioned_by TEXT NOT NULL,
+ provisioned_at TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, actor_id, capability, resource_id)
+);
+CREATE INDEX idx_assurance_relationship_allowlist_lookup
+ ON assurance_relationship_resource_allowlist(tenant_id, actor_id, capability, status, resource_id);
+CREATE TABLE assurance_relationship_allowlist_revisions (
+ tenant_id TEXT NOT NULL,
+ entry_id TEXT NOT NULL,
+ revision INTEGER NOT NULL CHECK(revision > 0),
+ actor_id TEXT NOT NULL,
+ capability TEXT NOT NULL,
+ resource_id TEXT NOT NULL,
+ definition_json TEXT NOT NULL,
+ content_hash TEXT NOT NULL,
+ provisioned_at TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, entry_id, revision)
+);
+CREATE INDEX idx_assurance_relationship_allowlist_revision_lookup
+ ON assurance_relationship_allowlist_revisions(tenant_id, actor_id, capability, resource_id, entry_id, revision);
+CREATE TRIGGER assurance_relationship_allowlist_no_update
+ BEFORE UPDATE ON assurance_relationship_allowlist_revisions
+ BEGIN SELECT RAISE(ABORT, 'immutable relationship allowlist revision'); END;
+CREATE TRIGGER assurance_relationship_allowlist_no_delete
+ BEFORE DELETE ON assurance_relationship_allowlist_revisions
+ BEGIN SELECT RAISE(ABORT, 'immutable relationship allowlist revision'); END;
+`
+
+const migrationV15 = `
+CREATE TABLE transfer_intents (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, actor_id TEXT NOT NULL, permission TEXT NOT NULL,
+ intent_json TEXT NOT NULL, state TEXT NOT NULL, token_digest TEXT NOT NULL, idempotency_digest TEXT NOT NULL,
+ request_digest TEXT NOT NULL, expires_at TEXT NOT NULL, lease_id TEXT NOT NULL DEFAULT '', lease_expires_at TEXT NOT NULL DEFAULT '',
+ claim_fence_digest TEXT NOT NULL DEFAULT '', terminal_fence_digest TEXT NOT NULL DEFAULT '', recovery_reason TEXT NOT NULL DEFAULT '',
+ operation_reference TEXT NOT NULL DEFAULT '', operation_completed INTEGER NOT NULL DEFAULT 0, submission_started_at TEXT NOT NULL DEFAULT '',
+ submissions INTEGER NOT NULL DEFAULT 0, row_version INTEGER NOT NULL DEFAULT 1,
+ machine_outcome TEXT NOT NULL DEFAULT 'not_applicable', machine_outcome_provenance TEXT NOT NULL DEFAULT 'not_applicable',
+ visual_state TEXT NOT NULL DEFAULT 'pending',
+ PRIMARY KEY(tenant_id,transfer_id), UNIQUE(tenant_id,actor_id,idempotency_digest)
+);
+CREATE INDEX idx_transfer_intents_tenant_state ON transfer_intents(tenant_id,state,lease_expires_at);
+CREATE TABLE transfer_audit_events (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, event_id TEXT NOT NULL, disposition TEXT NOT NULL,
+ details TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(tenant_id,event_id)
+);
+CREATE TABLE transfer_visual_acknowledgements (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, ack_actor_id TEXT NOT NULL, observation TEXT NOT NULL,
+ ui_location TEXT NOT NULL, refreshed INTEGER NOT NULL, observed_value TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,transfer_id,ack_actor_id,created_at)
+);
+CREATE TABLE transfer_reconciliations (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, reason TEXT NOT NULL, classification TEXT NOT NULL,
+ evidence_ref TEXT NOT NULL, disposition TEXT NOT NULL, created_at TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,transfer_id,created_at)
+);
+CREATE TABLE assurance_transfer_fences (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, fence_kind TEXT NOT NULL CHECK(fence_kind IN ('claim','terminal')),
+ fence_digest TEXT NOT NULL, binding_json TEXT NOT NULL, created_at TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,transfer_id,fence_kind)
+);
+CREATE TABLE assurance_transfer_visual_evidence (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, acknowledgement_id TEXT NOT NULL, confirmer_actor_id TEXT NOT NULL,
+ ack_actor_id TEXT NOT NULL, observation TEXT NOT NULL, ui_location TEXT NOT NULL, refreshed INTEGER NOT NULL,
+ observed_value_json TEXT NOT NULL DEFAULT '', observed_digest TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,acknowledgement_id)
+);
+CREATE TABLE assurance_transfer_reconciliation_evidence (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, reconciliation_id TEXT NOT NULL, reason TEXT NOT NULL,
+ classification TEXT NOT NULL, evidence_ref TEXT NOT NULL DEFAULT '', disposition TEXT NOT NULL, created_at TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,reconciliation_id)
+);
+CREATE INDEX idx_assurance_transfer_recon_tenant_state ON assurance_transfer_reconciliation_evidence(tenant_id,transfer_id,disposition);
+CREATE TABLE assurance_transfer_route_revisions (
+ tenant_id TEXT NOT NULL, route_id TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision > 0),
+ content_hash TEXT NOT NULL, route_json TEXT NOT NULL,
+ PRIMARY KEY(tenant_id, route_id, revision)
+);
+CREATE INDEX idx_transfer_routes_tenant_id ON assurance_transfer_route_revisions(tenant_id, route_id, revision);
+CREATE TABLE assurance_conversion_policy_revisions (
+ tenant_id TEXT NOT NULL, policy_id TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision > 0),
+ content_hash TEXT NOT NULL, policy_json TEXT NOT NULL,
+ PRIMARY KEY(tenant_id,policy_id,revision)
+);
+CREATE INDEX idx_conversion_policies_tenant_id ON assurance_conversion_policy_revisions(tenant_id,policy_id,revision);
+`
+
+// v16 binds fresh reconciliation reads to the current uncertainty episode.
+// The trigger also covers state transitions from recovery/visual-ack paths.
+const migrationV16 = `
+ALTER TABLE transfer_intents ADD COLUMN reconciliation_epoch INTEGER NOT NULL DEFAULT 0;
+CREATE TRIGGER transfer_reconciliation_epoch AFTER UPDATE OF state ON transfer_intents
+ WHEN NEW.state='reconciliation_required' AND OLD.state!='reconciliation_required'
+ BEGIN UPDATE transfer_intents SET reconciliation_epoch=reconciliation_epoch+1
+ WHERE tenant_id=NEW.tenant_id AND transfer_id=NEW.transfer_id; END;
+CREATE TABLE assurance_reconciliation_read_actions (
+ tenant_id TEXT NOT NULL, transfer_id TEXT NOT NULL, readback_id TEXT NOT NULL,
+ readback_rowid INTEGER NOT NULL, reconciliation_epoch INTEGER NOT NULL,
+ PRIMARY KEY(tenant_id,readback_id)
+);
+CREATE INDEX idx_assurance_reconciliation_reads ON assurance_reconciliation_read_actions(tenant_id,transfer_id,readback_rowid);
+`
+
+// v17 persists restore-time external fence quarantine independently of the
+// restored transfer rows. This is required for fence-only orphans and for a
+// readiness gate that survives the next process restart.
+const migrationV17 = `
+CREATE TABLE assurance_transfer_startup_quarantines (
+ tenant_id TEXT NOT NULL, environment_digest TEXT NOT NULL, transfer_id TEXT NOT NULL,
+ disposition TEXT NOT NULL, reason TEXT NOT NULL, evidence_json TEXT NOT NULL,
+ audit_id TEXT NOT NULL, created_at TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, environment_digest, transfer_id));
+ CREATE INDEX idx_assurance_transfer_startup_quarantines_tenant
+ ON assurance_transfer_startup_quarantines(tenant_id, disposition, created_at);
+`
+
+var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11, migrationV12, migrationV13, migrationV14, migrationV15, migrationV16, migrationV17}
 
 // Migrate installs the complete contiguous assurance schema family.
 func Migrate(ctx context.Context, db *sql.DB) error {
@@ -392,7 +521,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 
 func assuranceTables() []string {
 	return []string{
-		"assurance_resources", "assurance_mappings", "assurance_mapping_revisions", "assurance_relationship_edges", "assurance_relationship_discovery_runs",
+		"assurance_resources", "assurance_mappings", "assurance_mapping_revisions", "assurance_relationship_edges", "assurance_relationship_discovery_runs", "assurance_relationship_graph_state", "assurance_relationship_resource_allowlist", "assurance_relationship_allowlist_revisions",
 		"assurance_bundle_candidates", "assurance_active_bundles", "assurance_report_definitions", "assurance_report_revisions", "assurance_report_fields",
 		"assurance_snapshots", "assurance_snapshot_observations", "assurance_snapshot_failures",
 		"assurance_rule_sets", "assurance_rule_set_rules", "assurance_validation_runs", "assurance_validation_results", "assurance_comparisons", "assurance_comparison_items",
@@ -400,8 +529,11 @@ func assuranceTables() []string {
 		"assurance_visual_acknowledgements", "assurance_reconciliations", "assurance_reconciliation_events",
 		"assurance_evidence_manifests", "assurance_evidence_artifacts", "assurance_evidence_subjects",
 		"assurance_retention_policies", "assurance_idempotency_records", "assurance_audit_links", "assurance_checkpoints",
+		"assurance_transfer_startup_quarantines",
 		"assurance_materiality_policies", "assurance_export_profiles", "assurance_legal_holds", "assurance_evidence_tombstones",
 		"assurance_active_bundle_objects", "assurance_retention_policy_revisions",
-		"assurance_evidence_cleanup",
+		"assurance_evidence_cleanup", "assurance_transfer_fences", "assurance_transfer_visual_evidence", "assurance_transfer_reconciliation_evidence",
+		"transfer_intents", "transfer_audit_events", "transfer_visual_acknowledgements", "transfer_reconciliations",
+		"assurance_transfer_route_revisions", "assurance_conversion_policy_revisions",
 	}
 }

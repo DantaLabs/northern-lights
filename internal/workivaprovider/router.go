@@ -33,6 +33,15 @@ type Writer interface {
 	WaitOperationWithInitialRetryAfter(ctx context.Context, operationURL string, initialRetryAfter time.Duration) (resourceURL string, err error)
 }
 
+// OperationInspection is read-only provider evidence for a previously
+// submitted asynchronous operation. It is intentionally separate from Writer
+// so reconciliation cannot gain a mutation capability by accident.
+type OperationInspection = workiva.OperationInspection
+
+type OperationReader interface {
+	InspectOperation(context.Context, string) (OperationInspection, error)
+}
+
 // Backend is a complete Workiva transport. The existing *workiva.Client
 // satisfies this interface and remains the default implementation.
 type Backend interface {
@@ -174,6 +183,17 @@ func (r *Router) UpdateSheetWithRetryAfter(ctx context.Context, spreadsheetID, s
 
 func (r *Router) WaitOperationWithInitialRetryAfter(ctx context.Context, operationURL string, initialRetryAfter time.Duration) (string, error) {
 	return r.writer.WaitOperationWithInitialRetryAfter(ctx, operationURL, initialRetryAfter)
+}
+
+// InspectOperation only delegates to an explicitly implemented read-only
+// operation reader. There is no fallback through submit or wait, because a
+// reconciliation inspection must preserve provider-call semantics.
+func (r *Router) InspectOperation(ctx context.Context, operationURL string) (OperationInspection, error) {
+	reader, ok := r.writer.(OperationReader)
+	if !ok {
+		return OperationInspection{}, errors.New("workivaprovider: read-only operation inspection is unsupported")
+	}
+	return reader.InspectOperation(ctx, operationURL)
 }
 
 var _ Backend = (*workiva.Client)(nil)

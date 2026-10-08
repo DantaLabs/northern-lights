@@ -2,7 +2,7 @@ package tools
 
 import "github.com/dantalabs/northern-lights/internal/mcpserver"
 
-// All returns the eleven Wave 2 builtin tools in stable registration order.
+// All returns the eleven Wave 2 tools plus the registered Wave 3 relationship tool in stable registration order.
 func All() []mcpserver.Tool {
 	return []mcpserver.Tool{
 		ListSpreadsheets(),
@@ -16,5 +16,7 @@ func All() []mcpserver.Tool {
 		ValidateReport(),
 		ComparePeriods(),
 		ExportEvidence(),
+		DiscoverRelationships(),
+		TransferValue(),
 	}
 }

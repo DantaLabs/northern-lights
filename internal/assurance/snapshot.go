@@ -234,9 +234,11 @@ func (service SnapshotService) Capture(ctx context.Context, actorID, auditID str
 		return SnapshotResponse{}, err
 	}
 	captureCtx, cancelCapture := context.WithCancel(ctx)
-	defer cancelCapture()
 	heartbeatErrors := make(chan error, 1)
+	heartbeatDone := make(chan struct{})
+	defer func() { cancelCapture(); <-heartbeatDone }()
 	go func() {
+		defer close(heartbeatDone)
 		ticker := time.NewTicker(reservationLease / 3)
 		defer ticker.Stop()
 		for {
