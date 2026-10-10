@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://northern-lights.invalid/schemas/content-placement.input.json",
+  "title": "workiva_content_placement input",
+  "description": "Proposed closed version-1 input. Runtime byte, ownership, evidence and provenance checks are normative in ../content-placement-contract.md. contentEncoding is an annotation.",
+  "oneOf": [
+    { "$ref": "#/$defs/ingest" },
+    { "$ref": "#/$defs/stage" },
+    { "$ref": "#/$defs/confirm" },
+    { "$ref": "#/$defs/acknowledge" },
+    { "$ref": "#/$defs/reconcile" }
+  ],
+  "$defs": {
+    "key": { "type": "string", "minLength": 16, "maxLength": 256, "pattern": "^[!-~]{16,256}$" },
+    "opaqueId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$" },
+    "localId": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9._:-]+$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "revision": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+    "origin": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["analyst", "agent_flow", "copilot", "other"] },
+        "label": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["kind"]
+    },
+    "interpretation": {
+      "type": "object", "additionalProperties": false,
+      "description": "Reviewed candidate hints only; absent/null critical hints block numeric placement.",
+      "properties": {
+        "period": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 },
+        "currency": { "type": ["string", "null"], "minLength": 1, "maxLength": 16 },
+        "unit": { "type": ["string", "null"], "minLength": 1, "maxLength": 64 },
+        "scale": { "enum": ["ones", "thousands", "millions", "billions", null] },
+        "percent_basis": { "enum": ["ratio", "percent", null] },
+        "precision": { "type": ["integer", "null"], "minimum": 0, "maximum": 15 }
+      }
+    },
+    "source": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "source_text": { "type": "string", "minLength": 1, "maxLength": 262144 },
+            "media_type": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "filename": { "type": "string", "maxLength": 255 }
+          },
+          "required": ["source_text", "media_type"]
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "source_bytes_base64": { "type": "string", "minLength": 4, "maxLength": 1048576, "contentEncoding": "base64" },
+            "media_type": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "filename": { "type": "string", "maxLength": 255 }
+          },
+          "required": ["source_bytes_base64", "media_type"]
+        }
+      ]
+    },
+    "location": {
+      "type": "object",
+      "properties": {
+        "page": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "table": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "segment": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "start_byte": { "type": "integer", "minimum": 0, "maximum": 786431 },
+        "end_byte": { "type": "integer", "minimum": 1, "maximum": 786432 }
+      },
+      "dependentRequired": {
+        "start_byte": ["end_byte"],
+        "end_byte": ["start_byte"]
+      }
+    },
+    "segment": {
+      "allOf": [
+        { "$ref": "#/$defs/location" },
+        {
+          "type": "object",
+          "properties": { "label": { "type": "string", "minLength": 1, "maxLength": 128 } },
+          "required": ["label"]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "sourceProvenance": {
+      "allOf": [
+        { "$ref": "#/$defs/location" },
+        {
+          "type": "object",
+          "properties": { "availability": { "enum": ["available", "unavailable"] } },
+          "required": ["availability"],
+          "if": { "properties": { "availability": { "const": "unavailable" } } },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["page"] }, { "required": ["table"] },
+                { "required": ["segment"] }, { "required": ["start_byte"] },
+                { "required": ["end_byte"] }
+              ]
+            }
+          },
+          "else": {
+            "anyOf": [
+              { "required": ["page"] }, { "required": ["table"] },
+              { "required": ["segment"] }, { "required": ["start_byte", "end_byte"] }
+            ]
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "workflowContext": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "workflow_id": { "$ref": "#/$defs/opaqueId" },
+        "step_id": { "$ref": "#/$defs/opaqueId" },
+        "binding_id": { "$ref": "#/$defs/opaqueId" }
+      },
+      "required": ["workflow_id", "step_id", "binding_id"]
+    },
+    "verifiedEvidenceRefs": {
+      "type": "array", "minItems": 1, "maxItems": 16, "uniqueItems": true,
+      "items": { "$ref": "#/$defs/opaqueId" }
+    },
+    "item": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "local_id": { "$ref": "#/$defs/localId" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 16384 },
+        "kind_hint": { "enum": ["text", "number", "date", "unknown"] },
+        "interpretation": { "$ref": "#/$defs/interpretation" },
+        "provenance": { "$ref": "#/$defs/sourceProvenance" },
+        "segments": { "type": "array", "maxItems": 16, "items": { "$ref": "#/$defs/segment" } }
+      },
+      "required": ["local_id", "text", "kind_hint", "segments"]
+    },
+    "draft": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "local_id": { "$ref": "#/$defs/localId" },
+        "text": { "type": "string", "minLength": 1, "maxLength": 32768 },
+        "item_local_ids": {
+          "type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true,
+          "items": { "$ref": "#/$defs/localId" }
+        },
+        "verified_evidence_refs": { "$ref": "#/$defs/verifiedEvidenceRefs" },
+        "interpretation": { "$ref": "#/$defs/interpretation" },
+        "origin": { "$ref": "#/$defs/origin" }
+      },
+      "required": ["local_id", "text", "origin"],
+      "anyOf": [
+        { "required": ["item_local_ids"] },
+        { "required": ["verified_evidence_refs"] }
+      ]
+    },
+    "ingest": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "phase": { "const": "ingest" },
+        "idempotency_key": { "$ref": "#/$defs/key" },
+        "source": { "$ref": "#/$defs/source" },
+        "existing_source_artifact_id": { "$ref": "#/$defs/opaqueId" },
+        "expected_existing_source_sha256": { "$ref": "#/$defs/sha256" },
+        "origin": { "$ref": "#/$defs/origin" },
+        "workflow_context": { "$ref": "#/$defs/workflowContext" },
+        "verified_evidence_refs": { "$ref": "#/$defs/verifiedEvidenceRefs" },
+        "extracted_items": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/item" } },
+        "draft_artifacts": { "type": "array", "maxItems": 8, "items": { "$ref": "#/$defs/draft" } }
+      },
+      "required": ["phase", "idempotency_key", "origin", "extracted_items", "draft_artifacts"],
+      "dependentRequired": {
+        "existing_source_artifact_id": ["expected_existing_source_sha256", "source"],
+        "expected_existing_source_sha256": ["existing_source_artifact_id", "source"],
+        "verified_evidence_refs": ["workflow_context"]
+      },
+      "allOf": [
+        {
+          "if": { "not": { "required": ["source"] } },
+          "then": {
+            "required": ["workflow_context", "verified_evidence_refs"],
+            "properties": {
+              "extracted_items": { "maxItems": 0 },
+              "draft_artifacts": {
+                "minItems": 1,
+                "items": {
+                  "required": ["verified_evidence_refs"],
+                  "not": { "required": ["item_local_ids"] }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "draft_artifacts": {
+                "contains": { "required": ["verified_evidence_refs"] }
+              }
+            }
+          },
+          "then": { "required": ["workflow_context", "verified_evidence_refs"] }
+        }
+      ]
+    },
+    "stage": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "phase": { "const": "stage" },
+        "idempotency_key": { "$ref": "#/$defs/key" },
+        "source_artifact_id": { "$ref": "#/$defs/opaqueId" },
+        "extracted_item_id": { "$ref": "#/$defs/opaqueId" },
+        "draft_artifact_id": { "$ref": "#/$defs/opaqueId" },
+        "destination_profile_id": { "$ref": "#/$defs/opaqueId" },
+        "destination_profile_revision": { "$ref": "#/$defs/revision" },
+        "workflow_context": { "$ref": "#/$defs/workflowContext" }
+      },
+      "required": ["phase", "idempotency_key", "destination_profile_id", "destination_profile_revision"],
+      "oneOf": [
+        {
+          "required": ["source_artifact_id", "extracted_item_id"],
+          "not": { "required": ["draft_artifact_id"] }
+        },
+        {
+          "required": ["draft_artifact_id"],
+          "not": { "required": ["extracted_item_id"] }
+        }
+      ]
+    },
+    "confirm": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "phase": { "const": "confirm" },
+        "idempotency_key": { "$ref": "#/$defs/key" },
+        "placement_intent_id": { "$ref": "#/$defs/opaqueId" },
+        "confirmation_token": { "type": "string", "minLength": 32, "maxLength": 512 }
+      },
+      "required": ["phase", "idempotency_key", "placement_intent_id"]
+    },
+    "acknowledge": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "phase": { "const": "acknowledge" },
+        "idempotency_key": { "$ref": "#/$defs/key" },
+        "placement_intent_id": { "$ref": "#/$defs/opaqueId" },
+        "observation": { "enum": ["visually_confirmed", "visual_conflict", "not_reviewed"] },
+        "result_sha256": { "$ref": "#/$defs/sha256" },
+        "note": { "type": "string", "maxLength": 2048 }
+      },
+      "required": ["phase", "idempotency_key", "placement_intent_id", "observation", "result_sha256"]
+    },
+    "reconcile": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "phase": { "const": "reconcile" },
+        "idempotency_key": { "$ref": "#/$defs/key" },
+        "placement_intent_id": { "$ref": "#/$defs/opaqueId" },
+        "action": { "enum": ["read_back", "classify"] },
+        "classification": { "enum": ["confirmed_applied", "confirmed_not_applied", "still_unknown", "provider_evidence_inconsistent"] },
+        "uncertainty_episode_id": { "$ref": "#/$defs/opaqueId" },
+        "latest_readback_evidence_id": { "$ref": "#/$defs/opaqueId" },
+        "no_effect_proof_id": { "$ref": "#/$defs/opaqueId" },
+        "note": { "type": "string", "maxLength": 2048 }
+      },
+      "required": ["phase", "idempotency_key", "placement_intent_id", "action"],
+      "allOf": [
+        {
+          "if": { "properties": { "action": { "const": "read_back" } } },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["classification"] },
+                { "required": ["uncertainty_episode_id"] },
+                { "required": ["latest_readback_evidence_id"] },
+                { "required": ["no_effect_proof_id"] }
+              ]
+            }
+          },
+          "else": { "required": ["classification", "uncertainty_episode_id"] }
+        },
+        {
+          "if": {
+            "required": ["classification"],
+            "properties": { "classification": { "const": "confirmed_applied" } }
+          },
+          "then": {
+            "required": ["latest_readback_evidence_id"],
+            "not": { "required": ["no_effect_proof_id"] }
+          }
+        },
+        {
+          "if": {
+            "required": ["classification"],
+            "properties": { "classification": { "const": "confirmed_not_applied" } }
+          },
+          "then": {
+            "required": ["no_effect_proof_id"],
+            "not": { "required": ["latest_readback_evidence_id"] }
+          }
+        },
+        {
+          "if": {
+            "required": ["classification"],
+            "properties": { "classification": { "enum": ["still_unknown", "provider_evidence_inconsistent"] } }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["latest_readback_evidence_id"] },
+                { "required": ["no_effect_proof_id"] }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

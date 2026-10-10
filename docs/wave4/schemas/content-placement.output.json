@@ -1,0 +1,2767 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://northern-lights.invalid/schemas/content-placement.output.json",
+  "title": "workiva_content_placement output",
+  "description": "Proposed closed output contract. Authorization and ownership precede disclosure. Only an initial successful stage response may carry a raw confirmation token as an ephemeral overlay. Saved responses and replays are token-free. Unknown possible effects use uncertain, never an ordinary error or retryable response.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "phase",
+    "status",
+    "nl_audit_id",
+    "replayed",
+    "no_mutation_submitted",
+    "reconciliation_required",
+    "result",
+    "errors"
+  ],
+  "properties": {
+    "phase": {
+      "enum": [
+        "ingest",
+        "stage",
+        "confirm",
+        "acknowledge",
+        "reconcile"
+      ]
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "denied",
+        "invalid",
+        "conflict",
+        "pending",
+        "verified",
+        "uncertain",
+        "feature_disabled",
+        "unavailable",
+        "error"
+      ]
+    },
+    "nl_audit_id": {
+      "$ref": "#/$defs/id"
+    },
+    "replayed": {
+      "type": "boolean"
+    },
+    "no_mutation_submitted": {
+      "type": "boolean",
+      "description": "Describes this invocation. Reconcile and replay never submit a mutation, even when inspecting a previously submitted operation."
+    },
+    "reconciliation_required": {
+      "type": "boolean"
+    },
+    "result": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/ingestResult"
+        },
+        {
+          "$ref": "#/$defs/stageResult"
+        },
+        {
+          "$ref": "#/$defs/confirmResult"
+        },
+        {
+          "$ref": "#/$defs/ackResult"
+        },
+        {
+          "$ref": "#/$defs/reconcileResult"
+        }
+      ]
+    },
+    "errors": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/error"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "ingest"
+          }
+        },
+        "required": [
+          "phase"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ok",
+              "denied",
+              "invalid",
+              "conflict",
+              "feature_disabled",
+              "unavailable",
+              "error"
+            ]
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/ingestResult"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "stage"
+          }
+        },
+        "required": [
+          "phase"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ok",
+              "denied",
+              "invalid",
+              "conflict",
+              "feature_disabled",
+              "unavailable",
+              "error"
+            ]
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/stageResult"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "confirm"
+          }
+        },
+        "required": [
+          "phase"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "enum": [
+              "pending",
+              "verified",
+              "uncertain",
+              "denied",
+              "invalid",
+              "conflict",
+              "feature_disabled",
+              "unavailable",
+              "error"
+            ]
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/confirmResult"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "acknowledge"
+          }
+        },
+        "required": [
+          "phase"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ok",
+              "denied",
+              "invalid",
+              "conflict",
+              "feature_disabled",
+              "unavailable",
+              "error"
+            ]
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/ackResult"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "reconcile"
+          }
+        },
+        "required": [
+          "phase"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ok",
+              "verified",
+              "uncertain",
+              "denied",
+              "invalid",
+              "conflict",
+              "feature_disabled",
+              "unavailable",
+              "error"
+            ]
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/reconcileResult"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "denied",
+              "invalid",
+              "conflict",
+              "feature_disabled",
+              "unavailable",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "type": "null"
+          },
+          "errors": {
+            "minItems": 1
+          },
+          "no_mutation_submitted": {
+            "const": true
+          },
+          "reconciliation_required": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ok",
+              "pending",
+              "verified"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "type": "object"
+          },
+          "errors": {
+            "maxItems": 0
+          },
+          "reconciliation_required": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "uncertain"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "phase": {
+            "enum": [
+              "confirm",
+              "reconcile"
+            ]
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "reconciliation_required": {
+                "const": true
+              },
+              "resubmission_allowed": {
+                "const": false
+              }
+            },
+            "required": [
+              "reconciliation_required",
+              "resubmission_allowed"
+            ]
+          },
+          "reconciliation_required": {
+            "const": true
+          },
+          "errors": {
+            "minItems": 1,
+            "items": {
+              "properties": {
+                "retryable": {
+                  "const": false
+                }
+              },
+              "required": [
+                "retryable"
+              ]
+            },
+            "contains": {
+              "properties": {
+                "code": {
+                  "enum": [
+                    "result_uncertain",
+                    "reconciliation_required"
+                  ]
+                }
+              },
+              "required": [
+                "code"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reconciliation_required": {
+            "const": true
+          }
+        },
+        "required": [
+          "reconciliation_required"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "uncertain"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "enum": [
+              "ingest",
+              "stage",
+              "acknowledge",
+              "reconcile"
+            ]
+          }
+        },
+        "required": [
+          "phase"
+        ]
+      },
+      "then": {
+        "properties": {
+          "no_mutation_submitted": {
+            "const": true
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "replayed": {
+            "const": true
+          }
+        },
+        "required": [
+          "replayed"
+        ]
+      },
+      "then": {
+        "properties": {
+          "no_mutation_submitted": {
+            "const": true
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "stage"
+          },
+          "status": {
+            "const": "ok"
+          },
+          "replayed": {
+            "const": true
+          }
+        },
+        "required": [
+          "phase",
+          "status",
+          "replayed"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "replay_requires_restage": {
+                "const": true
+              },
+              "preview": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "confirmation_token"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "token_delivery"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "stage"
+          },
+          "status": {
+            "const": "ok"
+          },
+          "replayed": {
+            "const": false
+          }
+        },
+        "required": [
+          "phase",
+          "status",
+          "replayed"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "replay_requires_restage": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "confirm"
+          },
+          "status": {
+            "const": "pending"
+          }
+        },
+        "required": [
+          "phase",
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "state": {
+                "const": "submitted"
+              },
+              "result_content_hash": {
+                "type": "null"
+              },
+              "reconciliation_required": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "confirm"
+          },
+          "status": {
+            "const": "verified"
+          }
+        },
+        "required": [
+          "phase",
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "state": {
+                "const": "verified"
+              },
+              "result_content_hash": {
+                "$ref": "#/$defs/hash"
+              },
+              "reconciliation_required": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "confirm"
+          },
+          "status": {
+            "const": "uncertain"
+          }
+        },
+        "required": [
+          "phase",
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "uncertain",
+                  "reconciliation_required"
+                ]
+              },
+              "result_content_hash": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "uncertainty_episode_id"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "confirm"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "verified",
+              "uncertain"
+            ]
+          },
+          "replayed": {
+            "const": false
+          }
+        },
+        "required": [
+          "phase",
+          "status",
+          "replayed"
+        ]
+      },
+      "then": {
+        "properties": {
+          "no_mutation_submitted": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "reconcile"
+          },
+          "status": {
+            "const": "ok"
+          }
+        },
+        "required": [
+          "phase",
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "state": {
+                "const": "confirmed_not_applied"
+              },
+              "reconciliation_required": {
+                "const": false
+              }
+            },
+            "required": [
+              "no_effect_proof_id"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "reconcile"
+          },
+          "status": {
+            "const": "verified"
+          }
+        },
+        "required": [
+          "phase",
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "state": {
+                "const": "confirmed_applied"
+              },
+              "reconciliation_required": {
+                "const": false
+              }
+            },
+            "required": [
+              "latest_readback_evidence_id"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {
+            "const": "reconcile"
+          },
+          "status": {
+            "const": "uncertain"
+          }
+        },
+        "required": [
+          "phase",
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "still_unknown",
+                  "provider_evidence_inconsistent",
+                  "reconciliation_required"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "maxLength": 40
+    },
+    "policyRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_id",
+        "revision",
+        "content_hash"
+      ],
+      "properties": {
+        "policy_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/hash"
+        }
+      }
+    },
+    "retentionRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_id",
+        "revision",
+        "content_hash",
+        "class"
+      ],
+      "properties": {
+        "policy_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "class": {
+          "enum": [
+            "source",
+            "draft",
+            "workflow",
+            "audit"
+          ]
+        }
+      }
+    },
+    "sourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_artifact_id",
+        "revision",
+        "content_hash"
+      ],
+      "properties": {
+        "source_artifact_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/hash"
+        }
+      },
+      "description": "content_hash is server-computed SHA-256 of the exact immutable received bytes; source_text is encoded as received UTF-8 without normalization."
+    },
+    "itemBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "extracted_item_id",
+        "revision",
+        "content_hash"
+      ],
+      "properties": {
+        "extracted_item_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/hash"
+        }
+      }
+    },
+    "draftBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "draft_artifact_id",
+        "revision",
+        "content_hash"
+      ],
+      "properties": {
+        "draft_artifact_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/hash"
+        }
+      }
+    },
+    "verifiedEvidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "revision",
+        "content_hash"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/hash"
+        }
+      },
+      "description": "Server-resolved immutable saved machine evidence, owned by the authenticated workflow actor. The server must verify operation/verification/workflow associations before materialization or disclosure; model claims cannot establish verification."
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/verifiedEvidenceRef"
+      }
+    },
+    "lineage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "source"
+          ],
+          "properties": {
+            "kind": {
+              "const": "source_bytes"
+            },
+            "source": {
+              "$ref": "#/$defs/sourceBinding"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "source",
+            "verified_evidence_refs"
+          ],
+          "properties": {
+            "kind": {
+              "const": "source_and_verified_evidence"
+            },
+            "source": {
+              "$ref": "#/$defs/sourceBinding"
+            },
+            "verified_evidence_refs": {
+              "$ref": "#/$defs/evidenceRefs"
+            }
+          },
+          "description": "Closed immutable mixed lineage. Runtime verifies source/evidence ownership and that repeated bindings match the exact server-resolved inputs."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "verified_evidence_refs"
+          ],
+          "properties": {
+            "kind": {
+              "const": "verified_evidence"
+            },
+            "verified_evidence_refs": {
+              "$ref": "#/$defs/evidenceRefs"
+            }
+          }
+        }
+      ]
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_artifact_id",
+        "revision",
+        "content_hash",
+        "byte_length",
+        "media_type",
+        "retention_policy"
+      ],
+      "properties": {
+        "source_artifact_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "byte_length": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 786432
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "retention_policy": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/retentionRef"
+            },
+            {
+              "properties": {
+                "class": {
+                  "const": "source"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "description": "content_hash hashes the actual immutable received source bytes; no alternate sha256 alias is emitted."
+    },
+    "itemRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "extracted_item_id",
+        "revision",
+        "content_hash",
+        "source",
+        "candidate_only",
+        "retention_policy"
+      ],
+      "properties": {
+        "extracted_item_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "source": {
+          "$ref": "#/$defs/sourceBinding"
+        },
+        "candidate_only": {
+          "const": true
+        },
+        "retention_policy": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/retentionRef"
+            },
+            {
+              "properties": {
+                "class": {
+                  "const": "draft"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "draftRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "draft_artifact_id",
+        "revision",
+        "content_hash",
+        "lineage",
+        "origin_kind",
+        "candidate_only",
+        "retention_policy"
+      ],
+      "properties": {
+        "draft_artifact_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "lineage": {
+          "$ref": "#/$defs/lineage"
+        },
+        "origin_kind": {
+          "enum": [
+            "analyst",
+            "agent_flow",
+            "copilot",
+            "other"
+          ]
+        },
+        "candidate_only": {
+          "const": true
+        },
+        "retention_policy": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/retentionRef"
+            },
+            {
+              "properties": {
+                "class": {
+                  "const": "draft"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ingestResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "source",
+        "verified_evidence_refs",
+        "extracted_items",
+        "draft_artifacts"
+      ],
+      "properties": {
+        "kind": {
+          "const": "ingest"
+        },
+        "source": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/sourceArtifact"
+            }
+          ]
+        },
+        "verified_evidence_refs": {
+          "type": "array",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/verifiedEvidenceRef"
+          }
+        },
+        "extracted_items": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/itemRef"
+          }
+        },
+        "draft_artifacts": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/draftRef"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "properties": {
+              "verified_evidence_refs": {
+                "minItems": 1
+              },
+              "extracted_items": {
+                "maxItems": 0
+              },
+              "draft_artifacts": {
+                "minItems": 1,
+                "items": {
+                  "properties": {
+                    "lineage": {
+                      "properties": {
+                        "kind": {
+                          "const": "verified_evidence"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "draft_artifacts": {
+                "items": {
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "lineage": {
+                          "properties": {
+                            "kind": {
+                              "const": "source_bytes"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "lineage": {
+                          "properties": {
+                            "kind": {
+                              "const": "source_and_verified_evidence"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "source",
+                            "verified_evidence_refs"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "lineage": {
+                          "properties": {
+                            "kind": {
+                              "const": "verified_evidence"
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "verified_evidence_refs"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "draft_artifacts": {
+                "contains": {
+                  "properties": {
+                    "lineage": {
+                      "properties": {
+                        "kind": {
+                          "enum": [
+                            "source_and_verified_evidence",
+                            "verified_evidence"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "lineage"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "draft_artifacts"
+            ]
+          },
+          "then": {
+            "properties": {
+              "verified_evidence_refs": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ],
+      "description": "A source-null result is the refs-only path: an owned workflow_context and verified saved evidence are required at ingress. No source artifact or extraction is fabricated. With a source, drafts may preserve source-only or mixed source-plus-evidence lineage. Returned bindings must match server-resolved inputs."
+    },
+    "scalar": {
+      "oneOf": [
+        {
+          "type": "string",
+          "maxLength": 32768
+        },
+        {
+          "type": "number",
+          "minimum": -1000000000000000,
+          "maximum": 1000000000000000
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "interpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value_kind",
+        "period",
+        "currency",
+        "unit",
+        "stored_scale",
+        "display_scale",
+        "percent_basis",
+        "precision"
+      ],
+      "properties": {
+        "value_kind": {
+          "enum": [
+            "text",
+            "number",
+            "date",
+            "boolean"
+          ]
+        },
+        "period": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "currency": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Z]{3}$"
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "stored_scale": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1000000000000
+        },
+        "display_scale": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1000000000000
+        },
+        "percent_basis": {
+          "enum": [
+            "not_percentage",
+            "fraction",
+            "whole_percent",
+            "basis_points"
+          ]
+        },
+        "precision": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 15
+        }
+      },
+      "description": "Null means explicitly reviewed not-applicable, never unknown. Scales express verified multipliers relative to the named base unit. Missing or ambiguous applicable facts block staging; numeric/date/boolean/type and same-currency conversion consistency require semantic validation."
+    },
+    "metadataRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "formula",
+        "protection",
+        "writability",
+        "formatting",
+        "period",
+        "currency",
+        "unit",
+        "scale",
+        "percent_basis",
+        "precision"
+      ],
+      "properties": {
+        "formula": {
+          "const": "provider_verified"
+        },
+        "protection": {
+          "const": "provider_verified"
+        },
+        "writability": {
+          "const": "provider_verified"
+        },
+        "formatting": {
+          "const": "provider_verified"
+        },
+        "period": {
+          "enum": [
+            "provider_verified",
+            "operator_declared_allowed"
+          ]
+        },
+        "currency": {
+          "enum": [
+            "provider_verified",
+            "operator_declared_allowed"
+          ]
+        },
+        "unit": {
+          "enum": [
+            "provider_verified",
+            "operator_declared_allowed"
+          ]
+        },
+        "scale": {
+          "enum": [
+            "provider_verified",
+            "operator_declared_allowed"
+          ]
+        },
+        "percent_basis": {
+          "enum": [
+            "provider_verified",
+            "operator_declared_allowed"
+          ]
+        },
+        "precision": {
+          "enum": [
+            "provider_verified",
+            "operator_declared_allowed"
+          ]
+        }
+      }
+    },
+    "destinationProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "destination_profile_id",
+        "revision",
+        "content_hash",
+        "state",
+        "resource_id",
+        "sheet_id",
+        "cell",
+        "operation",
+        "expected_interpretation",
+        "formula_policy",
+        "literal_policy",
+        "protection_policy",
+        "format_policy",
+        "unknown_critical_facts",
+        "provenance_requirement",
+        "metadata_requirements",
+        "allowed_conversions",
+        "resource_policy",
+        "conversion_policy",
+        "provider_contract",
+        "retention_policy",
+        "preview_ttl_seconds"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "destination_profile_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "$ref": "#/$defs/revision"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "state": {
+          "enum": [
+            "active",
+            "retired"
+          ]
+        },
+        "resource_id": {
+          "$ref": "#/$defs/id"
+        },
+        "sheet_id": {
+          "$ref": "#/$defs/id"
+        },
+        "cell": {
+          "type": "string",
+          "pattern": "^[A-Z]{1,3}[1-9][0-9]{0,6}$"
+        },
+        "operation": {
+          "const": "single_cell_literal"
+        },
+        "expected_interpretation": {
+          "$ref": "#/$defs/interpretation"
+        },
+        "formula_policy": {
+          "const": "reject_formula_target"
+        },
+        "literal_policy": {
+          "const": "literal_only"
+        },
+        "protection_policy": {
+          "const": "reject_protected"
+        },
+        "format_policy": {
+          "const": "preserve"
+        },
+        "unknown_critical_facts": {
+          "const": "block"
+        },
+        "provenance_requirement": {
+          "enum": [
+            "source_or_verified_evidence",
+            "fine_grained_available"
+          ]
+        },
+        "metadata_requirements": {
+          "$ref": "#/$defs/metadataRequirements"
+        },
+        "allowed_conversions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "typed_copy",
+              "same_currency_scale",
+              "verified_percentage"
+            ]
+          }
+        },
+        "resource_policy": {
+          "$ref": "#/$defs/policyRef"
+        },
+        "conversion_policy": {
+          "$ref": "#/$defs/policyRef"
+        },
+        "provider_contract": {
+          "$ref": "#/$defs/policyRef"
+        },
+        "retention_policy": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/retentionRef"
+            },
+            {
+              "properties": {
+                "class": {
+                  "const": "workflow"
+                }
+              }
+            }
+          ]
+        },
+        "preview_ttl_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 900
+        }
+      },
+      "description": "Normative operator-authored payload carried by an authenticated signed bundle; not a chat-supplied mapping. Tenant comes from the containing bundle. content_hash is SHA-256 of versioned canonical profile bytes excluding its content_hash member. Signature verification, active-bundle membership, immutable revision/hash consistency, reference resolution, retention and authorization are runtime prerequisites. Unknown critical metadata blocks the affected stage. No formula, layout, multi-cell or bulk operation exists in this schema."
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "start_byte": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 786431
+        },
+        "end_byte": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 786432
+        }
+      },
+      "dependentRequired": {
+        "start_byte": [
+          "end_byte"
+        ],
+        "end_byte": [
+          "start_byte"
+        ]
+      },
+      "description": "Byte offsets are half-open in original source bytes. Runtime checks end > start, source length, UTF-8 boundaries and independently established location validity; no invented coordinates."
+    },
+    "sourceProvenance": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "availability",
+            "source",
+            "locations"
+          ],
+          "properties": {
+            "kind": {
+              "const": "source_bytes"
+            },
+            "availability": {
+              "const": "available"
+            },
+            "source": {
+              "$ref": "#/$defs/sourceBinding"
+            },
+            "locations": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": {
+                "$ref": "#/$defs/location"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "availability",
+            "source",
+            "reason"
+          ],
+          "properties": {
+            "kind": {
+              "const": "source_bytes"
+            },
+            "availability": {
+              "const": "unavailable"
+            },
+            "source": {
+              "$ref": "#/$defs/sourceBinding"
+            },
+            "reason": {
+              "enum": [
+                "not_returned",
+                "not_verified",
+                "not_applicable"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "evidenceProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "availability",
+        "verified_evidence_refs"
+      ],
+      "properties": {
+        "kind": {
+          "const": "verified_evidence"
+        },
+        "availability": {
+          "const": "available"
+        },
+        "verified_evidence_refs": {
+          "$ref": "#/$defs/evidenceRefs"
+        }
+      }
+    },
+    "mixedProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "source_provenance",
+        "verified_evidence_refs"
+      ],
+      "properties": {
+        "kind": {
+          "const": "source_and_verified_evidence"
+        },
+        "source_provenance": {
+          "$ref": "#/$defs/sourceProvenance"
+        },
+        "verified_evidence_refs": {
+          "$ref": "#/$defs/evidenceRefs"
+        }
+      },
+      "description": "Preserves source provenance and the immutable verified evidence references. Runtime checks each against preview lineage."
+    },
+    "metadataFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provenance",
+        "critical",
+        "value",
+        "evidence_id"
+      ],
+      "properties": {
+        "provenance": {
+          "enum": [
+            "provider_verified",
+            "operator_declared",
+            "unavailable"
+          ]
+        },
+        "critical": {
+          "type": "boolean"
+        },
+        "value": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            {
+              "type": "number",
+              "minimum": -1000000000000,
+              "maximum": 1000000000000
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "critical": {
+                "const": true
+              }
+            },
+            "required": [
+              "critical"
+            ]
+          },
+          "then": {
+            "properties": {
+              "provenance": {
+                "enum": [
+                  "provider_verified",
+                  "operator_declared"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "provenance": {
+                "const": "unavailable"
+              }
+            },
+            "required": [
+              "provenance"
+            ]
+          },
+          "then": {
+            "properties": {
+              "critical": {
+                "const": false
+              },
+              "value": {
+                "type": "null"
+              },
+              "evidence_id": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "evidence_id": {
+                "$ref": "#/$defs/id"
+              }
+            }
+          }
+        }
+      ],
+      "description": "Operator declarations are template constraints, not observations of provider enforcement. The profile determines criticality and allowed provenance; callers cannot downgrade a critical fact. Runtime compares each fact against the frozen interpretation and signed metadata requirement."
+    },
+    "interpretationFacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "period",
+        "currency",
+        "unit",
+        "scale",
+        "percent_basis",
+        "precision"
+      ],
+      "properties": {
+        "period": {
+          "$ref": "#/$defs/metadataFact"
+        },
+        "currency": {
+          "$ref": "#/$defs/metadataFact"
+        },
+        "unit": {
+          "$ref": "#/$defs/metadataFact"
+        },
+        "scale": {
+          "$ref": "#/$defs/metadataFact"
+        },
+        "percent_basis": {
+          "$ref": "#/$defs/metadataFact"
+        },
+        "precision": {
+          "$ref": "#/$defs/metadataFact"
+        }
+      }
+    },
+    "providerFacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provenance",
+        "observation_id",
+        "observed_at",
+        "formula_target",
+        "protected_target",
+        "write_permission_verified",
+        "format_preservation_verified"
+      ],
+      "properties": {
+        "provenance": {
+          "const": "provider_verified"
+        },
+        "observation_id": {
+          "$ref": "#/$defs/id"
+        },
+        "observed_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "formula_target": {
+          "const": false
+        },
+        "protected_target": {
+          "const": false
+        },
+        "write_permission_verified": {
+          "const": true
+        },
+        "format_preservation_verified": {
+          "const": true
+        }
+      },
+      "description": "Required provider evidence, not inferred from a successful read, operator declaration or confirmation. Absence or uncertainty prevents a successful stage."
+    },
+    "operatorFacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provenance",
+        "resource_policy",
+        "conversion_policy",
+        "expected_interpretation"
+      ],
+      "properties": {
+        "provenance": {
+          "const": "operator_declared"
+        },
+        "resource_policy": {
+          "$ref": "#/$defs/policyRef"
+        },
+        "conversion_policy": {
+          "$ref": "#/$defs/policyRef"
+        },
+        "expected_interpretation": {
+          "$ref": "#/$defs/interpretation"
+        }
+      }
+    },
+    "preview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "placement_intent_id",
+        "content_hash",
+        "actor_binding_id",
+        "source",
+        "derived_artifact",
+        "lineage",
+        "original_text",
+        "original_value",
+        "original_interpretation",
+        "target_interpretation",
+        "intended_value",
+        "current_value",
+        "current_value_content_hash",
+        "source_provenance",
+        "destination_profile",
+        "conversion",
+        "provider_facts",
+        "operator_constraint_facts",
+        "target_interpretation_facts",
+        "critical_facts_resolved",
+        "created_at",
+        "expires_at",
+        "retention_policy"
+      ],
+      "properties": {
+        "placement_intent_id": {
+          "$ref": "#/$defs/id"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "actor_binding_id": {
+          "$ref": "#/$defs/id"
+        },
+        "source": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sourceBinding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "derived_artifact": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/itemBinding"
+            },
+            {
+              "$ref": "#/$defs/draftBinding"
+            }
+          ]
+        },
+        "lineage": {
+          "$ref": "#/$defs/lineage"
+        },
+        "original_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32768
+        },
+        "original_value": {
+          "$ref": "#/$defs/scalar"
+        },
+        "original_interpretation": {
+          "$ref": "#/$defs/interpretation"
+        },
+        "target_interpretation": {
+          "$ref": "#/$defs/interpretation"
+        },
+        "intended_value": {
+          "$ref": "#/$defs/scalar"
+        },
+        "current_value": {
+          "$ref": "#/$defs/scalar"
+        },
+        "current_value_content_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "source_provenance": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sourceProvenance"
+            },
+            {
+              "$ref": "#/$defs/evidenceProvenance"
+            },
+            {
+              "$ref": "#/$defs/mixedProvenance"
+            }
+          ]
+        },
+        "destination_profile": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/destinationProfile"
+            },
+            {
+              "properties": {
+                "state": {
+                  "const": "active"
+                }
+              }
+            }
+          ]
+        },
+        "conversion": {
+          "enum": [
+            "typed_copy",
+            "same_currency_scale",
+            "verified_percentage"
+          ]
+        },
+        "provider_facts": {
+          "$ref": "#/$defs/providerFacts"
+        },
+        "operator_constraint_facts": {
+          "$ref": "#/$defs/operatorFacts"
+        },
+        "target_interpretation_facts": {
+          "$ref": "#/$defs/interpretationFacts"
+        },
+        "critical_facts_resolved": {
+          "const": true
+        },
+        "created_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "retention_policy": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/retentionRef"
+            },
+            {
+              "properties": {
+                "class": {
+                  "const": "workflow"
+                }
+              }
+            }
+          ]
+        },
+        "confirmation_token": {
+          "type": "string",
+          "minLength": 32,
+          "maxLength": 512,
+          "pattern": "^[A-Za-z0-9_-]{32,512}$"
+        },
+        "token_delivery": {
+          "const": "ephemeral_initial_response_only"
+        }
+      },
+      "dependentRequired": {
+        "confirmation_token": [
+          "token_delivery"
+        ],
+        "token_delivery": [
+          "confirmation_token"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "properties": {
+              "derived_artifact": {
+                "$ref": "#/$defs/draftBinding"
+              },
+              "lineage": {
+                "properties": {
+                  "kind": {
+                    "const": "verified_evidence"
+                  }
+                }
+              },
+              "source_provenance": {
+                "$ref": "#/$defs/evidenceProvenance"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "lineage": {
+                "oneOf": [
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "source_bytes"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "source_and_verified_evidence"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "source",
+                      "verified_evidence_refs"
+                    ]
+                  }
+                ]
+              },
+              "source_provenance": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/sourceProvenance"
+                  },
+                  {
+                    "$ref": "#/$defs/mixedProvenance"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "lineage": {
+                "properties": {
+                  "kind": {
+                    "const": "source_bytes"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "lineage"
+            ]
+          },
+          "then": {
+            "properties": {
+              "source_provenance": {
+                "$ref": "#/$defs/sourceProvenance"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "lineage": {
+                "properties": {
+                  "kind": {
+                    "const": "verified_evidence"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "lineage"
+            ]
+          },
+          "then": {
+            "properties": {
+              "source_provenance": {
+                "$ref": "#/$defs/evidenceProvenance"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "lineage": {
+                "properties": {
+                  "kind": {
+                    "const": "source_and_verified_evidence"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "lineage"
+            ]
+          },
+          "then": {
+            "properties": {
+              "derived_artifact": {
+                "$ref": "#/$defs/draftBinding"
+              },
+              "source_provenance": {
+                "$ref": "#/$defs/mixedProvenance"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "derived_artifact": {
+                "required": [
+                  "extracted_item_id"
+                ]
+              }
+            },
+            "required": [
+              "derived_artifact"
+            ]
+          },
+          "then": {
+            "properties": {
+              "original_text": {
+                "maxLength": 16384
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "destination_profile": {
+                "properties": {
+                  "provenance_requirement": {
+                    "const": "fine_grained_available"
+                  }
+                },
+                "required": [
+                  "provenance_requirement"
+                ]
+              }
+            },
+            "required": [
+              "destination_profile"
+            ]
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/sourceBinding"
+              },
+              "source_provenance": {
+                "oneOf": [
+                  {
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/sourceProvenance"
+                      },
+                      {
+                        "properties": {
+                          "availability": {
+                            "const": "available"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/mixedProvenance"
+                      },
+                      {
+                        "properties": {
+                          "source_provenance": {
+                            "properties": {
+                              "availability": {
+                                "const": "available"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "description": "Exact authorized preview, never truncated. Binds the original item/draft text, source bytes or saved verified evidence, interpretations, current target and intended literal, signed policies/profile, actor and expiry. Runtime enforces equality of repeated bindings, value/type/interpretation consistency, allowed conversion, provider provenance requirements, byte caps and 0 < expiry-created <= profile.preview_ttl_seconds. No FX inference or double scaling. Unknown applicable critical facts block staging."
+    },
+    "stageResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "preview",
+        "replay_requires_restage"
+      ],
+      "properties": {
+        "kind": {
+          "const": "stage"
+        },
+        "preview": {
+          "$ref": "#/$defs/preview"
+        },
+        "replay_requires_restage": {
+          "type": "boolean"
+        }
+      }
+    },
+    "operationBinding": {
+      "type": "object",
+      "required": [
+        "operation_known",
+        "provider_operation_id"
+      ],
+      "properties": {
+        "operation_known": {
+          "type": "boolean"
+        },
+        "provider_operation_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation_known": {
+                "const": true
+              }
+            },
+            "required": [
+              "operation_known"
+            ]
+          },
+          "then": {
+            "properties": {
+              "provider_operation_id": {
+                "$ref": "#/$defs/id"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "provider_operation_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "description": "Preserve the already known provider operation ID exactly. operation_known may be false only when no ID has ever been established; runtime must compare persisted history. It cannot be reset to discard a known operation."
+    },
+    "confirmResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "placement_intent_id",
+        "state",
+        "operation_known",
+        "provider_operation_id",
+        "result_content_hash",
+        "reconciliation_required",
+        "resubmission_allowed"
+      ],
+      "properties": {
+        "kind": {
+          "const": "confirm"
+        },
+        "placement_intent_id": {
+          "$ref": "#/$defs/id"
+        },
+        "state": {
+          "enum": [
+            "submitted",
+            "verified",
+            "uncertain",
+            "reconciliation_required"
+          ]
+        },
+        "operation_known": {
+          "type": "boolean"
+        },
+        "provider_operation_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "result_content_hash": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/hash"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "uncertainty_episode_id": {
+          "$ref": "#/$defs/id"
+        },
+        "reconciliation_required": {
+          "type": "boolean"
+        },
+        "resubmission_allowed": {
+          "const": false
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/operationBinding"
+        }
+      ]
+    },
+    "ackResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "placement_intent_id",
+        "observation",
+        "acknowledgement_id",
+        "result_content_hash"
+      ],
+      "properties": {
+        "kind": {
+          "const": "acknowledge"
+        },
+        "placement_intent_id": {
+          "$ref": "#/$defs/id"
+        },
+        "observation": {
+          "enum": [
+            "visually_confirmed",
+            "visual_conflict",
+            "not_reviewed"
+          ]
+        },
+        "acknowledgement_id": {
+          "$ref": "#/$defs/id"
+        },
+        "result_content_hash": {
+          "$ref": "#/$defs/hash"
+        }
+      },
+      "description": "Human visual observation is separate from machine verification and never authorizes another submission."
+    },
+    "reconcileResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "placement_intent_id",
+        "state",
+        "uncertainty_episode_id",
+        "operation_known",
+        "provider_operation_id",
+        "evidence_ids",
+        "evidence_binding_content_hash",
+        "reconciliation_required",
+        "resubmission_allowed"
+      ],
+      "properties": {
+        "kind": {
+          "const": "reconcile"
+        },
+        "placement_intent_id": {
+          "$ref": "#/$defs/id"
+        },
+        "state": {
+          "enum": [
+            "still_unknown",
+            "confirmed_applied",
+            "confirmed_not_applied",
+            "provider_evidence_inconsistent",
+            "reconciliation_required"
+          ]
+        },
+        "uncertainty_episode_id": {
+          "$ref": "#/$defs/id"
+        },
+        "operation_known": {
+          "type": "boolean"
+        },
+        "provider_operation_id": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "evidence_binding_content_hash": {
+          "$ref": "#/$defs/hash"
+        },
+        "latest_readback_evidence_id": {
+          "$ref": "#/$defs/id"
+        },
+        "no_effect_proof_id": {
+          "$ref": "#/$defs/id"
+        },
+        "reconciliation_required": {
+          "type": "boolean"
+        },
+        "resubmission_allowed": {
+          "const": false
+        }
+      },
+      "allOf": [
+        {
+          "$ref": "#/$defs/operationBinding"
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "confirmed_applied"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "required": [
+              "latest_readback_evidence_id"
+            ],
+            "not": {
+              "required": [
+                "no_effect_proof_id"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "confirmed_not_applied"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "required": [
+              "no_effect_proof_id"
+            ],
+            "not": {
+              "required": [
+                "latest_readback_evidence_id"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "still_unknown",
+                  "provider_evidence_inconsistent",
+                  "reconciliation_required"
+                ]
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "latest_readback_evidence_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "no_effect_proof_id"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "description": "Classification never reopens confirmation. Proof/readback references must resolve to authenticated immutable evidence for this intent, uncertainty episode and preserved operation. confirmed_not_applied never permits repeat submission."
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "invalid_request",
+            "request_too_large",
+            "source_too_large",
+            "invalid_utf8",
+            "invalid_base64",
+            "unsupported_media_type",
+            "unsupported_input",
+            "missing_required_field",
+            "invalid_phase",
+            "invalid_value",
+            "feature_disabled",
+            "strong_identity_required",
+            "permission_denied",
+            "not_found_or_forbidden",
+            "idempotency_conflict",
+            "idempotency_in_progress",
+            "replay_requires_restage",
+            "artifact_hash_mismatch",
+            "destination_not_approved",
+            "destination_ambiguous",
+            "resource_access_denied",
+            "policy_blocked",
+            "unsupported_conversion",
+            "stale_preview",
+            "confirmation_expired",
+            "confirmation_invalid",
+            "already_submitted",
+            "result_uncertain",
+            "reconciliation_required",
+            "provider_unavailable",
+            "audit_unavailable",
+            "storage_unavailable",
+            "internal_error"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "enum": [
+                  "result_uncertain",
+                  "reconciliation_required",
+                  "already_submitted"
+                ]
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        }
+      ],
+      "description": "Safe fixed-vocabulary error. Messages and field paths must not contain private bodies, artifact existence clues, credentials, raw tokens or sensitive provider payloads. retryable=true requires proven pre-effect transience."
+    }
+  }
+}
