@@ -1,0 +1,722 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://northern-lights.invalid/schemas/workiva_workflow.input.json",
+  "title": "workiva_workflow input",
+  "description": "Closed proposed input contract. Tenant and actor always come from trusted Entra context.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "action"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "create",
+        "get",
+        "advance",
+        "pause",
+        "cancel"
+      ]
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "workflow_id": {
+      "$ref": "#/$defs/opaqueId"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "action": {
+            "const": "create"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "then": {
+        "required": [
+          "steps",
+          "idempotency_key"
+        ],
+        "not": {
+          "required": [
+            "workflow_id"
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "workflow_id"
+        ],
+        "not": {
+          "required": [
+            "steps"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "action": {
+            "const": "get"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "idempotency_key"
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "idempotency_key"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "opaqueId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_artifact_id",
+        "content_hash"
+      ],
+      "properties": {
+        "source_artifact_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "draftRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "draft_artifact_id",
+        "revision",
+        "content_hash"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "draft_artifact_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "profileRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "destination_profile_id",
+        "revision",
+        "content_hash"
+      ],
+      "properties": {
+        "destination_profile_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "content_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "routeRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route_id",
+        "revision",
+        "content_hash"
+      ],
+      "properties": {
+        "route_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "content_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "workflowContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workflow_id",
+        "step_id",
+        "binding_id"
+      ],
+      "properties": {
+        "workflow_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "step_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "binding_id": {
+          "$ref": "#/$defs/opaqueId"
+        }
+      }
+    },
+    "readSelector": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "name"
+          ],
+          "properties": {
+            "kind": {
+              "const": "mapped_field_name"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "report_id",
+            "report_revision",
+            "field_id"
+          ],
+          "properties": {
+            "kind": {
+              "const": "approved_report_field"
+            },
+            "report_id": {
+              "$ref": "#/$defs/opaqueId"
+            },
+            "report_revision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "field_id": {
+              "$ref": "#/$defs/opaqueId"
+            }
+          }
+        }
+      ]
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step_id",
+        "kind",
+        "depends_on"
+      ],
+      "properties": {
+        "step_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "read",
+            "draft",
+            "mutation",
+            "verify"
+          ]
+        },
+        "depends_on": {
+          "type": "array",
+          "maxItems": 15,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/opaqueId"
+          }
+        },
+        "read_selector": {
+          "$ref": "#/$defs/readSelector"
+        },
+        "source_artifact": {
+          "$ref": "#/$defs/artifactRef"
+        },
+        "source_step_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 15,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/opaqueId"
+          }
+        },
+        "draft_artifact": {
+          "$ref": "#/$defs/draftRef"
+        },
+        "draft_step_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "destination_profile": {
+          "$ref": "#/$defs/profileRef"
+        },
+        "transfer_route": {
+          "$ref": "#/$defs/routeRef"
+        },
+        "mutation_step_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "extracted_item": {
+          "$ref": "#/$defs/extractedItemRef"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "read"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "source_step_ids"
+                  ]
+                },
+                {
+                  "required": [
+                    "draft_artifact"
+                  ]
+                },
+                {
+                  "required": [
+                    "draft_step_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "destination_profile"
+                  ]
+                },
+                {
+                  "required": [
+                    "transfer_route"
+                  ]
+                },
+                {
+                  "required": [
+                    "mutation_step_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "source_artifact"
+                  ]
+                },
+                {
+                  "required": [
+                    "extracted_item"
+                  ]
+                }
+              ]
+            },
+            "required": [
+              "read_selector"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "draft"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "oneOf": [
+              {
+                "required": [
+                  "source_artifact"
+                ],
+                "not": {
+                  "required": [
+                    "source_step_ids"
+                  ]
+                }
+              },
+              {
+                "required": [
+                  "source_step_ids"
+                ],
+                "not": {
+                  "required": [
+                    "source_artifact"
+                  ]
+                }
+              }
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "draft_step_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "read_selector"
+                  ]
+                },
+                {
+                  "required": [
+                    "destination_profile"
+                  ]
+                },
+                {
+                  "required": [
+                    "transfer_route"
+                  ]
+                },
+                {
+                  "required": [
+                    "mutation_step_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "extracted_item"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "mutation"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "oneOf": [
+              {
+                "required": [
+                  "transfer_route"
+                ],
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "source_artifact"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "draft_artifact"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "draft_step_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "destination_profile"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "extracted_item"
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "required": [
+                  "destination_profile"
+                ],
+                "oneOf": [
+                  {
+                    "required": [
+                      "source_artifact"
+                    ],
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "draft_artifact"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "draft_step_id"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "extracted_item"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "required": [
+                      "draft_artifact"
+                    ],
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "source_artifact"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "draft_step_id"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "extracted_item"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "required": [
+                      "draft_step_id"
+                    ],
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "source_artifact"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "draft_artifact"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "extracted_item"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "required": [
+                      "extracted_item"
+                    ],
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "source_artifact"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "draft_artifact"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "draft_step_id"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "not": {
+                  "required": [
+                    "transfer_route"
+                  ]
+                }
+              }
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "source_step_ids"
+                  ]
+                },
+                {
+                  "required": [
+                    "read_selector"
+                  ]
+                },
+                {
+                  "required": [
+                    "mutation_step_id"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "verify"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "mutation_step_id"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "read_selector"
+                  ]
+                },
+                {
+                  "required": [
+                    "source_artifact"
+                  ]
+                },
+                {
+                  "required": [
+                    "source_step_ids"
+                  ]
+                },
+                {
+                  "required": [
+                    "draft_artifact"
+                  ]
+                },
+                {
+                  "required": [
+                    "draft_step_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "destination_profile"
+                  ]
+                },
+                {
+                  "required": [
+                    "transfer_route"
+                  ]
+                },
+                {
+                  "required": [
+                    "extracted_item"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "extractedItemRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_artifact_id",
+        "extracted_item_id",
+        "revision",
+        "content_hash"
+      ],
+      "properties": {
+        "source_artifact_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "extracted_item_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "content_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  }
+}
