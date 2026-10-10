@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 const maxSheetDataPages = 50
 const maxValuesPages = 50
+const maxMetadataPageBytes = 8 << 20
 
 // Cell is one entry of the row-major cells array of a sheetdata response.
 // Value is the raw cell content. CalculatedValue is the evaluated result
@@ -21,6 +23,14 @@ const maxValuesPages = 50
 type Cell struct {
 	Value           any `json:"value,omitempty"`
 	CalculatedValue any `json:"calculatedValue,omitempty"`
+	// Presence is tracked separately because omitted fields and explicit nulls
+	// carry different meaning for content metadata reads.
+	ValuePresent            bool            `json:"-"`
+	CalculatedValuePresent  bool            `json:"-"`
+	FormatsPresent          bool            `json:"-"`
+	EffectiveFormatsPresent bool            `json:"-"`
+	Formats                 json.RawMessage `json:"-"`
+	EffectiveFormats        json.RawMessage `json:"-"`
 }
 
 // SheetData is the data object nested under the official sheetdata response
@@ -69,6 +79,9 @@ func (c *Client) GetSheetDataTyped(ctx context.Context, spreadsheetID, sheetID, 
 	return c.getSheetData(ctx, spreadsheetID, sheetID, cellRange, fields, true)
 }
 
+// APIVersion reports the version configured on this client.
+func (c *Client) APIVersion() string { return c.apiVersion }
+
 func (c *Client) getSheetData(ctx context.Context, spreadsheetID, sheetID, cellRange string, fields []string, preserveNumbers bool) (*SheetData, error) {
 	path := fmt.Sprintf("/spreadsheets/%s/sheets/%s/sheetdata",
 		url.PathEscape(spreadsheetID), url.PathEscape(sheetID))
@@ -97,34 +110,64 @@ func (c *Client) getSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 		if err != nil {
 			return nil, err
 		}
-		var page sheetDataResponse
-		decoder := json.NewDecoder(resp.Body)
-		if preserveNumbers {
-			decoder.UseNumber()
-		}
-		decodeErr := decoder.Decode(&page)
-		closeErr := resp.Body.Close()
-		if decodeErr != nil {
-			if closeErr != nil {
-				decodeErr = errors.Join(decodeErr, closeErr)
+		capturePresence := requestedContentMetadataFields(fields)
+		if !capturePresence {
+			var page sheetDataResponse
+			decoder := json.NewDecoder(resp.Body)
+			if preserveNumbers {
+				decoder.UseNumber()
 			}
-			return nil, fmt.Errorf("decode sheetdata response: %w", decodeErr)
+			decodeErr := decoder.Decode(&page)
+			closeErr := resp.Body.Close()
+			if decodeErr != nil {
+				return nil, fmt.Errorf("decode sheetdata response: %w", errors.Join(decodeErr, closeErr))
+			}
+			if closeErr != nil {
+				return nil, fmt.Errorf("close sheetdata response: %w", closeErr)
+			}
+			if err := appendSheetDataPage(result, page.Data, pageNum); err != nil {
+				return nil, err
+			}
+			if page.NextLink == "" {
+				return result, nil
+			}
+			if pageNum == maxSheetDataPages {
+				return nil, fmt.Errorf("sheetdata pagination exceeded maximum of %d pages", maxSheetDataPages)
+			}
+			nextPath = page.NextLink
+			continue
+		}
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxMetadataPageBytes+1))
+		closeErr := resp.Body.Close()
+		if readErr != nil {
+			if closeErr != nil {
+				readErr = errors.Join(readErr, closeErr)
+			}
+			return nil, fmt.Errorf("read sheetdata response: %w", readErr)
 		}
 		if closeErr != nil {
 			return nil, fmt.Errorf("close sheetdata response: %w", closeErr)
 		}
-		if len(page.Data.Cells) > 0 && page.Data.Range == nil {
-			return nil, fmt.Errorf("sheetdata page %d has cells but no range metadata", pageNum)
+		if len(body) > maxMetadataPageBytes {
+			return nil, fmt.Errorf("sheetdata metadata response exceeded %d bytes", maxMetadataPageBytes)
 		}
-
-		if result.Range == nil && page.Data.Range != nil {
-			result.Range = page.Data.Range
+		var page sheetDataResponse
+		decoder := json.NewDecoder(strings.NewReader(string(body)))
+		if preserveNumbers {
+			decoder.UseNumber()
 		}
-		result.Pages = append(result.Pages, page.Data)
-		result.Cells = append(result.Cells, page.Data.Cells...)
-		result.Merges = append(result.Merges, page.Data.Merges...)
-		result.ColumnMetadata = append(result.ColumnMetadata, page.Data.ColumnMetadata...)
-		result.RowMetadata = append(result.RowMetadata, page.Data.RowMetadata...)
+		decodeErr := decoder.Decode(&page)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("decode sheetdata response: %w", decodeErr)
+		}
+		var trailing any
+		if err := decoder.Decode(&trailing); err != io.EOF {
+			return nil, fmt.Errorf("decode sheetdata response: trailing JSON content")
+		}
+		markCellPresence(body, &page.Data)
+		if err := appendSheetDataPage(result, page.Data, pageNum); err != nil {
+			return nil, err
+		}
 
 		if page.NextLink == "" {
 			return result, nil
@@ -135,6 +178,57 @@ func (c *Client) getSheetData(ctx context.Context, spreadsheetID, sheetID, cellR
 		nextPath = page.NextLink
 	}
 	return nil, fmt.Errorf("sheetdata pagination exceeded maximum of %d pages", maxSheetDataPages)
+}
+
+func requestedContentMetadataFields(fields []string) bool {
+	for _, field := range fields {
+		if field == "cells.formats" || field == "cells.effectiveFormats" {
+			return true
+		}
+	}
+	return false
+}
+
+func appendSheetDataPage(result *SheetData, page SheetData, pageNum int) error {
+	if len(page.Cells) > 0 && page.Range == nil {
+		return fmt.Errorf("sheetdata page %d has cells but no range metadata", pageNum)
+	}
+	if result.Range == nil && page.Range != nil {
+		result.Range = page.Range
+	}
+	result.Pages = append(result.Pages, page)
+	result.Cells = append(result.Cells, page.Cells...)
+	result.Merges = append(result.Merges, page.Merges...)
+	result.ColumnMetadata = append(result.ColumnMetadata, page.ColumnMetadata...)
+	result.RowMetadata = append(result.RowMetadata, page.RowMetadata...)
+	return nil
+}
+
+// markCellPresence records field presence without changing the decoder's
+// historical scalar types (float64 for GetSheetData and json.Number for the
+// typed variant).
+func markCellPresence(body []byte, data *SheetData) {
+	var envelope struct {
+		Data struct {
+			Cells [][]map[string]json.RawMessage `json:"cells"`
+		} `json:"data"`
+	}
+	if json.Unmarshal(body, &envelope) != nil {
+		return
+	}
+	for row := range data.Cells {
+		for col := range data.Cells[row] {
+			if row >= len(envelope.Data.Cells) || col >= len(envelope.Data.Cells[row]) {
+				continue
+			}
+			fields := envelope.Data.Cells[row][col]
+			cell := &data.Cells[row][col]
+			_, cell.ValuePresent = fields["value"]
+			_, cell.CalculatedValuePresent = fields["calculatedValue"]
+			cell.Formats, cell.FormatsPresent = fields["formats"]
+			cell.EffectiveFormats, cell.EffectiveFormatsPresent = fields["effectiveFormats"]
+		}
+	}
 }
 
 // coordinateFields ensures every sheetdata request that selects fields also

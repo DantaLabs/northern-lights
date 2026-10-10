@@ -850,3 +850,16 @@ until provider no-effect semantics are verified. Transfer evidence export,
 relationship live spike, Copilot Studio and Workiva sandbox end-to-end, and
 fresh zero-BLOCKING/IMPORTANT integrated review remain unverified. No integration
 commit, push, main merge, or deployment occurred.
+
+## Wave 4.2 implementation and release gates
+
+- [x] Implement private assurance version 18 SQLite BLOB persistence with atomic rich audit/replay; independently verify all 17 historical migration definitions are unchanged.
+- [x] Pass focused migration, actor/ownership, byte-for-byte reingest hashing, input bounds, fault rollback, replay, database reopen, and exact-expiry checks; full and 32-bit suites, race checks, vet, build, and pinned lint pass. See `docs/wave4/WAVE4_2_EXECUTION.md` for scope and race rerun details. The implementation is private and release-gated.
+- [x] Implement configured-key verification for signed access, retention, resource, provider, and destination policy contracts; policy-bound intake and durable staging pass focused tests and fresh Luna review. Actual operator selections and release acceptance remain open.
+- [x] Implement the private stage/preview and shared mutation primitive covering one submission, uncached verification, separate visual acknowledgement, and read-only reconciliation. Fresh Luna backend and response-adapter reviews report zero Important findings; real signed-policy tests cover accepted-terminal recovery after an audit failure without a second provider write.
+- [x] Bind public ingest request digests and provide schema-tested response projections for all five phases, including token-free replay, immutable draft origin, stable acknowledgement IDs and recovered-result hashes. Ingest seals metadata from verified saved rows in the finalization transaction; extracted items and drafts obey their signed derived-content cutoff.
+- [ ] Register the content handler only after its full runtime and release gates pass. No production content tool is enabled by the private backend increment.
+- [ ] Verify authenticated flow-to-server byte handoff and retain it as a release gate.
+- [ ] Keep source text out of logs and confirmation tokens digest-only; establish encryption, backup, and retention acceptance before release.
+- [ ] Do not claim native per-user provider permissions from a single-analyst shared grant. Keep bulk placement and document-table writes deferred.
+- [ ] Mark Wave 4.2 complete only after code gates and live evidence pass.

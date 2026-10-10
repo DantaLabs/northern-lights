@@ -485,7 +485,8 @@
           "derived_artifact": {
             "draft_artifact_id": "draft-1",
             "revision": 1,
-            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "origin_kind": "analyst"
           },
           "lineage": {
             "kind": "source_and_verified_evidence",
@@ -777,6 +778,47 @@
           }
         ]
       }
+    },
+    "recovered_applied": {
+      "phase": "reconcile",
+      "status": "verified",
+      "nl_audit_id": "audit-reconcile-1",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "result": {
+        "kind": "reconcile",
+        "placement_intent_id": "placement-1",
+        "state": "confirmed_applied",
+        "uncertainty_episode_id": "uncertainty-1",
+        "operation_known": true,
+        "provider_operation_id": "provider-operation-1",
+        "evidence_ids": [
+          "readback-1"
+        ],
+        "evidence_binding_content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "reconciliation_required": false,
+        "resubmission_allowed": false,
+        "latest_readback_evidence_id": "readback-1",
+        "result_content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "errors": []
+    },
+    "sealed_visual_conflict": {
+      "phase": "acknowledge",
+      "status": "ok",
+      "nl_audit_id": "audit-ack-1",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": true,
+      "result": {
+        "kind": "acknowledge",
+        "placement_intent_id": "placement-1",
+        "observation": "visual_conflict",
+        "acknowledgement_id": "ack-1",
+        "result_content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "errors": []
     }
   },
   "cases": [
@@ -1127,7 +1169,8 @@
           "value": {
             "draft_artifact_id": "draft-1",
             "revision": 1,
-            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "origin_kind": "analyst"
           }
         },
         {
@@ -1362,6 +1405,41 @@
               }
             ]
           }
+        }
+      ]
+    },
+    {
+      "name": "recovered_applied_exposes_acknowledgement_result_hash",
+      "fixture": "recovered_applied",
+      "valid": true,
+      "patch": []
+    },
+    {
+      "name": "recovered_applied_requires_acknowledgement_result_hash",
+      "fixture": "recovered_applied",
+      "valid": false,
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/result/result_content_hash"
+        }
+      ]
+    },
+    {
+      "name": "sealed_visual_conflict_requires_reconciliation",
+      "fixture": "sealed_visual_conflict",
+      "valid": true,
+      "patch": []
+    },
+    {
+      "name": "sealed_visual_conflict_cannot_clear_reconciliation",
+      "fixture": "sealed_visual_conflict",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/reconciliation_required",
+          "value": false
         }
       ]
     }

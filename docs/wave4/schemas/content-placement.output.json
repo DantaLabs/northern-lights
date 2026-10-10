@@ -329,11 +329,54 @@
           },
           "errors": {
             "maxItems": 0
-          },
-          "reconciliation_required": {
-            "const": false
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "phase": {
+                  "const": "acknowledge"
+                },
+                "result": {
+                  "type": "object",
+                  "properties": {
+                    "observation": {
+                      "const": "visual_conflict"
+                    }
+                  },
+                  "required": [
+                    "observation"
+                  ]
+                }
+              },
+              "required": [
+                "phase",
+                "result"
+              ]
+            },
+            "then": {
+              "properties": {
+                "status": {
+                  "const": "ok"
+                },
+                "reconciliation_required": {
+                  "const": true
+                },
+                "no_mutation_submitted": {
+                  "const": true
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "reconciliation_required": {
+                  "const": false
+                }
+              }
+            }
+          }
+        ]
       }
     },
     {
@@ -414,9 +457,43 @@
         ]
       },
       "then": {
-        "properties": {
-          "status": {
-            "const": "uncertain"
+        "if": {
+          "properties": {
+            "phase": {
+              "const": "acknowledge"
+            },
+            "result": {
+              "type": "object",
+              "properties": {
+                "observation": {
+                  "const": "visual_conflict"
+                }
+              },
+              "required": [
+                "observation"
+              ]
+            }
+          },
+          "required": [
+            "phase",
+            "result"
+          ]
+        },
+        "then": {
+          "properties": {
+            "status": {
+              "const": "ok"
+            },
+            "no_mutation_submitted": {
+              "const": true
+            }
+          }
+        },
+        "else": {
+          "properties": {
+            "status": {
+              "const": "uncertain"
+            }
           }
         }
       }
@@ -890,7 +967,8 @@
       "required": [
         "draft_artifact_id",
         "revision",
-        "content_hash"
+        "content_hash",
+        "origin_kind"
       ],
       "properties": {
         "draft_artifact_id": {
@@ -901,6 +979,14 @@
         },
         "content_hash": {
           "$ref": "#/$defs/hash"
+        },
+        "origin_kind": {
+          "enum": [
+            "analyst",
+            "agent_flow",
+            "copilot",
+            "other"
+          ]
         }
       }
     },
@@ -1982,7 +2068,16 @@
           "$ref": "#/$defs/hash"
         },
         "actor_binding_id": {
-          "$ref": "#/$defs/id"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          ],
+          "description": "Server-bound actor identifier; a validated delegated tenant/object UUID pair is permitted. Never caller-supplied authority."
         },
         "source": {
           "oneOf": [
@@ -2591,6 +2686,10 @@
         },
         "resubmission_allowed": {
           "const": false
+        },
+        "result_content_hash": {
+          "$ref": "#/$defs/hash",
+          "description": "SHA-256 of the exact token-free sealed machine result. Required for confirmed_applied so the caller can acknowledge the recovered result; computed outside the sealed envelope to avoid a self-referential hash."
         }
       },
       "allOf": [
@@ -2610,7 +2709,8 @@
           },
           "then": {
             "required": [
-              "latest_readback_evidence_id"
+              "latest_readback_evidence_id",
+              "result_content_hash"
             ],
             "not": {
               "required": [

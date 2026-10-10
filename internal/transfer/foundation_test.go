@@ -208,7 +208,7 @@ func TestAssuranceV15UpgradePreservesV13RowsAndReopenIsIdempotent(t *testing.T) 
 	if err := db.QueryRow(`SELECT count(*) FROM assurance_resources WHERE tenant_id='t' AND resource_id='r'`).Scan(&n); err != nil || n != 1 {
 		t.Fatalf("preservation n=%d err=%v", n, err)
 	}
-	if err := db.QueryRow(`SELECT max(version) FROM schema_migrations WHERE app='assurance'`).Scan(&n); err != nil || n != 17 {
+	if err := db.QueryRow(`SELECT max(version) FROM schema_migrations WHERE app='assurance'`).Scan(&n); err != nil || n != 22 {
 		t.Fatalf("schema version=%d err=%v", n, err)
 	}
 }
