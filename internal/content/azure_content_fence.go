@@ -24,6 +24,7 @@ const (
 	defaultContentFenceScanPages         = 128
 	defaultContentFenceScanObjects       = 10000
 	defaultContentFenceScanBytes   int64 = 64 << 20
+	maxContentFenceETagLength            = 1024
 )
 
 var privateAzureContainerPattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$`)
@@ -533,7 +534,37 @@ func (f *AzureContentFence) scanObjectIdentity(name string) (string, string, err
 }
 
 func sameContentETag(left, right string) bool {
-	return left != "" && right != "" && left == right && !strings.HasPrefix(strings.ToUpper(left), "W/")
+	leftValue, leftOK := normalizeStrongContentETag(left)
+	rightValue, rightOK := normalizeStrongContentETag(right)
+	return leftOK && rightOK && leftValue == rightValue
+}
+
+func normalizeStrongContentETag(raw string) (string, bool) {
+	// Azure list XML may omit quotes that its download response includes; compare the same strong opaque tag.
+	if raw == "" || len(raw) > maxContentFenceETagLength || strings.TrimSpace(raw) != raw || strings.HasPrefix(raw, "W/") || strings.HasPrefix(raw, "w/") {
+		return "", false
+	}
+	startsQuoted := strings.HasPrefix(raw, `"`)
+	endsQuoted := strings.HasSuffix(raw, `"`)
+	if startsQuoted != endsQuoted {
+		return "", false
+	}
+	opaque := raw
+	if startsQuoted {
+		if len(raw) < 3 {
+			return "", false
+		}
+		opaque = raw[1 : len(raw)-1]
+	}
+	if opaque == "" {
+		return "", false
+	}
+	for _, character := range opaque {
+		if character < 0x21 || character > 0x7e || character == '"' {
+			return "", false
+		}
+	}
+	return opaque, true
 }
 func sameContentMetadata(left, right map[string]*string) bool {
 	if len(left) != len(right) {

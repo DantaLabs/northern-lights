@@ -26,11 +26,12 @@ type contentBlob struct {
 	lastModified time.Time
 }
 type contentBlobServer struct {
-	mu        sync.Mutex
-	blobs     map[string]contentBlob
-	pending   map[string][]byte
-	listCalls int
-	puts      []string
+	mu               sync.Mutex
+	blobs            map[string]contentBlob
+	pending          map[string][]byte
+	listCalls        int
+	puts             []string
+	listETagUnquoted bool
 }
 
 func newContentBlobServer() *contentBlobServer {
@@ -46,6 +47,7 @@ func (s *contentBlobServer) handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet && r.URL.Query().Get("comp") == "list" {
 		s.mu.Lock()
 		s.listCalls++
+		listETagUnquoted := s.listETagUnquoted
 		blobs := make(map[string]contentBlob, len(s.blobs))
 		for name, value := range s.blobs {
 			blobs[name] = value
@@ -59,7 +61,11 @@ func (s *contentBlobServer) handler(w http.ResponseWriter, r *http.Request) {
 			logical, _ := url.PathUnescape(strings.TrimPrefix(encodedName, "/private/"))
 			var name bytes.Buffer
 			_ = xml.EscapeText(&name, []byte(logical))
-			listing.WriteString(`<Blob><Name>` + name.String() + `</Name><Properties><Last-Modified>` + blob.lastModified.Format(http.TimeFormat) + `</Last-Modified><Etag>` + blob.etag + `</Etag><Content-Length>` + strconv.Itoa(len(blob.body)) + `</Content-Length><BlobType>BlockBlob</BlobType></Properties><Metadata/></Blob>`)
+			listETag := blob.etag
+			if listETagUnquoted {
+				listETag = strings.Trim(listETag, `"`)
+			}
+			listing.WriteString(`<Blob><Name>` + name.String() + `</Name><Properties><Last-Modified>` + blob.lastModified.Format(http.TimeFormat) + `</Last-Modified><Etag>` + listETag + `</Etag><Content-Length>` + strconv.Itoa(len(blob.body)) + `</Content-Length><BlobType>BlockBlob</BlobType></Properties><Metadata/></Blob>`)
 		}
 		listing.WriteString(`</Blobs><NextMarker></NextMarker></EnumerationResults>`)
 		_, _ = io.WriteString(w, listing.String())
@@ -204,5 +210,63 @@ func TestAzureContentFenceUsesDistinctCreateOnlyNamespace(t *testing.T) {
 	boundary.CapturedAt = objects[0].LastModified.UTC().Format(time.RFC3339Nano)
 	if _, err := fence.Scan(context.Background(), ContentFenceScanRequest{TenantID: "tenant", HighWater: boundary}); err == nil {
 		t.Fatal("same-second fence at the high-water boundary was accepted")
+	}
+}
+
+func TestAzureContentFenceScanAcceptsAzureListETagWithoutQuotes(t *testing.T) {
+	fake := newContentBlobServer()
+	fake.listETagUnquoted = true
+	server := newContentBlobHTTPServer(t, fake)
+	defer server.Close()
+	fence := newTestAzureContentFence(t, server.URL, time.Second)
+	claim := testContentClaim()
+	_, tenantDigest, err := fence.Identity("tenant")
+	if err != nil {
+		t.Fatal(err)
+	}
+	claim.TenantDigest = tenantDigest
+	claimDigest, err := fence.CreateClaim(context.Background(), claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	terminal := testContentTerminal(claim)
+	if _, err := fence.CreateTerminal(context.Background(), claim, terminal); err != nil {
+		t.Fatal(err)
+	}
+	highWater, err := fence.CaptureHighWater(context.Background(), "tenant")
+	if err != nil {
+		t.Fatal(err)
+	}
+	objects, err := fence.Scan(context.Background(), ContentFenceScanRequest{TenantID: "tenant", HighWater: highWater})
+	if err != nil {
+		t.Fatalf("scan rejected matching strong ETags in Azure list/header representations (claim %s): %v", claimDigest, err)
+	}
+	if len(objects) != 2 {
+		t.Fatalf("scan objects=%d, want claim and terminal", len(objects))
+	}
+}
+
+func TestSameStrongContentFenceETagEnforcesOpaqueEqualityAndRepresentation(t *testing.T) {
+	for _, tc := range []struct {
+		name, left, right string
+		want              bool
+	}{
+		{name: "same unquoted", left: "azure-tag", right: "azure-tag", want: true},
+		{name: "same quoted", left: `"azure-tag"`, right: `"azure-tag"`, want: true},
+		{name: "Azure list and HTTP header forms", left: "azure-tag", right: `"azure-tag"`, want: true},
+		{name: "different opaque tags", left: "azure-tag", right: `"other-tag"`},
+		{name: "weak uppercase", left: `W/"azure-tag"`, right: `W/"azure-tag"`},
+		{name: "weak lowercase", left: `w/"azure-tag"`, right: `w/"azure-tag"`},
+		{name: "unmatched quote", left: `"azure-tag`, right: `"azure-tag`},
+		{name: "embedded quote", left: `"azure"tag"`, right: `"azure"tag"`},
+		{name: "control", left: "azure\x01tag", right: "azure\x01tag"},
+		{name: "whitespace", left: " azure-tag", right: " azure-tag"},
+		{name: "oversized", left: strings.Repeat("a", maxContentFenceETagLength+1), right: strings.Repeat("a", maxContentFenceETagLength+1)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := sameContentETag(tc.left, tc.right); got != tc.want {
+				t.Fatalf("sameContentETag(%q,%q)=%v, want %v", tc.left, tc.right, got, tc.want)
+			}
+		})
 	}
 }
