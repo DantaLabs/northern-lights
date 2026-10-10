@@ -1,0 +1,591 @@
+{
+  "valid": [
+    {
+      "action": "create",
+      "idempotency_key": "wf-create-20261010-001",
+      "steps": [
+        {
+          "step_id": "read-source",
+          "kind": "read",
+          "depends_on": [],
+          "read_selector": {
+            "kind": "mapped_field_name",
+            "name": "Revenue Q3"
+          }
+        },
+        {
+          "step_id": "copy-approved-route",
+          "kind": "mutation",
+          "depends_on": [
+            "read-source"
+          ],
+          "transfer_route": {
+            "route_id": "route-q3-copy",
+            "revision": 2,
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        },
+        {
+          "step_id": "verify-copy",
+          "kind": "verify",
+          "depends_on": [
+            "copy-approved-route"
+          ],
+          "mutation_step_id": "copy-approved-route"
+        },
+        {
+          "step_id": "draft-summary",
+          "kind": "draft",
+          "depends_on": [
+            "verify-copy"
+          ],
+          "source_step_ids": [
+            "verify-copy"
+          ]
+        },
+        {
+          "step_id": "place-summary",
+          "kind": "mutation",
+          "depends_on": [
+            "draft-summary"
+          ],
+          "draft_step_id": "draft-summary",
+          "destination_profile": {
+            "destination_profile_id": "profile-c1",
+            "revision": 3,
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        },
+        {
+          "step_id": "verify-summary",
+          "kind": "verify",
+          "depends_on": [
+            "place-summary"
+          ],
+          "mutation_step_id": "place-summary"
+        }
+      ]
+    },
+    {
+      "action": "get",
+      "workflow_id": "wf-01H"
+    },
+    {
+      "action": "advance",
+      "workflow_id": "wf-01H",
+      "idempotency_key": "workflow-advance-001"
+    },
+    {
+      "action": "pause",
+      "workflow_id": "wf-01H",
+      "idempotency_key": "workflow-pause-001"
+    },
+    {
+      "action": "cancel",
+      "workflow_id": "wf-01H",
+      "idempotency_key": "workflow-cancel-001"
+    }
+  ],
+  "invalid": [
+    {
+      "case": "client-supplied-identity",
+      "value": {
+        "action": "get",
+        "workflow_id": "wf-1",
+        "tenant_id": "tenant-b"
+      },
+      "reason": "unknown property; trusted identity is never payload authority"
+    },
+    {
+      "case": "client-asserted-completion",
+      "value": {
+        "action": "advance",
+        "workflow_id": "wf-1",
+        "idempotency_key": "workflow-advance-key-001",
+        "completed_step_ids": [
+          "s1"
+        ]
+      },
+      "reason": "unknown property; completion derives only from persisted server records"
+    },
+    {
+      "case": "client-asserted-operation-association",
+      "value": {
+        "action": "advance",
+        "workflow_id": "wf-1",
+        "idempotency_key": "workflow-advance-key-001",
+        "operation_id": "op-1"
+      },
+      "reason": "unknown property; mutation/verification links are server-owned"
+    },
+    {
+      "case": "unbounded-or-empty-step-list",
+      "value": {
+        "action": "create",
+        "idempotency_key": "workflow-create-key-001",
+        "steps": []
+      },
+      "reason": "create requires 1 to 16 steps"
+    },
+    {
+      "case": "unknown-step-kind",
+      "value": {
+        "action": "create",
+        "idempotency_key": "workflow-create-key-001",
+        "steps": [
+          {
+            "step_id": "s1",
+            "kind": "execute",
+            "depends_on": []
+          }
+        ]
+      },
+      "reason": "step kind is closed"
+    }
+  ],
+  "valid_outputs": [
+    {
+      "action": "create",
+      "status": "created",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "nl_audit_id": "audit-1",
+      "errors": [],
+      "workflow": {
+        "workflow_id": "wf-1",
+        "state": "active",
+        "revision": 1,
+        "steps": [
+          {
+            "step_id": "read-source",
+            "kind": "read",
+            "state": "ready",
+            "depends_on": [],
+            "read_selector": {
+              "kind": "mapped_field_name",
+              "name": "Revenue Q3"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "action": "advance",
+      "status": "ready",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "nl_audit_id": "audit-2",
+      "errors": [],
+      "workflow": {
+        "workflow_id": "wf-1",
+        "state": "active",
+        "revision": 2,
+        "steps": [
+          {
+            "step_id": "read-source",
+            "kind": "read",
+            "state": "ready",
+            "depends_on": [],
+            "read_selector": {
+              "kind": "mapped_field_name",
+              "name": "Revenue Q3"
+            }
+          }
+        ]
+      },
+      "next_step": {
+        "step_id": "read-source",
+        "kind": "read",
+        "state": "ready",
+        "depends_on": [],
+        "read_selector": {
+          "kind": "mapped_field_name",
+          "name": "Revenue Q3"
+        }
+      },
+      "next_action": {
+        "step_id": "read-source",
+        "tool": "workiva_get_field",
+        "kind": "read_field",
+        "workflow_context": {
+          "workflow_id": "wf-1",
+          "step_id": "read-source",
+          "binding_id": "bind-opaque-1"
+        },
+        "binding": {
+          "step_kind": "read",
+          "prerequisite_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "expires_at": "2026-10-10T10:30:00Z"
+        }
+      }
+    },
+    {
+      "action": "get",
+      "status": "active",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "nl_audit_id": "audit-3",
+      "errors": [],
+      "workflow": {
+        "workflow_id": "wf-1",
+        "state": "active",
+        "revision": 2,
+        "steps": [
+          {
+            "step_id": "s1",
+            "kind": "read",
+            "state": "completed",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "action": "advance",
+      "status": "reconciliation_required",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": true,
+      "nl_audit_id": "audit-7",
+      "errors": [
+        {
+          "code": "reconciliation_required",
+          "message": "An associated mutation outcome is unknown.",
+          "retryable": false,
+          "reconciliation_required": true
+        }
+      ],
+      "workflow": {
+        "workflow_id": "wf-1",
+        "state": "reconciliation_required",
+        "revision": 3,
+        "steps": [
+          {
+            "step_id": "write-1",
+            "kind": "mutation",
+            "state": "unknown",
+            "depends_on": []
+          }
+        ]
+      }
+    },
+    {
+      "action": "get",
+      "status": "denied",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "nl_audit_id": "audit-4",
+      "errors": [
+        {
+          "code": "permission_denied",
+          "message": "Workflow is unavailable to this actor.",
+          "retryable": false,
+          "reconciliation_required": false
+        }
+      ]
+    }
+  ],
+  "invalid_outputs": [
+    {
+      "case": "error-with-empty-errors",
+      "value": {
+        "action": "get",
+        "status": "denied",
+        "replayed": false,
+        "no_mutation_submitted": true,
+        "reconciliation_required": false,
+        "nl_audit_id": "audit-5",
+        "errors": []
+      }
+    },
+    {
+      "case": "denial-leaks-workflow",
+      "value": {
+        "action": "get",
+        "status": "denied",
+        "replayed": false,
+        "no_mutation_submitted": true,
+        "reconciliation_required": false,
+        "nl_audit_id": "audit-5",
+        "errors": [
+          {
+            "code": "permission_denied",
+            "message": "denied",
+            "retryable": false,
+            "reconciliation_required": false
+          }
+        ],
+        "workflow": {
+          "workflow_id": "wf-1",
+          "state": "active",
+          "revision": 1,
+          "steps": [
+            {
+              "step_id": "s1",
+              "kind": "read",
+              "state": "pending",
+              "depends_on": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case": "ready-without-next-action",
+      "value": {
+        "action": "advance",
+        "status": "ready",
+        "replayed": false,
+        "no_mutation_submitted": true,
+        "reconciliation_required": false,
+        "nl_audit_id": "audit-6",
+        "errors": []
+      }
+    }
+  ],
+  "operator_policy_fixture_note": "The following values are synthetic schema fixtures only. They are not real analyst, grant, resource, or retention selections.",
+  "valid_operator_policy": {
+    "schema_version": 1,
+    "policy_id": "workflow-policy-fixture",
+    "revision": 1,
+    "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "tenant_id": "00000000-0000-4000-8000-000000000001",
+    "workiva_access": {
+      "mode": "shared_grant_restricted",
+      "provider_grant_reference": "fixture-grant-ref",
+      "analysts": [
+        {
+          "tenant_id": "00000000-0000-4000-8000-000000000001",
+          "actor_id": "00000000-0000-4000-8000-000000000002",
+          "destination_profiles": [
+            {
+              "destination_profile_id": "fixture-profile",
+              "revision": 1,
+              "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ],
+          "resource_ids": [
+            "fixture-resource"
+          ],
+          "capabilities": [
+            "workflow.create",
+            "workflow.read",
+            "workflow.advance"
+          ]
+        }
+      ],
+      "effective_from": "2026-01-01T00:00:00Z",
+      "effective_until": "2026-12-31T23:59:59Z"
+    },
+    "workflow_ttl": {
+      "run_seconds": 86400,
+      "step_seconds": 3600,
+      "idempotency_replay_seconds": 86400,
+      "binding_limit_seconds": 300
+    },
+    "retention": {
+      "source": {
+        "duration_seconds": 86400,
+        "legal_hold": false
+      },
+      "draft": {
+        "duration_seconds": 86400,
+        "legal_hold": false
+      },
+      "workflow": {
+        "duration_seconds": 86400,
+        "legal_hold": false
+      },
+      "audit": {
+        "duration_seconds": 86400,
+        "legal_hold": true
+      }
+    }
+  },
+  "invalid_operator_policy": [
+    {
+      "case": "multiple-analysts-in-initial-mode",
+      "value": {
+        "schema_version": 1,
+        "policy_id": "workflow-policy-fixture",
+        "revision": 1,
+        "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "tenant_id": "00000000-0000-4000-8000-000000000001",
+        "workiva_access": {
+          "mode": "shared_grant_restricted",
+          "provider_grant_reference": "fixture-grant-ref",
+          "analysts": [
+            {
+              "tenant_id": "00000000-0000-4000-8000-000000000001",
+              "actor_id": "00000000-0000-4000-8000-000000000002",
+              "destination_profiles": [
+                {
+                  "destination_profile_id": "fixture-profile",
+                  "revision": 1,
+                  "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                }
+              ],
+              "resource_ids": [
+                "fixture-resource"
+              ],
+              "capabilities": [
+                "workflow.create"
+              ]
+            },
+            {
+              "tenant_id": "00000000-0000-4000-8000-000000000001",
+              "actor_id": "00000000-0000-4000-8000-000000000003",
+              "destination_profiles": [
+                {
+                  "destination_profile_id": "fixture-profile",
+                  "revision": 1,
+                  "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                }
+              ],
+              "resource_ids": [
+                "fixture-resource"
+              ],
+              "capabilities": [
+                "workflow.create"
+              ]
+            }
+          ],
+          "effective_from": "2026-01-01T00:00:00Z",
+          "effective_until": "2026-12-31T23:59:59Z"
+        },
+        "workflow_ttl": {
+          "run_seconds": 1,
+          "step_seconds": 1,
+          "idempotency_replay_seconds": 1,
+          "binding_limit_seconds": 300
+        },
+        "retention": {
+          "source": {
+            "duration_seconds": 86400,
+            "legal_hold": false
+          },
+          "draft": {
+            "duration_seconds": 86400,
+            "legal_hold": false
+          },
+          "workflow": {
+            "duration_seconds": 86400,
+            "legal_hold": false
+          },
+          "audit": {
+            "duration_seconds": 86400,
+            "legal_hold": false
+          }
+        }
+      },
+      "reason": "initial shared-grant mode permits exactly one analyst"
+    },
+    {
+      "case": "credential-field",
+      "value": {
+        "schema_version": 1,
+        "policy_id": "workflow-policy-fixture",
+        "revision": 1,
+        "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "tenant_id": "00000000-0000-4000-8000-000000000001",
+        "workiva_access": {
+          "mode": "shared_grant_restricted",
+          "provider_grant_reference": "fixture-grant",
+          "client_secret": "never-allowed",
+          "analysts": [],
+          "effective_from": "2026-01-01T00:00:00Z",
+          "effective_until": "2026-12-31T23:59:59Z"
+        },
+        "workflow_ttl": {
+          "run_seconds": 1,
+          "step_seconds": 1,
+          "idempotency_replay_seconds": 1,
+          "binding_limit_seconds": 300
+        },
+        "retention": {
+          "source": {
+            "duration_seconds": 86400,
+            "legal_hold": false
+          },
+          "draft": {
+            "duration_seconds": 86400,
+            "legal_hold": false
+          },
+          "workflow": {
+            "duration_seconds": 86400,
+            "legal_hold": false
+          },
+          "audit": {
+            "duration_seconds": 86400,
+            "legal_hold": false
+          }
+        }
+      },
+      "reason": "unknown credential property is rejected by the closed schema"
+    },
+    {
+      "case": "ttl-over-hard-ceiling",
+      "value": {
+        "schema_version": 1,
+        "policy_id": "workflow-policy-fixture",
+        "revision": 1,
+        "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "tenant_id": "00000000-0000-4000-8000-000000000001",
+        "workiva_access": {
+          "mode": "shared_grant_restricted",
+          "provider_grant_reference": "fixture-grant",
+          "analysts": [
+            {
+              "tenant_id": "00000000-0000-4000-8000-000000000001",
+              "actor_id": "00000000-0000-4000-8000-000000000002",
+              "destination_profiles": [
+                {
+                  "destination_profile_id": "fixture-profile",
+                  "revision": 1,
+                  "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                }
+              ],
+              "resource_ids": [
+                "fixture-resource"
+              ],
+              "capabilities": [
+                "workflow.create"
+              ]
+            }
+          ],
+          "effective_from": "2026-01-01T00:00:00Z",
+          "effective_until": "2026-12-31T23:59:59Z"
+        },
+        "workflow_ttl": {
+          "run_seconds": 604801,
+          "step_seconds": 1,
+          "idempotency_replay_seconds": 1,
+          "binding_limit_seconds": 300
+        },
+        "retention": {
+          "source": {
+            "duration_seconds": 86400,
+            "legal_hold": false
+          },
+          "draft": {
+            "duration_seconds": 86400,
+            "legal_hold": false
+          },
+          "workflow": {
+            "duration_seconds": 86400,
+            "legal_hold": false
+          },
+          "audit": {
+            "duration_seconds": 86400,
+            "legal_hold": false
+          }
+        }
+      },
+      "reason": "run TTL exceeds the schema ceiling"
+    }
+  ]
+}

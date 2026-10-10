@@ -1,0 +1,1440 @@
+{
+  "description": "Synthetic schema fixtures. Each fixture is a complete output instance expected to validate. Cases select a fixture and apply the listed RFC 6902 JSON Patch to an independent deep copy before validation. Profile cases select the initial_stage result.preview.destination_profile and validate against content-placement-profile.json. Hashes and identifiers are synthetic, not runtime evidence.",
+  "fixtures": {
+    "initial_stage": {
+      "phase": "stage",
+      "status": "ok",
+      "nl_audit_id": "audit-stage-1",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "errors": [],
+      "result": {
+        "kind": "stage",
+        "replay_requires_restage": false,
+        "preview": {
+          "placement_intent_id": "placement-1",
+          "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "actor_binding_id": "actor-binding-1",
+          "source": {
+            "source_artifact_id": "source-1",
+            "revision": 1,
+            "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "derived_artifact": {
+            "extracted_item_id": "item-1",
+            "revision": 1,
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "lineage": {
+            "kind": "source_bytes",
+            "source": {
+              "source_artifact_id": "source-1",
+              "revision": 1,
+              "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            }
+          },
+          "original_text": "FY2025 revenue: USD 12.5 million",
+          "original_value": 12.5,
+          "original_interpretation": {
+            "value_kind": "number",
+            "period": "FY2025",
+            "currency": "USD",
+            "unit": "currency",
+            "stored_scale": 1000000,
+            "display_scale": 1000000,
+            "percent_basis": "not_percentage",
+            "precision": 1
+          },
+          "target_interpretation": {
+            "value_kind": "number",
+            "period": "FY2025",
+            "currency": "USD",
+            "unit": "currency",
+            "stored_scale": 1000,
+            "display_scale": 1000,
+            "percent_basis": "not_percentage",
+            "precision": 1
+          },
+          "intended_value": 12500,
+          "current_value": 12000,
+          "current_value_content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "source_provenance": {
+            "kind": "source_bytes",
+            "availability": "unavailable",
+            "source": {
+              "source_artifact_id": "source-1",
+              "revision": 1,
+              "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "reason": "not_returned"
+          },
+          "destination_profile": {
+            "schema_version": 1,
+            "destination_profile_id": "profile-1",
+            "revision": 1,
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "state": "active",
+            "resource_id": "spreadsheet-1",
+            "sheet_id": "sheet-1",
+            "cell": "B4",
+            "operation": "single_cell_literal",
+            "expected_interpretation": {
+              "value_kind": "number",
+              "period": "FY2025",
+              "currency": "USD",
+              "unit": "currency",
+              "stored_scale": 1000,
+              "display_scale": 1000,
+              "percent_basis": "not_percentage",
+              "precision": 1
+            },
+            "formula_policy": "reject_formula_target",
+            "literal_policy": "literal_only",
+            "protection_policy": "reject_protected",
+            "format_policy": "preserve",
+            "unknown_critical_facts": "block",
+            "provenance_requirement": "source_or_verified_evidence",
+            "metadata_requirements": {
+              "formula": "provider_verified",
+              "protection": "provider_verified",
+              "writability": "provider_verified",
+              "formatting": "provider_verified",
+              "period": "operator_declared_allowed",
+              "currency": "operator_declared_allowed",
+              "unit": "operator_declared_allowed",
+              "scale": "operator_declared_allowed",
+              "percent_basis": "operator_declared_allowed",
+              "precision": "operator_declared_allowed"
+            },
+            "allowed_conversions": [
+              "typed_copy",
+              "same_currency_scale"
+            ],
+            "resource_policy": {
+              "policy_id": "resource-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            },
+            "conversion_policy": {
+              "policy_id": "conversion-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            },
+            "provider_contract": {
+              "policy_id": "provider-contract-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            },
+            "retention_policy": {
+              "policy_id": "retention-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "class": "workflow"
+            },
+            "preview_ttl_seconds": 300
+          },
+          "conversion": "same_currency_scale",
+          "provider_facts": {
+            "provenance": "provider_verified",
+            "observation_id": "provider-observation-1",
+            "observed_at": "2026-10-10T05:00:00Z",
+            "formula_target": false,
+            "protected_target": false,
+            "write_permission_verified": true,
+            "format_preservation_verified": true
+          },
+          "operator_constraint_facts": {
+            "provenance": "operator_declared",
+            "resource_policy": {
+              "policy_id": "resource-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            },
+            "conversion_policy": {
+              "policy_id": "conversion-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            },
+            "expected_interpretation": {
+              "value_kind": "number",
+              "period": "FY2025",
+              "currency": "USD",
+              "unit": "currency",
+              "stored_scale": 1000,
+              "display_scale": 1000,
+              "percent_basis": "not_percentage",
+              "precision": 1
+            }
+          },
+          "target_interpretation_facts": {
+            "period": {
+              "provenance": "operator_declared",
+              "critical": true,
+              "value": "FY2025",
+              "evidence_id": "profile-1"
+            },
+            "currency": {
+              "provenance": "operator_declared",
+              "critical": true,
+              "value": "USD",
+              "evidence_id": "profile-1"
+            },
+            "unit": {
+              "provenance": "operator_declared",
+              "critical": true,
+              "value": "currency",
+              "evidence_id": "profile-1"
+            },
+            "scale": {
+              "provenance": "operator_declared",
+              "critical": true,
+              "value": "stored=1000;display=1000",
+              "evidence_id": "profile-1"
+            },
+            "percent_basis": {
+              "provenance": "operator_declared",
+              "critical": true,
+              "value": "not_percentage",
+              "evidence_id": "profile-1"
+            },
+            "precision": {
+              "provenance": "operator_declared",
+              "critical": true,
+              "value": 1,
+              "evidence_id": "profile-1"
+            }
+          },
+          "critical_facts_resolved": true,
+          "created_at": "2026-10-10T05:00:00Z",
+          "expires_at": "2026-10-10T05:05:00Z",
+          "retention_policy": {
+            "policy_id": "retention-policy-1",
+            "revision": 1,
+            "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "class": "workflow"
+          },
+          "confirmation_token": "synthetic_token_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+          "token_delivery": "ephemeral_initial_response_only"
+        }
+      }
+    },
+    "source_ingest": {
+      "phase": "ingest",
+      "status": "ok",
+      "nl_audit_id": "audit-ingest-1",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "errors": [],
+      "result": {
+        "kind": "ingest",
+        "source": {
+          "source_artifact_id": "source-1",
+          "revision": 1,
+          "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "byte_length": 30,
+          "media_type": "text/plain",
+          "retention_policy": {
+            "policy_id": "retention-policy-1",
+            "revision": 1,
+            "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "class": "source"
+          }
+        },
+        "verified_evidence_refs": [],
+        "extracted_items": [],
+        "draft_artifacts": []
+      }
+    },
+    "evidence_only_ingest": {
+      "phase": "ingest",
+      "status": "ok",
+      "nl_audit_id": "audit-evidence-ingest-1",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "errors": [],
+      "result": {
+        "kind": "ingest",
+        "source": null,
+        "verified_evidence_refs": [
+          {
+            "evidence_id": "verified-evidence-1",
+            "revision": 1,
+            "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "extracted_items": [],
+        "draft_artifacts": [
+          {
+            "draft_artifact_id": "draft-1",
+            "revision": 1,
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "lineage": {
+              "kind": "verified_evidence",
+              "verified_evidence_refs": [
+                {
+                  "evidence_id": "verified-evidence-1",
+                  "revision": 1,
+                  "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              ]
+            },
+            "origin_kind": "copilot",
+            "candidate_only": true,
+            "retention_policy": {
+              "policy_id": "retention-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "class": "draft"
+            }
+          }
+        ]
+      }
+    },
+    "denied": {
+      "phase": "stage",
+      "status": "denied",
+      "nl_audit_id": "audit-denied-1",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "result": null,
+      "errors": [
+        {
+          "code": "not_found_or_forbidden",
+          "message": "Request is not authorized.",
+          "retryable": false
+        }
+      ]
+    },
+    "uncertain_confirm": {
+      "phase": "confirm",
+      "status": "uncertain",
+      "nl_audit_id": "audit-uncertain-1",
+      "replayed": false,
+      "no_mutation_submitted": false,
+      "reconciliation_required": true,
+      "result": {
+        "kind": "confirm",
+        "placement_intent_id": "placement-1",
+        "state": "uncertain",
+        "operation_known": true,
+        "provider_operation_id": "provider-operation-1",
+        "result_content_hash": null,
+        "uncertainty_episode_id": "uncertainty-1",
+        "reconciliation_required": true,
+        "resubmission_allowed": false
+      },
+      "errors": [
+        {
+          "code": "result_uncertain",
+          "message": "Operation outcome requires reconciliation.",
+          "retryable": false
+        }
+      ]
+    },
+    "verified_confirm": {
+      "phase": "confirm",
+      "status": "verified",
+      "nl_audit_id": "audit-verified-1",
+      "replayed": false,
+      "no_mutation_submitted": false,
+      "reconciliation_required": false,
+      "result": {
+        "kind": "confirm",
+        "placement_intent_id": "placement-1",
+        "state": "verified",
+        "operation_known": true,
+        "provider_operation_id": "provider-operation-1",
+        "result_content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "reconciliation_required": false,
+        "resubmission_allowed": false
+      },
+      "errors": []
+    },
+    "uncertain_reconcile": {
+      "phase": "reconcile",
+      "status": "uncertain",
+      "nl_audit_id": "audit-reconcile-1",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": true,
+      "result": {
+        "kind": "reconcile",
+        "placement_intent_id": "placement-1",
+        "state": "still_unknown",
+        "uncertainty_episode_id": "uncertainty-1",
+        "operation_known": true,
+        "provider_operation_id": "provider-operation-1",
+        "evidence_ids": [
+          "readback-1"
+        ],
+        "evidence_binding_content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "reconciliation_required": true,
+        "resubmission_allowed": false
+      },
+      "errors": [
+        {
+          "code": "reconciliation_required",
+          "message": "Operation outcome remains unresolved.",
+          "retryable": false
+        }
+      ]
+    },
+    "acknowledge": {
+      "phase": "acknowledge",
+      "status": "ok",
+      "nl_audit_id": "audit-ack-1",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "result": {
+        "kind": "acknowledge",
+        "placement_intent_id": "placement-1",
+        "observation": "visually_confirmed",
+        "acknowledgement_id": "ack-1",
+        "result_content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "errors": []
+    },
+    "mixed_source_evidence_ingest": {
+      "phase": "ingest",
+      "status": "ok",
+      "nl_audit_id": "audit-ingest-1",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "errors": [],
+      "result": {
+        "kind": "ingest",
+        "source": {
+          "source_artifact_id": "source-1",
+          "revision": 1,
+          "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "byte_length": 30,
+          "media_type": "text/plain",
+          "retention_policy": {
+            "policy_id": "retention-policy-1",
+            "revision": 1,
+            "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "class": "source"
+          }
+        },
+        "verified_evidence_refs": [
+          {
+            "evidence_id": "verified-evidence-1",
+            "revision": 1,
+            "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "extracted_items": [],
+        "draft_artifacts": [
+          {
+            "draft_artifact_id": "draft-1",
+            "revision": 1,
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "lineage": {
+              "kind": "source_and_verified_evidence",
+              "source": {
+                "source_artifact_id": "source-1",
+                "revision": 1,
+                "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              "verified_evidence_refs": [
+                {
+                  "evidence_id": "verified-evidence-1",
+                  "revision": 1,
+                  "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              ]
+            },
+            "origin_kind": "copilot",
+            "candidate_only": true,
+            "retention_policy": {
+              "policy_id": "retention-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "class": "draft"
+            }
+          }
+        ]
+      }
+    },
+    "mixed_draft_stage": {
+      "phase": "stage",
+      "status": "ok",
+      "nl_audit_id": "audit-stage-1",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "errors": [],
+      "result": {
+        "kind": "stage",
+        "replay_requires_restage": false,
+        "preview": {
+          "placement_intent_id": "placement-1",
+          "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "actor_binding_id": "actor-binding-1",
+          "source": {
+            "source_artifact_id": "source-1",
+            "revision": 1,
+            "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "derived_artifact": {
+            "draft_artifact_id": "draft-1",
+            "revision": 1,
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "lineage": {
+            "kind": "source_and_verified_evidence",
+            "source": {
+              "source_artifact_id": "source-1",
+              "revision": 1,
+              "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "verified_evidence_refs": [
+              {
+                "evidence_id": "verified-evidence-1",
+                "revision": 1,
+                "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ]
+          },
+          "original_text": "FY2025 revenue: USD 12.5 million",
+          "original_value": 12.5,
+          "original_interpretation": {
+            "value_kind": "number",
+            "period": "FY2025",
+            "currency": "USD",
+            "unit": "currency",
+            "stored_scale": 1000000,
+            "display_scale": 1000000,
+            "percent_basis": "not_percentage",
+            "precision": 1
+          },
+          "target_interpretation": {
+            "value_kind": "number",
+            "period": "FY2025",
+            "currency": "USD",
+            "unit": "currency",
+            "stored_scale": 1000,
+            "display_scale": 1000,
+            "percent_basis": "not_percentage",
+            "precision": 1
+          },
+          "intended_value": 12500,
+          "current_value": 12000,
+          "current_value_content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "source_provenance": {
+            "kind": "source_and_verified_evidence",
+            "source_provenance": {
+              "kind": "source_bytes",
+              "availability": "unavailable",
+              "source": {
+                "source_artifact_id": "source-1",
+                "revision": 1,
+                "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              "reason": "not_returned"
+            },
+            "verified_evidence_refs": [
+              {
+                "evidence_id": "verified-evidence-1",
+                "revision": 1,
+                "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ]
+          },
+          "destination_profile": {
+            "schema_version": 1,
+            "destination_profile_id": "profile-1",
+            "revision": 1,
+            "content_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "state": "active",
+            "resource_id": "spreadsheet-1",
+            "sheet_id": "sheet-1",
+            "cell": "B4",
+            "operation": "single_cell_literal",
+            "expected_interpretation": {
+              "value_kind": "number",
+              "period": "FY2025",
+              "currency": "USD",
+              "unit": "currency",
+              "stored_scale": 1000,
+              "display_scale": 1000,
+              "percent_basis": "not_percentage",
+              "precision": 1
+            },
+            "formula_policy": "reject_formula_target",
+            "literal_policy": "literal_only",
+            "protection_policy": "reject_protected",
+            "format_policy": "preserve",
+            "unknown_critical_facts": "block",
+            "provenance_requirement": "source_or_verified_evidence",
+            "metadata_requirements": {
+              "formula": "provider_verified",
+              "protection": "provider_verified",
+              "writability": "provider_verified",
+              "formatting": "provider_verified",
+              "period": "operator_declared_allowed",
+              "currency": "operator_declared_allowed",
+              "unit": "operator_declared_allowed",
+              "scale": "operator_declared_allowed",
+              "percent_basis": "operator_declared_allowed",
+              "precision": "operator_declared_allowed"
+            },
+            "allowed_conversions": [
+              "typed_copy",
+              "same_currency_scale"
+            ],
+            "resource_policy": {
+              "policy_id": "resource-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            },
+            "conversion_policy": {
+              "policy_id": "conversion-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            },
+            "provider_contract": {
+              "policy_id": "provider-contract-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            },
+            "retention_policy": {
+              "policy_id": "retention-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "class": "workflow"
+            },
+            "preview_ttl_seconds": 300
+          },
+          "conversion": "same_currency_scale",
+          "provider_facts": {
+            "provenance": "provider_verified",
+            "observation_id": "provider-observation-1",
+            "observed_at": "2026-10-10T05:00:00Z",
+            "formula_target": false,
+            "protected_target": false,
+            "write_permission_verified": true,
+            "format_preservation_verified": true
+          },
+          "operator_constraint_facts": {
+            "provenance": "operator_declared",
+            "resource_policy": {
+              "policy_id": "resource-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            },
+            "conversion_policy": {
+              "policy_id": "conversion-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            },
+            "expected_interpretation": {
+              "value_kind": "number",
+              "period": "FY2025",
+              "currency": "USD",
+              "unit": "currency",
+              "stored_scale": 1000,
+              "display_scale": 1000,
+              "percent_basis": "not_percentage",
+              "precision": 1
+            }
+          },
+          "target_interpretation_facts": {
+            "period": {
+              "provenance": "operator_declared",
+              "critical": true,
+              "value": "FY2025",
+              "evidence_id": "profile-1"
+            },
+            "currency": {
+              "provenance": "operator_declared",
+              "critical": true,
+              "value": "USD",
+              "evidence_id": "profile-1"
+            },
+            "unit": {
+              "provenance": "operator_declared",
+              "critical": true,
+              "value": "currency",
+              "evidence_id": "profile-1"
+            },
+            "scale": {
+              "provenance": "operator_declared",
+              "critical": true,
+              "value": "stored=1000;display=1000",
+              "evidence_id": "profile-1"
+            },
+            "percent_basis": {
+              "provenance": "operator_declared",
+              "critical": true,
+              "value": "not_percentage",
+              "evidence_id": "profile-1"
+            },
+            "precision": {
+              "provenance": "operator_declared",
+              "critical": true,
+              "value": 1,
+              "evidence_id": "profile-1"
+            }
+          },
+          "critical_facts_resolved": true,
+          "created_at": "2026-10-10T05:00:00Z",
+          "expires_at": "2026-10-10T05:05:00Z",
+          "retention_policy": {
+            "policy_id": "retention-policy-1",
+            "revision": 1,
+            "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "class": "workflow"
+          },
+          "confirmation_token": "synthetic_token_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+          "token_delivery": "ephemeral_initial_response_only"
+        }
+      }
+    },
+    "mixed_ingest_with_source_extraction": {
+      "phase": "ingest",
+      "status": "ok",
+      "nl_audit_id": "audit-ingest-1",
+      "replayed": false,
+      "no_mutation_submitted": true,
+      "reconciliation_required": false,
+      "errors": [],
+      "result": {
+        "kind": "ingest",
+        "source": {
+          "source_artifact_id": "source-1",
+          "revision": 1,
+          "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "byte_length": 30,
+          "media_type": "text/plain",
+          "retention_policy": {
+            "policy_id": "retention-policy-1",
+            "revision": 1,
+            "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "class": "source"
+          }
+        },
+        "verified_evidence_refs": [
+          {
+            "evidence_id": "verified-evidence-1",
+            "revision": 1,
+            "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "extracted_items": [
+          {
+            "extracted_item_id": "item-1",
+            "revision": 1,
+            "content_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "source": {
+              "source_artifact_id": "source-1",
+              "revision": 1,
+              "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "candidate_only": true,
+            "retention_policy": {
+              "policy_id": "retention-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "class": "draft"
+            }
+          }
+        ],
+        "draft_artifacts": [
+          {
+            "draft_artifact_id": "draft-1",
+            "revision": 1,
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "lineage": {
+              "kind": "source_and_verified_evidence",
+              "source": {
+                "source_artifact_id": "source-1",
+                "revision": 1,
+                "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              "verified_evidence_refs": [
+                {
+                  "evidence_id": "verified-evidence-1",
+                  "revision": 1,
+                  "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              ]
+            },
+            "origin_kind": "copilot",
+            "candidate_only": true,
+            "retention_policy": {
+              "policy_id": "retention-policy-1",
+              "revision": 1,
+              "content_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "class": "draft"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "initial_stage_ephemeral_overlay",
+      "fixture": "initial_stage",
+      "valid": true,
+      "patch": []
+    },
+    {
+      "name": "token_free_stage_replay",
+      "fixture": "initial_stage",
+      "valid": true,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/replayed",
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": "/result/replay_requires_restage",
+          "value": true
+        },
+        {
+          "op": "remove",
+          "path": "/result/preview/confirmation_token"
+        },
+        {
+          "op": "remove",
+          "path": "/result/preview/token_delivery"
+        }
+      ]
+    },
+    {
+      "name": "replay_token_rejected",
+      "fixture": "initial_stage",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/replayed",
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": "/result/replay_requires_restage",
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "replay_requires_restage_false_rejected",
+      "fixture": "initial_stage",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/replayed",
+          "value": true
+        },
+        {
+          "op": "remove",
+          "path": "/result/preview/confirmation_token"
+        },
+        {
+          "op": "remove",
+          "path": "/result/preview/token_delivery"
+        }
+      ]
+    },
+    {
+      "name": "denied_private_result_rejected",
+      "fixture": "verified_confirm",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/status",
+          "value": "denied"
+        },
+        {
+          "op": "replace",
+          "path": "/no_mutation_submitted",
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": "/errors",
+          "value": [
+            {
+              "code": "permission_denied",
+              "message": "Request is not authorized.",
+              "retryable": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ordinary_error_private_result_rejected",
+      "fixture": "verified_confirm",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/status",
+          "value": "error"
+        },
+        {
+          "op": "replace",
+          "path": "/no_mutation_submitted",
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": "/errors",
+          "value": [
+            {
+              "code": "internal_error",
+              "message": "Request could not be completed.",
+              "retryable": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "phase_result_mismatch_rejected",
+      "fixture": "source_ingest",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/phase",
+          "value": "stage"
+        }
+      ]
+    },
+    {
+      "name": "nonconfirm_submission_rejected",
+      "fixture": "source_ingest",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/no_mutation_submitted",
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "uncertain_reconciliation_false_rejected",
+      "fixture": "uncertain_confirm",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/reconciliation_required",
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "uncertain_nested_reconciliation_false_rejected",
+      "fixture": "uncertain_confirm",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/reconciliation_required",
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "uncertain_retryable_rejected",
+      "fixture": "uncertain_confirm",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/errors/0/retryable",
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "uncertain_known_operation_null_rejected",
+      "fixture": "uncertain_confirm",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/provider_operation_id",
+          "value": null
+        }
+      ]
+    },
+    {
+      "name": "uncertain_no_repeat_rejected",
+      "fixture": "uncertain_confirm",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/resubmission_allowed",
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "verified_uncertain_state_rejected",
+      "fixture": "verified_confirm",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/state",
+          "value": "uncertain"
+        }
+      ]
+    },
+    {
+      "name": "uncertain_confirm_replay_is_read_only",
+      "fixture": "uncertain_confirm",
+      "valid": true,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/replayed",
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": "/no_mutation_submitted",
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "unknown_error_code_rejected",
+      "fixture": "denied",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/errors/0/code",
+          "value": "invented_error"
+        }
+      ]
+    },
+    {
+      "name": "source_revision_over_cap_rejected",
+      "fixture": "source_ingest",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/source/revision",
+          "value": 1000001
+        }
+      ]
+    },
+    {
+      "name": "missing_original_text_rejected",
+      "fixture": "initial_stage",
+      "valid": false,
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/result/preview/original_text"
+        }
+      ]
+    },
+    {
+      "name": "formula_target_rejected",
+      "fixture": "initial_stage",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/preview/provider_facts/formula_target",
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "unknown_critical_currency_rejected",
+      "fixture": "initial_stage",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/preview/target_interpretation_facts/currency",
+          "value": {
+            "provenance": "unavailable",
+            "critical": true,
+            "value": null,
+            "evidence_id": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "required_fine_grained_provenance_unavailable_rejected",
+      "fixture": "initial_stage",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/preview/destination_profile/provenance_requirement",
+          "value": "fine_grained_available"
+        }
+      ]
+    },
+    {
+      "name": "refs_only_ingest_no_fake_source",
+      "fixture": "evidence_only_ingest",
+      "valid": true,
+      "patch": []
+    },
+    {
+      "name": "refs_only_ingest_missing_evidence_rejected",
+      "fixture": "evidence_only_ingest",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/verified_evidence_refs",
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "refs_only_draft_stage_without_source",
+      "fixture": "initial_stage",
+      "valid": true,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/preview/source",
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": "/result/preview/derived_artifact",
+          "value": {
+            "draft_artifact_id": "draft-1",
+            "revision": 1,
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        },
+        {
+          "op": "replace",
+          "path": "/result/preview/lineage",
+          "value": {
+            "kind": "verified_evidence",
+            "verified_evidence_refs": [
+              {
+                "evidence_id": "verified-evidence-1",
+                "revision": 1,
+                "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ]
+          }
+        },
+        {
+          "op": "replace",
+          "path": "/result/preview/source_provenance",
+          "value": {
+            "kind": "verified_evidence",
+            "availability": "available",
+            "verified_evidence_refs": [
+              {
+                "evidence_id": "verified-evidence-1",
+                "revision": 1,
+                "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "mixed_source_evidence_ingest",
+      "fixture": "mixed_source_evidence_ingest",
+      "valid": true,
+      "patch": []
+    },
+    {
+      "name": "mixed_ingest_missing_evidence_rejected",
+      "fixture": "mixed_source_evidence_ingest",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/verified_evidence_refs",
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "mixed_ingest_missing_source_rejected",
+      "fixture": "mixed_source_evidence_ingest",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/source",
+          "value": null
+        }
+      ]
+    },
+    {
+      "name": "mixed_draft_stage_preserves_lineage",
+      "fixture": "mixed_draft_stage",
+      "valid": true,
+      "patch": []
+    },
+    {
+      "name": "extracted_item_mixed_lineage_rejected",
+      "fixture": "mixed_draft_stage",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/preview/derived_artifact",
+          "value": {
+            "extracted_item_id": "item-1",
+            "revision": 1,
+            "content_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        }
+      ]
+    },
+    {
+      "name": "mixed_ingest_with_source_extraction",
+      "fixture": "mixed_ingest_with_source_extraction",
+      "valid": true,
+      "patch": []
+    },
+    {
+      "name": "mixed_draft_stage_token_free_replay",
+      "fixture": "mixed_draft_stage",
+      "valid": true,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/replayed",
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": "/result/replay_requires_restage",
+          "value": true
+        },
+        {
+          "op": "remove",
+          "path": "/result/preview/confirmation_token"
+        },
+        {
+          "op": "remove",
+          "path": "/result/preview/token_delivery"
+        }
+      ]
+    },
+    {
+      "name": "source_present_evidence_only_draft",
+      "fixture": "mixed_source_evidence_ingest",
+      "valid": true,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/draft_artifacts/0/lineage",
+          "value": {
+            "kind": "verified_evidence",
+            "verified_evidence_refs": [
+              {
+                "evidence_id": "verified-evidence-1",
+                "revision": 1,
+                "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "source_present_evidence_only_draft_without_top_refs",
+      "fixture": "mixed_source_evidence_ingest",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/draft_artifacts/0/lineage",
+          "value": {
+            "kind": "verified_evidence",
+            "verified_evidence_refs": [
+              {
+                "evidence_id": "verified-evidence-1",
+                "revision": 1,
+                "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ]
+          }
+        },
+        {
+          "op": "replace",
+          "path": "/result/verified_evidence_refs",
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "mixed_preview_fine_grained_available",
+      "fixture": "mixed_draft_stage",
+      "valid": true,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/preview/destination_profile/provenance_requirement",
+          "value": "fine_grained_available"
+        },
+        {
+          "op": "replace",
+          "path": "/result/preview/source_provenance/source_provenance",
+          "value": {
+            "kind": "source_bytes",
+            "availability": "available",
+            "source": {
+              "source_artifact_id": "source-1",
+              "revision": 1,
+              "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            "locations": [
+              {
+                "label": "Quarterly summary revenue row",
+                "page": 1
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "mixed_preview_fine_grained_unavailable",
+      "fixture": "mixed_draft_stage",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/preview/destination_profile/provenance_requirement",
+          "value": "fine_grained_available"
+        }
+      ]
+    },
+    {
+      "name": "source_only_preview_rejects_mixed_provenance",
+      "fixture": "initial_stage",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/result/preview/source_provenance",
+          "value": {
+            "kind": "source_and_verified_evidence",
+            "source_provenance": {
+              "kind": "source_bytes",
+              "availability": "unavailable",
+              "source": {
+                "source_artifact_id": "source-1",
+                "revision": 1,
+                "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              },
+              "reason": "not_returned"
+            },
+            "verified_evidence_refs": [
+              {
+                "evidence_id": "verified-evidence-1",
+                "revision": 1,
+                "content_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "profile_cases": [
+    {
+      "name": "signed_profile_payload",
+      "valid": true,
+      "patch": []
+    },
+    {
+      "name": "preview_ttl_over_cap",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/preview_ttl_seconds",
+          "value": 901
+        }
+      ]
+    },
+    {
+      "name": "literal_policy_mandatory",
+      "valid": false,
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/literal_policy"
+        }
+      ]
+    },
+    {
+      "name": "formula_rejection_mandatory",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/formula_policy",
+          "value": "literal_only"
+        }
+      ]
+    },
+    {
+      "name": "layout_property_rejected",
+      "valid": false,
+      "patch": [
+        {
+          "op": "add",
+          "path": "/layout",
+          "value": "change"
+        }
+      ]
+    },
+    {
+      "name": "signed_policy_hash_required",
+      "valid": false,
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/resource_policy/content_hash"
+        }
+      ]
+    },
+    {
+      "name": "profile_revision_over_cap",
+      "valid": false,
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/revision",
+          "value": 1000001
+        }
+      ]
+    }
+  ]
+}
