@@ -506,7 +506,117 @@ CREATE TABLE assurance_transfer_startup_quarantines (
  ON assurance_transfer_startup_quarantines(tenant_id, disposition, created_at);
 `
 
-var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11, migrationV12, migrationV13, migrationV14, migrationV15, migrationV16, migrationV17}
+// migrationV18 adds bounded private source, extracted-item, and draft storage.
+// The source bytes remain in the shared SQLite database so intake can commit
+// artifacts, rich audit links, and its sealed idempotency result atomically.
+const migrationV18 = `
+CREATE TABLE assurance_content_sources (
+ tenant_id TEXT NOT NULL, source_artifact_id TEXT NOT NULL, actor_id TEXT NOT NULL,
+ media_type TEXT NOT NULL, detected_media_type TEXT NOT NULL, filename TEXT NOT NULL, source_bytes BLOB NOT NULL,
+ source_sha256 TEXT NOT NULL, metadata_blob BLOB NOT NULL, metadata_sha256 TEXT NOT NULL,
+ expires_at TEXT NOT NULL, created_at TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, source_artifact_id),
+ CHECK(typeof(source_bytes)='blob' AND length(source_bytes) BETWEEN 1 AND 786432),
+ CHECK(typeof(metadata_blob)='blob' AND length(metadata_blob) BETWEEN 2 AND 1048576)
+);
+CREATE INDEX idx_assurance_content_sources_owner ON assurance_content_sources(tenant_id, actor_id, created_at);
+CREATE TABLE assurance_content_items (
+ tenant_id TEXT NOT NULL, item_id TEXT NOT NULL, source_artifact_id TEXT NOT NULL,
+ actor_id TEXT NOT NULL, item_text TEXT NOT NULL, item_sha256 TEXT NOT NULL,
+ metadata_blob BLOB NOT NULL, created_at TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, item_id),
+ FOREIGN KEY (tenant_id, source_artifact_id) REFERENCES assurance_content_sources(tenant_id, source_artifact_id),
+ CHECK(typeof(metadata_blob)='blob' AND length(metadata_blob) BETWEEN 2 AND 1048576)
+);
+CREATE INDEX idx_assurance_content_items_source ON assurance_content_items(tenant_id, source_artifact_id, created_at);
+CREATE TABLE assurance_content_drafts (
+ tenant_id TEXT NOT NULL, draft_artifact_id TEXT NOT NULL, source_artifact_id TEXT NOT NULL,
+ actor_id TEXT NOT NULL, draft_text TEXT NOT NULL, draft_sha256 TEXT NOT NULL,
+ item_ids_json TEXT NOT NULL, metadata_blob BLOB NOT NULL, created_at TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, draft_artifact_id),
+ FOREIGN KEY (tenant_id, source_artifact_id) REFERENCES assurance_content_sources(tenant_id, source_artifact_id),
+ CHECK(typeof(metadata_blob)='blob' AND length(metadata_blob) BETWEEN 2 AND 1048576)
+);
+CREATE INDEX idx_assurance_content_drafts_source ON assurance_content_drafts(tenant_id, source_artifact_id, created_at);
+`
+
+// migrationV19 binds immutable candidate metadata and draft lineage, and stores
+// actor-owned content previews separately from direct Workiva transfers.
+// Existing v18 candidates have no original metadata/lineage digest; an empty
+// digest deliberately blocks their use rather than inventing trusted history.
+const migrationV19 = `
+ALTER TABLE assurance_content_items ADD COLUMN metadata_sha256 TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_drafts ADD COLUMN metadata_sha256 TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_drafts ADD COLUMN lineage_sha256 TEXT NOT NULL DEFAULT '';
+CREATE TABLE assurance_content_placement_intents (
+ tenant_id TEXT NOT NULL, placement_intent_id TEXT NOT NULL, actor_id TEXT NOT NULL,
+ preview_json TEXT NOT NULL, preview_sha256 TEXT NOT NULL, token_digest TEXT NOT NULL,
+ state TEXT NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL,
+ PRIMARY KEY (tenant_id, placement_intent_id),
+ CHECK(state IN ('staged','claimed','submitting','reconciliation_required','machine_verified_visual_ack_pending','visually_acknowledged','reconciled_not_applied')),
+ CHECK(length(preview_json) BETWEEN 2 AND 1048576),
+ CHECK(length(preview_sha256)=64 AND length(token_digest)=64)
+);
+CREATE INDEX idx_assurance_content_placement_owner ON assurance_content_placement_intents(tenant_id,actor_id,created_at);
+`
+
+// migrationV20 adds confirmation ownership, submission evidence, and terminal
+// proof to immutable content intents. Historical previews remain staged;
+// migration never invents a claim, provider operation, or readback.
+const migrationV20 = `
+ALTER TABLE assurance_content_placement_intents ADD COLUMN confirmation_record_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN lease_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN owner_nonce TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN lease_expires_at TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN claimed_at TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN claim_row_version INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE assurance_content_placement_intents ADD COLUMN row_version INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE assurance_content_placement_intents ADD COLUMN operation_reference TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN unknown_reason TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN readback_json TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN readback_sha256 TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN readback_at TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN terminal_at TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN claim_fence_digest TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN terminal_fence_digest TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN target_hash TEXT NOT NULL DEFAULT '';
+CREATE INDEX idx_assurance_content_confirmation_record ON assurance_content_placement_intents(tenant_id,confirmation_record_id);
+CREATE UNIQUE INDEX idx_assurance_content_active_target ON assurance_content_placement_intents(tenant_id,target_hash)
+ WHERE target_hash<>'' AND state IN ('claimed','submitting','reconciliation_required');
+`
+
+// migrationV21 retains each read-only reconciliation observation with its
+// uncertainty episode. A missing observation is never manufactured on upgrade.
+const migrationV21 = `
+ALTER TABLE assurance_content_placement_intents ADD COLUMN uncertainty_episode_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN reconciliation_classification TEXT NOT NULL DEFAULT '';
+ALTER TABLE assurance_content_placement_intents ADD COLUMN reconciliation_updated_at TEXT NOT NULL DEFAULT '';
+CREATE TABLE assurance_content_reconciliation_evidence (
+ tenant_id TEXT NOT NULL, evidence_id TEXT NOT NULL, intent_id TEXT NOT NULL,
+ actor_id TEXT NOT NULL, episode_id TEXT NOT NULL, kind TEXT NOT NULL,
+ operation_reference_hash TEXT NOT NULL, status TEXT NOT NULL,
+ operation_inspection_json TEXT NOT NULL, operation_inspection_hash TEXT NOT NULL,
+ target_hash TEXT NOT NULL, intended_hash TEXT NOT NULL,
+ readback_json TEXT NOT NULL, readback_hash TEXT NOT NULL, cache_bypassed INTEGER NOT NULL,
+ provider_observed_at TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL,
+ PRIMARY KEY (tenant_id,evidence_id),
+ FOREIGN KEY (tenant_id,intent_id) REFERENCES assurance_content_placement_intents(tenant_id,placement_intent_id),
+ CHECK(kind='read_back'), CHECK(cache_bypassed=1),
+ CHECK(length(readback_json) BETWEEN 2 AND 1048576),
+ CHECK(length(operation_inspection_json) BETWEEN 2 AND 1048576 AND length(operation_inspection_hash)=64),
+ CHECK(length(readback_hash)=64 AND length(target_hash)=64 AND length(intended_hash)=64)
+);
+CREATE INDEX idx_assurance_content_reconciliation_episode
+ ON assurance_content_reconciliation_evidence(tenant_id,intent_id,episode_id,created_at);
+`
+
+// migrationV22 distinguishes the original confirmation from the latest sealed
+// machine result after read-only reconciliation. No historical proof is inferred.
+const migrationV22 = `
+ALTER TABLE assurance_content_placement_intents ADD COLUMN machine_result_record_id TEXT NOT NULL DEFAULT '';
+`
+
+var migrations = []string{migrationV1, migrationV2, migrationV3, migrationV4, migrationV5, migrationV6, migrationV7, migrationV8, migrationV9, migrationV10, migrationV11, migrationV12, migrationV13, migrationV14, migrationV15, migrationV16, migrationV17, migrationV18, migrationV19, migrationV20, migrationV21, migrationV22}
 
 // Migrate installs the complete contiguous assurance schema family.
 func Migrate(ctx context.Context, db *sql.DB) error {
@@ -530,6 +640,9 @@ func assuranceTables() []string {
 		"assurance_evidence_manifests", "assurance_evidence_artifacts", "assurance_evidence_subjects",
 		"assurance_retention_policies", "assurance_idempotency_records", "assurance_audit_links", "assurance_checkpoints",
 		"assurance_transfer_startup_quarantines",
+		"assurance_content_sources", "assurance_content_items", "assurance_content_drafts",
+		"assurance_content_placement_intents",
+		"assurance_content_reconciliation_evidence",
 		"assurance_materiality_policies", "assurance_export_profiles", "assurance_legal_holds", "assurance_evidence_tombstones",
 		"assurance_active_bundle_objects", "assurance_retention_policy_revisions",
 		"assurance_evidence_cleanup", "assurance_transfer_fences", "assurance_transfer_visual_evidence", "assurance_transfer_reconciliation_evidence",

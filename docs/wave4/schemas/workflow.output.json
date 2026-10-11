@@ -1,0 +1,776 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://northern-lights.invalid/schemas/workiva_workflow.output.json",
+  "title": "workiva_workflow output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "action",
+    "status",
+    "replayed",
+    "no_mutation_submitted",
+    "reconciliation_required",
+    "nl_audit_id",
+    "errors"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "create",
+        "get",
+        "advance",
+        "pause",
+        "cancel"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "created",
+        "active",
+        "ready",
+        "waiting",
+        "blocked",
+        "reconciliation_required",
+        "paused",
+        "cancelled",
+        "completed",
+        "denied",
+        "error",
+        "unavailable"
+      ]
+    },
+    "replayed": {
+      "type": "boolean",
+      "description": "Replay metadata; preserves the original business status and immutable result."
+    },
+    "no_mutation_submitted": {
+      "const": true
+    },
+    "reconciliation_required": {
+      "type": "boolean"
+    },
+    "nl_audit_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "workflow": {
+      "$ref": "#/$defs/workflow"
+    },
+    "next_step": {
+      "$ref": "#/$defs/step"
+    },
+    "next_action": {
+      "$ref": "#/$defs/nextAction"
+    },
+    "errors": {
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "$ref": "#/$defs/error"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "denied",
+              "error",
+              "unavailable"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "errors": {
+            "minItems": 1
+          }
+        },
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "workflow"
+              ]
+            },
+            {
+              "required": [
+                "next_step"
+              ]
+            },
+            {
+              "required": [
+                "next_action"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "created",
+              "active",
+              "ready",
+              "waiting",
+              "blocked",
+              "paused",
+              "cancelled",
+              "completed"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "errors": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "created"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "workflow"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ready"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "workflow",
+          "next_step",
+          "next_action"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "active",
+              "waiting",
+              "blocked",
+              "reconciliation_required",
+              "paused",
+              "cancelled",
+              "completed"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "workflow"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "reconciliation_required"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "workflow"
+        ],
+        "properties": {
+          "reconciliation_required": {
+            "const": true
+          },
+          "errors": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reconciliation_required": {
+            "const": true
+          }
+        },
+        "required": [
+          "reconciliation_required"
+        ]
+      },
+      "then": {
+        "properties": {
+          "errors": {
+            "contains": {
+              "properties": {
+                "code": {
+                  "const": "reconciliation_required"
+                }
+              },
+              "required": [
+                "code"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_artifact_id",
+        "content_hash"
+      ],
+      "properties": {
+        "source_artifact_id": {
+          "$ref": "#/$defs/id"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "draftBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "draft_artifact_id",
+        "revision",
+        "content_hash"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "draft_artifact_id": {
+          "$ref": "#/$defs/id"
+        },
+        "content_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step_id",
+        "kind",
+        "state",
+        "depends_on"
+      ],
+      "properties": {
+        "step_id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "read",
+            "draft",
+            "mutation",
+            "verify"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "ready",
+            "in_progress",
+            "completed",
+            "failed",
+            "blocked",
+            "unknown",
+            "cancelled"
+          ]
+        },
+        "depends_on": {
+          "type": "array",
+          "maxItems": 15,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "read_selector": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "mapped_field_name"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                }
+              },
+              "required": [
+                "kind",
+                "name"
+              ]
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "approved_report_field"
+                },
+                "report_id": {
+                  "$ref": "#/$defs/id"
+                },
+                "report_revision": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000000
+                },
+                "field_id": {
+                  "$ref": "#/$defs/id"
+                }
+              },
+              "required": [
+                "kind",
+                "report_id",
+                "report_revision",
+                "field_id"
+              ]
+            }
+          ]
+        },
+        "source_artifact": {
+          "$ref": "#/$defs/sourceBinding"
+        },
+        "source_step_ids": {
+          "type": "array",
+          "maxItems": 15,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "draft_artifact": {
+          "$ref": "#/$defs/draftBinding"
+        },
+        "draft_step_id": {
+          "$ref": "#/$defs/id"
+        },
+        "destination_profile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination_profile_id",
+            "revision",
+            "content_hash"
+          ],
+          "properties": {
+            "destination_profile_id": {
+              "$ref": "#/$defs/id"
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "content_hash": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        },
+        "mutation_step_id": {
+          "$ref": "#/$defs/id"
+        },
+        "transfer_route": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "route_id",
+            "revision",
+            "content_hash"
+          ],
+          "properties": {
+            "route_id": {
+              "$ref": "#/$defs/id"
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "content_hash": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        },
+        "placement_intent_id": {
+          "$ref": "#/$defs/id"
+        },
+        "transfer_id": {
+          "$ref": "#/$defs/id"
+        },
+        "operation_id": {
+          "$ref": "#/$defs/id"
+        },
+        "verification_id": {
+          "$ref": "#/$defs/id"
+        },
+        "result_code": {
+          "type": "string",
+          "enum": [
+            "read_complete",
+            "draft_complete",
+            "machine_verified",
+            "blocked",
+            "unknown",
+            "failed"
+          ]
+        },
+        "extracted_item": {
+          "$ref": "#/$defs/extractedBinding"
+        }
+      }
+    },
+    "nextAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step_id",
+        "tool",
+        "kind",
+        "workflow_context",
+        "binding"
+      ],
+      "properties": {
+        "step_id": {
+          "$ref": "#/$defs/id"
+        },
+        "tool": {
+          "type": "string",
+          "enum": [
+            "workiva_get_field",
+            "workiva_snapshot_report",
+            "workiva_transfer_value",
+            "workiva_content_placement"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "read_field",
+            "snapshot_read",
+            "stage_transfer",
+            "ingest_draft",
+            "stage_placement",
+            "verify_read_back"
+          ]
+        },
+        "workflow_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "workflow_id",
+            "step_id",
+            "binding_id"
+          ],
+          "properties": {
+            "workflow_id": {
+              "$ref": "#/$defs/id"
+            },
+            "step_id": {
+              "$ref": "#/$defs/id"
+            },
+            "binding_id": {
+              "$ref": "#/$defs/id"
+            }
+          }
+        },
+        "binding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "step_kind",
+            "prerequisite_hash",
+            "expires_at"
+          ],
+          "properties": {
+            "step_kind": {
+              "type": "string",
+              "enum": [
+                "read",
+                "draft",
+                "mutation",
+                "verify"
+              ]
+            },
+            "prerequisite_hash": {
+              "$ref": "#/$defs/sha256"
+            },
+            "expires_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "tool": {
+              "const": "workiva_get_field"
+            },
+            "kind": {
+              "const": "read_field"
+            }
+          }
+        },
+        {
+          "properties": {
+            "tool": {
+              "const": "workiva_snapshot_report"
+            },
+            "kind": {
+              "const": "snapshot_read"
+            }
+          }
+        },
+        {
+          "properties": {
+            "tool": {
+              "const": "workiva_transfer_value"
+            },
+            "kind": {
+              "enum": [
+                "stage_transfer",
+                "verify_read_back"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "tool": {
+              "const": "workiva_content_placement"
+            },
+            "kind": {
+              "enum": [
+                "ingest_draft",
+                "stage_placement"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workflow_id",
+        "state",
+        "steps",
+        "revision"
+      ],
+      "properties": {
+        "workflow_id": {
+          "$ref": "#/$defs/id"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "active",
+            "paused",
+            "cancelled",
+            "completed",
+            "blocked",
+            "reconciliation_required"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "reconciliation_required"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "invalid_request",
+            "missing_field",
+            "unknown_field",
+            "invalid_value",
+            "bounds_exceeded",
+            "strong_identity_required",
+            "permission_denied",
+            "not_found",
+            "artifact_not_found",
+            "artifact_access_denied",
+            "artifact_revision_mismatch",
+            "profile_not_found",
+            "profile_inactive",
+            "profile_access_denied",
+            "access_mode_unconfigured",
+            "actor_not_allowlisted",
+            "provider_access_unverified",
+            "retention_policy_missing",
+            "legal_hold",
+            "workflow_state_conflict",
+            "step_not_eligible",
+            "prerequisite_incomplete",
+            "mutation_association_missing",
+            "verification_mismatch",
+            "stale_binding",
+            "confirmation_required",
+            "feature_disabled",
+            "idempotency_conflict",
+            "idempotency_in_progress",
+            "audit_unavailable",
+            "persistence_unavailable",
+            "reconciliation_required",
+            "internal_error"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "field": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "reconciliation_required": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "reconciliation_required": {
+                "const": true
+              }
+            },
+            "required": [
+              "reconciliation_required"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retryable": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "extractedBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_artifact_id",
+        "extracted_item_id",
+        "revision",
+        "content_hash"
+      ],
+      "properties": {
+        "source_artifact_id": {
+          "$ref": "#/$defs/id"
+        },
+        "extracted_item_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "content_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  }
+}

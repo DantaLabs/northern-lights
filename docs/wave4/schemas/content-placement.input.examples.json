@@ -1,0 +1,126 @@
+{
+  "description": "Five schema-valid and five schema-invalid examples. Schema-valid examples still require runtime authorization, ownership, binding, integrity, byte and evidence checks.",
+  "valid": [
+    {
+      "phase": "ingest",
+      "idempotency_key": "ingest-text-00001",
+      "source": { "source_text": "Revenue 12", "media_type": "text/plain" },
+      "origin": { "kind": "analyst" },
+      "extracted_items": [{
+        "local_id": "revenue",
+        "text": "12",
+        "kind_hint": "number",
+        "interpretation": {
+          "period": "FY2025", "currency": "USD", "unit": "currency",
+          "scale": "millions", "percent_basis": null, "precision": 0
+        },
+        "provenance": { "availability": "available", "start_byte": 8, "end_byte": 10 },
+        "segments": [{ "label": "Revenue", "start_byte": 8, "end_byte": 10 }]
+      }],
+      "draft_artifacts": []
+    },
+    {
+      "phase": "ingest",
+      "idempotency_key": "reingest-text-001",
+      "source": { "source_text": "abc", "media_type": "text/plain" },
+      "existing_source_artifact_id": "source-owned-1",
+      "expected_existing_source_sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "origin": { "kind": "analyst" },
+      "extracted_items": [{
+        "local_id": "item-1", "text": "abc", "kind_hint": "text",
+        "provenance": { "availability": "unavailable" }, "segments": []
+      }],
+      "draft_artifacts": [{
+        "local_id": "draft-1", "text": "Reviewed summary",
+        "item_local_ids": ["item-1"], "origin": { "kind": "copilot" }
+      }]
+    },
+    {
+      "phase": "ingest",
+      "idempotency_key": "draft-evidence-001",
+      "origin": { "kind": "copilot" },
+      "workflow_context": {
+        "workflow_id": "run-owned-1", "step_id": "summary-step",
+        "binding_id": "binding-server-issued-1"
+      },
+      "verified_evidence_refs": ["evidence-owned-1"],
+      "extracted_items": [],
+      "draft_artifacts": [{
+        "local_id": "summary-1", "text": "Summary of the saved verified result.",
+        "verified_evidence_refs": ["evidence-owned-1"],
+        "origin": { "kind": "copilot" }
+      }]
+    },
+    {
+      "phase": "stage",
+      "idempotency_key": "stage-summary-001",
+      "draft_artifact_id": "draft-owned-1",
+      "destination_profile_id": "profile-approved-1",
+      "destination_profile_revision": 1,
+      "workflow_context": {
+        "workflow_id": "run-owned-1", "step_id": "placement-step",
+        "binding_id": "binding-server-issued-2"
+      }
+    },
+    {
+      "phase": "reconcile",
+      "idempotency_key": "classify-applied-001",
+      "placement_intent_id": "intent-owned-1",
+      "action": "classify",
+      "classification": "confirmed_applied",
+      "uncertainty_episode_id": "episode-owned-1",
+      "latest_readback_evidence_id": "readback-owned-2"
+    }
+  ],
+  "invalid": [
+    {
+      "reason": "Re-ingest source ID requires the paired expected hash.",
+      "value": {
+        "phase": "ingest", "idempotency_key": "invalid-pair-0001",
+        "source": { "source_text": "abc", "media_type": "text/plain" },
+        "existing_source_artifact_id": "source-owned-1",
+        "origin": { "kind": "analyst" }, "extracted_items": [], "draft_artifacts": []
+      }
+    },
+    {
+      "reason": "Source-free ingest requires workflow binding and verified evidence.",
+      "value": {
+        "phase": "ingest", "idempotency_key": "invalid-source-001",
+        "origin": { "kind": "copilot" }, "extracted_items": [],
+        "draft_artifacts": [{
+          "local_id": "draft-1", "text": "Unsupported completion claim.",
+          "item_local_ids": ["missing-item"], "origin": { "kind": "copilot" }
+        }]
+      }
+    },
+    {
+      "reason": "read_back forbids classification and proof references.",
+      "value": {
+        "phase": "reconcile", "idempotency_key": "invalid-readback-1",
+        "placement_intent_id": "intent-owned-1", "action": "read_back",
+        "classification": "confirmed_not_applied", "no_effect_proof_id": "proof-1"
+      }
+    },
+    {
+      "reason": "confirmed_not_applied requires a no-effect proof reference.",
+      "value": {
+        "phase": "reconcile", "idempotency_key": "invalid-proof-001",
+        "placement_intent_id": "intent-owned-1", "action": "classify",
+        "classification": "confirmed_not_applied",
+        "uncertainty_episode_id": "episode-owned-1"
+      }
+    },
+    {
+      "reason": "workflow_context is closed and cannot accept completion claims.",
+      "value": {
+        "phase": "stage", "idempotency_key": "invalid-context-1",
+        "draft_artifact_id": "draft-owned-1",
+        "destination_profile_id": "profile-approved-1", "destination_profile_revision": 1,
+        "workflow_context": {
+          "workflow_id": "run-owned-1", "step_id": "placement-step",
+          "binding_id": "binding-server-issued-2", "completed": true
+        }
+      }
+    }
+  ]
+}

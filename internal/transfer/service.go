@@ -12,6 +12,7 @@ import (
 
 	"github.com/dantalabs/northern-lights/internal/assurance"
 	"github.com/dantalabs/northern-lights/internal/identity"
+	"github.com/dantalabs/northern-lights/internal/mutation"
 	"github.com/dantalabs/northern-lights/internal/workiva"
 	"github.com/dantalabs/northern-lights/internal/workivaprovider"
 )
@@ -794,46 +795,53 @@ func (s *Service) Confirm(ctx context.Context, r ConfirmRequest) (Transfer, erro
 	if err != nil {
 		return fail("invalid_intended_value")
 	}
-	if err := renewBeforeStep(); err != nil {
-		return fail("lease_renewal_failed")
-	}
-	if err = s.store.markSubmitting(ctx, r.TenantID, r.TransferID, leaseID); err != nil {
-		return fail("local_submitting_commit_failed")
-	}
-	if err := renewBeforeStep(); err != nil {
-		return fail("lease_renewal_failed")
-	}
-	op, delay, err := s.provider.UpdateSheetWithRetryAfter(workCtx, before.Intent.Target.ResourceID, before.Intent.Target.SheetID, workiva.NewEditCellsUpdate([]workiva.CellEdit{{Column: column, Row: row, Value: value}}))
-	operationReference = op
-	if err != nil {
-		if op != "" {
-			if persistErr := s.store.persistOperation(ctx, r.TenantID, r.TransferID, op); persistErr != nil {
-				return fail("operation_reference_persist_failed")
+	mutationResult, mutationErr := mutation.Execute(workCtx, mutation.Hooks{
+		RenewLease: func(context.Context) error { return renewBeforeStep() },
+		MarkSubmitting: func(context.Context) error {
+			return s.store.markSubmitting(ctx, r.TenantID, r.TransferID, leaseID)
+		},
+		Submit: func(ctx context.Context) (string, time.Duration, error) {
+			return s.provider.UpdateSheetWithRetryAfter(ctx, before.Intent.Target.ResourceID, before.Intent.Target.SheetID,
+				workiva.NewEditCellsUpdate([]workiva.CellEdit{{Column: column, Row: row, Value: value}}))
+		},
+		PersistOperation: func(_ context.Context, reference string) error {
+			return s.store.persistOperation(ctx, r.TenantID, r.TransferID, reference)
+		},
+		Poll: func(ctx context.Context, reference string, delay time.Duration) error {
+			_, err := s.provider.WaitOperationWithInitialRetryAfter(ctx, reference, delay)
+			return err
+		},
+		Readback: func(ctx context.Context) (string, error) {
+			rb, err := s.read(ctx, before.Intent.Target)
+			if err != nil {
+				return "", err
 			}
+			if !rb.CacheBypassed {
+				return "", &mutation.InvalidReadback{Cause: errors.New("transfer: provider readback used cache")}
+			}
+			value, err := canonicalProviderIntentValue(rb.Value, before.Intent.Intended)
+			if err != nil {
+				return "", &mutation.InvalidReadback{Cause: err}
+			}
+			return value, nil
+		},
+		ValidateReadback: func(value string) error {
+			if value != before.Intent.Intended {
+				return errors.New("transfer: provider readback did not match intended value")
+			}
+			return nil
+		},
+	})
+	if mutationErr != nil {
+		var failure *mutation.Failure
+		if errors.As(mutationErr, &failure) {
+			operationReference = failure.OperationReference
+			return fail(failure.Reason)
 		}
 		return fail("provider_outcome_unknown")
 	}
-	if err = s.store.persistOperation(ctx, r.TenantID, r.TransferID, op); err != nil {
-		return fail("operation_reference_persist_failed")
-	}
-	if err := renewBeforeStep(); err != nil {
-		return fail("lease_renewal_failed")
-	}
-	_, err = s.provider.WaitOperationWithInitialRetryAfter(workCtx, op, delay)
-	if err != nil {
-		return fail("poll_outcome_unknown")
-	}
-	if err := renewBeforeStep(); err != nil {
-		return fail("lease_renewal_failed")
-	}
-	rb, err := s.read(workCtx, before.Intent.Target)
-	if err != nil {
-		return fail("readback_unavailable")
-	}
-	rbv, err := canonicalProviderIntentValue(rb.Value, before.Intent.Intended)
-	if err != nil || !rb.CacheBypassed || rbv != before.Intent.Intended {
-		return fail("readback_mismatch")
-	}
+	op, rbv := mutationResult.OperationReference, mutationResult.Readback
+	operationReference = op
 	terminal, err := json.Marshal(terminalPayload{
 		ClaimDigest: cd, EnvironmentDigest: environmentDigest, TenantDigest: tenantDigest, TransferID: r.TransferID,
 		ProviderOutcomeDigest: digest("accepted"), OperationReferenceDigest: digest(op), ReadbackDigest: digest(rbv),

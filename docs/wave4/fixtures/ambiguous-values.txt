@@ -1,0 +1,8 @@
+Synthetic analyst note — test fixture only
+
+For FY2025, reported revenue was USD 12.4 million. The management-adjusted
+revenue figure for FY2025 was USD 11.9 million. These are different measures;
+the note does not say which measure belongs in a destination labeled only
+“Revenue”.
+
+No value in this note is approved for placement without clarification.

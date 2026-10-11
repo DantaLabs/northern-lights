@@ -37,6 +37,11 @@ const (
 	PermissionEvidenceExport               Permission = "evidence.export"
 	PermissionWorkivaVisualAck             Permission = "workiva.visual_ack"
 	PermissionReconciliationManage         Permission = "reconciliation.manage"
+	PermissionContentIngest                Permission = "content.ingest"
+	PermissionContentStage                 Permission = "content.stage"
+	PermissionContentConfirm               Permission = "content.confirm"
+	PermissionContentAcknowledge           Permission = "content.acknowledge"
+	PermissionContentReconcile             Permission = "content.reconcile"
 )
 
 var allPermissions = []Permission{
@@ -54,6 +59,11 @@ var allPermissions = []Permission{
 	PermissionEvidenceExport,
 	PermissionWorkivaVisualAck,
 	PermissionReconciliationManage,
+	PermissionContentIngest,
+	PermissionContentStage,
+	PermissionContentConfirm,
+	PermissionContentAcknowledge,
+	PermissionContentReconcile,
 }
 
 // AllPermissions returns the complete permission vocabulary in stable order.

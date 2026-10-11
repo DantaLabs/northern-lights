@@ -1,0 +1,6 @@
+period,metric,value,unit,definition
+FY2025,Revenue,12.4,USD millions,reported revenue
+FY2024,Revenue,11.8,USD millions,reported revenue
+FY2025,Operating expenses,-7.1,USD millions,reported operating expenses
+FY2025,Net income,2.3,USD millions,reported net income
+FY2025,Analyst note,"=HYPERLINK(""https://example.invalid/"",""open"")",literal text,untrusted cell content

@@ -48,18 +48,23 @@ const (
 // Bundle is the signed tenant-bound provisioning unit. It intentionally has no
 // provider credentials or runtime secrets.
 type Bundle struct {
-	SchemaVersion         int                          `json:"schema_version" yaml:"schema_version"`
-	BundleID              string                       `json:"bundle_id" yaml:"bundle_id"`
-	BundleVersion         int                          `json:"bundle_version" yaml:"bundle_version"`
-	TenantID              string                       `json:"tenant_id" yaml:"tenant_id"`
-	Reports               []ReportRevision             `json:"reports" yaml:"reports"`
-	RuleSets              []RuleSet                    `json:"rule_sets,omitempty" yaml:"rule_sets,omitempty"`
-	MaterialityPolicies   []MaterialityPolicy          `json:"materiality_policies,omitempty" yaml:"materiality_policies,omitempty"`
-	ExportProfiles        []ExportProfile              `json:"export_profiles,omitempty" yaml:"export_profiles,omitempty"`
-	RetentionPolicies     []RetentionPolicy            `json:"retention_policies,omitempty" yaml:"retention_policies,omitempty"`
-	RelationshipAllowlist []RelationshipAllowlistEntry `json:"relationship_allowlist,omitempty" yaml:"relationship_allowlist,omitempty"`
-	TransferRoutes        []TransferRoute              `json:"transfer_routes,omitempty" yaml:"transfer_routes,omitempty"`
-	ConversionPolicies    []ConversionPolicy           `json:"conversion_policies,omitempty" yaml:"conversion_policies,omitempty"`
+	SchemaVersion            int                          `json:"schema_version" yaml:"schema_version"`
+	BundleID                 string                       `json:"bundle_id" yaml:"bundle_id"`
+	BundleVersion            int                          `json:"bundle_version" yaml:"bundle_version"`
+	TenantID                 string                       `json:"tenant_id" yaml:"tenant_id"`
+	Reports                  []ReportRevision             `json:"reports" yaml:"reports"`
+	RuleSets                 []RuleSet                    `json:"rule_sets,omitempty" yaml:"rule_sets,omitempty"`
+	MaterialityPolicies      []MaterialityPolicy          `json:"materiality_policies,omitempty" yaml:"materiality_policies,omitempty"`
+	ExportProfiles           []ExportProfile              `json:"export_profiles,omitempty" yaml:"export_profiles,omitempty"`
+	RetentionPolicies        []RetentionPolicy            `json:"retention_policies,omitempty" yaml:"retention_policies,omitempty"`
+	RelationshipAllowlist    []RelationshipAllowlistEntry `json:"relationship_allowlist,omitempty" yaml:"relationship_allowlist,omitempty"`
+	TransferRoutes           []TransferRoute              `json:"transfer_routes,omitempty" yaml:"transfer_routes,omitempty"`
+	ConversionPolicies       []ConversionPolicy           `json:"conversion_policies,omitempty" yaml:"conversion_policies,omitempty"`
+	DestinationProfiles      []DestinationProfile         `json:"destination_profiles,omitempty" yaml:"destination_profiles,omitempty"`
+	ContentAccessPolicies    []ContentAccessPolicy        `json:"content_access_policies,omitempty" yaml:"content_access_policies,omitempty"`
+	ContentRetentionPolicies []ContentRetentionPolicy     `json:"content_retention_policies,omitempty" yaml:"content_retention_policies,omitempty"`
+	ContentResourcePolicies  []ContentResourcePolicy      `json:"content_resource_policies,omitempty" yaml:"content_resource_policies,omitempty"`
+	ContentProviderContracts []ContentProviderContract    `json:"content_provider_contracts,omitempty" yaml:"content_provider_contracts,omitempty"`
 }
 
 const RelationshipCapabilityRead = "assurance.relationship.read"
@@ -102,6 +107,7 @@ type ValidatedBundle struct {
 	CanonicalJSON []byte
 	Signature     []byte
 	ContentHash   string
+	verifiedBy    ed25519.PublicKey
 }
 
 // ValidateBundle strictly parses JSON or YAML, validates all references and
@@ -131,7 +137,7 @@ func ValidateBundle(raw, signature []byte, expectedTenant string, publicKey ed25
 	if err := validateBundleObject(&bundle, expectedTenant); err != nil {
 		return nil, err
 	}
-	return &ValidatedBundle{Bundle: bundle, CanonicalJSON: canonical, Signature: append([]byte(nil), signature...), ContentHash: digestHex(HashBytes(canonical))}, nil
+	return &ValidatedBundle{Bundle: bundle, CanonicalJSON: canonical, Signature: append([]byte(nil), signature...), ContentHash: digestHex(HashBytes(canonical)), verifiedBy: append(ed25519.PublicKey(nil), publicKey...)}, nil
 }
 
 func decodeStrictBundle(raw []byte) (Bundle, error) {
@@ -154,7 +160,13 @@ func decodeStrictBundle(raw []byte) (Bundle, error) {
 	strict := yaml.NewDecoder(bytes.NewReader(raw))
 	strict.KnownFields(true)
 	var bundle Bundle
-	if err := strict.Decode(&bundle); err != nil {
+	if json.Valid(raw) {
+		decoder := json.NewDecoder(bytes.NewReader(raw))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&bundle); err != nil {
+			return Bundle{}, err
+		}
+	} else if err := strict.Decode(&bundle); err != nil {
 		return Bundle{}, err
 	}
 	return bundle, nil
@@ -546,6 +558,133 @@ func validateBundleObject(bundle *Bundle, expectedTenant string) error {
 		}
 		r.ContentHash = hash
 	}
+	if len(bundle.DestinationProfiles) > 256 || len(bundle.ContentAccessPolicies) > 256 || len(bundle.ContentRetentionPolicies) > 64 || len(bundle.ContentResourcePolicies) > 256 || len(bundle.ContentProviderContracts) > 64 {
+		return domainError("bundle_collection_bound", "content policy collection exceeds its bound")
+	}
+	accessKeys := map[string]bool{}
+	lastAccessRevision := map[string]int{}
+	for i := range bundle.ContentAccessPolicies {
+		p := &bundle.ContentAccessPolicies[i]
+		if err := validateContentAccessPolicy(p, bundle.TenantID); err != nil {
+			return domainError("bundle_invalid_content_access_policy", err.Error())
+		}
+		key := fmt.Sprintf("%s/%d", p.PolicyID, p.Revision)
+		if accessKeys[key] {
+			return domainError("bundle_duplicate_content_access_policy", "content access policy revisions must be unique")
+		}
+		accessKeys[key] = true
+		if p.Revision <= lastAccessRevision[p.PolicyID] {
+			return domainError("bundle_revision_non_monotonic", "content access policy revisions must increase in declared order")
+		}
+		lastAccessRevision[p.PolicyID] = p.Revision
+	}
+	retentionKeys := map[string]bool{}
+	lastRetentionRevision := map[string]int{}
+	for i := range bundle.ContentRetentionPolicies {
+		p := &bundle.ContentRetentionPolicies[i]
+		if err := validateContentRetentionPolicy(p); err != nil {
+			return domainError("bundle_invalid_content_retention_policy", err.Error())
+		}
+		key := fmt.Sprintf("%s/%d", p.PolicyID, p.Revision)
+		if retentionKeys[key] {
+			return domainError("bundle_duplicate_content_retention_policy", "content retention policy revisions must be unique")
+		}
+		retentionKeys[key] = true
+		if p.Revision <= lastRetentionRevision[p.PolicyID] {
+			return domainError("bundle_revision_non_monotonic", "content retention policy revisions must increase in declared order")
+		}
+		lastRetentionRevision[p.PolicyID] = p.Revision
+	}
+	resourcePolicies := map[string]ContentResourcePolicy{}
+	lastResourceRevision := map[string]int{}
+	for i := range bundle.ContentResourcePolicies {
+		p := &bundle.ContentResourcePolicies[i]
+		if err := validateContentResourcePolicy(p); err != nil {
+			return domainError("bundle_invalid_content_resource_policy", err.Error())
+		}
+		key := fmt.Sprintf("%s/%d", p.PolicyID, p.Revision)
+		if _, exists := resourcePolicies[key]; exists {
+			return domainError("bundle_duplicate_content_resource_policy", "content resource policy revisions must be unique")
+		}
+		resourcePolicies[key] = *p
+		if p.Revision <= lastResourceRevision[p.PolicyID] {
+			return domainError("bundle_revision_non_monotonic", "content resource policy revisions must increase in declared order")
+		}
+		lastResourceRevision[p.PolicyID] = p.Revision
+		authorized := false
+		for _, a := range bundle.ContentAccessPolicies {
+			if a.PolicyID == p.AccessPolicyID && a.Revision == p.AccessPolicyRevision && a.ContentHash == p.AccessPolicyContentHash && a.State == "active" && contentPolicyContains(a.Capabilities, p.Capability) && contentPolicyContains(a.ResourceIDs, p.ResourceID) {
+				authorized = true
+			}
+		}
+		if !authorized {
+			return domainError("bundle_reference_unresolved", "content resource policy access scope is unresolved")
+		}
+	}
+	providerContracts := map[string]ContentProviderContract{}
+	lastProviderRevision := map[string]int{}
+	for i := range bundle.ContentProviderContracts {
+		p := &bundle.ContentProviderContracts[i]
+		if err := validateContentProviderContract(p); err != nil {
+			return domainError("bundle_invalid_content_provider_contract", err.Error())
+		}
+		key := fmt.Sprintf("%s/%d", p.PolicyID, p.Revision)
+		if _, exists := providerContracts[key]; exists {
+			return domainError("bundle_duplicate_content_provider_contract", "provider contract revisions must be unique")
+		}
+		providerContracts[key] = *p
+		if p.Revision <= lastProviderRevision[p.PolicyID] {
+			return domainError("bundle_revision_non_monotonic", "provider contract revisions must increase in declared order")
+		}
+		lastProviderRevision[p.PolicyID] = p.Revision
+	}
+	profileRevisions := map[string]bool{}
+	lastProfileRevision := map[string]int{}
+	for i := range bundle.DestinationProfiles {
+		p := &bundle.DestinationProfiles[i]
+		if err := validateDestinationProfile(p); err != nil {
+			return domainError("bundle_invalid_destination_profile", err.Error())
+		}
+		key := fmt.Sprintf("%s/%d", *p.DestinationProfileID, *p.Revision)
+		if profileRevisions[key] {
+			return domainError("bundle_duplicate_destination_profile", "destination profile revisions must be unique")
+		}
+		profileRevisions[key] = true
+		if *p.Revision <= lastProfileRevision[*p.DestinationProfileID] {
+			return domainError("bundle_revision_non_monotonic", "destination profile revisions must increase in declared order")
+		}
+		lastProfileRevision[*p.DestinationProfileID] = *p.Revision
+		cp := resourcePolicies[fmt.Sprintf("%s/%d", p.ResourcePolicy.PolicyID, p.ResourcePolicy.Revision)]
+		provider := providerContracts[fmt.Sprintf("%s/%d", p.ProviderContract.PolicyID, p.ProviderContract.Revision)]
+		convFound := false
+		for _, conv := range bundle.ConversionPolicies {
+			if conv.PolicyID == p.ConversionPolicy.PolicyID && conv.Revision == p.ConversionPolicy.Revision && conv.ContentHash == p.ConversionPolicy.ContentHash {
+				convFound = true
+			}
+		}
+		if cp.ContentHash != p.ResourcePolicy.ContentHash || cp.State != "active" || cp.ResourceID != *p.ResourceID || cp.SheetID != *p.SheetID || cp.Cell != *p.Cell || provider.ContentHash != p.ProviderContract.ContentHash || provider.State != "active" || !contentPolicyContains(provider.SupportedOperations, *p.Operation) || !convFound {
+			return domainError("bundle_reference_unresolved", "destination profile exact resource, conversion, or provider policy reference is unresolved")
+		}
+		metadata := p.MetadataRequirements
+		for _, requirement := range []struct {
+			name  string
+			value *string
+		}{{"formula", metadata.Formula}, {"protection", metadata.Protection}, {"writability", metadata.Writability}, {"formatting", metadata.Formatting}, {"period", metadata.Period}, {"currency", metadata.Currency}, {"unit", metadata.Unit}, {"scale", metadata.Scale}, {"percent_basis", metadata.PercentBasis}, {"precision", metadata.Precision}} {
+			if *requirement.value == "provider_verified" && !contentPolicyContains(provider.RequiredFacts, requirement.name) {
+				return domainError("bundle_reference_unresolved", fmt.Sprintf("provider contract does not declare required fact %q", requirement.name))
+			}
+		}
+		retentionFound := false
+		for j := range bundle.ContentRetentionPolicies {
+			rp := &bundle.ContentRetentionPolicies[j]
+			if rp.PolicyID == p.RetentionPolicy.PolicyID && rp.Revision == p.RetentionPolicy.Revision && rp.ContentHash == p.RetentionPolicy.ContentHash && rp.State == "active" {
+				retentionFound = true
+			}
+		}
+		if !retentionFound {
+			return domainError("bundle_reference_unresolved", "destination profile retention reference is unresolved")
+		}
+	}
 	return nil
 }
 
@@ -624,7 +763,26 @@ func (s *Store) StageBundle(ctx context.Context, bundle *ValidatedBundle) error 
 	if bundle == nil {
 		return domainError("bundle_invalid", "validated bundle is required")
 	}
+	if len(bundle.verifiedBy) != ed25519.PublicKeySize {
+		return domainError("bundle_signature_invalid", "staging requires a bundle returned by signature validation")
+	}
 	tenant := identity.StorageTenant(ctx)
+	// ValidatedBundle exposes mutable fields for compatibility. Rebuild the
+	// authoritative projection from the signed canonical bytes before any
+	// database lookup, and reject callers that changed either representation.
+	verified, err := ValidateBundle(bundle.CanonicalJSON, bundle.Signature, tenant, bundle.verifiedBy)
+	if err != nil || verified.ContentHash != bundle.ContentHash || !bytes.Equal(verified.CanonicalJSON, bundle.CanonicalJSON) {
+		return domainError("bundle_signature_invalid", "staging bundle bytes, signature, or stored hash failed revalidation")
+	}
+	providedProjection, err := CanonicalJSON(bundle.Bundle)
+	if err != nil {
+		return domainError("bundle_invalid", "staging bundle projection cannot be canonicalized")
+	}
+	verifiedProjection, err := CanonicalJSON(verified.Bundle)
+	if err != nil || !bytes.Equal(providedProjection, verifiedProjection) {
+		return domainError("bundle_invalid", "staging bundle projection does not match its signed canonical bytes")
+	}
+	bundle = verified
 	if bundle.Bundle.TenantID != tenant {
 		return domainError("bundle_tenant_mismatch", "bundle tenant does not match trusted tenant")
 	}
@@ -738,15 +896,162 @@ func (s *Store) StageBundle(ctx context.Context, bundle *ValidatedBundle) error 
 			return err
 		}
 	}
-	_, err := s.db.ExecContext(ctx, `INSERT INTO assurance_bundle_candidates
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	var stagedHash string
+	err = tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_bundle_candidates WHERE tenant_id=? AND bundle_id=? AND bundle_version=?`, tenant, bundle.Bundle.BundleID, bundle.Bundle.BundleVersion).Scan(&stagedHash)
+	if err == nil {
+		if stagedHash != bundle.ContentHash {
+			return domainError("bundle_candidate_conflict", "reused bundle candidate revision has different content")
+		}
+		return nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	for _, p := range bundle.Bundle.DestinationProfiles {
+		if err := checkContentPolicyRevision(ctx, tx, tenant, bundle.verifiedBy, "destination_profile", *p.DestinationProfileID, *p.Revision, *p.ContentHash); err != nil {
+			return err
+		}
+	}
+	for _, p := range bundle.Bundle.ContentAccessPolicies {
+		if err := checkContentPolicyRevision(ctx, tx, tenant, bundle.verifiedBy, "content_access", p.PolicyID, p.Revision, p.ContentHash); err != nil {
+			return err
+		}
+	}
+	for _, p := range bundle.Bundle.ContentRetentionPolicies {
+		if err := checkContentPolicyRevision(ctx, tx, tenant, bundle.verifiedBy, "content_retention", p.PolicyID, p.Revision, p.ContentHash); err != nil {
+			return err
+		}
+	}
+	for _, p := range bundle.Bundle.ContentResourcePolicies {
+		if err := checkContentPolicyRevision(ctx, tx, tenant, bundle.verifiedBy, "content_resource", p.PolicyID, p.Revision, p.ContentHash); err != nil {
+			return err
+		}
+	}
+	for _, p := range bundle.Bundle.ContentProviderContracts {
+		if err := checkContentPolicyRevision(ctx, tx, tenant, bundle.verifiedBy, "content_provider", p.PolicyID, p.Revision, p.ContentHash); err != nil {
+			return err
+		}
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO assurance_bundle_candidates
  (tenant_id, bundle_id, bundle_version, schema_version, bundle_json, signature_hex, content_hash, activation_requested, staged_at)
  VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
- ON CONFLICT(tenant_id, bundle_id, bundle_version) DO UPDATE SET schema_version=excluded.schema_version,
- bundle_json=excluded.bundle_json, signature_hex=excluded.signature_hex, content_hash=excluded.content_hash,
- activation_requested=0, staged_at=excluded.staged_at, requested_at=''`, tenant, bundle.Bundle.BundleID, bundle.Bundle.BundleVersion,
+		ON CONFLICT(tenant_id, bundle_id, bundle_version) DO NOTHING`, tenant, bundle.Bundle.BundleID, bundle.Bundle.BundleVersion,
 		bundle.Bundle.SchemaVersion, string(bundle.CanonicalJSON), hex.EncodeToString(bundle.Signature), bundle.ContentHash, formatTimestamp(time.Now()))
 	if err != nil {
 		return fmt.Errorf("assurance: stage bundle: %w", err)
+	}
+	var committedHash string
+	if err := tx.QueryRowContext(ctx, `SELECT content_hash FROM assurance_bundle_candidates WHERE tenant_id=? AND bundle_id=? AND bundle_version=?`, tenant, bundle.Bundle.BundleID, bundle.Bundle.BundleVersion).Scan(&committedHash); err != nil {
+		return err
+	}
+	if committedHash != bundle.ContentHash {
+		return domainError("bundle_candidate_conflict", "reused bundle candidate revision has different content")
+	}
+	return tx.Commit()
+}
+
+type contentPolicyHistoryReader interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}
+
+func checkContentPolicyRevision(ctx context.Context, reader contentPolicyHistoryReader, tenant string, trustedKey ed25519.PublicKey, kind, id string, revision int, hash string) (returnErr error) {
+	rows, err := reader.QueryContext(ctx, `SELECT bundle_json,signature_hex,content_hash FROM assurance_bundle_candidates WHERE tenant_id=? UNION ALL SELECT bundle_json,signature_hex,content_hash FROM assurance_active_bundles WHERE tenant_id=? AND singleton=1`, tenant, tenant)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil && returnErr == nil {
+			returnErr = closeErr
+		}
+	}()
+	for rows.Next() {
+		var raw, signatureHex, storedHash string
+		if err := rows.Scan(&raw, &signatureHex, &storedHash); err != nil {
+			return err
+		}
+		signature, err := hex.DecodeString(signatureHex)
+		if err != nil {
+			return domainError("content_policy_history_corrupt", "stored signed policy history signature is malformed")
+		}
+		validated, err := ValidateBundle([]byte(raw), signature, tenant, trustedKey)
+		if err != nil || validated.ContentHash != storedHash {
+			return domainError("content_policy_history_corrupt", "stored signed policy history failed signature or hash verification")
+		}
+		prior := validated.Bundle
+		check := func(priorID string, priorRevision int, priorHash string) error {
+			if priorID != id {
+				return nil
+			}
+			if priorRevision > revision || priorRevision == revision && priorHash != hash {
+				return domainError("bundle_revision_hash_conflict", "content policy revision is not a monotonic immutable successor")
+			}
+			if priorRevision != revision && priorHash == hash {
+				return domainError("bundle_revision_content_reused", "content policy hash cannot be reused under another revision")
+			}
+			return nil
+		}
+		switch kind {
+		case "destination_profile":
+			for _, p := range prior.DestinationProfiles {
+				if p.DestinationProfileID != nil && p.Revision != nil && p.ContentHash != nil {
+					if err := check(*p.DestinationProfileID, *p.Revision, *p.ContentHash); err != nil {
+						return err
+					}
+				}
+			}
+		case "content_access":
+			for _, p := range prior.ContentAccessPolicies {
+				raw, _ := CanonicalJSON(contentAccessPolicyContent(p))
+				h := digestHex(HashBytes(raw))
+				if p.ContentHash != "" && p.ContentHash != h {
+					return domainError("content_policy_history_corrupt", "stored access policy hash is inconsistent")
+				}
+				if err := check(p.PolicyID, p.Revision, h); err != nil {
+					return err
+				}
+			}
+		case "content_retention":
+			for _, p := range prior.ContentRetentionPolicies {
+				raw, _ := CanonicalJSON(contentRetentionPolicyContent(p))
+				h := digestHex(HashBytes(raw))
+				if p.ContentHash != "" && p.ContentHash != h {
+					return domainError("content_policy_history_corrupt", "stored retention policy hash is inconsistent")
+				}
+				if err := check(p.PolicyID, p.Revision, h); err != nil {
+					return err
+				}
+			}
+		case "content_resource":
+			for _, p := range prior.ContentResourcePolicies {
+				raw, _ := CanonicalJSON(contentResourcePolicyContent(p))
+				h := digestHex(HashBytes(raw))
+				if p.ContentHash != "" && p.ContentHash != h {
+					return domainError("content_policy_history_corrupt", "stored resource policy hash is inconsistent")
+				}
+				if err := check(p.PolicyID, p.Revision, h); err != nil {
+					return err
+				}
+			}
+		case "content_provider":
+			for _, p := range prior.ContentProviderContracts {
+				raw, _ := CanonicalJSON(contentProviderContractContent(p))
+				h := digestHex(HashBytes(raw))
+				if p.ContentHash != "" && p.ContentHash != h {
+					return domainError("content_policy_history_corrupt", "stored provider contract hash is inconsistent")
+				}
+				if err := check(p.PolicyID, p.Revision, h); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
 	}
 	return nil
 }

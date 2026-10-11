@@ -34,7 +34,7 @@ func TestV17StartupQuarantineUpgradePreservesRowsAndReopens(t *testing.T) {
 		t.Fatalf("preserved state=%q err=%v", state, err)
 	}
 	var version int
-	if err := db.QueryRow(`SELECT max(version) FROM schema_migrations WHERE app='assurance'`).Scan(&version); err != nil || version != 17 {
+	if err := db.QueryRow(`SELECT max(version) FROM schema_migrations WHERE app='assurance'`).Scan(&version); err != nil || version != 22 {
 		t.Fatalf("version=%d err=%v", version, err)
 	}
 }

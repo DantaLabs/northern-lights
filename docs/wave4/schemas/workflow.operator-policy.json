@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://northern-lights.invalid/schemas/workflow.operator-policy.json",
+  "title": "Proposed signed workflow operator policy payload",
+  "description": "Closed proposed signed operator-policy shape. Limits are ceilings; operators supply actual values. content_hash is computed over the canonical policy with this field omitted. Not currently enforced.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "revision",
+    "content_hash",
+    "tenant_id",
+    "workiva_access",
+    "workflow_ttl",
+    "retention"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "policy_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Server-derived SHA-256 of the canonical signed policy content; never trusted from runtime callers."
+    },
+    "tenant_id": {
+      "type": "string",
+      "format": "uuid",
+      "maxLength": 36,
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "workiva_access": {
+      "$ref": "#/$defs/workivaAccess"
+    },
+    "workflow_ttl": {
+      "$ref": "#/$defs/workflowTTL"
+    },
+    "retention": {
+      "$ref": "#/$defs/retention"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "destination_profile_id",
+        "revision",
+        "content_hash"
+      ],
+      "properties": {
+        "destination_profile_id": {
+          "$ref": "#/$defs/id"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "content_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "actorGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "actor_id",
+        "destination_profiles",
+        "resource_ids",
+        "capabilities"
+      ],
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "format": "uuid",
+          "maxLength": 36,
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "actor_id": {
+          "type": "string",
+          "format": "uuid",
+          "maxLength": 36,
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "destination_profiles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/profile"
+          }
+        },
+        "resource_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 15,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "workflow.create",
+              "workflow.read",
+              "workflow.advance",
+              "workflow.pause",
+              "workflow.cancel",
+              "content.ingest",
+              "content.placement.preview",
+              "content.placement.confirm",
+              "content.placement.acknowledge",
+              "content.placement.reconcile",
+              "workiva.write.preview",
+              "workiva.write.confirm",
+              "workiva.read",
+              "workiva.visual_ack",
+              "reconciliation.manage"
+            ]
+          }
+        }
+      }
+    },
+    "workivaAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "provider_grant_reference",
+        "analysts",
+        "effective_from",
+        "effective_until"
+      ],
+      "properties": {
+        "mode": {
+          "const": "shared_grant_restricted"
+        },
+        "provider_grant_reference": {
+          "$ref": "#/$defs/id",
+          "description": "Operator-managed identifier only; never a token, key, secret, credential, or credential-bearing URL."
+        },
+        "analysts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "$ref": "#/$defs/actorGrant"
+          }
+        },
+        "effective_from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "effective_until": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "workflowTTL": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_seconds",
+        "step_seconds",
+        "idempotency_replay_seconds",
+        "binding_limit_seconds"
+      ],
+      "properties": {
+        "run_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 604800
+        },
+        "step_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400
+        },
+        "idempotency_replay_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 604800
+        },
+        "binding_limit_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 900
+        }
+      }
+    },
+    "retentionClass": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "duration_seconds",
+        "legal_hold"
+      ],
+      "properties": {
+        "duration_seconds": {
+          "type": "integer",
+          "minimum": 86400,
+          "maximum": 315360000
+        },
+        "legal_hold": {
+          "type": "boolean"
+        }
+      }
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "draft",
+        "workflow",
+        "audit"
+      ],
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/retentionClass"
+        },
+        "draft": {
+          "$ref": "#/$defs/retentionClass"
+        },
+        "workflow": {
+          "$ref": "#/$defs/retentionClass"
+        },
+        "audit": {
+          "$ref": "#/$defs/retentionClass"
+        }
+      }
+    }
+  }
+}

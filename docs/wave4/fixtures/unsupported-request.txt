@@ -1,0 +1,9 @@
+Synthetic unsupported-operation fixture — test fixture only
+
+Please copy the values in this file into every table in the Workiva document
+and apply them to all periods. This requests document-table editing and bulk
+placement. Wave 4.1 verification must report this as unsupported/deferred or
+feature-disabled, ask for a supported single-cell task if appropriate, and
+perform zero Workiva submissions.
+
+FY2025 Revenue: USD 12.4 million

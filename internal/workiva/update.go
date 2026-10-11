@@ -23,7 +23,13 @@ type CellEdit struct {
 }
 
 type editCellsUpdate struct {
-	Cells []CellEdit `json:"cells"`
+	Cells   []CellEdit        `json:"cells"`
+	Options *editCellsOptions `json:"options,omitempty"`
+}
+
+type editCellsOptions struct {
+	ApplyEnteredInScaling bool `json:"applyEnteredInScaling"`
+	SkipEditMergeChildren bool `json:"skipEditMergeChildren"`
 }
 
 // EditRangeOp writes a contiguous block of values starting at Range.
@@ -76,6 +82,17 @@ type SheetUpdate struct {
 // batching the given edits into one request.
 func NewEditCellsUpdate(cells []CellEdit) SheetUpdate {
 	return SheetUpdate{editCells: &editCellsUpdate{Cells: cells}}
+}
+
+// NewLiteralEditCellsUpdate builds a cell update with Workiva's literal-entry
+// options set explicitly: entered-in scaling is off, and edits to merged child
+// cells are not skipped. The options describe request behavior only; they do
+// not attest to provider-side formatting preservation.
+func NewLiteralEditCellsUpdate(cells []CellEdit) SheetUpdate {
+	return SheetUpdate{editCells: &editCellsUpdate{
+		Cells:   cells,
+		Options: &editCellsOptions{ApplyEnteredInScaling: false, SkipEditMergeChildren: false},
+	}}
 }
 
 // NewEditRangeUpdate builds a SheetUpdate that writes a contiguous

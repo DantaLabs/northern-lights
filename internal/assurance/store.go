@@ -175,6 +175,7 @@ type ReservationRequest struct {
 	IdempotencyDigest Digest
 	RequestDigest     Digest
 	RetentionClass    string
+	RetainUntil       time.Time
 }
 
 // ReservationResult contains no client secret and no recoverable derivative.
@@ -243,6 +244,13 @@ func (s *Store) reserveTx(ctx context.Context, existingTx *sql.Tx, request Reser
 	if retention == "" {
 		retention = "standard"
 	}
+	expiresAt := now.Add(defaultRecordRetention)
+	if !request.RetainUntil.IsZero() {
+		expiresAt = request.RetainUntil.UTC()
+		if !expiresAt.After(now) || expiresAt.After(now.Add(315360000*time.Second)) {
+			return ReservationResult{}, domainError("invalid_request", "explicit reservation retention expiry must be future and within the policy bound")
+		}
+	}
 
 	tx := existingTx
 	ownTx := tx == nil
@@ -277,7 +285,7 @@ func (s *Store) reserveTx(ctx context.Context, existingTx *sql.Tx, request Reser
  VALUES (?, ?, ?, ?, ?, ?, ?, 'reserved', ?, ?, ?, 0, ?, ?, ?, ?)`,
 		tenant, recordID, request.ActorID, request.Tool, request.Action, digestHex(request.IdempotencyDigest), digestHex(request.RequestDigest),
 		ownerNonce, formatTimestamp(now.Add(reservationLease)), formatTimestamp(now), correlationID, formatTimestamp(now),
-		formatTimestamp(now.Add(defaultRecordRetention)), retention)
+		formatTimestamp(expiresAt), retention)
 	if err != nil {
 		// A concurrent unique-key winner is deterministically reloaded.
 		if isConstraintError(err) {
