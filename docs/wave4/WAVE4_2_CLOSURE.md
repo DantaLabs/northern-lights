@@ -1,6 +1,6 @@
 # Wave 4.2 closure path
 
-**Status:** Private backend and CI gates are in place; first-slice runtime and live acceptance remain open. This is a closure checklist, not evidence that placement is enabled.
+**Status:** The private backend and opt-in authenticated byte intake runtime are implemented. Live connector byte handoff, public provider-write admission and placement acceptance remain open. This is a closure checklist, not evidence that placement is enabled.
 
 ## Five actions to close the first useful slice
 
@@ -14,9 +14,11 @@
    | `acknowledge` | `PermissionContentAcknowledge` — `content.acknowledge` | `content.placement.acknowledge` |
    | `reconcile` | `PermissionContentReconcile` — `content.reconcile` | `content.placement.reconcile` |
 
-   The Go permission constants exist; the runtime handler, phase checks and external scope/role mapping still need integration. Do not silently treat the different internal and contract names as interchangeable.
+   The runtime handler and phase checks now use these exact Go permission values. The contract names are an explicit vocabulary crosswalk, not additional grants. Operator configuration must supply the trusted scope/role mapping and signed policy. The opt-in tool adds one entry to the default 13-tool catalog; public confirmation and reconciliation execution remain unavailable until actual content-specific restore/fence admission is implemented. See [runtime configuration and handoff fixtures](CONTENT_BYTE_INTAKE.md).
 
 2. **Prove authenticated source handoff and safe private storage.** Send actual bounded paste and text-based PDF bytes through the authenticated flow/connector; verify server-computed hashes, immutable source and candidate/draft lineage, tenant/actor ownership and no external fetching. Private handling, access controls, retention enforcement, encryption protection for stored source, and body/token-free logs are implementation requirements before accepting real content. A filename, attachment-only screenshot, or fixture is not byte-handoff evidence.
+
+   Local tests now send the actual fixture bytes through the real SDK/HTTP content handler with signed test JWTs and signed policies. Source bytes use authenticated encryption; owned reads verify their original hashes, and sealed replay preserves artifact/audit bindings. Startup checks the private SQLite directory, database/sidecar permissions and separate key file. This proves the local server path, not a live Copilot attachment-to-connector handoff. Candidate text and metadata remain subject to private database and encrypted backup handling; the source cipher does not encrypt the entire database.
 
 3. **Load a real signed operator policy and verify the writer facts.** Use the configured trusted key and an operator-approved bundle that selects exact access, retention, resource, provider-contract and destination-profile records for one disposable cell. Confirm policy hash/revision bindings in the preview. Verify the actual configured writer's literal-write/format-preservation behavior and the target's protection/writability facts before permitting mutation; unknown critical facts keep that target blocked. A single analyst under an explicitly documented shared grant with signed actor/resource restrictions is within scope; do not claim native per-user Workiva enforcement.
 

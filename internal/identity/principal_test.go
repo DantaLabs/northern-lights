@@ -44,6 +44,30 @@ func TestSubjectFallbackAuditActorIsExplicit(t *testing.T) {
 	}
 }
 
+func TestTrustedDelegatedActorRequiresCanonicalIDsAndNoFallback(t *testing.T) {
+	valid := Principal{
+		TenantID:  "11111111-1111-1111-1111-111111111111",
+		ObjectID:  "22222222-2222-2222-2222-222222222222",
+		TokenType: TokenTypeDelegated,
+	}
+	if !valid.IsTrustedDelegatedActor() {
+		t.Fatal("canonical delegated actor was rejected")
+	}
+	for name, p := range map[string]Principal{
+		"app-only":          func() Principal { p := valid; p.TokenType = TokenTypeApplication; return p }(),
+		"fallback":          func() Principal { p := valid; p.UsedSubjectFallback = true; return p }(),
+		"legacy tenant":     func() Principal { p := valid; p.TenantID = LegacyTenantID; return p }(),
+		"non-uuid":          func() Principal { p := valid; p.ObjectID = "object-1"; return p }(),
+		"noncanonical uuid": func() Principal { p := valid; p.ObjectID = "22222222-2222-2222-2222-22222222222A"; return p }(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if p.IsTrustedDelegatedActor() {
+				t.Fatal("untrusted actor was accepted")
+			}
+		})
+	}
+}
+
 func TestStorageTenantComesOnlyFromVerifiedPrincipal(t *testing.T) {
 	tenantID := "11111111-1111-1111-1111-111111111111"
 	ctx := ContextWithPrincipal(context.Background(), Principal{TenantID: tenantID})

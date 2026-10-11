@@ -33,6 +33,12 @@ type Store struct {
 	readinessMu  sync.RWMutex
 	ready        bool
 	readinessErr error
+
+	contentCryptoMu         sync.RWMutex
+	contentStorageModeMu    sync.RWMutex
+	contentCryptoConfigured bool
+	contentCryptoKeyID      string
+	contentCryptoKey        []byte
 }
 
 // NewWithDB installs all assurance migrations and wraps the shared handle.

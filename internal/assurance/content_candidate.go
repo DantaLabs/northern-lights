@@ -40,6 +40,10 @@ type ContentCandidate struct {
 // when content.stage or content.confirm is present. now is explicit so expiry
 // decisions are deterministic and this read never calls a provider.
 func (s *Store) GetContentCandidateAt(ctx context.Context, kind ContentCandidateKind, id string, now time.Time) (ContentCandidate, error) {
+	if s != nil {
+		s.contentStorageModeMu.RLock()
+		defer s.contentStorageModeMu.RUnlock()
+	}
 	principal, err := requireCandidatePrincipal(ctx)
 	if err != nil {
 		return ContentCandidate{}, err
@@ -80,6 +84,10 @@ func (s *Store) GetContentCandidateAt(ctx context.Context, kind ContentCandidate
 	candidate.CandidateSHA256, candidate.MetadataSHA256, candidate.LineageSHA256, candidate.SourceArtifactID, candidate.SourceSHA256 = candidateHash, metadataHash, lineageHash, sourceID, sourceHash
 	candidate.MetadataBLOB = append([]byte(nil), metadataRaw...)
 	candidate.SourceMetadataBLOB = append([]byte(nil), sourceMetadata...)
+	sourceBytes, err = s.openContentSource(principal.TenantID, principal.AuditActor(), sourceID, sourceHash, sourceBytes)
+	if err != nil {
+		return ContentCandidate{}, domainError("artifact_hash_mismatch", "stored source integrity verification failed")
+	}
 	if err := verifyStoredContentSource(sourceBytes, candidate.SourceSHA256, sourceMetadata, sourceMetadataHash); err != nil {
 		return ContentCandidate{}, err
 	}
