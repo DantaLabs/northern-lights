@@ -307,6 +307,10 @@ func (s *Store) ResolveContentIntakePolicySnapshot(ctx context.Context, resolver
 }
 
 func (s *Store) finalizeContentIngest(ctx context.Context, reservation ReservationResult, input ContentIngest, retentionUntil time.Time, auditID string, now time.Time, requestDigestOverride *Digest, policySnapshot *ContentIntakePolicySnapshot, includePublicProjection bool) (ContentIngestResult, error) {
+	if s != nil {
+		s.contentStorageModeMu.RLock()
+		defer s.contentStorageModeMu.RUnlock()
+	}
 	principal, err := requireContentPrincipal(ctx)
 	if err != nil {
 		return ContentIngestResult{}, err
@@ -406,6 +410,10 @@ func (s *Store) finalizeContentIngest(ctx context.Context, reservation Reservati
 			&storedBytes, &storedHash, &storedMetadata, &storedMetadataHash, &storedExpires, &storedMediaType); err != nil {
 			return ContentIngestResult{}, domainError("not_found_or_forbidden", "existing source is unavailable")
 		}
+		storedBytes, err = s.openContentSource(tenant, actor, input.ExistingSourceArtifactID, storedHash, storedBytes)
+		if err != nil {
+			return ContentIngestResult{}, domainError("artifact_hash_mismatch", "stored source integrity verification failed")
+		}
 		storedMetadataCanonical, metadataErr := CanonicalJSONBytes(storedMetadata)
 		if digestHex(HashBytes(storedBytes)) != storedHash || digestHex(HashBytes(storedMetadata)) != storedMetadataHash || metadataErr != nil || !bytes.Equal(storedMetadataCanonical, storedMetadata) {
 			return ContentIngestResult{}, domainError("artifact_hash_mismatch", "stored source integrity verification failed")
@@ -447,9 +455,13 @@ func (s *Store) finalizeContentIngest(ctx context.Context, reservation Reservati
 		DraftIDs:         make(map[string]string, len(input.Drafts)),
 	}
 	if input.ExistingSourceArtifactID == "" {
+		storedSourceBytes, sealErr := s.sealContentSource(tenant, actor, sourceID, sourceHash, sourceBytes)
+		if sealErr != nil {
+			return ContentIngestResult{}, sealErr
+		}
 		_, err = tx.ExecContext(ctx, `INSERT INTO assurance_content_sources
 		 (tenant_id,source_artifact_id,actor_id,media_type,detected_media_type,filename,source_bytes,source_sha256,metadata_blob,metadata_sha256,expires_at,created_at)
-		 VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, tenant, sourceID, actor, mediaType, detectedType, input.Filename, sourceBytes,
+		 VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, tenant, sourceID, actor, mediaType, detectedType, input.Filename, storedSourceBytes,
 			sourceHash, sourceMetadata, digestHex(HashBytes(sourceMetadata)), formatTimestamp(retentionUntil), formatTimestamp(now))
 		if err != nil {
 			return ContentIngestResult{}, fmt.Errorf("assurance: insert content source: %w", err)
@@ -490,7 +502,7 @@ func (s *Store) finalizeContentIngest(ctx context.Context, reservation Reservati
 		}
 	}
 	if includePublicProjection {
-		projection, err := buildContentIngestPublicProjectionTx(ctx, tx, tenant, actor, sourceID, result.ItemIDs, result.DraftIDs, now)
+		projection, err := buildContentIngestPublicProjectionTx(ctx, tx, s, tenant, actor, sourceID, result.ItemIDs, result.DraftIDs, now)
 		if err != nil {
 			return ContentIngestResult{}, err
 		}
@@ -568,7 +580,7 @@ func verifyActiveContentBundleTx(ctx context.Context, tx *sql.Tx, tenant string,
 	return nil
 }
 
-func buildContentIngestPublicProjectionTx(ctx context.Context, tx *sql.Tx, tenant, actor, sourceID string, itemIDs, draftIDs map[string]string, now time.Time) (ContentIngestPublicProjection, error) {
+func buildContentIngestPublicProjectionTx(ctx context.Context, tx *sql.Tx, s *Store, tenant, actor, sourceID string, itemIDs, draftIDs map[string]string, now time.Time) (ContentIngestPublicProjection, error) {
 	var sourceBytes, sourceMetadata []byte
 	var sourceHash, sourceMetadataHash, mediaType, sourceExpiry string
 	if err := tx.QueryRowContext(ctx, `SELECT source_bytes,source_sha256,metadata_blob,metadata_sha256,media_type,expires_at
@@ -576,9 +588,11 @@ func buildContentIngestPublicProjectionTx(ctx context.Context, tx *sql.Tx, tenan
 		&sourceBytes, &sourceHash, &sourceMetadata, &sourceMetadataHash, &mediaType, &sourceExpiry); err != nil {
 		return ContentIngestPublicProjection{}, domainError("content_projection_invalid", "saved source is unavailable for public projection")
 	}
-	if digestHex(HashBytes(sourceBytes)) != sourceHash || digestHex(HashBytes(sourceMetadata)) != sourceMetadataHash {
+	plaintextSource, err := s.openContentSource(tenant, actor, sourceID, sourceHash, sourceBytes)
+	if err != nil || digestHex(HashBytes(plaintextSource)) != sourceHash || digestHex(HashBytes(sourceMetadata)) != sourceMetadataHash {
 		return ContentIngestPublicProjection{}, domainError("artifact_hash_mismatch", "saved source integrity verification failed")
 	}
+	sourceBytes = plaintextSource
 	canonicalMetadata, err := CanonicalJSONBytes(sourceMetadata)
 	if err != nil || !bytes.Equal(canonicalMetadata, sourceMetadata) {
 		return ContentIngestPublicProjection{}, domainError("artifact_hash_mismatch", "saved source metadata is not canonical")
@@ -844,6 +858,10 @@ func (s *Store) GetContentSource(ctx context.Context, sourceArtifactID string) (
 }
 
 func (s *Store) getContentSourceAt(ctx context.Context, sourceArtifactID string, now time.Time) (ContentSourceRecord, error) {
+	if s != nil {
+		s.contentStorageModeMu.RLock()
+		defer s.contentStorageModeMu.RUnlock()
+	}
 	principal, err := requireContentPrincipal(ctx)
 	if err != nil {
 		return ContentSourceRecord{}, err
@@ -860,6 +878,10 @@ func (s *Store) getContentSourceAt(ctx context.Context, sourceArtifactID string,
 		&source.SourceBytes, &source.SourceSHA256, &metadata, &source.MetadataSHA256, &expiresAt, &createdAt)
 	if err != nil {
 		return ContentSourceRecord{}, domainError("not_found_or_forbidden", "source is unavailable")
+	}
+	source.SourceBytes, err = s.openContentSource(principal.TenantID, principal.AuditActor(), source.ID, source.SourceSHA256, source.SourceBytes)
+	if err != nil {
+		return ContentSourceRecord{}, domainError("artifact_hash_mismatch", "stored source integrity verification failed")
 	}
 	canonicalMetadata, err := CanonicalJSONBytes(metadata)
 	if err != nil || !bytes.Equal(canonicalMetadata, metadata) || digestHex(HashBytes(metadata)) != source.MetadataSHA256 || digestHex(HashBytes(source.SourceBytes)) != source.SourceSHA256 {

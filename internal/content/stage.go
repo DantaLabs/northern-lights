@@ -36,6 +36,23 @@ type StageResponse struct {
 	ReplayRequiresRestage bool            `json:"replay_requires_restage"`
 }
 
+// stageRequestDigest is the private normalized digest shared by reservation
+// creation and invocation-metadata lookup.
+func stageRequestDigest(request StageRequest) (assurance.Digest, error) {
+	canonical, err := assurance.CanonicalJSON(struct {
+		Phase    string `json:"phase"`
+		Kind     string `json:"candidate_kind"`
+		ID       string `json:"candidate_id"`
+		Source   string `json:"source_artifact_id,omitempty"`
+		Profile  string `json:"destination_profile_id"`
+		Revision int    `json:"destination_profile_revision"`
+	}{"stage", request.CandidateKind, request.CandidateID, request.SourceArtifactID, request.DestinationProfileID, request.DestinationProfileRevision})
+	if err != nil {
+		return assurance.Digest{}, err
+	}
+	return assurance.HashBytes(canonical), nil
+}
+
 // ResolvedProfile is returned only by a server-configured signed-policy
 // resolver. It is deliberately a resolved projection, never request input.
 type ResolvedProfile struct {
@@ -300,20 +317,12 @@ func (s StageService) Stage(ctx context.Context, auditID string, request StageRe
 		return StageResponse{}, errors.New("content: invalid stage selectors")
 	}
 	// This is the private normalized stage request digest. A future ingress
-	// adapter must validate the published schema and its mapping explicitly;
-	// this encoding does not claim byte-shape equivalence with that schema.
-	canonicalRequest, err := assurance.CanonicalJSON(struct {
-		Phase    string `json:"phase"`
-		Kind     string `json:"candidate_kind"`
-		ID       string `json:"candidate_id"`
-		Source   string `json:"source_artifact_id,omitempty"`
-		Profile  string `json:"destination_profile_id"`
-		Revision int    `json:"destination_profile_revision"`
-	}{"stage", request.CandidateKind, request.CandidateID, request.SourceArtifactID, request.DestinationProfileID, request.DestinationProfileRevision})
+	// adapter must validate the published schema and its mapping explicitly.
+	requestDigest, err := stageRequestDigest(request)
 	if err != nil {
 		return StageResponse{}, err
 	}
-	reservationRequest := assurance.ReservationRequest{ActorID: p.AuditActor(), Tool: stageTool, Action: "stage", IdempotencyDigest: assurance.DigestIdempotencyKey(request.IdempotencyKey), RequestDigest: assurance.HashBytes(canonicalRequest), RetentionClass: "workflow"}
+	reservationRequest := assurance.ReservationRequest{ActorID: p.AuditActor(), Tool: stageTool, Action: "stage", IdempotencyDigest: assurance.DigestIdempotencyKey(request.IdempotencyKey), RequestDigest: requestDigest, RetentionClass: "workflow"}
 	reservation, found, err := s.Store.LookupReservation(ctx, reservationRequest)
 	if err != nil {
 		return StageResponse{}, err

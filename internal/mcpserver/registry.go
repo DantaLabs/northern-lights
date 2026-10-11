@@ -12,6 +12,7 @@ import (
 	"github.com/dantalabs/northern-lights/internal/assurance"
 	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/config"
+	"github.com/dantalabs/northern-lights/internal/content"
 	"github.com/dantalabs/northern-lights/internal/mapping"
 	"github.com/dantalabs/northern-lights/internal/relationships"
 	"github.com/dantalabs/northern-lights/internal/transfer"
@@ -28,6 +29,7 @@ type Deps struct {
 	Assurance     *assurance.Store
 	Relationships *relationships.Store
 	Transfer      *transfer.Service
+	Content       *content.Runtime
 	// DrainGate is shared with the production backup coordinator and janitor.
 	// Nil is permitted only for isolated handlers without backup maintenance.
 	DrainGate *assurance.DrainGate
