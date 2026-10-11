@@ -505,7 +505,7 @@ func contentLiteralUpdate(plan PreviewPlan) (workiva.SheetUpdate, error) {
 	if err != nil || rangeValue.StartCol < 0 || rangeValue.StartRow < 0 || rangeValue.StartCol != rangeValue.StopCol || rangeValue.StartRow != rangeValue.StopRow {
 		return workiva.SheetUpdate{}, errors.New("content: destination is not one bounded cell")
 	}
-	return workiva.NewEditCellsUpdate([]workiva.CellEdit{{Column: rangeValue.StartCol, Row: rangeValue.StartRow, Value: value}}), nil
+	return workiva.NewLiteralEditCellsUpdate([]workiva.CellEdit{{Column: rangeValue.StartCol, Row: rangeValue.StartRow, Value: value}}), nil
 }
 
 func buildContentClaim(plan PreviewPlan, candidate Candidate, profile ResolvedProfile, principal identity.Principal, request assurance.ReservationRequest, staged, claimed assurance.ContentPlacementConfirmationRecord, environmentDigest, tenantDigest string, now time.Time) (ContentClaim, error) {

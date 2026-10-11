@@ -55,6 +55,38 @@ func TestConfirmSealedReplayPrecedesFreshTokenAndDependencies(t *testing.T) {
 	}
 }
 
+func TestContentLiteralUpdateDisablesScalingAndPreservesExactNumericToken(t *testing.T) {
+	plan := PreviewPlan{
+		Destination:   DestinationProfile{Cell: "B4"},
+		IntendedValue: json.RawMessage("12345678901234567890.123456789"),
+	}
+	update, err := contentLiteralUpdate(plan)
+	if err != nil {
+		t.Fatalf("contentLiteralUpdate: %v", err)
+	}
+	encoded, err := json.Marshal(update)
+	if err != nil {
+		t.Fatalf("marshal literal update: %v", err)
+	}
+	const want = `{"editCells":{"cells":[{"column":1,"row":3,"value":12345678901234567890.123456789}],"options":{"applyEnteredInScaling":false,"skipEditMergeChildren":false}}}`
+	if string(encoded) != want {
+		t.Fatalf("literal update JSON = %s, want %s", encoded, want)
+	}
+	var payload struct {
+		EditCells struct {
+			Cells []struct {
+				Value json.Number `json:"value"`
+			} `json:"cells"`
+		} `json:"editCells"`
+	}
+	if err := json.Unmarshal(encoded, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if len(payload.EditCells.Cells) != 1 || payload.EditCells.Cells[0].Value.String() != "12345678901234567890.123456789" {
+		t.Fatalf("literal value lost numeric precision: %+v", payload.EditCells.Cells)
+	}
+}
+
 func TestUnknownConfirmationErrorCannotPermitResubmission(t *testing.T) {
 	err := &UnknownConfirmationError{IntentID: "placement-1", Reason: "provider_outcome_unknown", OperationReference: "op-1", ReconciliationRequired: true, ResubmissionAllowed: false}
 	if err.Error() == "" || !err.ReconciliationRequired || err.ResubmissionAllowed || err.OperationReference != "op-1" {
