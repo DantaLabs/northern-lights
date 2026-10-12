@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -47,6 +48,7 @@ func run(args []string, stdout io.Writer) error {
 		bundlePath := fs.String("bundle", "", "bundle YAML/JSON path")
 		signaturePath := fs.String("signature", "", "detached Ed25519 signature path")
 		publicKeyText := fs.String("public-key", "", "hex Ed25519 public key")
+		historicalPublicKeys := fs.String("historical-public-keys", "", "comma-separated operator-pinned historical Ed25519 public keys (hex)")
 		tenant := fs.String("tenant", "", "configured tenant ID")
 		if err := fs.Parse(args[2:]); err != nil {
 			return err
@@ -60,6 +62,15 @@ func run(args []string, stdout io.Writer) error {
 			return err
 		}
 		defer func() { _ = db.Close() }()
+		if strings.TrimSpace(*historicalPublicKeys) != "" {
+			keys, err := parseHistoricalPublicKeys(*historicalPublicKeys)
+			if err != nil {
+				return err
+			}
+			if err := store.SetContentPolicyHistoryKeys(keys); err != nil {
+				return err
+			}
+		}
 		ctx := tenantContext(*tenant)
 		if err := store.StageBundle(ctx, validated); err != nil {
 			return err
@@ -93,6 +104,22 @@ func run(args []string, stdout io.Writer) error {
 	default:
 		return fmt.Errorf("unknown bundle command %q", args[1])
 	}
+}
+
+func parseHistoricalPublicKeys(raw string) ([]ed25519.PublicKey, error) {
+	parts := strings.Split(raw, ",")
+	if len(parts) == 0 || len(parts) > 8 {
+		return nil, errors.New("historical public key count exceeds the supported bound")
+	}
+	keys := make([]ed25519.PublicKey, 0, len(parts))
+	for _, part := range parts {
+		key, err := assurance.ParsePublicKey(strings.TrimSpace(part))
+		if err != nil {
+			return nil, fmt.Errorf("parse historical public key: %w", err)
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
 }
 
 func parseAndValidate(args []string) (*assurance.ValidatedBundle, error) {

@@ -355,7 +355,7 @@ func validateIngressProvenance(p contentProvenanceDTO) error {
 	if !oneOf(p.Availability, "available", "unavailable") {
 		return errors.New("content ingress: provenance availability is invalid")
 	}
-	if err := validateIngressLocation(p.contentLocationDTO, p.Availability == "available"); err != nil {
+	if err := validateIngressLocation(p.contentLocationDTO, p.Availability == "unavailable"); err != nil {
 		return err
 	}
 	if p.Availability == "available" && p.Page == nil && p.Table == nil && p.Segment == nil && p.StartByte == nil {

@@ -4,6 +4,8 @@ package identity
 import (
 	"context"
 	"errors"
+
+	"github.com/google/uuid"
 )
 
 // TokenType distinguishes delegated user access tokens from app-only tokens.
@@ -111,6 +113,25 @@ func (p Principal) HasPermission(permission Permission) bool {
 		}
 	}
 	return false
+}
+
+// HasCanonicalActorIDs reports whether both actor identifiers are canonical
+// lower-case UUIDs. Content byte ingress uses this instead of accepting a
+// subject fallback or a caller-asserted actor string.
+func (p Principal) HasCanonicalActorIDs() bool {
+	return canonicalUUID(p.TenantID) && canonicalUUID(p.ObjectID)
+}
+
+// IsTrustedDelegatedActor is the identity floor for private content access:
+// the validated token must be delegated, use canonical tenant/object UUIDs,
+// and must not have relied on subject fallback.
+func (p Principal) IsTrustedDelegatedActor() bool {
+	return p.TokenType == TokenTypeDelegated && !p.UsedSubjectFallback && p.TenantID != LegacyTenantID && p.HasCanonicalActorIDs()
+}
+
+func canonicalUUID(value string) bool {
+	parsed, err := uuid.Parse(value)
+	return err == nil && parsed.String() == value
 }
 
 type principalContextKey struct{}

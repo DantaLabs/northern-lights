@@ -22,6 +22,7 @@ import (
 	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/bootstrap"
 	"github.com/dantalabs/northern-lights/internal/config"
+	"github.com/dantalabs/northern-lights/internal/content"
 	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/mapping"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
@@ -138,9 +139,24 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	contentEnabled, err := contentPlacementEnabled()
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("load config: %w", err)
+	}
+	var contentSettings contentProductionSettings
+	if contentEnabled {
+		contentSettings, err = loadContentProductionSettings(cfg)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		defer clearContentStorageKey(contentSettings.storageKey.key)
+		if err := ensurePrivateContentDatabase(cfg.DBPath); err != nil {
+			return nil, nil, nil, fmt.Errorf("content source database privacy admission: %w", err)
+		}
 	}
 	var provisionedKey *provisionedBackupKey
 	backupEnabled := os.Getenv("NL_BACKUP_MAINTENANCE") == "true"
@@ -215,6 +231,9 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	if err != nil {
 		return nil, nil, nil, err
 	}
+	if contentEnabled && (authOptions.AuthMode != config.AuthModeEntra || authOptions.TokenVerifier == nil) {
+		return nil, nil, nil, errors.New("content placement requires initialized Entra bearer authentication")
+	}
 
 	if cfg.DemoMode {
 		log.Println(demoStartupMessage)
@@ -255,6 +274,16 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	if err != nil {
 		closeDB()
 		return nil, nil, nil, fmt.Errorf("bootstrap assurance store: %w", err)
+	}
+	if contentEnabled {
+		if err := assuranceStore.SetContentStorageKey(contentSettings.storageKey.keyID, contentSettings.storageKey.key); err != nil {
+			closeDB()
+			return nil, nil, nil, fmt.Errorf("configure encrypted content source storage: %w", err)
+		}
+		if !assuranceStore.ContentStorageEncrypted() {
+			closeDB()
+			return nil, nil, nil, errors.New("content source storage encryption is not active")
+		}
 	}
 	assuranceStore.SetAuditLog(auditLog)
 	if cfg.AssuranceEnabled {
@@ -366,6 +395,30 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	// router is the transport seam for selectively adopting Workiva's official
 	// MCP capabilities later without changing our public tools or governance.
 	workivaBackend := workivaprovider.NewRouter(client)
+	var contentRuntime *content.Runtime
+	if contentEnabled {
+		if assuranceStore.DB() != db || auditLog == nil || !auditLog.SharesDB(db) || maintenance == nil || maintenance.gate == nil || !assuranceStore.ContentStorageEncrypted() {
+			cleanup()
+			return nil, nil, nil, errors.New("content runtime requires encrypted sources and the shared assurance database, audit log, and maintenance gate")
+		}
+		contentResolver, resolverErr := assurance.NewContentPolicyResolver(assuranceStore, contentSettings.trustedKey, contentSettings.accessPolicyID)
+		if resolverErr != nil {
+			cleanup()
+			return nil, nil, nil, fmt.Errorf("configure signed content policy resolver: %w", resolverErr)
+		}
+		contentRuntime, err = content.NewRuntime(content.RuntimeConfig{
+			Store: assuranceStore, Resolver: contentResolver, Provider: workivaBackend,
+			Fence: nil, Audit: auditLog, Gate: maintenance.gate,
+		})
+		if err != nil {
+			cleanup()
+			return nil, nil, nil, fmt.Errorf("configure encrypted content runtime: %w", err)
+		}
+		if contentRuntime == nil {
+			cleanup()
+			return nil, nil, nil, errors.New("configure encrypted content runtime: incomplete runtime")
+		}
+	}
 	restoreNS := blobNamespace{accountURL: os.Getenv("NL_RESTORE_BLOB_SERVICE_URL"), container: os.Getenv("NL_RESTORE_BLOB_CONTAINER"), environment: os.Getenv("NL_RESTORE_ENVIRONMENT_DIGEST")}
 	backupNS := blobNamespace{accountURL: os.Getenv("NL_BACKUP_BLOB_SERVICE_URL"), container: os.Getenv("NL_BACKUP_BLOB_CONTAINER"), environment: os.Getenv("NL_BACKUP_ENVIRONMENT_DIGEST")}
 	evidenceNS := blobNamespace{accountURL: os.Getenv("NL_EVIDENCE_BLOB_SERVICE_URL"), container: os.Getenv("NL_EVIDENCE_BLOB_CONTAINER"), environment: os.Getenv("NL_EVIDENCE_ENVIRONMENT_DIGEST")}
@@ -383,14 +436,18 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	stopTransferJanitor = transferStop
 
 	registry := mcpserver.NewRegistry()
-	for _, tool := range tools.All() {
-		registry.Register(tool)
-	}
+	registerProductionTools(registry, contentEnabled)
 
 	graphStore, err := relationships.NewStore(assuranceStore.DB(), assuranceStore.Ready)
 	if err != nil {
 		cleanup()
 		return nil, nil, nil, err
+	}
+	if contentEnabled {
+		if err := ensurePrivateContentDatabase(cfg.DBPath); err != nil {
+			cleanup()
+			return nil, nil, nil, fmt.Errorf("content source database/WAL privacy verification: %w", err)
+		}
 	}
 	// Production transfer remains opt-in; enabling it is not release acceptance.
 	authOptions.Version = version
@@ -402,6 +459,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		Assurance:     assuranceStore,
 		Relationships: graphStore,
 		Transfer:      transferService,
+		Content:       contentRuntime,
 		DrainGate:     maintenance.gate,
 		Cfg:           cfg,
 	}, registry, &authOptions)
@@ -411,6 +469,15 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	}
 
 	return cfg, &productionHandler{Handler: handler, maintenance: maintenance, backupMaintenance: backupMaintenance}, cleanup, nil
+}
+
+func registerProductionTools(registry *mcpserver.Registry, contentEnabled bool) {
+	for _, tool := range tools.All() {
+		registry.Register(tool)
+	}
+	if contentEnabled {
+		registry.Register(tools.ContentPlacement())
+	}
 }
 
 // storageContextForConfig supplies startup/bootstrap work with the same

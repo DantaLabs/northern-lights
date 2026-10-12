@@ -139,6 +139,9 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 			authorizationHTTPHandler(deps.Audit, confirmationRequired(deps), mcpHandler))
 	} else {
 		mcpEndpoint = bearerAuthHandler(opts.APIToken, mcpHandler)
+		if deps.Content != nil || reg.byName["workiva_content_placement"] != nil {
+			mcpEndpoint = bearerAuthHandler(opts.APIToken, contentAPIKeyAuthorizationHTTPHandler(deps.Audit, mcpHandler))
+		}
 	}
 	// Include authentication/authorization audit writes in the same admission
 	// interval, rather than allowing pre-handler SQLite writes during a drain.
@@ -149,10 +152,15 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 				next.ServeHTTP(w, r)
 				return
 			}
-			// An admitted restore may lose readiness after startup. Do not let
-			// transfer-capable POSTs bypass the quarantine/readiness latch.
-			if deps.Transfer != nil && (deps.Assurance == nil || deps.Assurance.Ready() != nil) {
-				http.Error(w, "restore admission unavailable", http.StatusServiceUnavailable)
+			// A configured transfer or content tool may lose readiness after
+			// startup. Do not let its POSTs bypass the quarantine/readiness latch.
+			contentConfigured := deps.Content != nil || (reg != nil && reg.byName["workiva_content_placement"] != nil)
+			if (deps.Transfer != nil || contentConfigured) && (deps.Assurance == nil || deps.Assurance.Ready() != nil) {
+				message := "restore admission unavailable"
+				if contentConfigured && deps.Transfer == nil {
+					message = "content admission unavailable"
+				}
+				http.Error(w, message, http.StatusServiceUnavailable)
 				return
 			}
 			release, err := deps.DrainGate.EnterWrite(r.Context())
@@ -220,6 +228,7 @@ var writeTools = map[string]bool{
 	"workiva_export_evidence":        true,
 	"workiva_discover_relationships": true,
 	"workiva_transfer_value":         true,
+	"workiva_content_placement":      true,
 }
 
 func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
@@ -234,12 +243,32 @@ func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
 			ctx = context.WithValue(ctx, auditIDKey{}, auditID)
 			ctx = context.WithValue(ctx, requestIDKey{}, requestID)
 			actor := ActorFromContextOrRequest(ctx, req, actorHeader)
+			// Transfer and content actions perform their trusted-scope
+			// idempotency lookup in the owning service before audit readiness is
+			// consulted. A generic row would violate replay ordering and could
+			// overwrite the operation's sealed audit/result identifiers.
 			// Transfer actions perform their trusted-scope idempotency lookup in
 			// the transfer service before rich-audit readiness is consulted. A
 			// generic pre-handler audit row would violate that replay ordering;
 			// successful transfer actions append their rich audit atomically with
 			// their evidence, while authorization middleware audits denials.
 			if params.Name == "workiva_transfer_value" {
+				return next(ctx, method, req)
+			}
+			if params.Name == "workiva_content_placement" {
+				principal, trusted := identity.PrincipalFromContext(ctx)
+				permission, phaseErr := requiredPermission(params.Name, params.Arguments, true)
+				if !trusted || !principal.IsTrustedDelegatedActor() || phaseErr != nil || !principal.HasPermission(permission) {
+					if trusted {
+						recordAuthorizationDenial(ctx, log, principal, params)
+					} else {
+						recordContentDenial(ctx, log, DefaultActor, params)
+					}
+					return structuredCallToolError(AuditIDFromContext(ctx), "strong_identity_required", "content access requires a trusted delegated actor with the phase capability", false, false), nil
+				}
+				// The content service owns atomic audit, replay, and readiness
+				// ordering. In particular, do not attach a generic audit ID to its
+				// sealed response.
 				return next(ctx, method, req)
 			}
 			if writeTools[params.Name] && actor == DefaultActor {
@@ -638,8 +667,10 @@ func authorizationKey(header string) (string, bool) {
 	return rest, true
 }
 
-// maxPeekBody bounds how much of a request body middleware buffers while
-// inspecting the JSON-RPC method. The authz handler rejects larger bodies.
+// maxPeekBody caps the complete HTTP JSON-RPC body, including protocol
+// envelope and tool arguments. Content source bytes therefore have a smaller
+// effective limit after JSON/base64 framing; this is one total bound, not an
+// additional allowance beyond the envelope.
 const maxPeekBody = 1 << 20
 
 // peekJSONRPCMethod returns the JSON-RPC method of a POST body without
@@ -737,6 +768,27 @@ func requiredPermission(tool string, arguments json.RawMessage, requireConfirmat
 		default:
 			return "", errors.New("authorization: unsupported transfer phase")
 		}
+	case "workiva_content_placement":
+		var input struct {
+			Phase string `json:"phase"`
+		}
+		if len(arguments) == 0 || json.Unmarshal(arguments, &input) != nil {
+			return "", errors.New("authorization: malformed content arguments")
+		}
+		switch input.Phase {
+		case "ingest":
+			return identity.PermissionContentIngest, nil
+		case "stage":
+			return identity.PermissionContentStage, nil
+		case "confirm":
+			return identity.PermissionContentConfirm, nil
+		case "acknowledge":
+			return identity.PermissionContentAcknowledge, nil
+		case "reconcile":
+			return identity.PermissionContentReconcile, nil
+		default:
+			return "", errors.New("authorization: unsupported content phase")
+		}
 	default:
 		return "", fmt.Errorf("authorization: tool %q has no permission mapping", tool)
 	}
@@ -744,6 +796,14 @@ func requiredPermission(tool string, arguments json.RawMessage, requireConfirmat
 
 func recordAuthorizationDenial(ctx context.Context, log *audit.Log, principal identity.Principal, params *mcp.CallToolParamsRaw) {
 	if log == nil || params == nil {
+		return
+	}
+	if params.Name == "workiva_content_placement" {
+		actor := principal.AuditActor()
+		if !principal.HasCanonicalActorIDs() {
+			actor = DefaultActor
+		}
+		recordContentDenial(ctx, log, actor, params)
 		return
 	}
 	target := params.Name
@@ -759,6 +819,31 @@ func recordAuthorizationDenial(ctx context.Context, log *audit.Log, principal id
 	}); err != nil {
 		log2.Printf("AUDIT FAILURE: could not record authorization denial for %q: %v", params.Name, err)
 	}
+}
+
+func recordContentDenial(ctx context.Context, log *audit.Log, actor string, params *mcp.CallToolParamsRaw) {
+	if log == nil || params == nil {
+		return
+	}
+	if _, err := log.Append(ctx, audit.Entry{
+		Actor: actor, Tool: "workiva_content_placement", Action: "authorization_denied",
+		Target: contentPhaseFromArguments(params.Arguments), AuditID: AuditIDFromContext(ctx),
+	}); err != nil {
+		log2.Printf("AUDIT FAILURE: could not record content authorization denial: %v", err)
+	}
+}
+
+func contentPhaseFromArguments(arguments json.RawMessage) string {
+	var input struct {
+		Phase string `json:"phase"`
+	}
+	if json.Unmarshal(arguments, &input) == nil {
+		switch input.Phase {
+		case "ingest", "stage", "confirm", "acknowledge", "reconcile":
+			return input.Phase
+		}
+	}
+	return "unknown"
 }
 
 func authorizationMiddleware(log *audit.Log, requireConfirmation bool) mcp.Middleware {
@@ -824,7 +909,15 @@ func authorizationHTTPHandler(log *audit.Log, requireConfirmation bool, next htt
 		}
 		principal, ok := identity.PrincipalFromContext(r.Context())
 		if !ok {
+			if message.Params.Name == "workiva_content_placement" {
+				recordContentDenial(ctx, log, DefaultActor, &mcp.CallToolParamsRaw{Name: message.Params.Name, Arguments: message.Params.Arguments})
+			}
 			writeHTTPStructuredError(w, http.StatusUnauthorized, auditID, "strong_identity_required", "trusted principal is missing", false, false)
+			return
+		}
+		if message.Params.Name == "workiva_content_placement" && !principal.IsTrustedDelegatedActor() {
+			recordAuthorizationDenial(ctx, log, principal, &mcp.CallToolParamsRaw{Name: message.Params.Name, Arguments: message.Params.Arguments})
+			writeHTTPStructuredError(w, http.StatusForbidden, auditID, "strong_identity_required", "content access requires a trusted delegated actor", false, false)
 			return
 		}
 		permission, permissionErr := requiredPermission(message.Params.Name, message.Params.Arguments, requireConfirmation)
@@ -839,6 +932,41 @@ func authorizationHTTPHandler(log *audit.Log, requireConfirmation bool, next htt
 			return
 		}
 		writeHTTPAuthorizationError(w, http.StatusForbidden, auditID, message.Params.Name, message.Params.Arguments, "permission_denied", "required permission is not granted", false, false)
+	})
+}
+
+// contentAPIKeyAuthorizationHTTPHandler permanently excludes legacy API-key
+// principals from content byte intake. It inspects at most maxPeekBody bytes
+// of the complete JSON-RPC envelope and never passes the request to the SDK
+// for a content call. The whole-envelope limit intentionally leaves the
+// content argument payload less than 1 MiB after JSON/base64 framing.
+func contentAPIKeyAuthorizationHTTPHandler(log *audit.Log, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.Body == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		data, err := io.ReadAll(io.LimitReader(r.Body, maxPeekBody+1))
+		_ = r.Body.Close()
+		if err != nil {
+			writeHTTPStructuredError(w, http.StatusBadRequest, uuid.NewString(), "invalid_request", "failed to read request body", false, false)
+			return
+		}
+		if len(data) > maxPeekBody {
+			w.Header().Set("Cache-Control", "no-store")
+			http.Error(w, fmt.Sprintf("request body exceeds %d bytes", maxPeekBody), http.StatusRequestEntityTooLarge)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewReader(data))
+		var message jsonRPCRequest
+		if json.Unmarshal(data, &message) != nil || message.Method != "tools/call" || message.Params.Name != "workiva_content_placement" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		auditID := uuid.NewString()
+		ctx := context.WithValue(r.Context(), auditIDKey{}, auditID)
+		recordContentDenial(ctx, log, DefaultActor, &mcp.CallToolParamsRaw{Name: message.Params.Name, Arguments: message.Params.Arguments})
+		writeHTTPStructuredError(w, http.StatusForbidden, auditID, "strong_identity_required", "content access requires a trusted delegated actor", false, false)
 	})
 }
 
