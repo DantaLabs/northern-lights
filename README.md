@@ -238,10 +238,18 @@ nl-assurance bundle validate \
 # Stage a fully validated candidate, then atomically request activation.
 nl-assurance bundle stage -db ./northern-lights.db \
   -bundle report-bundle.yaml -signature report-bundle.sig \
-  -public-key "$NL_ASSURANCE_BUNDLE_PUBLIC_KEY" -tenant "$NL_ENTRA_TENANT_ID"
+  -public-key "$NL_ASSURANCE_BUNDLE_PUBLIC_KEY" -tenant "$NL_ENTRA_TENANT_ID" \
+  -historical-public-keys "$NL_ASSURANCE_BUNDLE_HISTORICAL_PUBLIC_KEYS"
 nl-assurance bundle apply -db ./northern-lights.db \
   -tenant "$NL_ENTRA_TENANT_ID" -bundle-id quarterly-energy -bundle-version 1
 ```
+
+`-historical-public-keys` is an optional, comma-separated list of at most
+eight operator-pinned Ed25519 public keys used only to verify signed bundle
+history while staging. The candidate's `-public-key` independently verifies
+the new bundle. Historical keys come from trusted operator records; the
+staging code never learns trust from database rows. These keys grant no
+capabilities and are held only in the provisioning process memory.
 
 Restart `workiva-mcp` after `apply`. Startup validates the complete candidate,
 signature, hash, tenant, revisions, periods, fields, and references before one

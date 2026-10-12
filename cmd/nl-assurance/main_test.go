@@ -54,3 +54,25 @@ func TestBundleCLIValidateStageAndApply(t *testing.T) {
 		t.Fatalf("apply output=%q err=%v", out.String(), err)
 	}
 }
+
+func TestParseHistoricalPublicKeysBoundedAndStrict(t *testing.T) {
+	publicA, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publicB, _, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := parseHistoricalPublicKeys(hex.EncodeToString(publicA) + "," + hex.EncodeToString(publicB))
+	if err != nil || len(parsed) != 2 || !bytes.Equal(parsed[0], publicA) || !bytes.Equal(parsed[1], publicB) {
+		t.Fatalf("parse valid historical key list: keys=%d err=%v", len(parsed), err)
+	}
+	if _, err := parseHistoricalPublicKeys(hex.EncodeToString(publicA) + ",bad"); err == nil {
+		t.Fatal("malformed historical key was accepted")
+	}
+	tooMany := strings.TrimSuffix(strings.Repeat(hex.EncodeToString(publicA)+",", 9), ",")
+	if _, err := parseHistoricalPublicKeys(tooMany); err == nil {
+		t.Fatal("oversized historical key list was accepted")
+	}
+}

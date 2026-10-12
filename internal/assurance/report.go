@@ -912,28 +912,33 @@ func (s *Store) StageBundle(ctx context.Context, bundle *ValidatedBundle) error 
 	if !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
+	historyKeys := s.contentPolicyHistoryKeySnapshot(bundle.verifiedBy)
+	history, err := verifyContentPolicyHistory(ctx, tx, tenant, historyKeys)
+	if err != nil {
+		return err
+	}
 	for _, p := range bundle.Bundle.DestinationProfiles {
-		if err := checkContentPolicyRevision(ctx, tx, tenant, bundle.verifiedBy, "destination_profile", *p.DestinationProfileID, *p.Revision, *p.ContentHash); err != nil {
+		if err := checkContentPolicyRevision(history, "destination_profile", *p.DestinationProfileID, *p.Revision, *p.ContentHash); err != nil {
 			return err
 		}
 	}
 	for _, p := range bundle.Bundle.ContentAccessPolicies {
-		if err := checkContentPolicyRevision(ctx, tx, tenant, bundle.verifiedBy, "content_access", p.PolicyID, p.Revision, p.ContentHash); err != nil {
+		if err := checkContentPolicyRevision(history, "content_access", p.PolicyID, p.Revision, p.ContentHash); err != nil {
 			return err
 		}
 	}
 	for _, p := range bundle.Bundle.ContentRetentionPolicies {
-		if err := checkContentPolicyRevision(ctx, tx, tenant, bundle.verifiedBy, "content_retention", p.PolicyID, p.Revision, p.ContentHash); err != nil {
+		if err := checkContentPolicyRevision(history, "content_retention", p.PolicyID, p.Revision, p.ContentHash); err != nil {
 			return err
 		}
 	}
 	for _, p := range bundle.Bundle.ContentResourcePolicies {
-		if err := checkContentPolicyRevision(ctx, tx, tenant, bundle.verifiedBy, "content_resource", p.PolicyID, p.Revision, p.ContentHash); err != nil {
+		if err := checkContentPolicyRevision(history, "content_resource", p.PolicyID, p.Revision, p.ContentHash); err != nil {
 			return err
 		}
 	}
 	for _, p := range bundle.Bundle.ContentProviderContracts {
-		if err := checkContentPolicyRevision(ctx, tx, tenant, bundle.verifiedBy, "content_provider", p.PolicyID, p.Revision, p.ContentHash); err != nil {
+		if err := checkContentPolicyRevision(history, "content_provider", p.PolicyID, p.Revision, p.ContentHash); err != nil {
 			return err
 		}
 	}
@@ -959,10 +964,10 @@ type contentPolicyHistoryReader interface {
 	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
 }
 
-func checkContentPolicyRevision(ctx context.Context, reader contentPolicyHistoryReader, tenant string, trustedKey ed25519.PublicKey, kind, id string, revision int, hash string) (returnErr error) {
+func verifyContentPolicyHistory(ctx context.Context, reader contentPolicyHistoryReader, tenant string, trustedKeys []ed25519.PublicKey) (history []Bundle, returnErr error) {
 	rows, err := reader.QueryContext(ctx, `SELECT bundle_json,signature_hex,content_hash FROM assurance_bundle_candidates WHERE tenant_id=? UNION ALL SELECT bundle_json,signature_hex,content_hash FROM assurance_active_bundles WHERE tenant_id=? AND singleton=1`, tenant, tenant)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func() {
 		if closeErr := rows.Close(); closeErr != nil && returnErr == nil {
@@ -972,17 +977,33 @@ func checkContentPolicyRevision(ctx context.Context, reader contentPolicyHistory
 	for rows.Next() {
 		var raw, signatureHex, storedHash string
 		if err := rows.Scan(&raw, &signatureHex, &storedHash); err != nil {
-			return err
+			return nil, err
 		}
 		signature, err := hex.DecodeString(signatureHex)
 		if err != nil {
-			return domainError("content_policy_history_corrupt", "stored signed policy history signature is malformed")
+			return nil, domainError("content_policy_history_corrupt", "stored signed policy history signature is malformed")
 		}
-		validated, err := ValidateBundle([]byte(raw), signature, tenant, trustedKey)
-		if err != nil || validated.ContentHash != storedHash {
-			return domainError("content_policy_history_corrupt", "stored signed policy history failed signature or hash verification")
+		var validated *ValidatedBundle
+		for _, trustedKey := range trustedKeys {
+			candidate, validationErr := ValidateBundle([]byte(raw), signature, tenant, trustedKey)
+			if validationErr == nil && candidate.ContentHash == storedHash {
+				validated = candidate
+				break
+			}
 		}
-		prior := validated.Bundle
+		if validated == nil {
+			return nil, domainError("content_policy_history_corrupt", "stored signed policy history failed signature or hash verification")
+		}
+		history = append(history, validated.Bundle)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return history, nil
+}
+
+func checkContentPolicyRevision(history []Bundle, kind, id string, revision int, hash string) error {
+	for _, prior := range history {
 		check := func(priorID string, priorRevision int, priorHash string) error {
 			if priorID != id {
 				return nil
@@ -1049,9 +1070,6 @@ func checkContentPolicyRevision(ctx context.Context, reader contentPolicyHistory
 				}
 			}
 		}
-	}
-	if err := rows.Err(); err != nil {
-		return err
 	}
 	return nil
 }

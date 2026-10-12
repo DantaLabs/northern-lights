@@ -32,6 +32,9 @@ type discoverBehaviorFixture struct {
 func newDiscoverBehaviorFixture(t *testing.T) discoverBehaviorFixture {
 	t.Helper()
 	fixture := newRawWave2Fixture(t)
+	if err := fixture.store.SetContentPolicyHistoryKeys([]ed25519.PublicKey{fixture.fixtureKey}); err != nil {
+		t.Fatalf("pin prior bundle signer for discover rotation: %v", err)
+	}
 	activateDiscoverBehaviorBundle(t, fixture.store)
 	graph, err := relationships.NewStore(fixture.db)
 	if err != nil {
