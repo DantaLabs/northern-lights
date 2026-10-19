@@ -3,11 +3,9 @@
   "run_id": "20261019-0702",
   "spec": "docs/specs/demo-l0-scaffold.md",
   "branch": "claude/demo-l0-scaffold",
-  "status": "running",
+  "status": "done",
   "round": 0,
   "checkpoint": null,
-  "active_tasks": [
-    "T6"
-  ],
+  "active_tasks": [],
   "run_base_commit": "56b9f95dacd66219208721d55ac7ff990e0da8e8"
 }
