@@ -1,0 +1,139 @@
+# Section recipe for the social section (demo; fictional data).
+id: esg-social
+title: Social disclosures
+period: "2025"
+prior_period: "2024"
+document_id: "demo-doc-annual-report"
+materiality_pct: 10
+fields:
+  - key: employees_total
+    label: "Number of employees"
+    unit: number
+    decimals: 0
+    source: src_soc_employees_total
+    target: rpt_soc_employees_total_2025
+    prior: rpt_soc_employees_total_2024
+    required: true
+    min: 0
+  - key: employees_permanent
+    label: "Number of employees - Permanent contract"
+    unit: number
+    decimals: 0
+    source: src_soc_employees_permanent
+    target: rpt_soc_employees_permanent_2025
+    prior: rpt_soc_employees_permanent_2024
+    min: 0
+  - key: employees_male
+    label: "Number of employees - Male"
+    unit: number
+    decimals: 0
+    source: src_soc_employees_male
+    target: rpt_soc_employees_male_2025
+    prior: rpt_soc_employees_male_2024
+    min: 0
+  - key: employees_female
+    label: "Number of employees - Female"
+    unit: number
+    decimals: 0
+    source: src_soc_employees_female
+    target: rpt_soc_employees_female_2025
+    prior: rpt_soc_employees_female_2024
+    min: 0
+  - key: employees_other
+    label: "Number of employees - Other"
+    unit: number
+    decimals: 0
+    source: src_soc_employees_other
+    target: rpt_soc_employees_other_2025
+    prior: rpt_soc_employees_other_2024
+    min: 0
+  - key: employees_not_reported
+    label: "Number of employees - Not reported"
+    unit: number
+    decimals: 0
+    source: src_soc_employees_not_reported
+    target: rpt_soc_employees_not_reported_2025
+    prior: rpt_soc_employees_not_reported_2024
+    min: 0
+  - key: employees_left
+    label: "Number of employees who left during the reporting period"
+    unit: number
+    decimals: 0
+    source: src_soc_employees_left
+    target: rpt_soc_employees_left_2025
+    prior: rpt_soc_employees_left_2024
+    min: 0
+  - key: employees_start
+    label: "Number of employees at the beginning of the reporting period"
+    unit: number
+    decimals: 0
+    source: src_soc_employees_start
+    target: rpt_soc_employees_start_2025
+    prior: rpt_soc_employees_start_2024
+    min: 0
+  - key: employees_end
+    label: "Number of employees at the end of the reporting period"
+    unit: number
+    decimals: 0
+    source: src_soc_employees_end
+    target: rpt_soc_employees_end_2025
+    prior: rpt_soc_employees_end_2024
+    min: 0
+  - key: accidents_recordable
+    label: "Number of recordable work-related accidents in the reporting period"
+    unit: number
+    decimals: 0
+    source: src_soc_accidents_recordable
+    target: rpt_soc_accidents_recordable_2025
+    prior: rpt_soc_accidents_recordable_2024
+    min: 0
+  - key: fatalities_work_related
+    label: "Number of fatalities as a result of work-related injuries and work-related ill health"
+    unit: number
+    decimals: 0
+    source: src_soc_fatalities_work_related
+    target: rpt_soc_fatalities_work_related_2025
+    prior: rpt_soc_fatalities_work_related_2024
+    min: 0
+  - key: employees_collective_bargaining
+    label: "Number of employees covered by collective bargaining agreements"
+    unit: number
+    decimals: 0
+    source: src_soc_employees_collective_bargaining
+    target: rpt_soc_employees_collective_bargaining_2025
+    prior: rpt_soc_employees_collective_bargaining_2024
+    min: 0
+  - key: training_hours_male
+    label: "Number of annual training hours per employee - Male"
+    unit: hours
+    decimals: 1
+    source: src_soc_training_hours_male
+    target: rpt_soc_training_hours_male_2025
+    prior: rpt_soc_training_hours_male_2024
+    min: 0
+  - key: training_hours_female
+    label: "Number of annual training hours per employee - Female"
+    unit: hours
+    decimals: 1
+    source: src_soc_training_hours_female
+    target: rpt_soc_training_hours_female_2025
+    prior: rpt_soc_training_hours_female_2024
+    min: 0
+  - key: managers_male
+    label: "Number of male employees at management level"
+    unit: number
+    decimals: 0
+    source: src_soc_managers_male
+    target: rpt_soc_managers_male_2025
+    prior: rpt_soc_managers_male_2024
+    min: 0
+  - key: managers_female
+    label: "Number of female employees at management level"
+    unit: number
+    decimals: 0
+    source: src_soc_managers_female
+    target: rpt_soc_managers_female_2025
+    prior: rpt_soc_managers_female_2024
+    min: 0
+verbatim:
+  - { id: social-policy, title: Social policy statement, file: verbatim/social-policy.txt }

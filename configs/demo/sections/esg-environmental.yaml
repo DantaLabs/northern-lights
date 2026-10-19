@@ -1,0 +1,222 @@
+# Section recipe for the environmental section (demo; fictional data).
+id: esg-environmental
+title: Environmental disclosures
+period: "2025"
+prior_period: "2024"
+document_id: "demo-doc-annual-report"
+materiality_pct: 10
+fields:
+  - key: energy_total
+    label: "Total Energy Consumption"
+    unit: MWh
+    display_unit: GWh
+    decimals: 2
+    source: src_env_energy_total
+    target: rpt_env_energy_total_2025
+    prior: rpt_env_energy_total_2024
+    required: true
+    min: 0
+  - key: electricity_renewable
+    label: "Electricity (as reflected in utility billings) - Renewable"
+    unit: MWh
+    decimals: 0
+    source: src_env_electricity_renewable
+    target: rpt_env_electricity_renewable_2025
+    prior: rpt_env_electricity_renewable_2024
+    min: 500
+  - key: electricity_non_renewable
+    label: "Electricity (as reflected in utility billings) - Non-renewable"
+    unit: MWh
+    decimals: 0
+    source: src_env_electricity_non_renewable
+    target: rpt_env_electricity_non_renewable_2025
+    prior: rpt_env_electricity_non_renewable_2024
+    min: 0
+  - key: self_generated_electricity_renewable
+    label: "Self-generated electricity - Renewable"
+    unit: MWh
+    decimals: 0
+    source: src_env_self_generated_electricity_renewable
+    target: rpt_env_self_generated_electricity_renewable_2025
+    prior: rpt_env_self_generated_electricity_renewable_2024
+    min: 0
+  - key: self_generated_electricity_non_renewable
+    label: "Self-generated electricity - Non-renewable"
+    unit: MWh
+    decimals: 0
+    source: src_env_self_generated_electricity_non_renewable
+    target: rpt_env_self_generated_electricity_non_renewable_2025
+    prior: rpt_env_self_generated_electricity_non_renewable_2024
+    min: 0
+  - key: ghg_scope1
+    label: "Gross Scope 1 GHG Emissions"
+    unit: tCO2e
+    decimals: 1
+    source: src_env_ghg_scope1
+    target: rpt_env_ghg_scope1_2025
+    prior: rpt_env_ghg_scope1_2024
+    min: 0
+  - key: ghg_scope2_location
+    label: "Gross Scope 2 location-based GHG Emissions"
+    unit: tCO2e
+    decimals: 1
+    source: src_env_ghg_scope2_location
+    target: rpt_env_ghg_scope2_location_2025
+    prior: rpt_env_ghg_scope2_location_2024
+    min: 0
+  - key: ghg_scope2_market
+    label: "Gross scope 2 market-based GHG Emissions - May (optional)"
+    unit: tCO2e
+    decimals: 1
+    source: src_env_ghg_scope2_market
+    target: rpt_env_ghg_scope2_market_2025
+    prior: rpt_env_ghg_scope2_market_2024
+    min: 0
+  - key: ghg_scope3_purchased_goods
+    label: "1. Purchased Goods and Services"
+    unit: tCO2e
+    decimals: 1
+    source: src_env_ghg_scope3_purchased_goods
+    target: rpt_env_ghg_scope3_purchased_goods_2025
+    prior: rpt_env_ghg_scope3_purchased_goods_2024
+    min: 0
+  - key: ghg_scope3_capital_goods
+    label: "2. Capital Goods"
+    unit: tCO2e
+    decimals: 1
+    source: src_env_ghg_scope3_capital_goods
+    target: rpt_env_ghg_scope3_capital_goods_2025
+    prior: rpt_env_ghg_scope3_capital_goods_2024
+    min: 0
+  - key: ghg_scope3_fuel_energy
+    label: "3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2)"
+    unit: tCO2e
+    decimals: 1
+    source: src_env_ghg_scope3_fuel_energy
+    target: rpt_env_ghg_scope3_fuel_energy_2025
+    prior: rpt_env_ghg_scope3_fuel_energy_2024
+    min: 0
+  - key: ghg_scope3_upstream_transport
+    label: "4. Upstream Transportation and Distribution"
+    unit: tCO2e
+    decimals: 1
+    source: src_env_ghg_scope3_upstream_transport
+    target: rpt_env_ghg_scope3_upstream_transport_2025
+    prior: rpt_env_ghg_scope3_upstream_transport_2024
+    min: 0
+  - key: ghg_scope3_waste
+    label: "5. Waste Generated in Operations"
+    unit: tCO2e
+    decimals: 1
+    source: src_env_ghg_scope3_waste
+    target: rpt_env_ghg_scope3_waste_2025
+    prior: rpt_env_ghg_scope3_waste_2024
+    min: 0
+  - key: ghg_scope3_business_travel
+    label: "6. Business Travel"
+    unit: tCO2e
+    decimals: 1
+    source: src_env_ghg_scope3_business_travel
+    target: rpt_env_ghg_scope3_business_travel_2025
+    prior: rpt_env_ghg_scope3_business_travel_2024
+    min: 0
+  - key: ghg_scope3_commuting
+    label: "7. Employee Commuting"
+    unit: tCO2e
+    decimals: 1
+    source: src_env_ghg_scope3_commuting
+    target: rpt_env_ghg_scope3_commuting_2025
+    prior: rpt_env_ghg_scope3_commuting_2024
+    min: 0
+  - key: land_sealed_area
+    label: "Total sealed area"
+    unit: ha
+    decimals: 1
+    source: src_env_land_sealed_area
+    target: rpt_env_land_sealed_area_2025
+    prior: rpt_env_land_sealed_area_2024
+    min: 0
+  - key: land_nature_onsite
+    label: "Total nature-oriented area on-site"
+    unit: ha
+    decimals: 1
+    source: src_env_land_nature_onsite
+    target: rpt_env_land_nature_onsite_2025
+    prior: rpt_env_land_nature_onsite_2024
+    min: 0
+  - key: land_nature_offsite
+    label: "Total nature-oriented area off-site"
+    unit: ha
+    decimals: 1
+    source: src_env_land_nature_offsite
+    target: rpt_env_land_nature_offsite_2025
+    prior: rpt_env_land_nature_offsite_2024
+    min: 0
+  - key: land_use_total
+    label: "Total use of land"
+    unit: ha
+    decimals: 1
+    source: src_env_land_use_total
+    target: rpt_env_land_use_total_2025
+    prior: rpt_env_land_use_total_2024
+    required: true
+    min: 0
+  - key: water_withdrawn_total
+    label: "Total amount of water withdrawn from all sites (cubic meters, m³)"
+    unit: m3
+    decimals: 0
+    source: src_env_water_withdrawn_total
+    target: rpt_env_water_withdrawn_total_2025
+    prior: rpt_env_water_withdrawn_total_2024
+    min: 0
+  - key: water_withdrawn_high_stress
+    label: "Amount of water withdrawn at sites located in areas of high water-stress"
+    unit: m3
+    decimals: 0
+    source: src_env_water_withdrawn_high_stress
+    target: rpt_env_water_withdrawn_high_stress_2025
+    prior: rpt_env_water_withdrawn_high_stress_2024
+    min: 0
+  - key: water_discharge_production
+    label: "Water discharge from undertaking production processes (m³)"
+    unit: m3
+    decimals: 0
+    source: src_env_water_discharge_production
+    target: rpt_env_water_discharge_production_2025
+    prior: rpt_env_water_discharge_production_2024
+    required: true
+    min: 0
+  - key: waste_recycled_type1
+    label: "Waste diverted to recycle or reuse - waste type 1"
+    unit: kg
+    decimals: 0
+    source: src_env_waste_recycled_type1
+    target: rpt_env_waste_recycled_type1_2025
+    prior: rpt_env_waste_recycled_type1_2024
+    min: 0
+  - key: waste_disposed_type1
+    label: "Waste directed to disposal - waste type 1"
+    unit: kg
+    decimals: 0
+    source: src_env_waste_disposed_type1
+    target: rpt_env_waste_disposed_type1_2025
+    prior: rpt_env_waste_disposed_type1_2024
+    min: 0
+  - key: waste_recycled_type2
+    label: "Waste diverted to recycle or reuse - waste type 2"
+    unit: kg
+    decimals: 0
+    source: src_env_waste_recycled_type2
+    target: rpt_env_waste_recycled_type2_2025
+    prior: rpt_env_waste_recycled_type2_2024
+    min: 0
+  - key: waste_disposed_type2
+    label: "Waste directed to disposal - waste type 2"
+    unit: kg
+    decimals: 0
+    source: src_env_waste_disposed_type2
+    target: rpt_env_waste_disposed_type2_2025
+    prior: rpt_env_waste_disposed_type2_2024
+    min: 0
+verbatim:
+  - { id: env-policy, title: Environmental policy statement, file: verbatim/env-policy.txt }

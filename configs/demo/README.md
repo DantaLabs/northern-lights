@@ -23,7 +23,7 @@ Data and mappings for the KPMG demo (lane L4). The spec is `docs/specs/demo-l4-d
 
 The ESG report spreadsheet has no free cells for these fields: CY Data Output and PY Data Output hold formulas that link only B1 rows (A1:G19), and each per-disclosure sheet holds one year of filled literal values. So every `rpt_` field uses an empty block to the right of that used range, columns I to L of CY Data Output (2025 and the current-year target) and PY Data Output (2024), format General. Field number n (1 is `energy_total`) has range `L<n+1>`. Columns I to K and row 1 are reserved for key, label and unit and are not mapped.
 
-Waste has no literal totals, so two waste types (rows 1 and 2 of the waste table) stand in. No chosen cell has a percent format, so every `field_type` is `number`.
+Waste has no literal totals, so two waste types (rows 1 and 2 of the waste table) stand in. The type and unit cells of those rows are not mapped: the seed task must fill them itself (see the template), only the recycled and disposed amounts are mapped. No chosen cell has a percent format, so every `field_type` is `number`.
 
 | key | template sheet | range | format |
 |---|---|---|---|
