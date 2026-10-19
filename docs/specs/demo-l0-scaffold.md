@@ -123,4 +123,6 @@ None
 
 ## Approval
 
-Approved: pending Tom
+Approved: yes
+
+Approved by Tom on 2026-10-19 with the ship instruction. R10 is deferred until L1 to L4 merge.
