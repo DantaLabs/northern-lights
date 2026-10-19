@@ -1,0 +1,41 @@
+{
+  "task_id": "T3",
+  "axis": "spec",
+  "implementation_commit": "8dea5f6072c453cf3a0b79c653c106daadafd6c2",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/section_text.go",
+      "line": 86,
+      "issue": "L3 R3 says Stage accepts 1 to 20 blocks, but the stage input schema 'blocks' sets only maxItems 20 with no minItems 1. The task instructions only asked for array(20), so the schema matches the task, but it is less strict than the final L3 contract that R5 refers to.",
+      "fix": "Optional: add \"minItems\": 1 to the blocks array in stageSectionTextInputSchema, or leave the lower bound to L3's Stage validation."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/demo_test.go",
+      "line": 80,
+      "issue": "TestDemoToolSchemasAreClosedAndBounded proves only that the schemas are closed and bounded. No test checks the specific property names, required lists or limits. A schema field that drifts from the L1-L3 contract would still pass. I checked these by reading the code; every one matches the task's schema list.",
+      "fix": "Optional: no change is needed for L0. The lanes' tool tests will exercise the full output shapes when they replace the stubs."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R2",
+      "satisfied": true,
+      "evidence": "internal/mcpserver/tools/demo.go:6-13 returns PrepareSection, ConfirmChangeSet, StageSectionText, ConfirmSectionText; TestDemoToolsOrder (demo_test.go) asserts the Demo() name order and that All()+Demo() gives 17 registry names with the last four in R2 order, and Bind succeeds; PASS in checks/T3-a1.log"
+    },
+    {
+      "requirement": "R5",
+      "satisfied": true,
+      "evidence": "Schemas match the task's list and the L1 spec (R12: change_set_id/confirm_token in, Result+summary+nl_audit_id out), the L2 spec (R11/R12: section_id in, Prepared+summary+next_step out), the L3 spec (R12: section_id/blocks and text_id/confirm_token in; Preview+summary and Result out; R3 maxItems 20/maxLength 4000) at prepare_section.go:86-139, change_set.go:47-66, section_text.go:74-118. The closed/bounded property is proven by TestDemoToolSchemasAreClosedAndBounded. The not-implemented-yet handlers are proven by TestPrepareSectionStubNotImplementedYet, TestConfirmChangeSetStubNotImplementedYet and TestSectionTextStubsNotImplementedYet (both section text tools), which construct real lane services so they fail without notImplementedYet. All PASS."
+    },
+    {
+      "requirement": "R6",
+      "satisfied": true,
+      "evidence": "internal/mcpserver/registry.go:34-40 adds ChangeSets changeset.Service, Recipes recipe.Service, Facts recipe.FactStore, SectionText sectiontext.Service with the nil comment. requireDemoDep (demo.go:16-21) is called first in each handler. TestDemoToolsNameMissingDependency asserts IsError, 'is not available' and the field name (Recipes, ChangeSets, SectionText) for all four tools with nil deps. PASS."
+    }
+  ],
+  "new_tasks": []
+}
