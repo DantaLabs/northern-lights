@@ -21,13 +21,17 @@ import (
 	"github.com/dantalabs/northern-lights/internal/assurance"
 	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/bootstrap"
+	"github.com/dantalabs/northern-lights/internal/changeset"
 	"github.com/dantalabs/northern-lights/internal/config"
+	"github.com/dantalabs/northern-lights/internal/demoenv"
 	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/mapping"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 	"github.com/dantalabs/northern-lights/internal/mcpserver/tools"
 	"github.com/dantalabs/northern-lights/internal/ratelimit"
+	"github.com/dantalabs/northern-lights/internal/recipe"
 	"github.com/dantalabs/northern-lights/internal/relationships"
+	"github.com/dantalabs/northern-lights/internal/sectiontext"
 	"github.com/dantalabs/northern-lights/internal/sqlitedb"
 	"github.com/dantalabs/northern-lights/internal/transfer"
 	"github.com/dantalabs/northern-lights/internal/workiva"
@@ -301,7 +305,9 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	}
 	provisionCleanupOnFailure = false
 
-	// from the built-in demo fixture when running in demo mode.
+	// Mappings come from the -mappings file (or configs/config.yaml when it
+	// exists) in normal mode. In demo mode they come from the built-in demo
+	// fixture, plus the -mappings file when one is given.
 	path := mappingsPath
 	if cfg.DemoMode {
 		if err := bootstrap.LoadDemoMappings(storageCtx, store); err != nil {
@@ -309,6 +315,19 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 			return nil, nil, nil, fmt.Errorf("load demo mappings: %w", err)
 		}
 		log.Println("loaded demo mappings")
+		if mappingsPath != "" {
+			// bootstrap.LoadMappings silently ignores a missing file, so a
+			// typo in -mappings must fail startup here.
+			if _, err := os.Stat(mappingsPath); err != nil {
+				cleanup()
+				return nil, nil, nil, fmt.Errorf("load demo extra mappings: %w", err)
+			}
+			if err := bootstrap.LoadMappings(storageCtx, mappingsPath, store); err != nil {
+				cleanup()
+				return nil, nil, nil, fmt.Errorf("load demo extra mappings: %w", err)
+			}
+			log.Printf("loaded extra mappings from %s", mappingsPath)
+		}
 	} else {
 		if path == "" {
 			const defaultMappings = "configs/config.yaml"
@@ -386,6 +405,11 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	for _, tool := range tools.All() {
 		registry.Register(tool)
 	}
+	if cfg.DemoPipelineEnabled {
+		for _, tool := range tools.Demo() {
+			registry.Register(tool)
+		}
+	}
 
 	graphStore, err := relationships.NewStore(assuranceStore.DB(), assuranceStore.Ready)
 	if err != nil {
@@ -395,7 +419,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 	// Production transfer remains opt-in; enabling it is not release acceptance.
 	authOptions.Version = version
 	authOptions.DisableLocalhostProtection = cfg.DisableLocalhostProtection
-	handler, err := mcpserver.New(mcpserver.Deps{
+	deps := mcpserver.Deps{
 		Client:        workivaBackend,
 		Store:         store,
 		Audit:         auditLog,
@@ -404,13 +428,35 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		Transfer:      transferService,
 		DrainGate:     maintenance.gate,
 		Cfg:           cfg,
-	}, registry, &authOptions)
+	}
+	if cfg.DemoPipelineEnabled {
+		env := demoenv.Env{DB: db, Store: store, Audit: auditLog, Client: workivaBackend, Cfg: cfg}
+		if err := wireDemoPipeline(env, &deps); err != nil {
+			cleanup()
+			return nil, nil, nil, err
+		}
+		log.Println("demo pipeline enabled: 4 demo tools registered")
+	}
+	handler, err := mcpserver.New(deps, registry, &authOptions)
 	if err != nil {
 		cleanup()
 		return nil, nil, nil, err
 	}
 
 	return cfg, &productionHandler{Handler: handler, maintenance: maintenance, backupMaintenance: backupMaintenance}, cleanup, nil
+}
+
+// wireDemoPipeline builds the demo lane services once and puts them in deps.
+// Lanes replace the constructor bodies in their own packages, never this function.
+func wireDemoPipeline(env demoenv.Env, deps *mcpserver.Deps) error {
+	changes := changeset.New(env)
+	recipes, facts, err := recipe.New(env, changes)
+	if err != nil {
+		return fmt.Errorf("demo pipeline: section recipes: %w", err)
+	}
+	deps.ChangeSets, deps.Recipes, deps.Facts = changes, recipes, facts
+	deps.SectionText = sectiontext.New(env, recipes, facts)
+	return nil
 }
 
 // storageContextForConfig supplies startup/bootstrap work with the same
