@@ -17,7 +17,7 @@ Plan day: 1 of 11 (Monday 19 October 2026).
 
 | Runbook | Date | Result | Evidence |
 |---|---|---|---|
-| RB-01 Baseline smoke | | | |
+| RB-01 Baseline smoke | 2026-10-19 | pass (13 tools, 401 on bad key, reads OK; report document ID PENDIENTE for RB-02) | `docs/demo/evidence/2026-10-19-RB-01/` |
 | RB-02 Documents API spike | | | |
 | RB-03 Demo acts in Copilot | | | |
 

@@ -1,0 +1,9 @@
+PASS: initialize returns 200 (got 200)
+PASS: initialize answers application/json, not SSE (got application/json)
+INFO: server issued Mcp-Session-Id (kept for the session)
+PASS: notifications/initialized returns 202 (got 202)
+PASS: tools/list returns 200 (got 200)
+PASS: tools/list answers application/json (got application/json)
+PASS: tools/list has exactly 13 tools (got 13)
+PASS: malformed key is rejected with 401 (got 401)
+all checks passed against http://localhost:8090/mcp
