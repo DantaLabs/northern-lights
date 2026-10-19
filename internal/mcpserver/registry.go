@@ -11,9 +11,12 @@ import (
 
 	"github.com/dantalabs/northern-lights/internal/assurance"
 	"github.com/dantalabs/northern-lights/internal/audit"
+	"github.com/dantalabs/northern-lights/internal/changeset"
 	"github.com/dantalabs/northern-lights/internal/config"
 	"github.com/dantalabs/northern-lights/internal/mapping"
+	"github.com/dantalabs/northern-lights/internal/recipe"
 	"github.com/dantalabs/northern-lights/internal/relationships"
+	"github.com/dantalabs/northern-lights/internal/sectiontext"
 	"github.com/dantalabs/northern-lights/internal/transfer"
 	"github.com/dantalabs/northern-lights/internal/workivaprovider"
 )
@@ -28,6 +31,13 @@ type Deps struct {
 	Assurance     *assurance.Store
 	Relationships *relationships.Store
 	Transfer      *transfer.Service
+	// ChangeSets, Recipes, Facts and SectionText are set only when
+	// NL_DEMO_PIPELINE is on. The demo tools fail with a clear error when
+	// one of them is nil.
+	ChangeSets  changeset.Service
+	Recipes     recipe.Service
+	Facts       recipe.FactStore
+	SectionText sectiontext.Service
 	// DrainGate is shared with the production backup coordinator and janitor.
 	// Nil is permitted only for isolated handlers without backup maintenance.
 	DrainGate *assurance.DrainGate
