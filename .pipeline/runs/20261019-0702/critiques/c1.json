@@ -1,0 +1,61 @@
+{
+  "verdict": "revise",
+  "coverage": [
+    {"requirement": "R1", "tasks": ["T2"], "adequate": true, "note": "TestDemoPipelineEnabled covers default false, env true, YAML true, env false overriding YAML, and '1' -> false. rawConfig uses KnownFields(true), so the declared yaml key is needed and the plan says so. The test fails if the flag is missing."},
+    {"requirement": "R2", "tasks": ["T3", "T5"], "adequate": true, "note": "TestDemoToolsOrder checks the Demo() order, and TestDemoPipelineFlagOnAddsFourTools checks that the last four of the 17 are in R2 order (scenario 2)."},
+    {"requirement": "R3", "tasks": ["T5"], "adequate": true, "note": "The flag-off test expects 13 tools and the flag-on test expects 17, so both fail if registration is missing or unconditional."},
+    {"requirement": "R4", "tasks": ["T3", "T5", "T6"], "adequate": true, "note": "Flag-off tools/list must equal tools.All(). The existing 13-tool tests (schema_test.go and others) run in T3 and T5. The git diff guard stops edits to existing tests. No task runs the full suite (see minor finding)."},
+    {"requirement": "R5", "tasks": ["T3", "T5"], "adequate": true, "note": "TestDemoToolsReturnNotImplementedYet and TestDemoToolSchemasAreClosedAndBounded cover it. The schema field names were checked by hand against the L1/L2/L3 specs and match: change_set_id/confirm_token, section_id, text_id/blocks, Result and Preview fields. No test pins them, which is acceptable because the lanes own the files afterwards."},
+    {"requirement": "R6", "tasks": ["T3"], "adequate": true, "note": "Registry Deps fields are added, and TestDemoToolsNameMissingDependency checks the 'is not available' message and the field name for nil deps. failMsg errors survive normalizeStructuredToolError because error.message is kept."},
+    {"requirement": "R7", "tasks": ["T1"], "adequate": true, "note": "go build/vet plus go doc greps on the key signatures. Not every struct field is pinned, but scenario 4 (build/vet) is what the spec asks for."},
+    {"requirement": "R8", "tasks": ["T4"], "adequate": true, "note": "The routing predicate and unchanged-route test stay with L0. The 404 JSON tests are in the lane-owned demo_documents_test.go and demo_esg_test.go, as LANES.md expects."},
+    {"requirement": "R9", "tasks": ["T5"], "adequate": true, "note": "Both scenario 6 cases are tested. bootstrap.applyFile upserts only, so the built-in fields survive the extra load (checked in internal/bootstrap/bootstrap.go)."},
+    {"requirement": "R10", "tasks": ["T7"], "adequate": true, "note": "Deferred by the owner until L1-L4 merge. T7 is a placeholder with no dependents. Not flagged."},
+    {"requirement": "R11", "tasks": ["T6"], "adequate": true, "note": "TestVerifyMCPScript runs the real script against buildServer with the flag off, with the flag on and NL_EXPECT_TOOLS=17, and with the flag on and the default expectation (must fail with 'got 17'). It fails without the change."},
+    {"requirement": "R12", "tasks": ["T1", "T5"], "adequate": true, "note": "Constructor signatures are checked with go doc. Wiring is checked by a grep count of one per constructor in main.go, TestWireDemoPipelineFillsDeps and TestDemoPipelineServicesReachTools (scenario 9). See the major finding: these tests break once lanes replace the stub bodies."}
+  ],
+  "findings": [
+    {
+      "severity": "major",
+      "task_ids": ["T3", "T5", "T6"],
+      "claim": "L0's tests keep passing after the lanes replace the stub bodies, so lanes never have to edit L0-owned files (LANES.md: ownership is exclusive; the goal is no shared edits).",
+      "doubt": "Several L0-owned tests depend on stub behavior that the lanes are required to remove. (1) internal/mcpserver/tools/demo_test.go TestDemoToolsReturnNotImplementedYet asserts 'not implemented yet' for all four tools and builds services with demoenv.Env{}. When L1, L2 or L3 replaces its handler or constructor, this one shared file fails, and all three lanes would need to edit it. That brings back the merge conflict L0 exists to prevent, and LANES.md only gives each lane 'change_set.go and its tests'. (2) cmd/workiva-mcp/demo_pipeline_test.go TestDemoPipelineServicesReachTools asserts 'not implemented yet' through main.go, and TestWireDemoPipelineFillsDeps calls the constructors with a zero demoenv.Env{} (nil DB, Store, Cfg). (3) L2 R1 makes recipe.New load NL_DEMO_SECTIONS_DIR (default configs/demo/sections, relative to the working directory) and fail startup on error. go test runs cmd/workiva-mcp from that directory, where the path does not exist. So in L2's own PR, buildServer with the flag on fails, and so do TestDemoPipelineFlagOnAddsFourTools, TestDemoPipelineServicesReachTools and TestVerifyMCPScript/flag_on, all L0-owned. The plan already split the R8 404 tests by lane for this reason (assumption 9) but did not apply the same reasoning here.",
+      "fix": "T3: move the per-tool 'not implemented yet' assertions into lane-owned test files: change_set_test.go (L1), prepare_section_test.go (L2) and section_text_test.go (L3), each holding only that file's tools. Keep in demo_test.go only TestDemoToolsOrder, TestDemoToolSchemasAreClosedAndBounded and TestDemoToolsNameMissingDependency, which stay valid after the lanes land. Add those three files to T3 owns. T5: in TestDemoPipelineServicesReachTools, assert only that each result does not contain 'is not available' (the dependency was reached), not that it contains 'not implemented yet'. Drop TestWireDemoPipelineFillsDeps or make it use a real demo-mode Env. In every flag-on server test (T5, and T6 flag_on cases), set NL_DEMO_SECTIONS_DIR to an empty t.TempDir(). State the contract in the stub doc comments of changeset.New, recipe.New and sectiontext.New: New must succeed in demo mode with an empty sections directory, so the L0 flag-on tests stay green after the lanes land."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T6"],
+      "claim": "The plan's acceptance commands together prove the standing quality bar (DoD: lint passes, existing tests pass).",
+      "doubt": ".pipeline/config.json lint includes golangci-lint run (v2.14.0, installed at ~/.local/bin), and CI runs the full go test ./... -race. No task runs golangci-lint or the full suite. Stub constructors with an ignored env, unused unexported stub types and the new hook files are exactly what staticcheck and unused flag. A red CI on the PR goes against 'merge-ready'.",
+      "fix": "Add 'golangci-lint run ./...' and 'go test ./... -race -count=1' to T6's acceptance, since T6 is the last task and depends on T4 and T5, which pulls in T1-T3."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T1", "T2", "T4"],
+      "claim": "The first slice is end-to-end.",
+      "doubt": "The tasks with no dependencies (T1 interfaces, T2 config flag, T4 transport hooks) are each one horizontal layer. Nothing user-visible (flag -> 17 tools) works until T5, which depends on T1, T2 and T3. For a scaffold of about 6 tasks this is a small risk, but an integration mistake (for example an import cycle mcpserver -> recipe -> demoenv) only shows up late.",
+      "fix": "Acceptable as is for a scaffold. Optionally, have T3's acceptance also build a registry of All() plus Demo() and check that 17 names come out, so the integration is checked before T5."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T6"],
+      "claim": "TestVerifyMCPScript fails rather than passing vacuously when its tools are missing.",
+      "doubt": "The PASS grep catches only a top-level skip. If t.Skip is called inside a subtest, the parent reports '--- PASS: TestVerifyMCPScript' and the acceptance check passes without running the script.",
+      "fix": "In T6's instructions, require the exec.LookPath check and t.Skip at the top of TestVerifyMCPScript, before any t.Run, or grep for each subtest's '--- PASS: TestVerifyMCPScript/flag_on' line."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T5"],
+      "claim": "'-mappings' in demo mode loads the named file (R9).",
+      "doubt": "bootstrap.LoadMappings returns nil when the file does not exist (os.ErrNotExist). So a mistyped -mappings path in demo mode quietly loads only the built-in fields, and the planned 'loaded extra mappings from %s' log line would be wrong. L4 scenario 2 depends on this flag.",
+      "fix": "In wireDemo/demo-mode mappings code in main.go, os.Stat the explicit -mappings path first and fail startup with 'load demo extra mappings: %w' when it is missing. Add a test case for a missing path. This needs no change to internal/bootstrap."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T6"],
+      "claim": "The Entra permission gap is recorded for the owner.",
+      "doubt": "DEMO.md says Copilot Studio calls the server with the analyst's delegated Entra identity. Under NL_AUTH_MODE=entra, requiredPermission in internal/mcpserver/server.go denies all four demo tools, and writeTools does not list the two confirm tools. So the live demo cannot work after L0 to L4 merge until someone owns this. The plan records it as an open question and in the STATUS.md row, which is correct for L0's scope. But the PR description is where Tom actually reads it.",
+      "fix": "No change to L0's file scope. Make sure the open question (suggested permission mapping, and the confirm tools in writeTools) is repeated in the L0 pull request description and in the 'Requests to other lanes' section of STATUS.md."
+    }
+  ]
+}

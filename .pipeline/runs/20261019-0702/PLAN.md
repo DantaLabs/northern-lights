@@ -1,0 +1,331 @@
+# Plan: Demo L0 scaffold for parallel lanes
+
+Spec: `docs/specs/demo-l0-scaffold.md`. Run: `20261019-0702`. Generated from `.pipeline/runs/20261019-0702/plan.json` (the source of truth).
+
+## Order
+
+- Wave 1 (parallel): T1 interface files and stub constructors, T2 config flag, T4 demo client hooks
+- Wave 2: T3 Deps fields and four tool stubs (after T1)
+- Wave 3: T5 main.go wiring and demo-mode `-mappings` (after T1, T2, T3)
+- Wave 4: T6 `verify-mcp.sh` count and L0 status row (after T4, T5)
+- Deferred: T7 end-to-end test (R10), after L1 to L4 merge; nothing depends on it
+
+## Coverage
+
+| Requirement | Tasks |
+|---|---|
+| R1 | T2 |
+| R2 | T3 |
+| R3 | T5 |
+| R4 | T5 |
+| R5 | T3 |
+| R6 | T3 |
+| R7 | T1 |
+| R8 | T4 |
+| R9 | T5 |
+| R10 | T7 |
+| R11 | T6 |
+| R12 | T1, T5 |
+
+## Tasks
+
+### T1: Add demoenv.Env, lane interface files and stub constructors
+
+- Kind: feature, tier hint: light, status: pending
+- Covers: R7, R12
+- Depends on: none
+- Owns: `internal/demoenv/**`, `internal/changeset/**`, `internal/recipe/**`, `internal/sectiontext/**`, `internal/workivaprovider/documents.go`
+
+Acceptance:
+
+- `go build ./...`
+- `go vet ./internal/demoenv/... ./internal/changeset/... ./internal/recipe/... ./internal/sectiontext/... ./internal/workivaprovider/...`
+- `test -z "$(gofmt -l internal/demoenv internal/changeset internal/recipe internal/sectiontext internal/workivaprovider)"`
+- `go doc ./internal/demoenv Env | grep -q 'Client workivaprovider.Backend'`
+- `go doc ./internal/changeset New | grep -q 'func New(env demoenv.Env) Service'`
+- `go doc ./internal/recipe New | grep -q 'func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)'`
+- `go doc ./internal/sectiontext New | grep -q 'func New(env demoenv.Env, recipes recipe.Service, facts recipe.FactStore) Service'`
+- `go doc ./internal/changeset Service | grep -q 'Confirm(ctx context.Context, actor, id, token string) (Result, error)'`
+- `go doc ./internal/recipe FactStore | grep -q 'LatestFacts(ctx context.Context, actor, sectionID string) (\[\]Fact, \[\]VerbatimBlock, error)'`
+- `go doc ./internal/sectiontext Block | grep -q 'VerbatimID'`
+- `go doc ./internal/workivaprovider DocumentWriter | grep -q 'WriteSectionText(ctx context.Context, documentID, sectionID string, paragraphs \[\]string) (operationURL string, err error)'`
+- `go test ./internal/workivaprovider/... -race -count=1`
+
+<details><summary>Instructions</summary>
+
+Context: Northern Lights is a Go MCP server (module github.com/dantalabs/northern-lights) that lets Copilot read and write Workiva spreadsheets and report documents. This is lane L0 of the KPMG demo: it creates the shared scaffold so lanes L1 (change set), L2 (section recipe), L3 (section text) and L4 (data) can work in parallel. Use the CONTEXT.md vocabulary in names, comments and messages: change set, section recipe, section, report document, field, finding, narrative fact, verbatim block, narrative block, number guard, lane. Rules: no new module dependencies (go.mod/go.sum unchanged); never edit an existing *_test.go file; never touch internal/content/, internal/transfer/, internal/backupjob/ or assurance backup/restore files; edit only the files this task owns. Format with gofmt. While working run the scoped package tests with -race and go vet on the touched packages.
+
+Goal: create the interface files and stub constructors that every lane builds on (spec docs/specs/demo-l0-scaffold.md, R7 and the constructor half of R12). No tool, config or main.go changes in this task.
+
+1. internal/demoenv/demoenv.go (package demoenv, doc comment: the shared dependencies handed to every demo lane constructor). Define exactly:
+   type Env struct { DB *sql.DB; Store *mapping.Store; Audit *audit.Log; Client workivaprovider.Backend; Cfg *config.Config }
+   (imports database/sql, internal/mapping, internal/audit, internal/workivaprovider, internal/config). Nothing else.
+
+2. internal/changeset/changeset.go (package changeset, owned by L1 after merge): copy the types from the spec section 'Interfaces and data' verbatim: Item, PreviewItem, Preview, ItemResult, Result, Service (Stage, Confirm). Add one-line doc comments; note Result.Status values completed | partial | reconciliation_required in a comment.
+   internal/changeset/service.go: `func New(env demoenv.Env) Service` returning an unexported stub type whose Stage and Confirm return zero values and `errNotImplemented = errors.New("change set service is not implemented yet")`. Doc comment: L1 replaces this stub body; main.go calls New once when NL_DEMO_PIPELINE is on. Contract (state it in the doc comment of all three constructors): New must succeed in demo mode with an empty sections directory (NL_DEMO_SECTIONS_DIR pointing at an empty directory), so the L0 flag-on server tests stay green after the lanes land. Keep the parameter named `env` (go doc output is checked) and ignore it with `_ = env`.
+
+3. internal/recipe/types.go (package recipe, owned by L2): copy Finding, Fact, VerbatimBlock, Prepared (ChangeSet changeset.Preview), SectionInfo, Service (Prepare, Sections) and FactStore (LatestFacts) verbatim from the spec, with the Kind/Direction value comments.
+   internal/recipe/service.go: `func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)` returning unexported stubs and a nil error; its doc comment carries the same contract (L2 replaces the body; New must succeed in demo mode with an empty NL_DEMO_SECTIONS_DIR). Stub Prepare and LatestFacts return zero values and errors containing "not implemented yet"; Sections returns nil.
+
+4. internal/sectiontext/types.go (package sectiontext, owned by L3): copy Block, Preview, Result and Service (Stage, Confirm) verbatim from the spec.
+   internal/sectiontext/service.go: `func New(env demoenv.Env, recipes recipe.Service, facts recipe.FactStore) Service` returning an unexported stub whose methods return zero values and an error containing "not implemented yet"; its doc comment carries the same contract (L3 replaces the body).
+
+5. internal/workivaprovider/documents.go (package workivaprovider, owned by L3): only the DocumentWriter interface from the spec (EnsureSection, WriteSectionText, ReadSectionText, with the parameter and named result names exactly as in the spec), with a doc comment saying it is an additive optional capability probed by type assertion, the same pattern as ContentMetadataReader in content_metadata.go. No implementation and no Router method.
+
+Import graph must stay acyclic: demoenv imports no lane package; changeset imports demoenv; recipe imports changeset and demoenv; sectiontext imports recipe and demoenv. None import internal/mcpserver.
+
+Verify: go build ./...; go vet on the five packages; `go doc ./internal/recipe New` prints `func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)`.
+
+</details>
+
+### T2: Add DemoPipelineEnabled config flag from NL_DEMO_PIPELINE and YAML
+
+- Kind: feature, tier hint: light, status: pending
+- Covers: R1
+- Depends on: none
+- Owns: `internal/config/config.go`, `internal/config/demo_pipeline_test.go`
+
+Acceptance:
+
+- `go test ./internal/config/... -race -count=1`
+- `out=$(go test ./internal/config/ -race -count=1 -run '^(TestDemoPipelineEnabled)$' -v 2>&1); echo "$out" | grep -qE -- "^ *--- PASS: TestDemoPipelineEnabled \(" || exit 1`
+- `go vet ./internal/config/...`
+- `test -z "$(gofmt -l internal/config)"`
+
+<details><summary>Instructions</summary>
+
+Context: Northern Lights is a Go MCP server (module github.com/dantalabs/northern-lights) that lets Copilot read and write Workiva spreadsheets and report documents. This is lane L0 of the KPMG demo: it creates the shared scaffold so lanes L1 (change set), L2 (section recipe), L3 (section text) and L4 (data) can work in parallel. Use the CONTEXT.md vocabulary in names, comments and messages: change set, section recipe, section, report document, field, finding, narrative fact, verbatim block, narrative block, number guard, lane. Rules: no new module dependencies (go.mod/go.sum unchanged); never edit an existing *_test.go file; never touch internal/content/, internal/transfer/, internal/backupjob/ or assurance backup/restore files; edit only the files this task owns. Format with gofmt. While working run the scoped package tests with -race and go vet on the touched packages.
+
+Goal: R1. internal/config exposes `DemoPipelineEnabled bool` on Config, default false, set from YAML key `demo_pipeline_enabled` and from the environment variable NL_DEMO_PIPELINE.
+
+Edit internal/config/config.go:
+- Config: add `DemoPipelineEnabled bool` next to DemoMode with a comment: registers the four demo pipeline tools (tools.Demo()) and wires the lane services; off by default so the server exposes the current 13 tools (ADR 0002).
+- rawConfig: add `DemoPipelineEnabled *bool` with yaml tag `demo_pipeline_enabled` (the decoder uses KnownFields(true), so the key must be declared). In loadYAML copy it when non-nil.
+- applyEnv: `if v, ok := os.LookupEnv("NL_DEMO_PIPELINE"); ok { cfg.DemoPipelineEnabled = v == "true" }` so the environment overrides YAML, matching the NL_DEMO_MODE convention of the literal string "true".
+
+New test file internal/config/demo_pipeline_test.go with one table test `TestDemoPipelineEnabled` (t.Setenv; for the unset case call t.Setenv then os.Unsetenv so the value is restored; YAML files in t.TempDir): no YAML and no env -> false; env NL_DEMO_PIPELINE=true -> true; YAML `demo_pipeline_enabled: true` with env unset -> true; YAML true with env NL_DEMO_PIPELINE=false -> false; env "1" -> false. Clear the environment variables Load reacts to the way the existing config_test.go does (read it). Do not edit config_test.go.
+
+Verify: go test ./internal/config/... -race.
+
+</details>
+
+### T3: Add demo Deps fields, tools.Demo() and four tool stubs with final schemas
+
+- Kind: feature, tier hint: code, status: pending
+- Covers: R2, R5, R6
+- Depends on: T1
+- Owns: `internal/mcpserver/registry.go`, `internal/mcpserver/tools/demo.go`, `internal/mcpserver/tools/demo_test.go`, `internal/mcpserver/tools/change_set.go`, `internal/mcpserver/tools/prepare_section.go`, `internal/mcpserver/tools/section_text.go`, `internal/mcpserver/tools/change_set_test.go`, `internal/mcpserver/tools/prepare_section_test.go`, `internal/mcpserver/tools/section_text_test.go`
+
+Acceptance:
+
+- `go build ./...`
+- `go test ./internal/mcpserver/... -race -count=1`
+- `out=$(go test ./internal/mcpserver/tools/ -race -count=1 -run '^(TestDemoToolsOrder|TestDemoToolSchemasAreClosedAndBounded|TestDemoToolsNameMissingDependency|TestPrepareSectionStubNotImplementedYet|TestConfirmChangeSetStubNotImplementedYet|TestSectionTextStubsNotImplementedYet)$' -v 2>&1); echo "$out" | grep -qE -- "^ *--- PASS: TestDemoToolsOrder \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoToolSchemasAreClosedAndBounded \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoToolsNameMissingDependency \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestPrepareSectionStubNotImplementedYet \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestConfirmChangeSetStubNotImplementedYet \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestSectionTextStubsNotImplementedYet \(" || exit 1`
+- `go vet ./internal/mcpserver/...`
+- `test -z "$(gofmt -l internal/mcpserver)"`
+- `test -z "$(git diff --diff-filter=MD --name-only 56b9f95 -- '*_test.go')"`
+
+<details><summary>Instructions</summary>
+
+Context: Northern Lights is a Go MCP server (module github.com/dantalabs/northern-lights) that lets Copilot read and write Workiva spreadsheets and report documents. This is lane L0 of the KPMG demo: it creates the shared scaffold so lanes L1 (change set), L2 (section recipe), L3 (section text) and L4 (data) can work in parallel. Use the CONTEXT.md vocabulary in names, comments and messages: change set, section recipe, section, report document, field, finding, narrative fact, verbatim block, narrative block, number guard, lane. Rules: no new module dependencies (go.mod/go.sum unchanged); never edit an existing *_test.go file; never touch internal/content/, internal/transfer/, internal/backupjob/ or assurance backup/restore files; edit only the files this task owns. Format with gofmt. While working run the scoped package tests with -race and go vet on the touched packages.
+
+Goal: R2, R5, R6. Four demo tool stubs registered through `tools.Demo()`, each with its final input and output schema, returning an MCP error result "not implemented yet" until its lane replaces the handler, and failing with a clear message naming a missing dependency. Do not change tools.All(), server.go or any existing tool.
+
+A. internal/mcpserver/registry.go: add to Deps, after Transfer, four nil-safe fields with a comment that they are set only when NL_DEMO_PIPELINE is on and demo tools fail with a clear error when one is nil:
+   ChangeSets changeset.Service; Recipes recipe.Service; Facts recipe.FactStore; SectionText sectiontext.Service
+
+B. internal/mcpserver/tools/demo.go: `// Demo returns the four demo pipeline tools, registered after All() only when NL_DEMO_PIPELINE=true.` `func Demo() []mcpserver.Tool` returning, in this order: PrepareSection(), ConfirmChangeSet(), StageSectionText(), ConfirmSectionText(). Plus two helpers used by the stubs:
+   `func requireDemoDep(present bool, name string) error` -> nil when present, else failMsg(name+" is not available", "server misconfiguration: start the server with NL_DEMO_PIPELINE=true")
+   `func notImplementedYet(tool string) error` -> failMsg(tool+" is not implemented yet", "this demo tool is a placeholder until its lane lands")
+   Nil checks compare the interface field, e.g. requireDemoDep(deps.ChangeSets != nil, "ChangeSets").
+
+C. Tool files follow the existing Tool pattern (see get_field.go): unexported struct type, exported constructor returning mcpserver.Tool, Name(), Description(), and RegisterSDK calling mcp.AddTool with explicit InputSchema/OutputSchema maps built from the existing helpers objectSchema, boundedSchema (minLength 1), optionalString, boundedEnum, mergeProperties and commonStructuredOutputProperties(). Every object has additionalProperties:false, every string maxLength, every array maxItems and items (the rules verifyClosedBoundedSchema in schema_test.go enforces). Typed input and output structs with json tags matching the schemas; each output struct includes `NLAuditID string` tagged `nl_audit_id,omitempty`. Descriptions are exactly two sentences: what the tool does, and when to call it. Handler order: dependency check first, then `return nil, <out>{}, notImplementedYet(<tool name>)`. Do not call the services.
+   Schemas (number in parentheses = maxLength or maxItems):
+   - prepare_section.go, `workiva_prepare_section`, dependency Recipes. Input {section_id: boundedSchema(128)} required [section_id]. Output = common + section_id(128); findings array(500) of {kind(32), field(256), severity(32), message(1024)} all required; facts array(500) of {key(256), label(256), unit optionalString(32), current(64), prior optionalString(64), change optionalString(64), change_pct optionalString(64), direction boundedEnum(up,down,flat,new), material {type: boolean}, display array(16) of boundedSchema(128)} required [key,label,current,direction,material,display]; verbatim array(50) of {id(128), title(256), text(16000)} all required; change_set object {change_set_id(128), confirm_token(4096), expires_at(64), items array(500) of {field_name(256), spreadsheet_id(128), sheet_id(128), range(512), before optionalString(4096), after optionalString(4096), source optionalString(256)} required [field_name,spreadsheet_id,sheet_id,range]} required [change_set_id,confirm_token,expires_at,items]; summary optionalString(262144); next_step(1024). Output required [section_id, findings, facts, verbatim, change_set, summary, next_step].
+   - change_set.go, `workiva_confirm_change_set`, dependency ChangeSets. Input {change_set_id(128), confirm_token(4096)} both required. Output = common (its status carries Result.Status) + change_set_id(128); items array(500) of {field_name(256), status(32), read_back optionalString(4096), audit_id optionalString(128), operation_url optionalString(2048)} required [field_name,status]; summary optionalString(262144). Required [change_set_id, items, summary].
+   - section_text.go, two tools in one file. `workiva_stage_section_text`, dependency SectionText: input {section_id(128), blocks array(20) of {kind boundedEnum(narrative,verbatim), text boundedSchema(4000), verbatim_id optionalString(128)} required [kind,text]} required [section_id,blocks]. Output = common + text_id(128), confirm_token(4096), section_id(128), section_title(256), blocks (same block schema), expires_at(64), summary optionalString(90000); required [text_id, confirm_token, section_id, section_title, blocks, expires_at, summary]. `workiva_confirm_section_text`, dependency SectionText: input {text_id(128), confirm_token(4096)} both required; output = common + section_id(128), document_id(128), workiva_section_id(128), audit_id optionalString(128); required [section_id, document_id, workiva_section_id].
+   Constructors: PrepareSection(), ConfirmChangeSet(), StageSectionText(), ConfirmSectionText().
+
+D. Tests. L0 keeps only tests that stay valid after the lanes replace the stubs; the 'not implemented yet' checks go into lane-owned test files so no lane ever edits demo_test.go. Reuse newTestEnv, bearerHTTPClient, structuredContent, verifyClosedBoundedSchema and walkSchema from the existing test files without editing them.
+   demo_test.go (L0 keeps it): a helper `serveDemoTools(t *testing.T, deps mcpserver.Deps) *mcp.ClientSession` that registers Demo() in mcpserver.NewRegistry, builds mcpserver.New(deps, reg, &mcpserver.Options{APIToken: "test-token"}), serves it with httptest and connects a client (as listAllTools in schema_test.go does; send the actor header existing tool tests send if the audit middleware needs it). demo_test.go keeps only helpers its own three tests use (serveDemoTools may also be called by the lane-owned stub tests). Tests, exactly these names:
+   - TestDemoToolsOrder: Demo() names equal [workiva_prepare_section, workiva_confirm_change_set, workiva_stage_section_text, workiva_confirm_section_text]; each Description() is non-empty; mcpserver.NewRegistry with All() then Demo() registered gives Registry.Names() of 17 entries whose last four are in that order (this is where R2 order is proven; tools/list is sorted by name by the go-sdk), and Bind on a fresh mcp server succeeds (no duplicate names).
+   - TestDemoToolSchemasAreClosedAndBounded: for each demo tool listed through serveDemoTools, input and output schemas are objects and pass verifyClosedBoundedSchema and walkSchema.
+   - TestDemoToolsNameMissingDependency: serveDemoTools with newTestEnv deps and the four demo fields nil; each tool called with valid input returns IsError with text containing "is not available" and the missing field name (Recipes, ChangeSets, SectionText); no panic.
+   Lane-owned stub tests (handed to the lane, which replaces them with real tests): prepare_section_test.go `TestPrepareSectionStubNotImplementedYet`; change_set_test.go `TestConfirmChangeSetStubNotImplementedYet`; section_text_test.go `TestSectionTextStubsNotImplementedYet` (both section text tools). Each builds inline only the service its tool needs on top of newTestEnv deps: change_set_test.go sets ChangeSets=changeset.New(demoenv.Env{}); prepare_section_test.go calls t.Setenv("NL_DEMO_SECTIONS_DIR", t.TempDir()) then sets Recipes and Facts from recipe.New(demoenv.Env{}, nil); section_text_test.go sets SectionText=sectiontext.New(demoenv.Env{}, nil, nil). Then serveDemoTools(t, deps), call its tool(s) with valid input and assert IsError and text containing "not implemented yet".
+
+Verify: go test ./internal/mcpserver/... -race (the existing 13-tool tests must pass unchanged).
+
+</details>
+
+### T4: Route demo /documents, /content and demo-esg- paths to lane hooks
+
+- Kind: feature, tier hint: light, status: pending
+- Covers: R8
+- Depends on: none
+- Owns: `internal/workiva/demo_client.go`, `internal/workiva/demo_documents.go`, `internal/workiva/demo_esg.go`, `internal/workiva/demo_documents_test.go`, `internal/workiva/demo_esg_test.go`, `internal/workiva/demo_client_routes_test.go`
+
+Acceptance:
+
+- `go test ./internal/workiva/... -race -count=1`
+- `out=$(go test ./internal/workiva/ -race -count=1 -run '^(TestDemoTransportRoutesLaneHooks|TestDemoDocumentsResponseNotFound|TestDemoESGResponseNotFound)$' -v 2>&1); echo "$out" | grep -qE -- "^ *--- PASS: TestDemoTransportRoutesLaneHooks \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoDocumentsResponseNotFound \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoESGResponseNotFound \(" || exit 1`
+- `go vet ./internal/workiva/...`
+- `test -z "$(gofmt -l internal/workiva)"`
+- `test -z "$(git diff --diff-filter=MD --name-only 56b9f95 -- '*_test.go')"`
+
+<details><summary>Instructions</summary>
+
+Context: Northern Lights is a Go MCP server (module github.com/dantalabs/northern-lights) that lets Copilot read and write Workiva spreadsheets and report documents. This is lane L0 of the KPMG demo: it creates the shared scaffold so lanes L1 (change set), L2 (section recipe), L3 (section text) and L4 (data) can work in parallel. Use the CONTEXT.md vocabulary in names, comments and messages: change set, section recipe, section, report document, field, finding, narrative fact, verbatim block, narrative block, number guard, lane. Rules: no new module dependencies (go.mod/go.sum unchanged); never edit an existing *_test.go file; never touch internal/content/, internal/transfer/, internal/backupjob/ or assurance backup/restore files; edit only the files this task owns. Format with gofmt. While working run the scoped package tests with -race and go vet on the touched packages.
+
+Goal: R8. In demo mode the fixture transport (internal/workiva/demo_client.go, DemoTransport.RoundTrip) sends report document paths to a hook L3 owns and ESG spreadsheet paths to a hook L4 owns. Both hooks return 404 JSON until their lanes fill them. Existing fixture routes behave exactly as before.
+
+1. internal/workiva/demo_client.go: add two predicates next to isSheetsPath:
+   `isDemoDocumentsPath(path string) bool`: path == "/documents" || strings.HasPrefix(path, "/documents/") || path == "/content" || strings.HasPrefix(path, "/content/")
+   `isDemoESGPath(path string) bool`: strings.HasPrefix(path, "/spreadsheets/demo-esg-")
+   In RoundTrip's switch, directly after the token case and before every spreadsheet case, add `case isDemoDocumentsPath(path): return t.demoDocumentsResponse(req), nil` and `case isDemoESGPath(path): return t.demoESGResponse(req), nil` (any method). Do not add struct fields to DemoTransport.
+2. internal/workiva/demo_documents.go (owned by L3 after merge): doc comment `demoDocumentsResponse serves report document and content requests in demo mode. L3 replaces this body with an in-memory report document.` and `func (t *DemoTransport) demoDocumentsResponse(req *http.Request) *http.Response` returning a 404 with Content-Type application/json and body {"error":"demo report documents not served yet: <path>"} (path = req.URL.Path, JSON-encoded with encoding/json), built by a small local helper in that file; leave demoNotFound unchanged.
+3. internal/workiva/demo_esg.go (owned by L4 after merge): same shape, `demoESGResponse`, 404 JSON body {"error":"demo ESG fixture not served yet: <path>"} via its own small local helper; comment says L4 replaces it with the ESG fixture spreadsheets.
+4. Tests (new files only; do not edit demo_client_test.go):
+   - demo_client_routes_test.go (L0 keeps this): `TestDemoTransportRoutesLaneHooks`: table over isDemoDocumentsPath and isDemoESGPath: /documents, /documents/x, /content/x are documents paths; /documentsx and /spreadsheets/demo-sp-energy-2026/sheets are not; /spreadsheets/demo-esg-x/sheets is an ESG path, /spreadsheets/demo-sp-energy-2026/sheets is not. Plus NewDemoTransport().RoundTrip of GET /spreadsheets and GET /spreadsheets/demo-sp-energy-2026/sheets still return 200 (existing routes unchanged).
+   - demo_documents_test.go (handed to L3): `TestDemoDocumentsResponseNotFound`: NewDemoTransport().RoundTrip for GET /documents/x, POST /documents/x and GET /content/x each returns 404, Content-Type application/json, a body that passes json.Valid and contains "demo report documents not served yet".
+   - demo_esg_test.go (handed to L4): `TestDemoESGResponseNotFound`: NewDemoTransport().RoundTrip for GET /spreadsheets/demo-esg-x/sheets, GET /spreadsheets/demo-esg-x/sheets/s1/sheetdata and POST /spreadsheets/demo-esg-x/sheets/s1/update each returns 404, application/json, valid JSON containing "demo ESG fixture not served yet".
+
+Verify: go test ./internal/workiva/... -race.
+
+</details>
+
+### T5: Wire demo pipeline in main.go and load -mappings in demo mode
+
+- Kind: feature, tier hint: code, status: pending
+- Covers: R3, R4, R9, R12
+- Depends on: T1, T2, T3
+- Owns: `cmd/workiva-mcp/main.go`, `cmd/workiva-mcp/demo_pipeline_test.go`
+
+Acceptance:
+
+- `go build ./...`
+- `go test ./cmd/workiva-mcp/... -race -count=1`
+- `out=$(go test ./cmd/workiva-mcp/ -race -count=1 -run '^(TestDemoPipelineFlagOffKeepsThirteenTools|TestDemoPipelineFlagOnAddsFourTools|TestDemoPipelineServicesReachTools|TestDemoModeLoadsMappingsFile|TestDemoModeWithoutMappingsLoadsBuiltInOnly|TestDemoModeMissingMappingsFileFailsStartup)$' -v 2>&1); echo "$out" | grep -qE -- "^ *--- PASS: TestDemoPipelineFlagOffKeepsThirteenTools \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoPipelineFlagOnAddsFourTools \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoPipelineServicesReachTools \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoModeLoadsMappingsFile \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoModeWithoutMappingsLoadsBuiltInOnly \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoModeMissingMappingsFileFailsStartup \(" || exit 1`
+- `test "$(grep -c 'changeset\.New(' cmd/workiva-mcp/main.go)" -eq 1 && test "$(grep -c 'recipe\.New(' cmd/workiva-mcp/main.go)" -eq 1 && test "$(grep -c 'sectiontext\.New(' cmd/workiva-mcp/main.go)" -eq 1`
+- `go test ./internal/mcpserver/... ./internal/config/... -race -count=1`
+- `go vet ./cmd/... ./internal/...`
+- `test -z "$(gofmt -l cmd internal)"`
+- `test -z "$(git diff --diff-filter=MD --name-only 56b9f95 -- '*_test.go')"`
+
+<details><summary>Instructions</summary>
+
+Context: Northern Lights is a Go MCP server (module github.com/dantalabs/northern-lights) that lets Copilot read and write Workiva spreadsheets and report documents. This is lane L0 of the KPMG demo: it creates the shared scaffold so lanes L1 (change set), L2 (section recipe), L3 (section text) and L4 (data) can work in parallel. Use the CONTEXT.md vocabulary in names, comments and messages: change set, section recipe, section, report document, field, finding, narrative fact, verbatim block, narrative block, number guard, lane. Rules: no new module dependencies (go.mod/go.sum unchanged); never edit an existing *_test.go file; never touch internal/content/, internal/transfer/, internal/backupjob/ or assurance backup/restore files; edit only the files this task owns. Format with gofmt. While working run the scoped package tests with -race and go vet on the touched packages.
+
+Goal: R3, R4, R9 and the wiring half of R12 in cmd/workiva-mcp/main.go (buildServer). After this task lanes never edit main.go.
+
+1. Demo pipeline wiring (R3, R12). Add to main.go:
+   // wireDemoPipeline builds the demo lane services once and puts them in deps.
+   // Lanes replace the constructor bodies in their own packages, never this function.
+   func wireDemoPipeline(env demoenv.Env, deps *mcpserver.Deps) error {
+       changes := changeset.New(env)
+       recipes, facts, err := recipe.New(env, changes)
+       if err != nil { return fmt.Errorf("demo pipeline: section recipes: %w", err) }
+       deps.ChangeSets, deps.Recipes, deps.Facts = changes, recipes, facts
+       deps.SectionText = sectiontext.New(env, recipes, facts)
+       return nil
+   }
+   In buildServer keep `for _, tool := range tools.All()` unchanged and right after it add `if cfg.DemoPipelineEnabled { for _, tool := range tools.Demo() { registry.Register(tool) } }`. Move the existing mcpserver.Deps literal into a local `deps` variable; when cfg.DemoPipelineEnabled, call wireDemoPipeline(demoenv.Env{DB: db, Store: store, Audit: auditLog, Client: workivaBackend, Cfg: cfg}, &deps), and on error call cleanup() and return the error; then pass deps to mcpserver.New. Log `demo pipeline enabled: 4 demo tools registered` when on. With the flag off behavior is unchanged (R4). changeset.New, recipe.New and sectiontext.New each appear exactly once in main.go.
+
+2. Demo-mode mappings (R9). In the `if cfg.DemoMode` branch, after bootstrap.LoadDemoMappings succeeds, when the -mappings value (mappingsPath) is non-empty, first os.Stat it and fail startup (cleanup(), return `load demo extra mappings: %w`) when it does not exist, because bootstrap.LoadMappings silently ignores a missing file; then call bootstrap.LoadMappings(storageCtx, mappingsPath, store); on failure call cleanup() and return `load demo extra mappings: %w`; log `loaded extra mappings from %s`. Without -mappings demo mode stays as today (it does not read configs/config.yaml). Fix the truncated comment above `path := mappingsPath` to describe both modes. Do not edit internal/bootstrap.
+
+3. New test file cmd/workiva-mcp/demo_pipeline_test.go (reuse bearerHTTPClient and structuredContent from main_test.go; do not edit main_test.go). Each server test sets NL_DEMO_MODE=true, NL_DB_PATH in t.TempDir(), NL_API_KEY=demo, NL_LISTEN_ADDR=127.0.0.1:0, NL_READ_CACHE_TTL=0 as TestDemoModeEndToEnd does, calls buildServer, serves the handler with httptest and connects an mcp client session. Every test that sets NL_DEMO_PIPELINE=true also sets NL_DEMO_SECTIONS_DIR to an empty t.TempDir() (L2's recipe.New will load section recipes from it; an empty directory must keep startup green after L2 lands). Assertions must stay valid after the lanes replace the stub bodies: never assert "not implemented yet" here. Tests, exactly these names:
+   - TestDemoPipelineFlagOffKeepsThirteenTools (scenario 1): NL_DEMO_PIPELINE unset (t.Setenv then os.Unsetenv): the sorted tools/list names equal the sorted tools.All() names (13). The go-sdk sorts tools/list by name, so compare sets, not order.
+   - TestDemoPipelineFlagOnAddsFourTools (scenario 2): NL_DEMO_PIPELINE=true: 17 tools; the sorted tools/list names equal the sorted union of the tools.All() names and workiva_prepare_section, workiva_confirm_change_set, workiva_stage_section_text, workiva_confirm_section_text. (R2 order is proven in T3 on Demo() and Registry.Names().)
+   - TestDemoPipelineServicesReachTools (scenario 9): flag on; call each demo tool with valid input (prepare {section_id: esg-environmental}; confirm change set {change_set_id: cs-1, confirm_token: tok}; stage text {section_id: esg-environmental, blocks: [{kind: narrative, text: Energy use fell.}]}; confirm text {text_id: st-1, confirm_token: tok}); each call returns no transport error and the result text does not contain "is not available", which shows the constructors' services reached the tools through Deps.
+   - TestDemoModeLoadsMappingsFile (scenario 6): write a mappings YAML in t.TempDir() in the configs/example.yaml format with spreadsheet id demo-esg-test, sheet demo-esg-sheet and one field esg_test_scope1_tco2e (range B2, aliases "esg test scope 1"); buildServer("", yamlPath); workiva_search_fields finds esg_test_scope1_tco2e and still finds the built-in demo field total_energy_consumption_kwh.
+   - TestDemoModeWithoutMappingsLoadsBuiltInOnly (scenario 6): buildServer("", ""); search finds total_energy_consumption_kwh and not esg_test_scope1_tco2e.
+   - TestDemoModeMissingMappingsFileFailsStartup: in demo mode, buildServer with a -mappings path inside t.TempDir() that does not exist returns an error containing "load demo extra mappings".
+   Read internal/mcpserver/tools/search_fields.go to pick queries it matches.
+
+Verify: go test ./cmd/workiva-mcp/... -race; go build ./....
+
+</details>
+
+### T6: Read expected tool count from NL_EXPECT_TOOLS in verify-mcp.sh
+
+- Kind: feature, tier hint: light, status: pending
+- Covers: R11
+- Depends on: T4, T5
+- Owns: `scripts/verify-mcp.sh`, `cmd/workiva-mcp/verify_mcp_script_test.go`, `docs/demo/STATUS.md`
+
+Acceptance:
+
+- `bash -n scripts/verify-mcp.sh`
+- `grep -q 'NL_EXPECT_TOOLS:-13' scripts/verify-mcp.sh`
+- `out=$(go test ./cmd/workiva-mcp/ -race -count=1 -run '^(TestVerifyMCPScript)$' -v 2>&1); echo "$out" | grep -qE -- "^ *--- PASS: TestVerifyMCPScript \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestVerifyMCPScript/flag_off \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestVerifyMCPScript/flag_on \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestVerifyMCPScript/flag_on_default_expectation \(" || exit 1`
+- `go test ./cmd/workiva-mcp/... -race -count=1`
+- `grep -E '^\| L0 Scaffold \|' docs/demo/STATUS.md | grep -qv 'not started'`
+- `grep -q 'requiredPermission' docs/demo/STATUS.md`
+- `go test ./... -race -count=1`
+- `golangci-lint run ./...`
+- `test -z "$(gofmt -l cmd)"`
+- `test -z "$(git diff --diff-filter=MD --name-only 56b9f95 -- '*_test.go')"`
+
+<details><summary>Instructions</summary>
+
+Context: Northern Lights is a Go MCP server (module github.com/dantalabs/northern-lights) that lets Copilot read and write Workiva spreadsheets and report documents. This is lane L0 of the KPMG demo: it creates the shared scaffold so lanes L1 (change set), L2 (section recipe), L3 (section text) and L4 (data) can work in parallel. Use the CONTEXT.md vocabulary in names, comments and messages: change set, section recipe, section, report document, field, finding, narrative fact, verbatim block, narrative block, number guard, lane. Rules: no new module dependencies (go.mod/go.sum unchanged); never edit an existing *_test.go file; never touch internal/content/, internal/transfer/, internal/backupjob/ or assurance backup/restore files; edit only the files this task owns. Format with gofmt. While working run the scoped package tests with -race and go vet on the touched packages.
+
+Goal: R11 and acceptance scenario 8, then report L0 status.
+
+1. scripts/verify-mcp.sh: set `expected="${NL_EXPECT_TOOLS:-13}"`; if it is not a positive integer (`[[ "$expected" =~ ^[1-9][0-9]*$ ]]`) print `FAIL: NL_EXPECT_TOOLS must be a positive integer` to stderr and exit 2. Replace the hard-coded 13 in the tool-count check with $expected; message `tools/list has exactly $expected tools (got $count)`. Update the header comment: default 13; set NL_EXPECT_TOOLS=17 when the server runs with NL_DEMO_PIPELINE=true. Nothing else changes; NL_KEY must still never be printed.
+
+2. New test cmd/workiva-mcp/verify_mcp_script_test.go, `TestVerifyMCPScript` with subtests. At the top of TestVerifyMCPScript, before any t.Run, t.Skip only when bash, curl or python3 is missing from PATH (exec.LookPath); never skip inside a subtest. For each case: t.Setenv NL_DEMO_MODE=true, NL_DB_PATH (t.TempDir), NL_API_KEY=demo, NL_LISTEN_ADDR=127.0.0.1:0, NL_READ_CACHE_TTL=0, and NL_DEMO_PIPELINE as listed (flag-on cases also set NL_DEMO_SECTIONS_DIR to an empty t.TempDir()); buildServer("", ""); httptest.NewServer(handler); run bash with the script at filepath.Join("..", "..", "scripts", "verify-mcp.sh"), env = os.Environ() without any NL_EXPECT_TOOLS entry, plus NL_URL=<srv.URL>/mcp, NL_KEY=demo and NL_EXPECT_TOOLS when listed; include the combined output in failure messages. Cases: flag_off (NL_DEMO_PIPELINE unset, NL_EXPECT_TOOLS unset) exits 0; flag_on (NL_DEMO_PIPELINE=true, NL_EXPECT_TOOLS=17) exits 0; flag_on_default_expectation (NL_DEMO_PIPELINE=true, NL_EXPECT_TOOLS unset) exits non-zero and its output contains `got 17`.
+
+3. docs/demo/STATUS.md: edit only the L0 Scaffold row: status `ready for review (R10 end-to-end test waits for L1-L4)`, branch `claude/demo-l0-scaffold`, last commit = short hash of HEAD before your commit, blocked on `Entra permission mapping for demo tools`. Do not touch other rows. Also add one line under 'Requests to other lanes': `L0 -> owner (no lane owns it), internal/mcpserver/server.go: add requiredPermission entries for the four demo tools (prepare_section and stage_section_text -> workiva.write.preview; confirm_change_set and confirm_section_text -> workiva.write.confirm) and list them in writeTools, because under NL_AUTH_MODE=entra every demo tool call is denied today.`
+
+4. Before finishing run the full quality bar: go test ./... -race -count=1 and golangci-lint run ./... must both pass; fix findings only in files this run owns, never with ignore comments.
+
+Verify: bash -n scripts/verify-mcp.sh; go test ./cmd/workiva-mcp/ -race -run TestVerifyMCPScript -v.
+
+</details>
+
+### T7: Placeholder: demo-mode end-to-end test after L1-L4 merge (deferred)
+
+- Kind: test, tier hint: code, status: deferred
+- Covers: R10
+- Depends on: T5
+- Owns: `internal/demoe2e/**`
+
+Acceptance:
+
+- `out=$(go test ./internal/demoe2e/... -race -count=1 -run '^(TestDemoPipelineEndToEnd)$' -v 2>&1); echo "$out" | grep -qE -- "^ *--- PASS: TestDemoPipelineEndToEnd \(" || exit 1`
+
+<details><summary>Instructions</summary>
+
+Context: Northern Lights is a Go MCP server (module github.com/dantalabs/northern-lights) that lets Copilot read and write Workiva spreadsheets and report documents. This is lane L0 of the KPMG demo: it creates the shared scaffold so lanes L1 (change set), L2 (section recipe), L3 (section text) and L4 (data) can work in parallel. Use the CONTEXT.md vocabulary in names, comments and messages: change set, section recipe, section, report document, field, finding, narrative fact, verbatim block, narrative block, number guard, lane. Rules: no new module dependencies (go.mod/go.sum unchanged); never edit an existing *_test.go file; never touch internal/content/, internal/transfer/, internal/backupjob/ or assurance backup/restore files; edit only the files this task owns. Format with gofmt. While working run the scoped package tests with -race and go vet on the touched packages.
+
+DEFERRED. Do not start until L1, L2, L3 and L4 have merged into claude/demo-integration (planned Mon 26 to Tue 27 October). This is a placeholder for R10 and acceptance scenario 7 only; it gets planned in a later run against the merged lane code.
+
+Intended outcome: internal/demoe2e has one test `TestDemoPipelineEndToEnd` that, in demo mode with NL_DEMO_PIPELINE=true, calls workiva_prepare_section, workiva_confirm_change_set, workiva_stage_section_text and workiva_confirm_section_text in sequence and asserts the written values, the section text and one audit row per written field. Plan the details once the lane interfaces are final.
+
+</details>
+
+## Assumptions
+
+- Scope is limited by the owner to the L0 files in docs/demo/LANES.md (shared touch points, interface files, stub constructors, tool stubs, internal/demoe2e/) plus the L0 row of docs/demo/STATUS.md and new test files next to them.
+- R10 (acceptance scenario 7) is deferred: T7 is a placeholder with status deferred and no dependents, so it never blocks; it is planned in a later run once L1-L4 have merged.
+- Go cannot compile tests that reference symbols that do not exist yet, and a non-compiling _test.go file would break every existing test in its package. So each task writes its named acceptance tests first and then the code, inside the same task, instead of separate test-first tasks; the owner also asked for few tasks.
+- Acceptance commands grep for '--- PASS: <TestName>' so a missing or skipped test fails the check instead of passing vacuously with 'no tests to run'.
+- No docs/architecture.md or ADR change: the spec and ADRs 0001/0002 already settle the design, and the owner asked for none unless strictly needed.
+- Scenario 9 'constructors are called once each' is checked mechanically (each constructor appears exactly once in main.go, inside wireDemoPipeline) plus an end-to-end call showing every demo tool reaches its service instead of a missing-dependency error. No counting test seam is added to main.go. TestWireDemoPipelineFillsDeps was dropped (critique c1): a zero demoenv.Env would break once lanes use DB or Store.
+- Critique c1 major finding: L0-owned tests assert only behavior that survives the lanes replacing stub bodies (order, schemas, missing-dependency errors, dependency reached, 13/17 tool counts). The 'not implemented yet' checks live in lane-owned change_set_test.go, prepare_section_test.go and section_text_test.go, which each lane replaces. Flag-on server tests set NL_DEMO_SECTIONS_DIR to an empty temp dir, and the stub constructor doc comments state that New must succeed in demo mode with an empty sections directory.
+- Scenario 2's 'last four in R2 order' is checked on registration order (tools.Demo() and Registry.Names() in T3), because the go-sdk sorts tools/list by name (featureSet.sortKeys); T5 compares tools/list as name sets.
+- c2 fixes applied without a third critique (plan_critic_rounds=2); orchestrator verified the SDK sorting claim.
+- Critique c1 minor (first slice horizontal): accepted for a scaffold; T3's TestDemoToolsOrder registers All() plus Demo() and binds them, so import cycles and name clashes surface before T5.
+- Demo tool stubs check their dependency and return 'not implemented yet' without calling the stub services; lanes replace the handler bodies. Output schemas are fixed from the L1-L3 specs; lanes may extend them in their own files.
+- Scenario 5 is split so lanes do not inherit a test that breaks when they fill their hook: the 404 JSON checks live in demo_documents_test.go (handed to L3) and demo_esg_test.go (handed to L4); L0 keeps the routing-predicate and unchanged-routes test in demo_client_routes_test.go.
+- DemoTransport gets no new struct fields (an unused field would fail golangci-lint 'unused'); L3 and L4 request one in STATUS.md if their fixtures need per-transport state.
+- Scenario 8 is a Go test that runs scripts/verify-mcp.sh against an httptest server built by buildServer; it skips only when bash, curl or python3 is missing (all present locally and on ubuntu-latest CI). A skip fails T6's acceptance because it greps for PASS.
+- NL_DEMO_PIPELINE follows the NL_DEMO_MODE convention: only the literal 'true' enables it; when the variable is set it overrides the YAML key demo_pipeline_enabled.
+- The demo pipeline flag works with or without NL_DEMO_MODE; demo-mode -mappings loading (R9) is independent of the flag.
+- The list_spreadsheets demo fixture is unchanged; if L4 needs the ESG spreadsheets listed there, it requests that change to demo_client.go in STATUS.md.
+- T1 and T3 hand files to lanes after merge (interface files, stub constructors, tool stubs, demo_documents/demo_esg and their tests); lanes replace stub bodies and stub tests.
+
+## Open questions
+
+- Entra mode: internal/mcpserver/server.go requiredPermission has no mapping for the four demo tools, so with NL_AUTH_MODE=entra (the Copilot Studio delegated-identity setup for RB-03) every demo tool call is denied 'tool is not authorized'; writeTools also does not list them, so unattributed calls are not refused. server.go is not owned by any lane. Who adds the mapping (suggested: prepare_section and stage_section_text -> workiva.write.preview; confirm_change_set and confirm_section_text -> workiva.write.confirm; all four in writeTools), and on which branch? Does not block L0, which is tested in API-key mode. T6 records it in STATUS.md 'Requests to other lanes'; the coordinator must repeat it in the L0 pull request description.
+- R10 end-to-end test is deferred until L1-L4 merge (T7); it needs its own planning run on claude/demo-integration around 26-27 October.
