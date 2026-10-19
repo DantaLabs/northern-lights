@@ -5,7 +5,12 @@
   "branch": "claude/demo-l0-scaffold",
   "status": "done",
   "round": 0,
-  "checkpoint": null,
+  "checkpoint": {
+    "commit": "2ca3aec78ddb70b8c7061b61cb3f00250d0c4930",
+    "created_at": "2026-10-19T08:25:12Z",
+    "environment": "local",
+    "router": "laya"
+  },
   "active_tasks": [],
   "run_base_commit": "56b9f95dacd66219208721d55ac7ff990e0da8e8"
 }
