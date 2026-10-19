@@ -56,6 +56,10 @@ type Config struct {
 	// DemoMode swaps the Workiva client for a synthetic fixture client so
 	// the server can be tried without real Workiva credentials.
 	DemoMode bool
+	// DemoPipelineEnabled registers the four demo pipeline tools (tools.Demo())
+	// and wires the lane services. Off by default so the server exposes the
+	// current 13 tools (ADR 0002).
+	DemoPipelineEnabled bool
 	// AssuranceEnabled enables Phase 3 assurance execution. Assurance tools are
 	// always registered, but fail closed while this flag is false.
 	AssuranceEnabled         bool
@@ -85,6 +89,7 @@ type rawConfig struct {
 	ReadCacheTTL               *string             `yaml:"read_cache_ttl"`
 	RequireWriteConfirmation   *bool               `yaml:"require_write_confirmation"`
 	DisableLocalhostProtection *bool               `yaml:"disable_localhost_protection"`
+	DemoPipelineEnabled        *bool               `yaml:"demo_pipeline_enabled"`
 	AllowedResources           map[string][]string `yaml:"allowed_resources"`
 	AssuranceEnabled           *bool               `yaml:"assurance_enabled"`
 	AssuranceBundlePublicKey   *string             `yaml:"assurance_bundle_public_key"`
@@ -188,6 +193,9 @@ func loadYAML(path string, cfg *Config) error {
 	}
 	if raw.DisableLocalhostProtection != nil {
 		cfg.DisableLocalhostProtection = *raw.DisableLocalhostProtection
+	}
+	if raw.DemoPipelineEnabled != nil {
+		cfg.DemoPipelineEnabled = *raw.DemoPipelineEnabled
 	}
 	if len(document.Content) > 0 {
 		root := document.Content[0]
@@ -303,6 +311,9 @@ func applyEnv(cfg *Config) error {
 	cfg.WorkivaClientID = os.Getenv("NL_WORKIVA_CLIENT_ID")
 	cfg.WorkivaClientSecret = os.Getenv("NL_WORKIVA_CLIENT_SECRET")
 	cfg.DemoMode = os.Getenv("NL_DEMO_MODE") == "true"
+	if v, ok := os.LookupEnv("NL_DEMO_PIPELINE"); ok {
+		cfg.DemoPipelineEnabled = v == "true"
+	}
 	cfg.EntraTenantID = strings.TrimSpace(os.Getenv("NL_ENTRA_TENANT_ID"))
 	cfg.EntraAuthority = strings.TrimSpace(os.Getenv("NL_ENTRA_AUTHORITY"))
 	cfg.EntraAudience = strings.TrimSpace(os.Getenv("NL_ENTRA_AUDIENCE"))
