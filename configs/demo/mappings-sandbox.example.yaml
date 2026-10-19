@@ -1,0 +1,155 @@
+# Sandbox mapping for the L4 demo data (placeholders only).
+# The real file is configs/demo/mappings-sandbox.yaml (git-ignored). Generate it from this one
+# by replacing every <id-NN> and <document-id> with the real ID (see configs/demo/README.md).
+# src_*  : input cell in the KPMG ESG template (2025 values).
+# rpt_*  : value cell in the ESG report spreadsheet, columns I to L of CY / PY Data Output.
+region: eu
+document_id: "<document-id>"
+spreadsheets:
+  - id: "<id-01>"
+    name: "VSME-Digital-Template-1.0.1 Unlocked"
+    sheets:
+      - id: "<id-10>"
+        name: "Environmental Disclosures"
+        fields:
+          - { name: src_env_energy_total, range: "G5", field_type: number, description: "Total Energy Consumption" }
+          - { name: src_env_electricity_renewable, range: "G12", field_type: number, description: "Electricity (as reflected in utility billings) - Renewable" }
+          - { name: src_env_electricity_non_renewable, range: "J12", field_type: number, description: "Electricity (as reflected in utility billings) - Non-renewable" }
+          - { name: src_env_self_generated_electricity_renewable, range: "G13", field_type: number, description: "Self-generated electricity - Renewable" }
+          - { name: src_env_self_generated_electricity_non_renewable, range: "J13", field_type: number, description: "Self-generated electricity - Non-renewable" }
+          - { name: src_env_ghg_scope1, range: "D22", field_type: number, description: "Gross Scope 1 GHG Emissions" }
+          - { name: src_env_ghg_scope2_location, range: "D23", field_type: number, description: "Gross Scope 2 location-based GHG Emissions" }
+          - { name: src_env_ghg_scope2_market, range: "D24", field_type: number, description: "Gross scope 2 market-based GHG Emissions - May (optional)" }
+          - { name: src_env_ghg_scope3_purchased_goods, range: "D30", field_type: number, description: "1. Purchased Goods and Services" }
+          - { name: src_env_ghg_scope3_capital_goods, range: "D31", field_type: number, description: "2. Capital Goods" }
+          - { name: src_env_ghg_scope3_fuel_energy, range: "D32", field_type: number, description: "3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2)" }
+          - { name: src_env_ghg_scope3_upstream_transport, range: "D33", field_type: number, description: "4. Upstream Transportation and Distribution" }
+          - { name: src_env_ghg_scope3_waste, range: "D34", field_type: number, description: "5. Waste Generated in Operations" }
+          - { name: src_env_ghg_scope3_business_travel, range: "D35", field_type: number, description: "6. Business Travel" }
+          - { name: src_env_ghg_scope3_commuting, range: "D36", field_type: number, description: "7. Employee Commuting" }
+          - { name: src_env_land_sealed_area, range: "D161", field_type: number, description: "Total sealed area" }
+          - { name: src_env_land_nature_onsite, range: "D162", field_type: number, description: "Total nature-oriented area on-site" }
+          - { name: src_env_land_nature_offsite, range: "D163", field_type: number, description: "Total nature-oriented area off-site" }
+          - { name: src_env_land_use_total, range: "D164", field_type: number, description: "Total use of land" }
+          - { name: src_env_water_withdrawn_total, range: "D169", field_type: number, description: "Total amount of water withdrawn from all sites (cubic meters, m³)" }
+          - { name: src_env_water_withdrawn_high_stress, range: "D170", field_type: number, description: "Amount of water withdrawn at sites located in areas of high water-stress" }
+          - { name: src_env_water_discharge_production, range: "D176", field_type: number, description: "Water discharge from undertaking production processes (m³)" }
+          - { name: src_env_waste_recycled_type1, range: "J189", field_type: number, description: "Waste diverted to recycle or reuse - waste type 1" }
+          - { name: src_env_waste_disposed_type1, range: "K189", field_type: number, description: "Waste directed to disposal - waste type 1" }
+          - { name: src_env_waste_recycled_type2, range: "J190", field_type: number, description: "Waste diverted to recycle or reuse - waste type 2" }
+          - { name: src_env_waste_disposed_type2, range: "K190", field_type: number, description: "Waste directed to disposal - waste type 2" }
+      - id: "<id-09>"
+        name: "General Information"
+        fields:
+          - { name: src_soc_employees_total, range: "E62", field_type: number, description: "Number of employees" }
+      - id: "<id-11>"
+        name: "Social Disclosures"
+        fields:
+          - { name: src_soc_employees_permanent, range: "D10", field_type: number, description: "Number of employees - Permanent contract" }
+          - { name: src_soc_employees_male, range: "D18", field_type: number, description: "Number of employees - Male" }
+          - { name: src_soc_employees_female, range: "D19", field_type: number, description: "Number of employees - Female" }
+          - { name: src_soc_employees_other, range: "D20", field_type: number, description: "Number of employees - Other" }
+          - { name: src_soc_employees_not_reported, range: "D21", field_type: number, description: "Number of employees - Not reported" }
+          - { name: src_soc_employees_left, range: "D43", field_type: number, description: "Number of employees who left during the reporting period" }
+          - { name: src_soc_employees_start, range: "D44", field_type: number, description: "Number of employees at the beginning of the reporting period" }
+          - { name: src_soc_employees_end, range: "D45", field_type: number, description: "Number of employees at the end of the reporting period" }
+          - { name: src_soc_accidents_recordable, range: "D49", field_type: number, description: "Number of recordable work-related accidents in the reporting period" }
+          - { name: src_soc_fatalities_work_related, range: "D53", field_type: number, description: "Number of fatalities as a result of work-related injuries and work-related ill health" }
+          - { name: src_soc_employees_collective_bargaining, range: "D60", field_type: number, description: "Number of employees covered by collective bargaining agreements" }
+          - { name: src_soc_training_hours_male, range: "D66", field_type: number, description: "Number of annual training hours per employee - Male" }
+          - { name: src_soc_training_hours_female, range: "D67", field_type: number, description: "Number of annual training hours per employee - Female" }
+          - { name: src_soc_managers_male, range: "D74", field_type: number, description: "Number of male employees at management level" }
+          - { name: src_soc_managers_female, range: "D75", field_type: number, description: "Number of female employees at management level" }
+  - id: "<id-19>"
+    name: "VSME - Factbook template"
+    sheets:
+      - id: "<id-26>"
+        name: "CY Data Output"
+        fields:
+          - { name: rpt_env_energy_total_2025, range: "L2", field_type: number, description: "Total Energy Consumption" }
+          - { name: rpt_env_electricity_renewable_2025, range: "L3", field_type: number, description: "Electricity (as reflected in utility billings) - Renewable" }
+          - { name: rpt_env_electricity_non_renewable_2025, range: "L4", field_type: number, description: "Electricity (as reflected in utility billings) - Non-renewable" }
+          - { name: rpt_env_self_generated_electricity_renewable_2025, range: "L5", field_type: number, description: "Self-generated electricity - Renewable" }
+          - { name: rpt_env_self_generated_electricity_non_renewable_2025, range: "L6", field_type: number, description: "Self-generated electricity - Non-renewable" }
+          - { name: rpt_env_ghg_scope1_2025, range: "L7", field_type: number, description: "Gross Scope 1 GHG Emissions" }
+          - { name: rpt_env_ghg_scope2_location_2025, range: "L8", field_type: number, description: "Gross Scope 2 location-based GHG Emissions" }
+          - { name: rpt_env_ghg_scope2_market_2025, range: "L9", field_type: number, description: "Gross scope 2 market-based GHG Emissions - May (optional)" }
+          - { name: rpt_env_ghg_scope3_purchased_goods_2025, range: "L10", field_type: number, description: "1. Purchased Goods and Services" }
+          - { name: rpt_env_ghg_scope3_capital_goods_2025, range: "L11", field_type: number, description: "2. Capital Goods" }
+          - { name: rpt_env_ghg_scope3_fuel_energy_2025, range: "L12", field_type: number, description: "3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2)" }
+          - { name: rpt_env_ghg_scope3_upstream_transport_2025, range: "L13", field_type: number, description: "4. Upstream Transportation and Distribution" }
+          - { name: rpt_env_ghg_scope3_waste_2025, range: "L14", field_type: number, description: "5. Waste Generated in Operations" }
+          - { name: rpt_env_ghg_scope3_business_travel_2025, range: "L15", field_type: number, description: "6. Business Travel" }
+          - { name: rpt_env_ghg_scope3_commuting_2025, range: "L16", field_type: number, description: "7. Employee Commuting" }
+          - { name: rpt_env_land_sealed_area_2025, range: "L17", field_type: number, description: "Total sealed area" }
+          - { name: rpt_env_land_nature_onsite_2025, range: "L18", field_type: number, description: "Total nature-oriented area on-site" }
+          - { name: rpt_env_land_nature_offsite_2025, range: "L19", field_type: number, description: "Total nature-oriented area off-site" }
+          - { name: rpt_env_land_use_total_2025, range: "L20", field_type: number, description: "Total use of land" }
+          - { name: rpt_env_water_withdrawn_total_2025, range: "L21", field_type: number, description: "Total amount of water withdrawn from all sites (cubic meters, m³)" }
+          - { name: rpt_env_water_withdrawn_high_stress_2025, range: "L22", field_type: number, description: "Amount of water withdrawn at sites located in areas of high water-stress" }
+          - { name: rpt_env_water_discharge_production_2025, range: "L23", field_type: number, description: "Water discharge from undertaking production processes (m³)" }
+          - { name: rpt_env_waste_recycled_type1_2025, range: "L24", field_type: number, description: "Waste diverted to recycle or reuse - waste type 1" }
+          - { name: rpt_env_waste_disposed_type1_2025, range: "L25", field_type: number, description: "Waste directed to disposal - waste type 1" }
+          - { name: rpt_env_waste_recycled_type2_2025, range: "L26", field_type: number, description: "Waste diverted to recycle or reuse - waste type 2" }
+          - { name: rpt_env_waste_disposed_type2_2025, range: "L27", field_type: number, description: "Waste directed to disposal - waste type 2" }
+          - { name: rpt_soc_employees_total_2025, range: "L28", field_type: number, description: "Number of employees" }
+          - { name: rpt_soc_employees_permanent_2025, range: "L29", field_type: number, description: "Number of employees - Permanent contract" }
+          - { name: rpt_soc_employees_male_2025, range: "L30", field_type: number, description: "Number of employees - Male" }
+          - { name: rpt_soc_employees_female_2025, range: "L31", field_type: number, description: "Number of employees - Female" }
+          - { name: rpt_soc_employees_other_2025, range: "L32", field_type: number, description: "Number of employees - Other" }
+          - { name: rpt_soc_employees_not_reported_2025, range: "L33", field_type: number, description: "Number of employees - Not reported" }
+          - { name: rpt_soc_employees_left_2025, range: "L34", field_type: number, description: "Number of employees who left during the reporting period" }
+          - { name: rpt_soc_employees_start_2025, range: "L35", field_type: number, description: "Number of employees at the beginning of the reporting period" }
+          - { name: rpt_soc_employees_end_2025, range: "L36", field_type: number, description: "Number of employees at the end of the reporting period" }
+          - { name: rpt_soc_accidents_recordable_2025, range: "L37", field_type: number, description: "Number of recordable work-related accidents in the reporting period" }
+          - { name: rpt_soc_fatalities_work_related_2025, range: "L38", field_type: number, description: "Number of fatalities as a result of work-related injuries and work-related ill health" }
+          - { name: rpt_soc_employees_collective_bargaining_2025, range: "L39", field_type: number, description: "Number of employees covered by collective bargaining agreements" }
+          - { name: rpt_soc_training_hours_male_2025, range: "L40", field_type: number, description: "Number of annual training hours per employee - Male" }
+          - { name: rpt_soc_training_hours_female_2025, range: "L41", field_type: number, description: "Number of annual training hours per employee - Female" }
+          - { name: rpt_soc_managers_male_2025, range: "L42", field_type: number, description: "Number of male employees at management level" }
+          - { name: rpt_soc_managers_female_2025, range: "L43", field_type: number, description: "Number of female employees at management level" }
+      - id: "<id-27>"
+        name: "PY Data Output"
+        fields:
+          - { name: rpt_env_energy_total_2024, range: "L2", field_type: number, description: "Total Energy Consumption" }
+          - { name: rpt_env_electricity_renewable_2024, range: "L3", field_type: number, description: "Electricity (as reflected in utility billings) - Renewable" }
+          - { name: rpt_env_electricity_non_renewable_2024, range: "L4", field_type: number, description: "Electricity (as reflected in utility billings) - Non-renewable" }
+          - { name: rpt_env_self_generated_electricity_renewable_2024, range: "L5", field_type: number, description: "Self-generated electricity - Renewable" }
+          - { name: rpt_env_self_generated_electricity_non_renewable_2024, range: "L6", field_type: number, description: "Self-generated electricity - Non-renewable" }
+          - { name: rpt_env_ghg_scope1_2024, range: "L7", field_type: number, description: "Gross Scope 1 GHG Emissions" }
+          - { name: rpt_env_ghg_scope2_location_2024, range: "L8", field_type: number, description: "Gross Scope 2 location-based GHG Emissions" }
+          - { name: rpt_env_ghg_scope2_market_2024, range: "L9", field_type: number, description: "Gross scope 2 market-based GHG Emissions - May (optional)" }
+          - { name: rpt_env_ghg_scope3_purchased_goods_2024, range: "L10", field_type: number, description: "1. Purchased Goods and Services" }
+          - { name: rpt_env_ghg_scope3_capital_goods_2024, range: "L11", field_type: number, description: "2. Capital Goods" }
+          - { name: rpt_env_ghg_scope3_fuel_energy_2024, range: "L12", field_type: number, description: "3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2)" }
+          - { name: rpt_env_ghg_scope3_upstream_transport_2024, range: "L13", field_type: number, description: "4. Upstream Transportation and Distribution" }
+          - { name: rpt_env_ghg_scope3_waste_2024, range: "L14", field_type: number, description: "5. Waste Generated in Operations" }
+          - { name: rpt_env_ghg_scope3_business_travel_2024, range: "L15", field_type: number, description: "6. Business Travel" }
+          - { name: rpt_env_ghg_scope3_commuting_2024, range: "L16", field_type: number, description: "7. Employee Commuting" }
+          - { name: rpt_env_land_sealed_area_2024, range: "L17", field_type: number, description: "Total sealed area" }
+          - { name: rpt_env_land_nature_onsite_2024, range: "L18", field_type: number, description: "Total nature-oriented area on-site" }
+          - { name: rpt_env_land_nature_offsite_2024, range: "L19", field_type: number, description: "Total nature-oriented area off-site" }
+          - { name: rpt_env_land_use_total_2024, range: "L20", field_type: number, description: "Total use of land" }
+          - { name: rpt_env_water_withdrawn_total_2024, range: "L21", field_type: number, description: "Total amount of water withdrawn from all sites (cubic meters, m³)" }
+          - { name: rpt_env_water_withdrawn_high_stress_2024, range: "L22", field_type: number, description: "Amount of water withdrawn at sites located in areas of high water-stress" }
+          - { name: rpt_env_water_discharge_production_2024, range: "L23", field_type: number, description: "Water discharge from undertaking production processes (m³)" }
+          - { name: rpt_env_waste_recycled_type1_2024, range: "L24", field_type: number, description: "Waste diverted to recycle or reuse - waste type 1" }
+          - { name: rpt_env_waste_disposed_type1_2024, range: "L25", field_type: number, description: "Waste directed to disposal - waste type 1" }
+          - { name: rpt_env_waste_recycled_type2_2024, range: "L26", field_type: number, description: "Waste diverted to recycle or reuse - waste type 2" }
+          - { name: rpt_env_waste_disposed_type2_2024, range: "L27", field_type: number, description: "Waste directed to disposal - waste type 2" }
+          - { name: rpt_soc_employees_total_2024, range: "L28", field_type: number, description: "Number of employees" }
+          - { name: rpt_soc_employees_permanent_2024, range: "L29", field_type: number, description: "Number of employees - Permanent contract" }
+          - { name: rpt_soc_employees_male_2024, range: "L30", field_type: number, description: "Number of employees - Male" }
+          - { name: rpt_soc_employees_female_2024, range: "L31", field_type: number, description: "Number of employees - Female" }
+          - { name: rpt_soc_employees_other_2024, range: "L32", field_type: number, description: "Number of employees - Other" }
+          - { name: rpt_soc_employees_not_reported_2024, range: "L33", field_type: number, description: "Number of employees - Not reported" }
+          - { name: rpt_soc_employees_left_2024, range: "L34", field_type: number, description: "Number of employees who left during the reporting period" }
+          - { name: rpt_soc_employees_start_2024, range: "L35", field_type: number, description: "Number of employees at the beginning of the reporting period" }
+          - { name: rpt_soc_employees_end_2024, range: "L36", field_type: number, description: "Number of employees at the end of the reporting period" }
+          - { name: rpt_soc_accidents_recordable_2024, range: "L37", field_type: number, description: "Number of recordable work-related accidents in the reporting period" }
+          - { name: rpt_soc_fatalities_work_related_2024, range: "L38", field_type: number, description: "Number of fatalities as a result of work-related injuries and work-related ill health" }
+          - { name: rpt_soc_employees_collective_bargaining_2024, range: "L39", field_type: number, description: "Number of employees covered by collective bargaining agreements" }
+          - { name: rpt_soc_training_hours_male_2024, range: "L40", field_type: number, description: "Number of annual training hours per employee - Male" }
+          - { name: rpt_soc_training_hours_female_2024, range: "L41", field_type: number, description: "Number of annual training hours per employee - Female" }
+          - { name: rpt_soc_managers_male_2024, range: "L42", field_type: number, description: "Number of male employees at management level" }
+          - { name: rpt_soc_managers_female_2024, range: "L43", field_type: number, description: "Number of female employees at management level" }
