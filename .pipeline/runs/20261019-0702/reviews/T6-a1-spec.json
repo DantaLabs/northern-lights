@@ -1,0 +1,22 @@
+{
+  "task_id": "T6",
+  "axis": "spec",
+  "implementation_commit": "da1ee03d1850c2e69b0f86cdb3b49f01aa0fc52b",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "scripts/verify-mcp.sh",
+      "line": 18,
+      "issue": "The check that NL_EXPECT_TOOLS is a positive integer (exit 2 with 'FAIL: NL_EXPECT_TOOLS must be a positive integer') has no automated test. The task did not ask for one: its three listed cases do not cover it, and the worker only checked it by hand (abc, 0, 007x).",
+      "fix": "Optional follow-up: add an invalid_expectation subtest (NL_EXPECT_TOOLS=abc) that asserts exit code 2 and the FAIL message."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R11", "satisfied": true, "evidence": "scripts/verify-mcp.sh:18-22 expected=\"${NL_EXPECT_TOOLS:-13}\" with positive-integer guard; scripts/verify-mcp.sh:70 check uses $expected. TestVerifyMCPScript/flag_on (NL_EXPECT_TOOLS=17 against the flag-on server, exit 0) would fail against the old hard-coded 13; TestVerifyMCPScript/flag_on_default_expectation asserts non-zero exit and 'tools/list has exactly 13 tools (got 17)', which proves the default is 13"},
+    {"requirement": "Acceptance scenario 8 (R11)", "satisfied": true, "evidence": "TestVerifyMCPScript/flag_off (no flag, NL_EXPECT_TOOLS unset, exit 0) and TestVerifyMCPScript/flag_on (flag on, NL_EXPECT_TOOLS=17, exit 0); the check log shows all subtests PASS and every acceptance command exits 0"},
+    {"requirement": "T6 step 3 STATUS.md", "satisfied": true, "evidence": "docs/demo/STATUS.md:9 changes only the L0 row (status, branch, 19b03ea = parent of da1ee03, blocked on); docs/demo/STATUS.md:28 adds the requiredPermission request line exactly as specified"}
+  ],
+  "new_tasks": []
+}

@@ -1,0 +1,14 @@
+$ go build ./...
+$ go test ./cmd/workiva-mcp/... -race -count=1
+ok  	github.com/dantalabs/northern-lights/cmd/workiva-mcp	68.071s
+$ out=$(go test ./cmd/workiva-mcp/ -race -count=1 -run '^(TestDemoPipelineFlagOffKeepsThirteenTools|TestDemoPipelineFlagOnAddsFourTools|TestDemoPipelineServicesReachTools|TestDemoModeLoadsMappingsFile|TestDemoModeWithoutMappingsLoadsBuiltInOnly|TestDemoModeMissingMappingsFileFailsStartup)$' -v 2>&1); echo "$out" | grep -qE -- "^ *--- PASS: TestDemoPipelineFlagOffKeepsThirteenTools \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoPipelineFlagOnAddsFourTools \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoPipelineServicesReachTools \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoModeLoadsMappingsFile \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoModeWithoutMappingsLoadsBuiltInOnly \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoModeMissingMappingsFileFailsStartup \(" || exit 1
+$ test "$(grep -c 'changeset\.New(' cmd/workiva-mcp/main.go)" -eq 1 && test "$(grep -c 'recipe\.New(' cmd/workiva-mcp/main.go)" -eq 1 && test "$(grep -c 'sectiontext\.New(' cmd/workiva-mcp/main.go)" -eq 1
+$ go test ./internal/mcpserver/... ./internal/config/... -race -count=1
+ok  	github.com/dantalabs/northern-lights/internal/mcpserver	5.824s
+ok  	github.com/dantalabs/northern-lights/internal/mcpserver/tools	117.556s
+ok  	github.com/dantalabs/northern-lights/internal/config	1.065s
+$ go vet ./cmd/... ./internal/...
+$ test -z "$(gofmt -l cmd internal)"
+$ test -z "$(git diff --diff-filter=MD --name-only 56b9f95 -- '*_test.go')"
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

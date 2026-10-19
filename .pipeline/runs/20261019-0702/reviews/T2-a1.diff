@@ -1,0 +1,153 @@
+commit 75c7b90b13b18217b216564172b66d0ed1b3923d
+Author: Sam <samvillaf@gmail.com>
+Date:   Mon Oct 19 14:36:02 2026 +0700
+
+    T2: add DemoPipelineEnabled config flag from NL_DEMO_PIPELINE and YAML
+    
+    Co-Authored-By: Claude Haiku 5.5 <noreply@anthropic.com>
+
+diff --git a/.pipeline/runs/20261019-0702/reports/T2-a1.md b/.pipeline/runs/20261019-0702/reports/T2-a1.md
+new file mode 100644
+index 0000000..d6072e6
+--- /dev/null
++++ b/.pipeline/runs/20261019-0702/reports/T2-a1.md
+@@ -0,0 +1,36 @@
++# T2 attempt 1: DemoPipelineEnabled config flag
++
++- Task: T2, "Add DemoPipelineEnabled config flag from NL_DEMO_PIPELINE and YAML" (covers R1)
++- Branch: task/20261019-0702-T2-a1 (worktree .scratch/wt/T2)
++- Base: aa82c92. Committed in the single T2 commit that contains this report.
++- Status: done
++
++## What changed
++
++- internal/config/config.go
++  - Config: new field `DemoPipelineEnabled bool` after DemoMode, with a doc comment (registers tools.Demo(), wires lane services, off by default, ADR 0002).
++  - rawConfig: `DemoPipelineEnabled *bool` with yaml tag `demo_pipeline_enabled` (required because the decoder uses KnownFields(true)).
++  - loadYAML: copies the value when non-nil.
++  - applyEnv: `NL_DEMO_PIPELINE` via os.LookupEnv; only the literal "true" enables it. Environment overrides YAML.
++- internal/config/demo_pipeline_test.go (new): table test `TestDemoPipelineEnabled` with five cases (no YAML and no env; env true; YAML true with env unset; YAML true with env false; env "1"). Each subtest calls the existing `clearEnv` helper, clears NL_DEMO_PIPELINE (clearEnv does not cover it) using t.Setenv followed by os.Unsetenv, and writes YAML with `writeYAML`.
++- No existing test file was edited. go.mod and go.sum are unchanged.
++
++## Commands run
++
++| Command | Exit |
++|---|---|
++| `go test ./internal/config/... -race -count=1` | 0 (ok) |
++| acceptance 2: `go test ./internal/config/ -race -count=1 -run '^(TestDemoPipelineEnabled)$' -v` plus grep for `--- PASS: TestDemoPipelineEnabled (` | 0 |
++| `go vet ./internal/config/...` | 0 |
++| `test -z "$(gofmt -l internal/config)"` | 0 |
++| lint: `test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run` | 0 (golangci-lint: 0 issues) |
++| build: `go build ./...` | 0 |
++| test: `go test ./... -race` | 0 (all packages ok) |
++| typecheck | none (config value is none) |
++
++Subtest results: all five cases PASS.
++
++## Unexpected
++
++- The full `go test ./... -race` run took about 8 minutes because the machine was also running other worktree test suites. The internal/transfer package alone took 510s. This is slow but not a failure.
++- Other worktrees (T1, T4) were running tests in parallel. I did not touch them.
+diff --git a/internal/config/config.go b/internal/config/config.go
+index 8829e4b..6b205ff 100644
+--- a/internal/config/config.go
++++ b/internal/config/config.go
+@@ -56,6 +56,10 @@ type Config struct {
+ 	// DemoMode swaps the Workiva client for a synthetic fixture client so
+ 	// the server can be tried without real Workiva credentials.
+ 	DemoMode bool
++	// DemoPipelineEnabled registers the four demo pipeline tools (tools.Demo())
++	// and wires the lane services. Off by default so the server exposes the
++	// current 13 tools (ADR 0002).
++	DemoPipelineEnabled bool
+ 	// AssuranceEnabled enables Phase 3 assurance execution. Assurance tools are
+ 	// always registered, but fail closed while this flag is false.
+ 	AssuranceEnabled         bool
+@@ -85,6 +89,7 @@ type rawConfig struct {
+ 	ReadCacheTTL               *string             `yaml:"read_cache_ttl"`
+ 	RequireWriteConfirmation   *bool               `yaml:"require_write_confirmation"`
+ 	DisableLocalhostProtection *bool               `yaml:"disable_localhost_protection"`
++	DemoPipelineEnabled        *bool               `yaml:"demo_pipeline_enabled"`
+ 	AllowedResources           map[string][]string `yaml:"allowed_resources"`
+ 	AssuranceEnabled           *bool               `yaml:"assurance_enabled"`
+ 	AssuranceBundlePublicKey   *string             `yaml:"assurance_bundle_public_key"`
+@@ -189,6 +194,9 @@ func loadYAML(path string, cfg *Config) error {
+ 	if raw.DisableLocalhostProtection != nil {
+ 		cfg.DisableLocalhostProtection = *raw.DisableLocalhostProtection
+ 	}
++	if raw.DemoPipelineEnabled != nil {
++		cfg.DemoPipelineEnabled = *raw.DemoPipelineEnabled
++	}
+ 	if len(document.Content) > 0 {
+ 		root := document.Content[0]
+ 		for i := 0; i+1 < len(root.Content); i += 2 {
+@@ -303,6 +311,9 @@ func applyEnv(cfg *Config) error {
+ 	cfg.WorkivaClientID = os.Getenv("NL_WORKIVA_CLIENT_ID")
+ 	cfg.WorkivaClientSecret = os.Getenv("NL_WORKIVA_CLIENT_SECRET")
+ 	cfg.DemoMode = os.Getenv("NL_DEMO_MODE") == "true"
++	if v, ok := os.LookupEnv("NL_DEMO_PIPELINE"); ok {
++		cfg.DemoPipelineEnabled = v == "true"
++	}
+ 	cfg.EntraTenantID = strings.TrimSpace(os.Getenv("NL_ENTRA_TENANT_ID"))
+ 	cfg.EntraAuthority = strings.TrimSpace(os.Getenv("NL_ENTRA_AUTHORITY"))
+ 	cfg.EntraAudience = strings.TrimSpace(os.Getenv("NL_ENTRA_AUDIENCE"))
+diff --git a/internal/config/demo_pipeline_test.go b/internal/config/demo_pipeline_test.go
+new file mode 100644
+index 0000000..60a7cae
+--- /dev/null
++++ b/internal/config/demo_pipeline_test.go
+@@ -0,0 +1,54 @@
++package config
++
++import (
++	"os"
++	"testing"
++)
++
++// TestDemoPipelineEnabled covers the demo pipeline flag from YAML and from
++// NL_DEMO_PIPELINE. The environment variable overrides YAML, and only the
++// literal "true" enables the flag.
++func TestDemoPipelineEnabled(t *testing.T) {
++	tests := []struct {
++		name string
++		yaml string
++		// env is the NL_DEMO_PIPELINE value; nil means the variable is unset.
++		env  *string
++		want bool
++	}{
++		{name: "no yaml and no env", yaml: "", env: nil, want: false},
++		{name: "env true", yaml: "", env: strPtr("true"), want: true},
++		{name: "yaml true env unset", yaml: "demo_pipeline_enabled: true\n", env: nil, want: true},
++		{name: "yaml true env false", yaml: "demo_pipeline_enabled: true\n", env: strPtr("false"), want: false},
++		{name: "env 1 is not true", yaml: "", env: strPtr("1"), want: false},
++	}
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			clearEnv(t)
++			// clearEnv does not cover NL_DEMO_PIPELINE. Setenv then Unsetenv
++			// registers a cleanup that restores the host value.
++			t.Setenv("NL_DEMO_PIPELINE", "")
++			if err := os.Unsetenv("NL_DEMO_PIPELINE"); err != nil {
++				t.Fatalf("unset NL_DEMO_PIPELINE: %v", err)
++			}
++			if tt.env != nil {
++				t.Setenv("NL_DEMO_PIPELINE", *tt.env)
++			}
++			path := ""
++			if tt.yaml != "" {
++				path = writeYAML(t, tt.yaml)
++			}
++			cfg, err := Load(path)
++			if err != nil {
++				t.Fatalf("Load: %v", err)
++			}
++			if cfg.DemoPipelineEnabled != tt.want {
++				t.Fatalf("DemoPipelineEnabled = %t, want %t", cfg.DemoPipelineEnabled, tt.want)
++			}
++		})
++	}
++}
++
++func strPtr(s string) *string {
++	return &s
++}

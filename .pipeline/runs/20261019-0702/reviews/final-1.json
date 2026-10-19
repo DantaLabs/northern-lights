@@ -1,0 +1,53 @@
+{
+  "task_id": "FINAL",
+  "axis": "final",
+  "verdict": "pass",
+  "reviewed_head": "78dea3d289127c5c4e2da6e489ad9ee707b3a9e5",
+  "run_base_commit": "56b9f95",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/demo_pipeline_test.go",
+      "line": 98,
+      "issue": "Acceptance scenario 9 says the three constructors are called once each. No test checks this. wireDemoPipeline (main.go:451) does call each constructor once, so the code is correct, but nothing would catch a regression. Separately, scenario 2 says the last four tools in tools/list follow the R2 order. TestDemoPipelineFlagOnAddsFourTools sorts the names before comparing, so the order is only checked at registry level, in TestDemoToolsOrder.",
+      "fix": "Optional: check that a second buildServer call does not share service instances. Or state in the PR that the call-once property is guaranteed by inspecting wireDemoPipeline. Note in the PR that the order is asserted on the registry because tools/list ordering is up to the SDK.",
+      "task_id": "T5"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/tools/change_set.go",
+      "line": 38,
+      "issue": "The output structs confirmChangeSetOutput and confirmSectionTextOutput (section_text.go:66) have no Status field. L1 R12 and L3 R9 both return a Result whose Status is completed, partial, reconciliation_required or mismatch. The schema does allow `status` through commonStructuredOutputProperties, as the plan intends, so the schema is final. The Go output type is not.",
+      "fix": "Add `Status string `json:\"status,omitempty\"`` to both output structs so the lanes fill the field instead of changing the type. The lanes may also do this, since they own these files.",
+      "task_id": "T3"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/changeset/service.go",
+      "line": 17,
+      "issue": "The contract comment on changeset.New mentions NL_DEMO_SECTIONS_DIR. That variable belongs to the L2 section recipe loader and has nothing to do with the change set service, so the comment could mislead the L1 lane.",
+      "fix": "Reword it to say New must succeed in demo mode with the flag on and no extra fixtures, so the L0 flag-on server tests stay green.",
+      "task_id": "T1"
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R1", "satisfied": true, "evidence": "internal/config/config.go:59,92,197,314; TestDemoPipelineEnabled (yaml, env, env overrides yaml, only literal 'true')"},
+    {"requirement": "R2", "satisfied": true, "evidence": "internal/mcpserver/tools/demo.go:6; TestDemoToolsOrder asserts the order and that names[13..16] follow All()"},
+    {"requirement": "R3", "satisfied": true, "evidence": "cmd/workiva-mcp/main.go:408-412 registers Demo() after All() only when cfg.DemoPipelineEnabled; TestDemoPipelineFlagOnAddsFourTools / FlagOffKeepsThirteenTools"},
+    {"requirement": "R4", "satisfied": true, "evidence": "TestDemoPipelineFlagOffKeepsThirteenTools; git diff --diff-filter=MD lists no existing *_test.go; go test ./... -race exit 0"},
+    {"requirement": "R5", "satisfied": true, "evidence": "prepare_section.go, change_set.go, section_text.go input and output schemas match the L1-L3 specs and plan T3; notImplementedYet in demo.go:24; TestConfirmChangeSetStubNotImplementedYet and the sibling stub tests; TestDemoToolSchemasAreClosedAndBounded"},
+    {"requirement": "R6", "satisfied": true, "evidence": "internal/mcpserver/registry.go:34-40 adds the four interface fields; requireDemoDep in demo.go:16; TestDemoToolsNameMissingDependency checks that the dependency is named"},
+    {"requirement": "R7", "satisfied": true, "evidence": "internal/changeset/changeset.go, internal/recipe/types.go, internal/sectiontext/types.go, internal/workivaprovider/documents.go match the spec types; go build and go vet pass"},
+    {"requirement": "R8", "satisfied": true, "evidence": "internal/workiva/demo_client.go:51-54,72-83; demo_documents.go, demo_esg.go; TestDemoDocumentsResponseNotFound, TestDemoESGResponseNotFound, TestDemoTransportRoutesLaneHooks (fixture routes still 200)"},
+    {"requirement": "R9", "satisfied": true, "evidence": "cmd/workiva-mcp/main.go:318-330; TestDemoModeLoadsMappingsFile, TestDemoModeWithoutMappingsLoadsBuiltInOnly, TestDemoModeMissingMappingsFileFailsStartup"},
+    {"requirement": "R10", "satisfied": true, "evidence": "Deferred by the owner until L1-L4 merge (spec Approval section; plan T7 status deferred). Not treated as missing."},
+    {"requirement": "R11", "satisfied": true, "evidence": "scripts/verify-mcp.sh:18-22,70; TestVerifyMCPScript flag_off, flag_on with NL_EXPECT_TOOLS=17, and flag_on with the default expectation failing"},
+    {"requirement": "R12", "satisfied": true, "evidence": "internal/demoenv/demoenv.go Env fields match the spec; changeset.New, recipe.New and sectiontext.New have the specified signatures; main.go wireDemoPipeline:451-460 sets Deps once; TestDemoPipelineServicesReachTools"},
+    {"requirement": "Done: scenarios 1-6, 8, 9 as passing tests", "satisfied": true, "evidence": "Scenarios 1, 2, 3, 5, 6, 8 have direct tests. Scenario 4 is the build and vet gate. Scenario 9 is covered by TestDemoPipelineServicesReachTools, except the call-once property (minor finding)."},
+    {"requirement": "Done: flag off, the 13-tool tests pass unchanged", "satisfied": true, "evidence": "No existing test file modified; go test ./... -race exit 0 (23 packages ok)"},
+    {"requirement": "Done: race suite, gofmt, vet, golangci-lint", "satisfied": true, "evidence": "go build ./... OK; gofmt -l empty, go vet OK, golangci-lint '0 issues.'; go test ./... -race exit 0 at 78dea3d"},
+    {"requirement": "Done: only L0-owned files changed", "satisfied": true, "evidence": "Modified: main.go, config.go, registry.go, demo_client.go, verify-mcp.sh, STATUS.md (all L0 shared touch points per docs/demo/LANES.md). New files: interface files, stub constructors, tool stubs, lane hook files, tests. No frozen package, server.go or existing tool touched."},
+    {"requirement": "Done: L0 row in docs/demo/STATUS.md updated", "satisfied": true, "evidence": "docs/demo/STATUS.md L0 row set to 'ready for review (R10 end-to-end test waits for L1-L4)', plus the Entra requiredPermission request line"}
+  ],
+  "new_tasks": []
+}

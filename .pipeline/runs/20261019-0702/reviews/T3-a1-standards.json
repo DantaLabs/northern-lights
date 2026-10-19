@@ -1,0 +1,43 @@
+{
+  "task_id": "T3",
+  "axis": "standards",
+  "implementation_commit": "8dea5f6072c453cf3a0b79c653c106daadafd6c2",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/server.go",
+      "line": 683,
+      "issue": "Security (fail-closed, FYI): requiredPermission has no case for the four demo tools, so under identity/authorization mode every demo call falls to the default branch and is denied ('tool has no permission mapping'). This is safe (deny by default) and server.go is outside this task's ownership, but the confirm tools (workiva_confirm_change_set, workiva_confirm_section_text) will need WorkivaWriteConfirm and the prepare/stage tools WorkivaWritePreview before the lanes go live.",
+      "fix": "Record a follow-up (or a request in docs/demo/STATUS.md) for the owner of server.go to map demo tools: prepare/stage -> PermissionWorkivaWritePreview, confirm_* -> PermissionWorkivaWriteConfirm. No change in this task."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/tools/section_text.go",
+      "line": 115,
+      "issue": "Possible Duplicated Code (judgement call): the four RegisterSDK handlers share an identical shape (requireDemoDep then notImplementedYet). Acceptable because each lane replaces its handler, so extracting a shared helper now would be Speculative Generality.",
+      "fix": "None needed; leave as is so each lane owns its handler."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/tools/demo_test.go",
+      "line": 136,
+      "issue": "resultText duplicates the inline '(*mcp.TextContent)' extraction already present in audit_id_test.go, transfer_value_test.go and structured_errors_red_test.go. Existing test files may not be edited, so a new shared helper is the right call; it is also used by the lane-owned stub tests, which ties those files to demo_test.go.",
+      "fix": "None required. Optionally note in the lane hand-off that resultText lives in demo_test.go."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/registry.go",
+      "line": 39,
+      "issue": "Deps.Facts is declared but no demo stub checks it (prepare_section only requires Recipes). Matches the task instructions; L2 will need to check Facts too when it replaces the stub.",
+      "fix": "None in this task; L2 should add requireDemoDep(deps.Facts != nil, \"Facts\") when it wires the real handler."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R2", "satisfied": true, "evidence": "internal/mcpserver/tools/demo.go Demo(); TestDemoToolsOrder checks Demo() order, 17 registry names with demo last four, Bind succeeds"},
+    {"requirement": "R5", "satisfied": true, "evidence": "prepare_section.go, change_set.go, section_text.go schemas built with objectSchema/boundedSchema/optionalString/boundedEnum; TestDemoToolSchemasAreClosedAndBounded runs verifyClosedBoundedSchema and walkSchema on input and output"},
+    {"requirement": "R6", "satisfied": true, "evidence": "requireDemoDep/notImplementedYet in demo.go; TestDemoToolsNameMissingDependency and the three lane-owned *StubNotImplementedYet tests; check log T3-a1 all exit 0 incl. golangci-lint 0 issues, no existing *_test.go modified, no go.mod change"}
+  ],
+  "new_tasks": []
+}

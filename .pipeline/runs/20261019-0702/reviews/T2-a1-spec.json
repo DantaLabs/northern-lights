@@ -1,0 +1,16 @@
+{
+  "task_id": "T2",
+  "axis": "spec",
+  "verdict": "pass",
+  "implementation_commit": "75c7b90b13b18217b216564172b66d0ed1b3923d",
+  "attempt": 1,
+  "findings": [],
+  "requirements_checked": [
+    {
+      "requirement": "R1",
+      "satisfied": true,
+      "evidence": "internal/config/config.go:62 Config.DemoPipelineEnabled bool (zero value false); config.go:92 rawConfig yaml:\"demo_pipeline_enabled\" + config.go:197-199 loadYAML copy; config.go:314-316 applyEnv NL_DEMO_PIPELINE == \"true\" overrides YAML. Proven by internal/config/demo_pipeline_test.go TestDemoPipelineEnabled subtests 'no yaml and no env' (default false), 'env true', 'yaml true env unset' (fails without rawConfig key due to KnownFields(true)), 'yaml true env false', 'env 1 is not true'; check log T2-a1.log all acceptance commands exit 0."
+    }
+  ],
+  "new_tasks": []
+}

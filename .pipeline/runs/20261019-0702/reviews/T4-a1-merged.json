@@ -1,0 +1,63 @@
+{
+  "task_id": "T4",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_client_routes_test.go",
+      "line": 17,
+      "issue": "The predicate table covers /content/x but not the bare /content root, which R8 also routes (internal/workiva/demo_client.go:76). The task's own case list doesn't require it.",
+      "fix": "Optional: add {\"content root\", \"/content\", isDemoDocumentsPath, true} to the table.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 18,
+      "issue": "Possible Duplicated Code: demoESGNotFound and demoLaneHookNotFound (demo_documents.go) are byte-for-byte the same 404 JSON builder, and both resemble existing demoNotFound in demo_client.go. The worker justifies it by lane file ownership (AGENTS.md rule 1), and both are stubs that L3/L4 will replace, so this is tolerable.",
+      "fix": "Optional: have both hooks call one shared helper. If lane ownership forbids that, leave as is; delete the helper when the lane fills its body.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_documents.go",
+      "line": 12,
+      "issue": "Doc comments on demoDocumentsResponse and demoESGResponse are single very long lines; the repo's other doc comments wrap.",
+      "fix": "Wrap at about 80 columns.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_client_routes_test.go",
+      "line": 17,
+      "issue": "The predicate table covers /content/x but not the bare /content root, which R8 also routes (internal/workiva/demo_client.go:76). The task's own case list doesn't require it.",
+      "fix": "Optional: add {\"content root\", \"/content\", isDemoDocumentsPath, true} to the table.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 18,
+      "issue": "Possible Duplicated Code: demoESGNotFound and demoLaneHookNotFound (demo_documents.go) are byte-for-byte the same 404 JSON builder, and both resemble existing demoNotFound in demo_client.go. The worker justifies it by lane file ownership (AGENTS.md rule 1), and both are stubs that L3/L4 will replace, so this is tolerable.",
+      "fix": "Optional: have both hooks call one shared helper. If lane ownership forbids that, leave as is; delete the helper when the lane fills its body.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_documents.go",
+      "line": 12,
+      "issue": "Doc comments on demoDocumentsResponse and demoESGResponse are single very long lines; the repo's other doc comments wrap.",
+      "fix": "Wrap at about 80 columns.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

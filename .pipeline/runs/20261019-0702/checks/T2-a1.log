@@ -1,0 +1,7 @@
+$ go test ./internal/config/... -race -count=1
+ok  	github.com/dantalabs/northern-lights/internal/config	1.072s
+$ out=$(go test ./internal/config/ -race -count=1 -run '^(TestDemoPipelineEnabled)$' -v 2>&1); echo "$out" | grep -qE -- "^ *--- PASS: TestDemoPipelineEnabled \(" || exit 1
+$ go vet ./internal/config/...
+$ test -z "$(gofmt -l internal/config)"
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

@@ -1,0 +1,362 @@
+commit 29e0af3c15e001973f3d678b344804d6127cd48d
+Author: Sam <samvillaf@gmail.com>
+Date:   Mon Oct 19 14:58:02 2026 +0700
+
+    T5: wire demo pipeline in main.go and load -mappings in demo mode
+    
+    Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+diff --git a/.pipeline/runs/20261019-0702/reports/T5-a1.md b/.pipeline/runs/20261019-0702/reports/T5-a1.md
+new file mode 100644
+index 0000000..7ef1748
+--- /dev/null
++++ b/.pipeline/runs/20261019-0702/reports/T5-a1.md
+@@ -0,0 +1,20 @@
++# T5 attempt 1 report
++
++Branch: task/20261019-0702-T5-a1 (base f753e26). Status: done.
++
++## Changed
++- cmd/workiva-mcp/main.go: wireDemoPipeline; Demo() tools registered after All() when cfg.DemoPipelineEnabled; Deps moved to local `deps`; demo-mode -mappings loading (os.Stat then bootstrap.LoadMappings, errors "load demo extra mappings: %w"); comment above `path := mappingsPath` fixed.
++- cmd/workiva-mcp/demo_pipeline_test.go: six tests named in the task.
++
++## Commands (exit codes)
++- go build ./... 0
++- go test ./cmd/workiva-mcp/... -race -count=1 0
++- named-test PASS grep acceptance 0
++- changeset/recipe/sectiontext New( count==1 acceptance 0
++- go test ./internal/mcpserver/... ./internal/config/... -race -count=1 0
++- go vet ./cmd/... ./internal/... 0
++- gofmt -l cmd internal empty, 0
++- existing *_test.go unchanged check 0
++- lint (gofmt, go vet ./..., golangci-lint run) 0, 0 issues
++
++Nothing unexpected. The cmd/workiva-mcp test package takes ~67s under -race.
+diff --git a/cmd/workiva-mcp/demo_pipeline_test.go b/cmd/workiva-mcp/demo_pipeline_test.go
+new file mode 100644
+index 0000000..ecad051
+--- /dev/null
++++ b/cmd/workiva-mcp/demo_pipeline_test.go
+@@ -0,0 +1,210 @@
++package main
++
++import (
++	"context"
++	"net/http"
++	"net/http/httptest"
++	"os"
++	"path/filepath"
++	"sort"
++	"strings"
++	"testing"
++
++	"github.com/modelcontextprotocol/go-sdk/mcp"
++
++	"github.com/dantalabs/northern-lights/internal/mcpserver/tools"
++)
++
++var demoToolNames = []string{
++	"workiva_prepare_section",
++	"workiva_confirm_change_set",
++	"workiva_stage_section_text",
++	"workiva_confirm_section_text",
++}
++
++// demoSession builds the server with the demo environment, serves it and
++// returns a connected client session.
++func demoSession(t *testing.T, pipeline bool, mappingsPath string) *mcp.ClientSession {
++	t.Helper()
++	t.Setenv("NL_DEMO_MODE", "true")
++	t.Setenv("NL_DB_PATH", filepath.Join(t.TempDir(), "demo.db"))
++	t.Setenv("NL_API_KEY", "demo")
++	t.Setenv("NL_LISTEN_ADDR", "127.0.0.1:0")
++	t.Setenv("NL_READ_CACHE_TTL", "0")
++	if pipeline {
++		t.Setenv("NL_DEMO_PIPELINE", "true")
++		t.Setenv("NL_DEMO_SECTIONS_DIR", t.TempDir())
++	} else {
++		t.Setenv("NL_DEMO_PIPELINE", "")
++		if err := os.Unsetenv("NL_DEMO_PIPELINE"); err != nil {
++			t.Fatalf("unset NL_DEMO_PIPELINE: %v", err)
++		}
++	}
++	_, handler, cleanup, err := buildServer("", mappingsPath)
++	if err != nil {
++		t.Fatalf("buildServer: %v", err)
++	}
++	t.Cleanup(cleanup)
++	return connectDemo(t, handler)
++}
++
++func listToolNames(t *testing.T, session *mcp.ClientSession) []string {
++	t.Helper()
++	res, err := session.ListTools(context.Background(), nil)
++	if err != nil {
++		t.Fatalf("ListTools: %v", err)
++	}
++	names := make([]string, 0, len(res.Tools))
++	for _, tool := range res.Tools {
++		names = append(names, tool.Name)
++	}
++	sort.Strings(names)
++	return names
++}
++
++func allToolNames() []string {
++	var names []string
++	for _, tool := range tools.All() {
++		names = append(names, tool.Name())
++	}
++	return names
++}
++
++func equalNames(t *testing.T, got, want []string) {
++	t.Helper()
++	sort.Strings(want)
++	if strings.Join(got, ",") != strings.Join(want, ",") {
++		t.Fatalf("tool names mismatch\n got (%d): %v\nwant (%d): %v", len(got), got, len(want), want)
++	}
++}
++
++func TestDemoPipelineFlagOffKeepsThirteenTools(t *testing.T) {
++	session := demoSession(t, false, "")
++	got := listToolNames(t, session)
++	if len(got) != 13 {
++		t.Fatalf("got %d tools, want 13: %v", len(got), got)
++	}
++	equalNames(t, got, allToolNames())
++}
++
++func TestDemoPipelineFlagOnAddsFourTools(t *testing.T) {
++	session := demoSession(t, true, "")
++	got := listToolNames(t, session)
++	if len(got) != 17 {
++		t.Fatalf("got %d tools, want 17: %v", len(got), got)
++	}
++	equalNames(t, got, append(allToolNames(), demoToolNames...))
++}
++
++func TestDemoPipelineServicesReachTools(t *testing.T) {
++	session := demoSession(t, true, "")
++	calls := map[string]map[string]any{
++		"workiva_prepare_section":      {"section_id": "esg-environmental"},
++		"workiva_confirm_change_set":   {"change_set_id": "cs-1", "confirm_token": "tok"},
++		"workiva_stage_section_text":   {"section_id": "esg-environmental", "blocks": []any{map[string]any{"kind": "narrative", "text": "Energy use fell."}}},
++		"workiva_confirm_section_text": {"text_id": "st-1", "confirm_token": "tok"},
++	}
++	for name, args := range calls {
++		res, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: name, Arguments: args})
++		if err != nil {
++			t.Fatalf("%s: transport error: %v", name, err)
++		}
++		for _, c := range res.Content {
++			if tc, ok := c.(*mcp.TextContent); ok && strings.Contains(tc.Text, "is not available") {
++				t.Errorf("%s: service missing from Deps: %s", name, tc.Text)
++			}
++		}
++	}
++}
++
++const extraMappingsYAML = `region: eu
++spreadsheets:
++  - id: "demo-esg-test"
++    name: "ESG test"
++    sheets:
++      - id: "demo-esg-sheet"
++        name: "Emissions"
++        fields:
++          - { name: esg_test_scope1_tco2e, range: "B2", aliases: "esg test scope 1", field_type: number, description: "Test scope 1 emissions" }
++`
++
++func searchFieldNames(t *testing.T, session *mcp.ClientSession, query string) []string {
++	t.Helper()
++	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
++		Name:      "workiva_search_fields",
++		Arguments: map[string]any{"query": query},
++	})
++	if err != nil {
++		t.Fatalf("search_fields %q: %v", query, err)
++	}
++	var names []string
++	for _, f := range structuredContent(t, res)["fields"].([]any) {
++		names = append(names, f.(map[string]any)["name"].(string))
++	}
++	return names
++}
++
++func contains(list []string, want string) bool {
++	for _, s := range list {
++		if s == want {
++			return true
++		}
++	}
++	return false
++}
++
++func TestDemoModeLoadsMappingsFile(t *testing.T) {
++	yamlPath := filepath.Join(t.TempDir(), "extra.yaml")
++	if err := os.WriteFile(yamlPath, []byte(extraMappingsYAML), 0o600); err != nil {
++		t.Fatal(err)
++	}
++	session := demoSession(t, false, yamlPath)
++	if got := searchFieldNames(t, session, "esg test scope 1"); !contains(got, "esg_test_scope1_tco2e") {
++		t.Errorf("extra field not found: %v", got)
++	}
++	if got := searchFieldNames(t, session, "energy"); !contains(got, "total_energy_consumption_kwh") {
++		t.Errorf("built-in demo field not found: %v", got)
++	}
++}
++
++func TestDemoModeWithoutMappingsLoadsBuiltInOnly(t *testing.T) {
++	session := demoSession(t, false, "")
++	if got := searchFieldNames(t, session, "energy"); !contains(got, "total_energy_consumption_kwh") {
++		t.Errorf("built-in demo field not found: %v", got)
++	}
++	if got := searchFieldNames(t, session, "esg test scope 1"); contains(got, "esg_test_scope1_tco2e") {
++		t.Errorf("extra field unexpectedly present: %v", got)
++	}
++}
++
++func TestDemoModeMissingMappingsFileFailsStartup(t *testing.T) {
++	t.Setenv("NL_DEMO_MODE", "true")
++	t.Setenv("NL_DB_PATH", filepath.Join(t.TempDir(), "demo.db"))
++	t.Setenv("NL_API_KEY", "demo")
++	t.Setenv("NL_LISTEN_ADDR", "127.0.0.1:0")
++	t.Setenv("NL_READ_CACHE_TTL", "0")
++	_, _, cleanup, err := buildServer("", filepath.Join(t.TempDir(), "missing.yaml"))
++	if err == nil {
++		cleanup()
++		t.Fatal("buildServer succeeded, want error")
++	}
++	if !strings.Contains(err.Error(), "load demo extra mappings") {
++		t.Fatalf("error = %v, want load demo extra mappings", err)
++	}
++}
++
++func connectDemo(t *testing.T, handler http.Handler) *mcp.ClientSession {
++	t.Helper()
++	srv := httptest.NewServer(handler)
++	t.Cleanup(srv.Close)
++	client := mcp.NewClient(&mcp.Implementation{Name: "demo-pipeline-test", Version: "dev"}, nil)
++	session, err := client.Connect(context.Background(), &mcp.StreamableClientTransport{
++		Endpoint:   srv.URL + "/mcp",
++		HTTPClient: bearerHTTPClient("demo"),
++	}, nil)
++	if err != nil {
++		t.Fatalf("Connect: %v", err)
++	}
++	t.Cleanup(func() { _ = session.Close() })
++	return session
++}
+diff --git a/cmd/workiva-mcp/main.go b/cmd/workiva-mcp/main.go
+index e924db2..1bb0c8e 100644
+--- a/cmd/workiva-mcp/main.go
++++ b/cmd/workiva-mcp/main.go
+@@ -21,13 +21,17 @@ import (
+ 	"github.com/dantalabs/northern-lights/internal/assurance"
+ 	"github.com/dantalabs/northern-lights/internal/audit"
+ 	"github.com/dantalabs/northern-lights/internal/bootstrap"
++	"github.com/dantalabs/northern-lights/internal/changeset"
+ 	"github.com/dantalabs/northern-lights/internal/config"
++	"github.com/dantalabs/northern-lights/internal/demoenv"
+ 	"github.com/dantalabs/northern-lights/internal/identity"
+ 	"github.com/dantalabs/northern-lights/internal/mapping"
+ 	"github.com/dantalabs/northern-lights/internal/mcpserver"
+ 	"github.com/dantalabs/northern-lights/internal/mcpserver/tools"
+ 	"github.com/dantalabs/northern-lights/internal/ratelimit"
++	"github.com/dantalabs/northern-lights/internal/recipe"
+ 	"github.com/dantalabs/northern-lights/internal/relationships"
++	"github.com/dantalabs/northern-lights/internal/sectiontext"
+ 	"github.com/dantalabs/northern-lights/internal/sqlitedb"
+ 	"github.com/dantalabs/northern-lights/internal/transfer"
+ 	"github.com/dantalabs/northern-lights/internal/workiva"
+@@ -301,7 +305,9 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
+ 	}
+ 	provisionCleanupOnFailure = false
+ 
+-	// from the built-in demo fixture when running in demo mode.
++	// Mappings come from the -mappings file (or configs/config.yaml when it
++	// exists) in normal mode. In demo mode they come from the built-in demo
++	// fixture, plus the -mappings file when one is given.
+ 	path := mappingsPath
+ 	if cfg.DemoMode {
+ 		if err := bootstrap.LoadDemoMappings(storageCtx, store); err != nil {
+@@ -309,6 +315,19 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
+ 			return nil, nil, nil, fmt.Errorf("load demo mappings: %w", err)
+ 		}
+ 		log.Println("loaded demo mappings")
++		if mappingsPath != "" {
++			// bootstrap.LoadMappings silently ignores a missing file, so a
++			// typo in -mappings must fail startup here.
++			if _, err := os.Stat(mappingsPath); err != nil {
++				cleanup()
++				return nil, nil, nil, fmt.Errorf("load demo extra mappings: %w", err)
++			}
++			if err := bootstrap.LoadMappings(storageCtx, mappingsPath, store); err != nil {
++				cleanup()
++				return nil, nil, nil, fmt.Errorf("load demo extra mappings: %w", err)
++			}
++			log.Printf("loaded extra mappings from %s", mappingsPath)
++		}
+ 	} else {
+ 		if path == "" {
+ 			const defaultMappings = "configs/config.yaml"
+@@ -386,6 +405,11 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
+ 	for _, tool := range tools.All() {
+ 		registry.Register(tool)
+ 	}
++	if cfg.DemoPipelineEnabled {
++		for _, tool := range tools.Demo() {
++			registry.Register(tool)
++		}
++	}
+ 
+ 	graphStore, err := relationships.NewStore(assuranceStore.DB(), assuranceStore.Ready)
+ 	if err != nil {
+@@ -395,7 +419,7 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
+ 	// Production transfer remains opt-in; enabling it is not release acceptance.
+ 	authOptions.Version = version
+ 	authOptions.DisableLocalhostProtection = cfg.DisableLocalhostProtection
+-	handler, err := mcpserver.New(mcpserver.Deps{
++	deps := mcpserver.Deps{
+ 		Client:        workivaBackend,
+ 		Store:         store,
+ 		Audit:         auditLog,
+@@ -404,7 +428,16 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
+ 		Transfer:      transferService,
+ 		DrainGate:     maintenance.gate,
+ 		Cfg:           cfg,
+-	}, registry, &authOptions)
++	}
++	if cfg.DemoPipelineEnabled {
++		env := demoenv.Env{DB: db, Store: store, Audit: auditLog, Client: workivaBackend, Cfg: cfg}
++		if err := wireDemoPipeline(env, &deps); err != nil {
++			cleanup()
++			return nil, nil, nil, err
++		}
++		log.Println("demo pipeline enabled: 4 demo tools registered")
++	}
++	handler, err := mcpserver.New(deps, registry, &authOptions)
+ 	if err != nil {
+ 		cleanup()
+ 		return nil, nil, nil, err
+@@ -413,6 +446,19 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
+ 	return cfg, &productionHandler{Handler: handler, maintenance: maintenance, backupMaintenance: backupMaintenance}, cleanup, nil
+ }
+ 
++// wireDemoPipeline builds the demo lane services once and puts them in deps.
++// Lanes replace the constructor bodies in their own packages, never this function.
++func wireDemoPipeline(env demoenv.Env, deps *mcpserver.Deps) error {
++	changes := changeset.New(env)
++	recipes, facts, err := recipe.New(env, changes)
++	if err != nil {
++		return fmt.Errorf("demo pipeline: section recipes: %w", err)
++	}
++	deps.ChangeSets, deps.Recipes, deps.Facts = changes, recipes, facts
++	deps.SectionText = sectiontext.New(env, recipes, facts)
++	return nil
++}
++
+ // storageContextForConfig supplies startup/bootstrap work with the same
+ // trusted tenant boundary used by requests. API-key mode deliberately has no
+ // principal and therefore resolves to the explicit legacy tenant.

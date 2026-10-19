@@ -1,0 +1,764 @@
+commit 8dea5f6072c453cf3a0b79c653c106daadafd6c2
+Author: Sam <samvillaf@gmail.com>
+Date:   Mon Oct 19 14:48:51 2026 +0700
+
+    T3: add demo Deps fields, tools.Demo() and four tool stubs with final schemas
+    
+    Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+diff --git a/.pipeline/runs/20261019-0702/reports/T3-a1.md b/.pipeline/runs/20261019-0702/reports/T3-a1.md
+new file mode 100644
+index 0000000..0a1db2b
+--- /dev/null
++++ b/.pipeline/runs/20261019-0702/reports/T3-a1.md
+@@ -0,0 +1,20 @@
++# T3 attempt 1 report
++
++Status: done. Branch task/20261019-0702-T3-a1, base 35fea18. Commit SHA: see `git log` of the branch (single commit "T3: ...").
++
++## Changed
++- internal/mcpserver/registry.go: Deps gains ChangeSets, Recipes, Facts, SectionText (nil unless NL_DEMO_PIPELINE).
++- internal/mcpserver/tools/demo.go: Demo(), requireDemoDep, notImplementedYet.
++- prepare_section.go, change_set.go, section_text.go: four stub tools with final closed, bounded input/output schemas; dependency check, then "not implemented yet" error.
++- demo_test.go (TestDemoToolsOrder, TestDemoToolSchemasAreClosedAndBounded, TestDemoToolsNameMissingDependency, serveDemoTools, resultText) and lane-owned stub tests in prepare_section_test.go, change_set_test.go, section_text_test.go.
++
++## Commands (exit codes)
++- go build ./... : 0
++- go test ./internal/mcpserver/... -race -count=1 : 0 (existing tests unchanged)
++- six-test targeted -run -v check: all PASS
++- go vet ./... : 0; gofmt -l . empty; golangci-lint run: 0 issues
++- git diff --diff-filter=MD ... '*_test.go' guard: empty (0)
++
++## Notes
++- No go.mod/go.sum change. tools.All(), server.go and existing tools untouched.
++- Helper resultText lives in demo_test.go and is shared by the lane stub tests.
+diff --git a/internal/mcpserver/registry.go b/internal/mcpserver/registry.go
+index 22b8e32..2679ce8 100644
+--- a/internal/mcpserver/registry.go
++++ b/internal/mcpserver/registry.go
+@@ -11,9 +11,12 @@ import (
+ 
+ 	"github.com/dantalabs/northern-lights/internal/assurance"
+ 	"github.com/dantalabs/northern-lights/internal/audit"
++	"github.com/dantalabs/northern-lights/internal/changeset"
+ 	"github.com/dantalabs/northern-lights/internal/config"
+ 	"github.com/dantalabs/northern-lights/internal/mapping"
++	"github.com/dantalabs/northern-lights/internal/recipe"
+ 	"github.com/dantalabs/northern-lights/internal/relationships"
++	"github.com/dantalabs/northern-lights/internal/sectiontext"
+ 	"github.com/dantalabs/northern-lights/internal/transfer"
+ 	"github.com/dantalabs/northern-lights/internal/workivaprovider"
+ )
+@@ -28,6 +31,13 @@ type Deps struct {
+ 	Assurance     *assurance.Store
+ 	Relationships *relationships.Store
+ 	Transfer      *transfer.Service
++	// ChangeSets, Recipes, Facts and SectionText are set only when
++	// NL_DEMO_PIPELINE is on. The demo tools fail with a clear error when
++	// one of them is nil.
++	ChangeSets  changeset.Service
++	Recipes     recipe.Service
++	Facts       recipe.FactStore
++	SectionText sectiontext.Service
+ 	// DrainGate is shared with the production backup coordinator and janitor.
+ 	// Nil is permitted only for isolated handlers without backup maintenance.
+ 	DrainGate *assurance.DrainGate
+diff --git a/internal/mcpserver/tools/change_set.go b/internal/mcpserver/tools/change_set.go
+new file mode 100644
+index 0000000..c6c3f76
+--- /dev/null
++++ b/internal/mcpserver/tools/change_set.go
+@@ -0,0 +1,80 @@
++package tools
++
++import (
++	"context"
++
++	"github.com/modelcontextprotocol/go-sdk/mcp"
++
++	"github.com/dantalabs/northern-lights/internal/mcpserver"
++)
++
++// confirmChangeSetTool implements workiva_confirm_change_set.
++type confirmChangeSetTool struct{}
++
++// ConfirmChangeSet returns the workiva_confirm_change_set tool.
++func ConfirmChangeSet() mcpserver.Tool { return confirmChangeSetTool{} }
++
++const confirmChangeSetName = "workiva_confirm_change_set"
++
++const confirmChangeSetDescription = `Writes every field in a previewed change set after the person approved it, using the change set ID and confirmation token. Call it only after workiva_prepare_section returned a change set and the person explicitly approved the preview.`
++
++func (confirmChangeSetTool) Name() string { return confirmChangeSetName }
++
++func (confirmChangeSetTool) Description() string { return confirmChangeSetDescription }
++
++type confirmChangeSetInput struct {
++	ChangeSetID  string `json:"change_set_id"`
++	ConfirmToken string `json:"confirm_token"`
++}
++
++type confirmChangeSetItem struct {
++	FieldName    string `json:"field_name"`
++	Status       string `json:"status"`
++	ReadBack     string `json:"read_back,omitempty"`
++	AuditID      string `json:"audit_id,omitempty"`
++	OperationURL string `json:"operation_url,omitempty"`
++}
++
++type confirmChangeSetOutput struct {
++	// NLAuditID is filled by the server middleware.
++	NLAuditID   string                 `json:"nl_audit_id,omitempty"`
++	ChangeSetID string                 `json:"change_set_id"`
++	Items       []confirmChangeSetItem `json:"items"`
++	Summary     string                 `json:"summary"`
++}
++
++func confirmChangeSetInputSchema() map[string]any {
++	return objectSchema(map[string]any{
++		"change_set_id": boundedSchema("change set ID from workiva_prepare_section", 128),
++		"confirm_token": boundedSchema("confirmation token from workiva_prepare_section", 4096),
++	}, []string{"change_set_id", "confirm_token"})
++}
++
++func confirmChangeSetOutputSchema() map[string]any {
++	item := objectSchema(map[string]any{
++		"field_name":    boundedSchema("field name", 256),
++		"status":        boundedSchema("write status", 32),
++		"read_back":     optionalString("value read back after the write", 4096),
++		"audit_id":      optionalString("audit ID of the write", 128),
++		"operation_url": optionalString("Workiva operation URL", 2048),
++	}, []string{"field_name", "status"})
++	return objectSchema(mergeProperties(commonStructuredOutputProperties(), map[string]any{
++		"change_set_id": boundedSchema("change set ID", 128),
++		"items":         map[string]any{"type": "array", "maxItems": 500, "items": item},
++		"summary":       optionalString("markdown summary of the writes", 262144),
++	}), []string{"change_set_id", "items", "summary"})
++}
++
++func (confirmChangeSetTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
++	mcp.AddTool(s, &mcp.Tool{
++		Name:         confirmChangeSetName,
++		Description:  confirmChangeSetDescription,
++		InputSchema:  confirmChangeSetInputSchema(),
++		OutputSchema: confirmChangeSetOutputSchema(),
++	}, func(_ context.Context, _ *mcp.CallToolRequest, _ confirmChangeSetInput) (*mcp.CallToolResult, confirmChangeSetOutput, error) {
++		if err := requireDemoDep(deps.ChangeSets != nil, "ChangeSets"); err != nil {
++			return nil, confirmChangeSetOutput{}, err
++		}
++		return nil, confirmChangeSetOutput{}, notImplementedYet(confirmChangeSetName)
++	})
++}
+diff --git a/internal/mcpserver/tools/change_set_test.go b/internal/mcpserver/tools/change_set_test.go
+new file mode 100644
+index 0000000..f18fc3d
+--- /dev/null
++++ b/internal/mcpserver/tools/change_set_test.go
+@@ -0,0 +1,30 @@
++package tools
++
++import (
++	"context"
++	"net/http"
++	"strings"
++	"testing"
++
++	"github.com/modelcontextprotocol/go-sdk/mcp"
++
++	"github.com/dantalabs/northern-lights/internal/changeset"
++	"github.com/dantalabs/northern-lights/internal/demoenv"
++)
++
++// TestConfirmChangeSetStubNotImplementedYet is replaced by the L1 lane.
++func TestConfirmChangeSetStubNotImplementedYet(t *testing.T) {
++	deps := newTestEnv(t, http.NotFound).deps
++	deps.ChangeSets = changeset.New(demoenv.Env{})
++
++	session := serveDemoTools(t, deps)
++	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
++		Name: "workiva_confirm_change_set", Arguments: map[string]any{"change_set_id": "cs-1", "confirm_token": "tok"},
++	})
++	if err != nil {
++		t.Fatalf("CallTool: %v", err)
++	}
++	if !result.IsError || !strings.Contains(resultText(result), "not implemented yet") {
++		t.Fatalf("want a not implemented yet error, got %+v", result)
++	}
++}
+diff --git a/internal/mcpserver/tools/demo.go b/internal/mcpserver/tools/demo.go
+new file mode 100644
+index 0000000..1cae9a2
+--- /dev/null
++++ b/internal/mcpserver/tools/demo.go
+@@ -0,0 +1,26 @@
++package tools
++
++import "github.com/dantalabs/northern-lights/internal/mcpserver"
++
++// Demo returns the four demo pipeline tools, registered after All() only when NL_DEMO_PIPELINE=true.
++func Demo() []mcpserver.Tool {
++	return []mcpserver.Tool{
++		PrepareSection(),
++		ConfirmChangeSet(),
++		StageSectionText(),
++		ConfirmSectionText(),
++	}
++}
++
++// requireDemoDep fails with a clear message when a demo service is missing.
++func requireDemoDep(present bool, name string) error {
++	if present {
++		return nil
++	}
++	return failMsg(name+" is not available", "server misconfiguration: start the server with NL_DEMO_PIPELINE=true")
++}
++
++// notImplementedYet is the stub handler result until a lane replaces it.
++func notImplementedYet(tool string) error {
++	return failMsg(tool+" is not implemented yet", "this demo tool is a placeholder until its lane lands")
++}
+diff --git a/internal/mcpserver/tools/demo_test.go b/internal/mcpserver/tools/demo_test.go
+new file mode 100644
+index 0000000..37a67f4
+--- /dev/null
++++ b/internal/mcpserver/tools/demo_test.go
+@@ -0,0 +1,144 @@
++package tools
++
++import (
++	"context"
++	"net/http"
++	"net/http/httptest"
++	"strings"
++	"testing"
++
++	"github.com/modelcontextprotocol/go-sdk/mcp"
++
++	"github.com/dantalabs/northern-lights/internal/mcpserver"
++)
++
++// serveDemoTools serves Demo() over streamable HTTP and returns a connected
++// client session.
++func serveDemoTools(t *testing.T, deps mcpserver.Deps) *mcp.ClientSession {
++	t.Helper()
++	reg := mcpserver.NewRegistry()
++	for _, tool := range Demo() {
++		reg.Register(tool)
++	}
++	handler, err := mcpserver.New(deps, reg, &mcpserver.Options{APIToken: "test-token"})
++	if err != nil {
++		t.Fatalf("mcpserver.New: %v", err)
++	}
++	srv := httptest.NewServer(handler)
++	t.Cleanup(srv.Close)
++	session, err := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "dev"}, nil).Connect(context.Background(),
++		&mcp.StreamableClientTransport{Endpoint: srv.URL + "/mcp", HTTPClient: bearerHTTPClient("test-token")}, nil)
++	if err != nil {
++		t.Fatalf("Connect: %v", err)
++	}
++	t.Cleanup(func() { _ = session.Close() })
++	return session
++}
++
++var demoToolNames = []string{
++	"workiva_prepare_section",
++	"workiva_confirm_change_set",
++	"workiva_stage_section_text",
++	"workiva_confirm_section_text",
++}
++
++func TestDemoToolsOrder(t *testing.T) {
++	demo := Demo()
++	if len(demo) != len(demoToolNames) {
++		t.Fatalf("Demo() returned %d tools, want %d", len(demo), len(demoToolNames))
++	}
++	for i, tool := range demo {
++		if tool.Name() != demoToolNames[i] {
++			t.Errorf("Demo()[%d] = %q, want %q", i, tool.Name(), demoToolNames[i])
++		}
++		if tool.Description() == "" {
++			t.Errorf("%s has an empty description", tool.Name())
++		}
++	}
++
++	reg := mcpserver.NewRegistry()
++	for _, tool := range All() {
++		reg.Register(tool)
++	}
++	for _, tool := range demo {
++		reg.Register(tool)
++	}
++	names := reg.Names()
++	if len(names) != 17 {
++		t.Fatalf("registry has %d names, want 17: %v", len(names), names)
++	}
++	for i, want := range demoToolNames {
++		if got := names[13+i]; got != want {
++			t.Errorf("names[%d] = %q, want %q", 13+i, got, want)
++		}
++	}
++
++	server := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "dev"}, nil)
++	if err := reg.Bind(server, newTestEnv(t, http.NotFound).deps); err != nil {
++		t.Fatalf("Bind: %v", err)
++	}
++}
++
++func TestDemoToolSchemasAreClosedAndBounded(t *testing.T) {
++	session := serveDemoTools(t, newTestEnv(t, http.NotFound).deps)
++	list, err := session.ListTools(context.Background(), nil)
++	if err != nil {
++		t.Fatalf("ListTools: %v", err)
++	}
++	if len(list.Tools) != len(demoToolNames) {
++		t.Fatalf("listed %d tools, want %d", len(list.Tools), len(demoToolNames))
++	}
++	for _, tool := range list.Tools {
++		for label, schema := range map[string]any{"input": tool.InputSchema, "output": tool.OutputSchema} {
++			path := tool.Name + "." + label
++			object, ok := schema.(map[string]any)
++			if !ok || object["type"] != "object" {
++				t.Errorf("%s: schema is not an object: %v", path, schema)
++				continue
++			}
++			verifyClosedBoundedSchema(t, path, schema)
++			walkSchema(t, path, schema)
++		}
++	}
++}
++
++func TestDemoToolsNameMissingDependency(t *testing.T) {
++	session := serveDemoTools(t, newTestEnv(t, http.NotFound).deps)
++	block := map[string]any{"kind": "narrative", "text": "Energy use fell."}
++	calls := []struct {
++		tool string
++		args map[string]any
++		dep  string
++	}{
++		{"workiva_prepare_section", map[string]any{"section_id": "environmental"}, "Recipes"},
++		{"workiva_confirm_change_set", map[string]any{"change_set_id": "cs-1", "confirm_token": "tok"}, "ChangeSets"},
++		{"workiva_stage_section_text", map[string]any{"section_id": "environmental", "blocks": []any{block}}, "SectionText"},
++		{"workiva_confirm_section_text", map[string]any{"text_id": "tx-1", "confirm_token": "tok"}, "SectionText"},
++	}
++	for _, c := range calls {
++		t.Run(c.tool, func(t *testing.T) {
++			result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: c.tool, Arguments: c.args})
++			if err != nil {
++				t.Fatalf("CallTool: %v", err)
++			}
++			if !result.IsError {
++				t.Fatalf("expected an error result, got %+v", result)
++			}
++			text := resultText(result)
++			if !strings.Contains(text, "is not available") || !strings.Contains(text, c.dep) {
++				t.Errorf("error text %q does not name missing %s", text, c.dep)
++			}
++		})
++	}
++}
++
++// resultText joins the text content of a tool result.
++func resultText(result *mcp.CallToolResult) string {
++	var b strings.Builder
++	for _, c := range result.Content {
++		if tc, ok := c.(*mcp.TextContent); ok {
++			b.WriteString(tc.Text)
++		}
++	}
++	return b.String()
++}
+diff --git a/internal/mcpserver/tools/prepare_section.go b/internal/mcpserver/tools/prepare_section.go
+new file mode 100644
+index 0000000..435a88d
+--- /dev/null
++++ b/internal/mcpserver/tools/prepare_section.go
+@@ -0,0 +1,153 @@
++package tools
++
++import (
++	"context"
++
++	"github.com/modelcontextprotocol/go-sdk/mcp"
++
++	"github.com/dantalabs/northern-lights/internal/mcpserver"
++)
++
++// prepareSectionTool implements workiva_prepare_section.
++type prepareSectionTool struct{}
++
++// PrepareSection returns the workiva_prepare_section tool.
++func PrepareSection() mcpserver.Tool { return prepareSectionTool{} }
++
++const prepareSectionName = "workiva_prepare_section"
++
++const prepareSectionDescription = `Prepares one report section from its section recipe, returning findings, narrative facts, verbatim blocks and a change set preview. Call it first when a consultant asks to update a section, before staging any section text.`
++
++func (prepareSectionTool) Name() string { return prepareSectionName }
++
++func (prepareSectionTool) Description() string { return prepareSectionDescription }
++
++type prepareSectionInput struct {
++	SectionID string `json:"section_id"`
++}
++
++type prepareFinding struct {
++	Kind     string `json:"kind"`
++	Field    string `json:"field"`
++	Severity string `json:"severity"`
++	Message  string `json:"message"`
++}
++
++type prepareFact struct {
++	Key       string   `json:"key"`
++	Label     string   `json:"label"`
++	Unit      string   `json:"unit,omitempty"`
++	Current   string   `json:"current"`
++	Prior     string   `json:"prior,omitempty"`
++	Change    string   `json:"change,omitempty"`
++	ChangePct string   `json:"change_pct,omitempty"`
++	Direction string   `json:"direction"`
++	Material  bool     `json:"material"`
++	Display   []string `json:"display"`
++}
++
++type prepareVerbatim struct {
++	ID    string `json:"id"`
++	Title string `json:"title"`
++	Text  string `json:"text"`
++}
++
++type prepareChangeSetItem struct {
++	FieldName     string `json:"field_name"`
++	SpreadsheetID string `json:"spreadsheet_id"`
++	SheetID       string `json:"sheet_id"`
++	Range         string `json:"range"`
++	Before        string `json:"before,omitempty"`
++	After         string `json:"after,omitempty"`
++	Source        string `json:"source,omitempty"`
++}
++
++type prepareChangeSet struct {
++	ChangeSetID  string                 `json:"change_set_id"`
++	ConfirmToken string                 `json:"confirm_token"`
++	ExpiresAt    string                 `json:"expires_at"`
++	Items        []prepareChangeSetItem `json:"items"`
++}
++
++type prepareSectionOutput struct {
++	// NLAuditID is filled by the server middleware.
++	NLAuditID string            `json:"nl_audit_id,omitempty"`
++	SectionID string            `json:"section_id"`
++	Findings  []prepareFinding  `json:"findings"`
++	Facts     []prepareFact     `json:"facts"`
++	Verbatim  []prepareVerbatim `json:"verbatim"`
++	ChangeSet prepareChangeSet  `json:"change_set"`
++	Summary   string            `json:"summary"`
++	NextStep  string            `json:"next_step"`
++}
++
++func prepareSectionInputSchema() map[string]any {
++	return objectSchema(map[string]any{
++		"section_id": boundedSchema("section ID of the section recipe to prepare", 128),
++	}, []string{"section_id"})
++}
++
++func prepareSectionOutputSchema() map[string]any {
++	finding := objectSchema(map[string]any{
++		"kind":     boundedSchema("finding kind", 32),
++		"field":    boundedSchema("field the finding concerns", 256),
++		"severity": boundedSchema("finding severity", 32),
++		"message":  boundedSchema("finding message", 1024),
++	}, []string{"kind", "field", "severity", "message"})
++	fact := objectSchema(map[string]any{
++		"key":        boundedSchema("narrative fact key", 256),
++		"label":      boundedSchema("narrative fact label", 256),
++		"unit":       optionalString("unit of the value", 32),
++		"current":    boundedSchema("current value display string", 64),
++		"prior":      optionalString("prior period value display string", 64),
++		"change":     optionalString("absolute change display string", 64),
++		"change_pct": optionalString("percentage change display string", 64),
++		"direction":  boundedEnum("up", "down", "flat", "new"),
++		"material":   map[string]any{"type": "boolean"},
++		"display": map[string]any{"type": "array", "maxItems": 16,
++			"items": boundedSchema("display string the number guard accepts", 128)},
++	}, []string{"key", "label", "current", "direction", "material", "display"})
++	verbatim := objectSchema(map[string]any{
++		"id":    boundedSchema("verbatim block ID", 128),
++		"title": boundedSchema("verbatim block title", 256),
++		"text":  boundedSchema("verbatim block text, exact", 16000),
++	}, []string{"id", "title", "text"})
++	item := objectSchema(map[string]any{
++		"field_name":     boundedSchema("field name", 256),
++		"spreadsheet_id": boundedSchema("spreadsheet ID", 128),
++		"sheet_id":       boundedSchema("sheet ID", 128),
++		"range":          boundedSchema("cell range", 512),
++		"before":         optionalString("value before the write", 4096),
++		"after":          optionalString("value after the write", 4096),
++		"source":         optionalString("where the new value comes from", 256),
++	}, []string{"field_name", "spreadsheet_id", "sheet_id", "range"})
++	changeSet := objectSchema(map[string]any{
++		"change_set_id": boundedSchema("change set ID", 128),
++		"confirm_token": boundedSchema("confirmation token for the change set", 4096),
++		"expires_at":    boundedSchema("expiry time, RFC 3339", 64),
++		"items":         map[string]any{"type": "array", "maxItems": 500, "items": item},
++	}, []string{"change_set_id", "confirm_token", "expires_at", "items"})
++	return objectSchema(mergeProperties(commonStructuredOutputProperties(), map[string]any{
++		"section_id": boundedSchema("section ID", 128),
++		"findings":   map[string]any{"type": "array", "maxItems": 500, "items": finding},
++		"facts":      map[string]any{"type": "array", "maxItems": 500, "items": fact},
++		"verbatim":   map[string]any{"type": "array", "maxItems": 50, "items": verbatim},
++		"change_set": changeSet,
++		"summary":    optionalString("markdown summary of the preparation", 262144),
++		"next_step":  boundedSchema("what to do next", 1024),
++	}), []string{"section_id", "findings", "facts", "verbatim", "change_set", "summary", "next_step"})
++}
++
++func (prepareSectionTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
++	mcp.AddTool(s, &mcp.Tool{
++		Name:         prepareSectionName,
++		Description:  prepareSectionDescription,
++		InputSchema:  prepareSectionInputSchema(),
++		OutputSchema: prepareSectionOutputSchema(),
++	}, func(_ context.Context, _ *mcp.CallToolRequest, _ prepareSectionInput) (*mcp.CallToolResult, prepareSectionOutput, error) {
++		if err := requireDemoDep(deps.Recipes != nil, "Recipes"); err != nil {
++			return nil, prepareSectionOutput{}, err
++		}
++		return nil, prepareSectionOutput{}, notImplementedYet(prepareSectionName)
++	})
++}
+diff --git a/internal/mcpserver/tools/prepare_section_test.go b/internal/mcpserver/tools/prepare_section_test.go
+new file mode 100644
+index 0000000..475f2ab
+--- /dev/null
++++ b/internal/mcpserver/tools/prepare_section_test.go
+@@ -0,0 +1,35 @@
++package tools
++
++import (
++	"context"
++	"net/http"
++	"strings"
++	"testing"
++
++	"github.com/modelcontextprotocol/go-sdk/mcp"
++
++	"github.com/dantalabs/northern-lights/internal/demoenv"
++	"github.com/dantalabs/northern-lights/internal/recipe"
++)
++
++// TestPrepareSectionStubNotImplementedYet is replaced by the L2 lane.
++func TestPrepareSectionStubNotImplementedYet(t *testing.T) {
++	t.Setenv("NL_DEMO_SECTIONS_DIR", t.TempDir())
++	deps := newTestEnv(t, http.NotFound).deps
++	recipes, facts, err := recipe.New(demoenv.Env{}, nil)
++	if err != nil {
++		t.Fatalf("recipe.New: %v", err)
++	}
++	deps.Recipes, deps.Facts = recipes, facts
++
++	session := serveDemoTools(t, deps)
++	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
++		Name: "workiva_prepare_section", Arguments: map[string]any{"section_id": "environmental"},
++	})
++	if err != nil {
++		t.Fatalf("CallTool: %v", err)
++	}
++	if !result.IsError || !strings.Contains(resultText(result), "not implemented yet") {
++		t.Fatalf("want a not implemented yet error, got %+v", result)
++	}
++}
+diff --git a/internal/mcpserver/tools/section_text.go b/internal/mcpserver/tools/section_text.go
+new file mode 100644
+index 0000000..b6f2536
+--- /dev/null
++++ b/internal/mcpserver/tools/section_text.go
+@@ -0,0 +1,144 @@
++package tools
++
++import (
++	"context"
++
++	"github.com/modelcontextprotocol/go-sdk/mcp"
++
++	"github.com/dantalabs/northern-lights/internal/mcpserver"
++)
++
++const (
++	stageSectionTextName   = "workiva_stage_section_text"
++	confirmSectionTextName = "workiva_confirm_section_text"
++)
++
++const stageSectionTextDescription = `Stages the narrative blocks and verbatim blocks for a section in the report document and returns a preview, after the number guard checks every number. Call it after workiva_prepare_section, once the narrative blocks are drafted from the narrative facts.`
++
++const confirmSectionTextDescription = `Writes previously staged section text into the report document after the person approved the preview. Call it only after workiva_stage_section_text returned a preview and the person explicitly approved it.`
++
++// stageSectionTextTool implements workiva_stage_section_text.
++type stageSectionTextTool struct{}
++
++// StageSectionText returns the workiva_stage_section_text tool.
++func StageSectionText() mcpserver.Tool { return stageSectionTextTool{} }
++
++// confirmSectionTextTool implements workiva_confirm_section_text.
++type confirmSectionTextTool struct{}
++
++// ConfirmSectionText returns the workiva_confirm_section_text tool.
++func ConfirmSectionText() mcpserver.Tool { return confirmSectionTextTool{} }
++
++func (stageSectionTextTool) Name() string        { return stageSectionTextName }
++func (stageSectionTextTool) Description() string { return stageSectionTextDescription }
++
++func (confirmSectionTextTool) Name() string        { return confirmSectionTextName }
++func (confirmSectionTextTool) Description() string { return confirmSectionTextDescription }
++
++type sectionTextBlock struct {
++	Kind       string `json:"kind"`
++	Text       string `json:"text"`
++	VerbatimID string `json:"verbatim_id,omitempty"`
++}
++
++type stageSectionTextInput struct {
++	SectionID string             `json:"section_id"`
++	Blocks    []sectionTextBlock `json:"blocks"`
++}
++
++type stageSectionTextOutput struct {
++	// NLAuditID is filled by the server middleware.
++	NLAuditID    string             `json:"nl_audit_id,omitempty"`
++	TextID       string             `json:"text_id"`
++	ConfirmToken string             `json:"confirm_token"`
++	SectionID    string             `json:"section_id"`
++	SectionTitle string             `json:"section_title"`
++	Blocks       []sectionTextBlock `json:"blocks"`
++	ExpiresAt    string             `json:"expires_at"`
++	Summary      string             `json:"summary"`
++}
++
++type confirmSectionTextInput struct {
++	TextID       string `json:"text_id"`
++	ConfirmToken string `json:"confirm_token"`
++}
++
++type confirmSectionTextOutput struct {
++	// NLAuditID is filled by the server middleware.
++	NLAuditID        string `json:"nl_audit_id,omitempty"`
++	SectionID        string `json:"section_id"`
++	DocumentID       string `json:"document_id"`
++	WorkivaSectionID string `json:"workiva_section_id"`
++	AuditID          string `json:"audit_id,omitempty"`
++}
++
++func sectionTextBlockSchema() map[string]any {
++	return objectSchema(map[string]any{
++		"kind":        boundedEnum("narrative", "verbatim"),
++		"text":        boundedSchema("block text", 4000),
++		"verbatim_id": optionalString("verbatim block ID, required for verbatim blocks", 128),
++	}, []string{"kind", "text"})
++}
++
++func stageSectionTextInputSchema() map[string]any {
++	return objectSchema(map[string]any{
++		"section_id": boundedSchema("section ID", 128),
++		"blocks":     map[string]any{"type": "array", "maxItems": 20, "items": sectionTextBlockSchema()},
++	}, []string{"section_id", "blocks"})
++}
++
++func stageSectionTextOutputSchema() map[string]any {
++	return objectSchema(mergeProperties(commonStructuredOutputProperties(), map[string]any{
++		"text_id":       boundedSchema("staged text ID", 128),
++		"confirm_token": boundedSchema("confirmation token for the staged text", 4096),
++		"section_id":    boundedSchema("section ID", 128),
++		"section_title": boundedSchema("section title", 256),
++		"blocks":        map[string]any{"type": "array", "maxItems": 20, "items": sectionTextBlockSchema()},
++		"expires_at":    boundedSchema("expiry time, RFC 3339", 64),
++		"summary":       optionalString("markdown preview of the staged text", 90000),
++	}), []string{"text_id", "confirm_token", "section_id", "section_title", "blocks", "expires_at", "summary"})
++}
++
++func confirmSectionTextInputSchema() map[string]any {
++	return objectSchema(map[string]any{
++		"text_id":       boundedSchema("staged text ID from workiva_stage_section_text", 128),
++		"confirm_token": boundedSchema("confirmation token from workiva_stage_section_text", 4096),
++	}, []string{"text_id", "confirm_token"})
++}
++
++func confirmSectionTextOutputSchema() map[string]any {
++	return objectSchema(mergeProperties(commonStructuredOutputProperties(), map[string]any{
++		"section_id":         boundedSchema("section ID", 128),
++		"document_id":        boundedSchema("report document ID", 128),
++		"workiva_section_id": boundedSchema("Workiva section ID", 128),
++		"audit_id":           optionalString("audit ID of the write", 128),
++	}), []string{"section_id", "document_id", "workiva_section_id"})
++}
++
++func (stageSectionTextTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
++	mcp.AddTool(s, &mcp.Tool{
++		Name:         stageSectionTextName,
++		Description:  stageSectionTextDescription,
++		InputSchema:  stageSectionTextInputSchema(),
++		OutputSchema: stageSectionTextOutputSchema(),
++	}, func(_ context.Context, _ *mcp.CallToolRequest, _ stageSectionTextInput) (*mcp.CallToolResult, stageSectionTextOutput, error) {
++		if err := requireDemoDep(deps.SectionText != nil, "SectionText"); err != nil {
++			return nil, stageSectionTextOutput{}, err
++		}
++		return nil, stageSectionTextOutput{}, notImplementedYet(stageSectionTextName)
++	})
++}
++
++func (confirmSectionTextTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
++	mcp.AddTool(s, &mcp.Tool{
++		Name:         confirmSectionTextName,
++		Description:  confirmSectionTextDescription,
++		InputSchema:  confirmSectionTextInputSchema(),
++		OutputSchema: confirmSectionTextOutputSchema(),
++	}, func(_ context.Context, _ *mcp.CallToolRequest, _ confirmSectionTextInput) (*mcp.CallToolResult, confirmSectionTextOutput, error) {
++		if err := requireDemoDep(deps.SectionText != nil, "SectionText"); err != nil {
++			return nil, confirmSectionTextOutput{}, err
++		}
++		return nil, confirmSectionTextOutput{}, notImplementedYet(confirmSectionTextName)
++	})
++}
+diff --git a/internal/mcpserver/tools/section_text_test.go b/internal/mcpserver/tools/section_text_test.go
+new file mode 100644
+index 0000000..79b20c4
+--- /dev/null
++++ b/internal/mcpserver/tools/section_text_test.go
+@@ -0,0 +1,39 @@
++package tools
++
++import (
++	"context"
++	"net/http"
++	"strings"
++	"testing"
++
++	"github.com/modelcontextprotocol/go-sdk/mcp"
++
++	"github.com/dantalabs/northern-lights/internal/demoenv"
++	"github.com/dantalabs/northern-lights/internal/sectiontext"
++)
++
++// TestSectionTextStubsNotImplementedYet is replaced by the L3 lane.
++func TestSectionTextStubsNotImplementedYet(t *testing.T) {
++	deps := newTestEnv(t, http.NotFound).deps
++	deps.SectionText = sectiontext.New(demoenv.Env{}, nil, nil)
++
++	session := serveDemoTools(t, deps)
++	calls := map[string]map[string]any{
++		"workiva_stage_section_text": {
++			"section_id": "environmental",
++			"blocks":     []any{map[string]any{"kind": "narrative", "text": "Energy use fell."}},
++		},
++		"workiva_confirm_section_text": {"text_id": "tx-1", "confirm_token": "tok"},
++	}
++	for name, args := range calls {
++		t.Run(name, func(t *testing.T) {
++			result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: name, Arguments: args})
++			if err != nil {
++				t.Fatalf("CallTool: %v", err)
++			}
++			if !result.IsError || !strings.Contains(resultText(result), "not implemented yet") {
++				t.Fatalf("want a not implemented yet error, got %+v", result)
++			}
++		})
++	}
++}

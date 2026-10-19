@@ -1,0 +1,14 @@
+{
+  "task_id": "T2",
+  "axis": "standards",
+  "verdict": "pass",
+  "implementation_commit": "75c7b90b13b18217b216564172b66d0ed1b3923d",
+  "attempt": 1,
+  "findings": [
+    {"severity": "nit", "file": "internal/config/demo_pipeline_test.go", "line": 129, "issue": "The t.Setenv(\"\") then os.Unsetenv idiom to restore the host value is slightly indirect, though correct, and the plan prescribes it.", "fix": "No action needed. Optionally add NL_DEMO_PIPELINE to configEnvKeys when config_test.go is next legitimately edited."}
+  ],
+  "requirements_checked": [
+    {"requirement": "R1", "satisfied": true, "evidence": "internal/config/config.go Config.DemoPipelineEnabled, rawConfig yaml demo_pipeline_enabled, loadYAML copy, applyEnv LookupEnv NL_DEMO_PIPELINE; TestDemoPipelineEnabled (5 cases) passes in checks/T2-a1.log"}
+  ],
+  "new_tasks": []
+}

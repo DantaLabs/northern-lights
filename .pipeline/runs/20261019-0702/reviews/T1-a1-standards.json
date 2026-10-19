@@ -1,0 +1,15 @@
+{
+  "task_id": "T1",
+  "axis": "standards",
+  "attempt": 1,
+  "implementation_commit": "9dd36aa3cd90b8a2ed59b08601074f2455cb177d",
+  "verdict": "pass",
+  "findings": [
+    {"severity": "nit", "file": "internal/changeset/service.go", "line": 28, "issue": "Stub methods carry no-op discard lines such as `_, _, _ = ctx, actor, items`. Go permits unused parameters, so these lines are dead code. The same pattern appears in internal/recipe/service.go and internal/sectiontext/service.go. The `_ = env` in New was required by the task instructions; the per-method discards were not.", "fix": "Drop the discard lines in the stub methods, or name the parameters `_`. Lanes replace these bodies anyway."}
+  ],
+  "requirements_checked": [
+    {"requirement": "R7", "satisfied": true, "evidence": "internal/changeset/changeset.go, internal/recipe/types.go, internal/sectiontext/types.go and internal/workivaprovider/documents.go exist; checks log shows go build and go vet exit 0"},
+    {"requirement": "R12 (constructor half)", "satisfied": true, "evidence": "internal/demoenv/demoenv.go Env; changeset.New, recipe.New and sectiontext.New signatures confirmed by go doc checks in checks/T1-a1.log"}
+  ],
+  "new_tasks": []
+}

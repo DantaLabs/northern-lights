@@ -1,0 +1,47 @@
+{
+  "verdict": "revise",
+  "coverage": [
+    {"requirement": "R1", "tasks": ["T2"], "adequate": true, "note": "TestDemoPipelineEnabled covers default, env, YAML, env-over-YAML and the literal-'true' rule. rawConfig uses KnownFields(true), so the test fails without the new key."},
+    {"requirement": "R2", "tasks": ["T3", "T5"], "adequate": false, "note": "T3 TestDemoToolsOrder checks the Demo() and Registry.Names() order and is sound. T5 TestDemoPipelineFlagOnAddsFourTools asserts the order over tools/list, but go-sdk v1.7.0 returns tools/list sorted by name. That test cannot pass as written (finding 1)."},
+    {"requirement": "R3", "tasks": ["T5"], "adequate": false, "note": "The 13 and 17 count assertions are the right proof. Both T5 server tests also assert an order that the SDK does not keep, so both fail even with a correct implementation (finding 1)."},
+    {"requirement": "R4", "tasks": ["T3", "T5", "T6"], "adequate": false, "note": "The git diff guard and the full go test ./... in T6 protect the existing tests. TestDemoPipelineFlagOffKeepsThirteenTools compares tools/list to tools.All() in registration order. All() is not alphabetical (list_spreadsheets, read_range, search_fields, ...), so the test fails on unchanged code (finding 1)."},
+    {"requirement": "R5", "tasks": ["T3"], "adequate": true, "note": "The schema test uses verifyClosedBoundedSchema and walkSchema. The 'not implemented yet' checks sit in the lane-owned stub tests, which fail without the stubs. The c1 major finding is resolved."},
+    {"requirement": "R6", "tasks": ["T3"], "adequate": true, "note": "TestDemoToolsNameMissingDependency asserts 'is not available' plus the field name for each nil dependency."},
+    {"requirement": "R7", "tasks": ["T1"], "adequate": true, "note": "go build and go vet, plus go doc greps on the key signatures. The import graph was checked: workivaprovider, mapping, audit and config do not import mcpserver or any lane package, so there is no cycle."},
+    {"requirement": "R8", "tasks": ["T4"], "adequate": false, "note": "The predicate test proves isDemoDocumentsPath and isDemoESGPath. The 404 JSON tests pass without the hooks, because RoundTrip's default branch and demoSheetsResponse's unknown-ID branch both return the same demoNotFound body. Nothing proves that RoundTrip calls the hooks, or calls them before the sheetdata, values and update cases (finding 2)."},
+    {"requirement": "R9", "tasks": ["T5"], "adequate": true, "note": "Both scenario 6 cases are tested, plus the missing-file case (the c1 minor finding is resolved with os.Stat). bootstrap.LoadMappings ignores a missing file, as the plan says."},
+    {"requirement": "R10", "tasks": ["T7"], "adequate": true, "note": "The owner deferred it. T7 is a deferred placeholder with no dependents. Not flagged."},
+    {"requirement": "R11", "tasks": ["T6"], "adequate": true, "note": "TestVerifyMCPScript runs the real script with the flag off, the flag on with 17, and the flag on with the default 13 (which must fail with 'got 17'). The skip happens only at the top level. The script counts tools only, so the SDK's sort order does not affect it."},
+    {"requirement": "R12", "tasks": ["T1", "T5"], "adequate": true, "note": "go doc signature greps, the grep that counts one call per constructor in main.go, and TestDemoPipelineServicesReachTools. That test reuses main_test.go's bearerHTTPClient, which sends the actor header, so it stays valid if the demo tools are later added to writeTools. db in buildServer is *sql.DB from sqlitedb.Open, which matches demoenv.Env.DB."}
+  ],
+  "findings": [
+    {
+      "severity": "blocking",
+      "task_ids": ["T5"],
+      "claim": "TestDemoPipelineFlagOffKeepsThirteenTools can assert that the tools/list names equal tools.All() in order, and TestDemoPipelineFlagOnAddsFourTools can assert that the first 13 equal All() and the last four are in R2 order.",
+      "doubt": "go-sdk v1.7.0 Server.listTools paginates over featureSet, and featureSet.sortKeys uses slices.Sorted(maps.Keys(...)) (mcp/features.go:99-103). So tools/list always comes back sorted by tool name, not in registration order. tools.All() is not alphabetical (list_spreadsheets, read_range, search_fields, get_field, ...), so the flag-off test fails on unchanged code. With the flag on, the demo names sort into the middle of the list (workiva_confirm_change_set and workiva_confirm_section_text before workiva_get_field, workiva_prepare_section after workiva_list_spreadsheets). The 'last four' assertion cannot hold. internal/mcpserver has no tools/list ordering middleware. The executor would hit a deterministic red, and the only way to green would be to weaken the assertion without guidance or to add an ordering layer the spec never asked for.",
+      "fix": "In T5, compare tools/list as sets. Flag off: the sorted names equal the sorted tools.All() names (13). Flag on: 17 names, equal to the sorted union of the tools.All() names and the four demo names. Keep the R2 order proof where order exists, in T3's TestDemoToolsOrder (Demo() and Registry.Names() after All() then Demo()). Add an assumption: 'Scenario 2's last four in R2 order is checked on registration order (tools.Demo() and Registry.Names()), because go-sdk sorts tools/list by name.' This lets the reviewer accept the reading without the owner."
+    },
+    {
+      "severity": "major",
+      "task_ids": ["T4"],
+      "claim": "T4's tests prove that RoundTrip sends /documents, /content and demo-esg- paths to the lane hooks (R8, scenario 5 '404 JSON from demoDocumentsResponse ... from demoESGResponse').",
+      "doubt": "The hook stubs return demoNotFound(req.URL.Path), which is byte-identical to RoundTrip's default branch and to demoSheetsResponse's unknown-spreadsheet branch. TestDemoDocumentsResponseNotFound and TestDemoESGResponseNotFound therefore pass when the switch cases are missing. TestDemoTransportRoutesLaneHooks calls the predicates directly, not the switch. The order matters most for ESG. If the isDemoESGPath case is placed after isSheetDataPath, isValuesPath or isUpdatePath, then GET .../sheets/{s}/sheetdata, values reads and POST .../update for demo-esg- IDs go to the energy fixture handlers. L4 would then have to edit demo_client.go, which L0 owns, and that is exactly the shared edit L0 exists to prevent. No acceptance command would catch it.",
+      "fix": "Make the hook stubs distinguishable. For example, demoDocumentsResponse returns a 404 JSON body {\"error\":\"demo report documents not served yet: <path>\"} and demoESGResponse returns {\"error\":\"demo ESG fixture not served yet: <path>\"}, using a small local helper and leaving demoNotFound unchanged. In the lane-owned demo_documents_test.go and demo_esg_test.go, assert that marker through NewDemoTransport().RoundTrip for GET /documents/x, POST /documents/x and GET /content/x, and for GET /spreadsheets/demo-esg-x/sheets, GET /spreadsheets/demo-esg-x/sheets/s1/sheetdata and POST /spreadsheets/demo-esg-x/sheets/s1/update. These tests are handed to the lanes, so asserting stub text there is safe. The L0-owned route test stays unchanged."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T3"],
+      "claim": "demoStubDeps in the L0-owned demo_test.go never forces a lane to edit an L0 file (the intent behind the c1 major fix).",
+      "doubt": "demoStubDeps calls recipe.New(demoenv.Env{}, ...) with a zero Env and the default NL_DEMO_SECTIONS_DIR. After L2 lands (L2 R1), recipe.New reads configs/demo/sections relative to internal/mcpserver/tools, which does not exist there. Any L1 or L3 stub test still using the helper then fails. This is the same zero-Env hazard that removed TestWireDemoPipelineFillsDeps, moved to a different place. Also, only lane-owned tests call demoStubDeps. When the last lane replaces its stub test, the helper becomes unused, and golangci-lint's default 'unused' linter, which checks test files, fails CI on demo_test.go, a file the lane may not edit.",
+      "fix": "Do not put demoStubDeps in demo_test.go. Have each lane-owned stub test build its own stub dependencies inline, with only the service its tool needs: changeset.New for change_set_test.go, recipe.New after t.Setenv(\"NL_DEMO_SECTIONS_DIR\", t.TempDir()) for prepare_section_test.go, and sectiontext.New for section_text_test.go. demo_test.go then keeps only helpers that its own three tests use."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T6"],
+      "claim": "The T6 PASS greps show that every TestVerifyMCPScript subtest ran and passed.",
+      "doubt": "grep -q -- '--- PASS: TestVerifyMCPScript' also matches the indented subtest lines, and '--- PASS: TestVerifyMCPScript/flag_on' also matches the flag_on_default_expectation line. So the greps alone cannot tell the flag_on case apart. The separate 'go test ./cmd/workiva-mcp/...' and 'go test ./...' commands still catch a failure, and skips are only allowed at the top level, so nothing passes vacuously today.",
+      "fix": "Optional: anchor the greps, for example grep -qE -- '--- PASS: TestVerifyMCPScript/flag_on \\(' and grep -qE -- '^--- PASS: TestVerifyMCPScript \\('."
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "task_id": "T4",
+  "axis": "spec",
+  "implementation_commit": "afc24c95bdb3871069dc1bbaf5ab8aca1605c22c",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_client_routes_test.go",
+      "line": 17,
+      "issue": "The predicate table covers /content/x but not the bare /content root, which R8 also routes (internal/workiva/demo_client.go:76). The task's own case list doesn't require it.",
+      "fix": "Optional: add {\"content root\", \"/content\", isDemoDocumentsPath, true} to the table."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R8",
+      "satisfied": true,
+      "evidence": "Routing: internal/workiva/demo_client.go:51-54 adds the documents and ESG cases right after the token case and before every spreadsheet case. Predicates: demo_client.go:72-83. Hooks: demo_documents.go:12 demoDocumentsResponse and demo_esg.go:12 demoESGResponse return 404 application/json bodies encoded with encoding/json. Tests: TestDemoDocumentsResponseNotFound covers GET /documents/x and POST /documents/x and GET /content/x. TestDemoESGResponseNotFound covers GET .../demo-esg-x/sheets, GET sheetdata and POST update. Both tests check the hook message text, so they would fail without the routing. TestDemoTransportRoutesLaneHooks checks the predicates and that GET /spreadsheets and GET /spreadsheets/demo-sp-energy-2026/sheets still return 200 (scenario 5: existing routes unchanged). Check log: every acceptance command passes, and repo-wide gofmt, vet and golangci-lint report 0 issues. No existing *_test.go files changed, no DemoTransport struct fields added, demoNotFound unchanged, and the diff stays within the files T4 owns plus the pipeline report."
+    }
+  ],
+  "new_tasks": []
+}
