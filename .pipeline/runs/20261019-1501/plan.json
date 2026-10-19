@@ -67,8 +67,8 @@
         "grep -q 'Environmental disclosures' configs/demo/README.md && grep -q 'demo-esg-source' configs/demo/README.md",
         "python3 -I configs/demo/check_no_sandbox_ids.py \"$HOME/northern-lights-workspace/versions/demo-l0/docs/demo/evidence/2026-10-19-RB-01/step-3.local.json\" \"$HOME/northern-lights-workspace/versions/nl-l3/docs/demo/evidence/2026-10-19-RB-02/step-2.local.json\""
       ],
-      "status": "running",
-      "attempts": 0,
+      "status": "passed",
+      "attempts": 1,
       "base_commit": "573b4748bf41c08b1f5aa3a681379f12db7fa78f",
       "route": {
         "worker_model": "sonnet",
@@ -83,14 +83,37 @@
         "environment": "local",
         "router": "planner-hint"
       },
-      "active_attempt": 1,
       "execution": {
         "router": "planner-hint",
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
         "standards_reviewer_model": "opus",
         "environment": "local"
-      }
+      },
+      "branch": "task/20261019-1501-T1-a1",
+      "implementation_commit": "019d9a6b5ff0394ba53189dd2be7247be9d0b8c8",
+      "history": [
+        {
+          "attempt": 1,
+          "evidence_attempt": 1,
+          "worker": "sonnet",
+          "spec_reviewer": "opus",
+          "standards_reviewer": "opus",
+          "verdict": "pass",
+          "axes": {
+            "spec": "pass",
+            "standards": "pass"
+          },
+          "blocking_major": 0,
+          "router": "planner-hint",
+          "worker_model": "sonnet",
+          "spec_reviewer_model": "opus",
+          "standards_reviewer_model": "opus",
+          "environment": "local",
+          "implementation_commit": "019d9a6b5ff0394ba53189dd2be7247be9d0b8c8",
+          "decision_id": "fdebc1601c38"
+        }
+      ]
     },
     {
       "id": "T2",
@@ -220,9 +243,9 @@
         "mkdir -p .scratch/l4-smoke && rm -f .scratch/l4-smoke/* && go build -o .scratch/l4-smoke/mcp ./cmd/workiva-mcp && (NL_DEMO_MODE=true NL_DEMO_PIPELINE=true NL_DEMO_SECTIONS_DIR=configs/demo/sections NL_DB_PATH=.scratch/l4-smoke/demo.db NL_API_KEY=smoke NL_LISTEN_ADDR=127.0.0.1:0 timeout 20 .scratch/l4-smoke/mcp -mappings configs/demo/mappings-demo.yaml > .scratch/l4-smoke/log 2>&1; true) && grep -q 'loaded extra mappings from configs/demo/mappings-demo.yaml' .scratch/l4-smoke/log && grep -q 'demo pipeline enabled' .scratch/l4-smoke/log",
         "python3 -I configs/demo/check_no_sandbox_ids.py \"$HOME/northern-lights-workspace/versions/demo-l0/docs/demo/evidence/2026-10-19-RB-01/step-3.local.json\" \"$HOME/northern-lights-workspace/versions/nl-l3/docs/demo/evidence/2026-10-19-RB-02/step-2.local.json\""
       ],
-      "status": "pending",
+      "status": "running",
       "attempts": 0,
-      "base_commit": null,
+      "base_commit": "49d2e6d3a993b42f8e60c2abd58f499bdbef7902",
       "route": {
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
@@ -235,6 +258,14 @@
         ],
         "environment": "local",
         "router": "planner-hint"
+      },
+      "active_attempt": 1,
+      "execution": {
+        "router": "planner-hint",
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "environment": "local"
       }
     },
     {
