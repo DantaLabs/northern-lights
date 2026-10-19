@@ -1,0 +1,32 @@
+{
+  "phase": "ingest",
+  "idempotency_key": "NL-W4-BYTE-INTAKE-paste-20261011",
+  "source": {
+    "source_text": "FY2025 | Revenue | 12.4 | USD | millions\n",
+    "media_type": "text/plain"
+  },
+  "origin": {
+    "kind": "agent_flow",
+    "label": "Wave 4 byte intake fixture"
+  },
+  "extracted_items": [
+    {
+      "local_id": "fy2025-revenue",
+      "text": "12.4",
+      "kind_hint": "number",
+      "interpretation": {
+        "period": "FY2025",
+        "currency": "USD",
+        "unit": "currency",
+        "scale": "millions",
+        "percent_basis": null,
+        "precision": 1
+      },
+      "provenance": {
+        "availability": "unavailable"
+      },
+      "segments": []
+    }
+  ],
+  "draft_artifacts": []
+}

@@ -1,0 +1,13 @@
+{
+  "description": "Synthetic source byte expectations; reviewed candidate hints and source coordinates are not provider facts. PDF provenance remains unavailable. No placement confirmation is included.",
+  "sources": {
+    "paste": {
+      "sha256": "0de394c23f91765a389d9f3d15a81cbe5cb7787a76ee513a22bcc199aa44e6c2",
+      "byte_length": 41
+    },
+    "pdf": {
+      "sha256": "36fd8b46f80147ddd6e7185b8f9988973b45dc69a290a080ad4768ddac869af2",
+      "byte_length": 1278
+    }
+  }
+}

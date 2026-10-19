@@ -2,6 +2,7 @@ package assurance
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
@@ -33,6 +34,15 @@ type Store struct {
 	readinessMu  sync.RWMutex
 	ready        bool
 	readinessErr error
+
+	contentCryptoMu          sync.RWMutex
+	contentStorageModeMu     sync.RWMutex
+	contentPolicyHistoryMu   sync.RWMutex
+	contentPolicyHistorySet  bool
+	contentPolicyHistoryKeys []ed25519.PublicKey
+	contentCryptoConfigured  bool
+	contentCryptoKeyID       string
+	contentCryptoKey         []byte
 }
 
 // NewWithDB installs all assurance migrations and wraps the shared handle.

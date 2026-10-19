@@ -299,11 +299,12 @@ func (v rawTokenVerifier) Verify(_ context.Context, token string) (identity.Prin
 }
 
 type rawWave2Fixture struct {
-	env     testEnv
-	db      *sql.DB
-	store   *assurance.Store
-	storage assurance.EvidenceStorage
-	state   *rawProviderState
+	fixtureKey ed25519.PublicKey
+	env        testEnv
+	db         *sql.DB
+	store      *assurance.Store
+	storage    assurance.EvidenceStorage
+	state      *rawProviderState
 }
 
 type rawProviderState struct {
@@ -337,8 +338,8 @@ func newRawWave2Fixture(t *testing.T) rawWave2Fixture {
 	env.deps.Cfg.AssuranceLegacyAPIKeyProfile = false
 	env.deps.Client = workivaprovider.NewRouter(env.deps.Client)
 	seedField(t, env)
-	provisionRawWave2Bundle(t, store)
-	return rawWave2Fixture{env: env, db: db, store: store, storage: storage, state: state}
+	fixtureKey := provisionRawWave2Bundle(t, store)
+	return rawWave2Fixture{fixtureKey: fixtureKey, env: env, db: db, store: store, storage: storage, state: state}
 }
 
 func rawWave2WorkivaMock(t *testing.T, state *rawProviderState) http.HandlerFunc {
@@ -373,7 +374,7 @@ func rawWave2WorkivaMock(t *testing.T, state *rawProviderState) http.HandlerFunc
 	})
 }
 
-func provisionRawWave2Bundle(t *testing.T, store *assurance.Store) {
+func provisionRawWave2Bundle(t *testing.T, store *assurance.Store) ed25519.PublicKey {
 	t.Helper()
 	const tenant = identity.LegacyTenantID
 	rules := assurance.RuleSet{RuleSetID: "rules-energy", Revision: 1, Status: "active", Rules: []assurance.RuleDefinition{{RuleID: "required-energy", Revision: 1, Order: 1, Kind: assurance.RuleRequired, FieldIDs: []string{"scope2-kwh"}}}}
@@ -417,6 +418,7 @@ func provisionRawWave2Bundle(t *testing.T, store *assurance.Store) {
 	if err := store.Bootstrap(ctx, tenant, public); err != nil {
 		t.Fatal(err)
 	}
+	return public
 }
 
 func startRawEntraServer(t *testing.T, fixture rawWave2Fixture) (*httptest.Server, map[string]identity.Principal) {

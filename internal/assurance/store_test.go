@@ -146,6 +146,9 @@ func TestC066AssuranceMigrationsAreContiguousV1ThroughV22AndTenantFirst(t *testi
 func TestC061SignedTenantBoundBundleActivatesAtomicallyAndInvalidCandidateFailsClosed(t *testing.T) {
 	store, db := openTestStore(t)
 	public := activateTestBundle(t, store)
+	if err := store.SetContentPolicyHistoryKeys([]ed25519.PublicKey{public}); err != nil {
+		t.Fatalf("pin prior bundle signer for rotation: %v", err)
+	}
 	report, err := store.ResolveReport(assuranceContext(), "energy-report", Period{Key: "2026-Q3"}, nil)
 	if err != nil || report.Revision != 1 {
 		t.Fatalf("ResolveReport active: report=%#v err=%v", report, err)

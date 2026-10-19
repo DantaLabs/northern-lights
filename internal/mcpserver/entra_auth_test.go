@@ -429,6 +429,22 @@ func TestAPIKeyModeRemainsStateful(t *testing.T) {
 	}
 }
 
+func TestAPIKeyWithoutContentKeepsSDKRequestBodyLimit(t *testing.T) {
+	handler, err := New(testDeps(t), NewRegistry(), &Options{AuthMode: config.AuthModeAPIKey, APIToken: "phase-one-key"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(strings.Repeat("x", maxPeekBody+1)))
+	req.Header.Set("Authorization", "Bearer phase-one-key")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	if res.Code == http.StatusRequestEntityTooLarge {
+		t.Fatalf("default API-key catalog inherited the content-only %d-byte envelope limit", maxPeekBody)
+	}
+}
+
 func delegatedPrincipal(permissions ...identity.Permission) identity.Principal {
 	return identity.Principal{
 		TenantID:    "11111111-1111-1111-1111-111111111111",

@@ -67,6 +67,9 @@ func (p *singleTransferProvider) WaitOperationWithInitialRetryAfter(context.Cont
 func singleTransferFixture(t *testing.T) (rawWave2Fixture, *singleTransferProvider, *httptest.Server, ed25519.PrivateKey, ed25519.PublicKey) {
 	t.Helper()
 	f := newRawWave2Fixture(t)
+	if err := f.store.SetContentPolicyHistoryKeys([]ed25519.PublicKey{f.fixtureKey}); err != nil {
+		t.Fatalf("pin prior bundle signer for transfer rotation: %v", err)
+	}
 	provider := &singleTransferProvider{}
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
