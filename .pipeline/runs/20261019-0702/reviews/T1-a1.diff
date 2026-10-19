@@ -1,0 +1,454 @@
+commit 9dd36aa3cd90b8a2ed59b08601074f2455cb177d
+Author: Sam <samvillaf@gmail.com>
+Date:   Mon Oct 19 14:37:04 2026 +0700
+
+    T1: add demoenv.Env, lane interface files and stub constructors
+    
+    Co-Authored-By: Claude Haiku 5.5 <noreply@anthropic.com>
+
+diff --git a/.pipeline/runs/20261019-0702/reports/T1-a1.md b/.pipeline/runs/20261019-0702/reports/T1-a1.md
+new file mode 100644
+index 0000000..76e83f6
+--- /dev/null
++++ b/.pipeline/runs/20261019-0702/reports/T1-a1.md
+@@ -0,0 +1,56 @@
++# T1 attempt 1 report
++
++- Task: T1 "Add demoenv.Env, lane interface files and stub constructors"
++- Run: 20261019-0702
++- Branch: task/20261019-0702-T1-a1
++- Base commit: aa82c92
++- Commit: recorded by git after this file is committed (see `git log -1`)
++- Attempt: 1 (no previous attempt report)
++
++## What changed
++
++New files only; no existing file edited, no *_test.go edited, go.mod/go.sum unchanged.
++
++- `internal/demoenv/demoenv.go`: `Env{DB, Store, Audit, Client workivaprovider.Backend, Cfg}`.
++- `internal/changeset/changeset.go`: Item, PreviewItem, Preview, ItemResult, Result (Status comment: completed | partial | reconciliation_required), Service (Stage, Confirm), verbatim from the spec.
++- `internal/changeset/service.go`: `New(env demoenv.Env) Service` stub. Unexported stub type; Stage and Confirm return zero values and `errNotImplemented` ("change set service is not implemented yet"). Doc comment carries the empty-sections-directory contract. `_ = env`.
++- `internal/changeset/service_test.go`: new test; stub returns the not-implemented error.
++- `internal/recipe/types.go`: Finding, Fact, VerbatimBlock, Prepared, SectionInfo, Service (Prepare, Sections), FactStore (LatestFacts), verbatim from the spec, with Kind/Direction comments.
++- `internal/recipe/service.go`: `New(env, changes) (Service, FactStore, error)` returning stubs and nil error. Prepare and LatestFacts return "not implemented yet" errors; Sections returns nil.
++- `internal/recipe/service_test.go`: new test covering the stub behavior.
++- `internal/sectiontext/types.go`: Block, Preview, Result, Service (Stage, Confirm), verbatim from the spec.
++- `internal/sectiontext/service.go`: `New(env, recipes, facts) Service` stub returning "not implemented yet" errors.
++- `internal/sectiontext/service_test.go`: new test covering the stub behavior.
++- `internal/workivaprovider/documents.go`: DocumentWriter interface only (EnsureSection, WriteSectionText, ReadSectionText), doc comment says it is an additive optional capability probed by type assertion. No implementation, no Router method.
++- `.pipeline/runs/20261019-0702/reports/T1-a1.md`: this report.
++
++Import graph: demoenv imports audit, config, mapping, workivaprovider (no lane package); changeset imports demoenv; recipe imports changeset and demoenv; sectiontext imports recipe and demoenv. No cycle, no mcpserver import.
++
++## Commands run
++
++| Command | Exit |
++|---|---|
++| `go build ./...` | 0 |
++| `go vet ./internal/demoenv/... ./internal/changeset/... ./internal/recipe/... ./internal/sectiontext/... ./internal/workivaprovider/...` | 0 |
++| `test -z "$(gofmt -l internal/demoenv internal/changeset internal/recipe internal/sectiontext internal/workivaprovider)"` | 0 |
++| `go doc ./internal/demoenv Env \| grep -q 'Client workivaprovider.Backend'` | 0 |
++| `go doc ./internal/changeset New \| grep -q 'func New(env demoenv.Env) Service'` | 0 |
++| `go doc ./internal/recipe New \| grep -q 'func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)'` | 0 |
++| `go doc ./internal/sectiontext New \| grep -q 'func New(env demoenv.Env, recipes recipe.Service, facts recipe.FactStore) Service'` | 0 |
++| `go doc ./internal/changeset Service \| grep -q 'Confirm(ctx context.Context, actor, id, token string) (Result, error)'` | 0 |
++| `go doc ./internal/recipe FactStore \| grep -q 'LatestFacts(...)'` | 0 |
++| `go doc ./internal/sectiontext Block \| grep -q 'VerbatimID'` | 0 |
++| `go doc ./internal/workivaprovider DocumentWriter \| grep -q 'WriteSectionText(...)'` | 0 |
++| `go test ./internal/workivaprovider/... -race -count=1` | 0 |
++| Config test: `go test ./... -race` | 0 (all packages ok, including cmd/workiva-mcp and mcpserver) |
++| Config lint: `test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run` | gofmt clean, vet 0; golangci-lint run scoped to the five touched packages: 0 issues. Full-repo golangci-lint not run (scoped per the worker rules; it was slow). |
++| Config build: `go build ./...` | 0 |
++| Typecheck | none (config value) |
++
++Attempts: one attempt of the acceptance loop; no fixes needed.
++
++## Notes
++
++- The full-repo `go test ./... -race` took several minutes (assurance, transfer, content suites are slow); it ran in the background and then in foreground, both exit 0.
++- No decision was required; the spec and plan specify every signature.
++- A stray `cat` into `.scratch/acc.sh` failed because the directory does not exist in the worktree. Nothing was written from it.
+diff --git a/internal/changeset/changeset.go b/internal/changeset/changeset.go
+new file mode 100644
+index 0000000..841e6a9
+--- /dev/null
++++ b/internal/changeset/changeset.go
+@@ -0,0 +1,36 @@
++// Package changeset stages and confirms a set of field writes as one change set.
++package changeset
++
++import (
++	"context"
++	"time"
++)
++
++// Item is one requested field write.
++type Item struct{ FieldName, Value, Source string }
++
++// PreviewItem is one staged field write with its before and after values.
++type PreviewItem struct{ FieldName, SpreadsheetID, SheetID, Range, Before, After, Source string }
++
++// Preview is a staged change set awaiting confirmation.
++type Preview struct {
++	ID, Token string
++	Items     []PreviewItem
++	ExpiresAt time.Time
++}
++
++// ItemResult is the outcome of one field write.
++type ItemResult struct{ FieldName, Status, ReadBack, AuditID, OperationURL string }
++
++// Result is the outcome of confirming a change set.
++// Status values: completed | partial | reconciliation_required.
++type Result struct {
++	ID, Status string
++	Items      []ItemResult
++}
++
++// Service stages change sets and confirms them.
++type Service interface {
++	Stage(ctx context.Context, actor string, items []Item) (Preview, error)
++	Confirm(ctx context.Context, actor, id, token string) (Result, error)
++}
+diff --git a/internal/changeset/service.go b/internal/changeset/service.go
+new file mode 100644
+index 0000000..f99756b
+--- /dev/null
++++ b/internal/changeset/service.go
+@@ -0,0 +1,35 @@
++package changeset
++
++import (
++	"context"
++	"errors"
++
++	"github.com/dantalabs/northern-lights/internal/demoenv"
++)
++
++var errNotImplemented = errors.New("change set service is not implemented yet")
++
++type stubService struct{}
++
++// New returns the change set Service for the demo lane. main.go calls New once
++// when NL_DEMO_PIPELINE is on. L1 replaces this stub body.
++//
++// Contract: New must succeed in demo mode with an empty sections directory
++// (NL_DEMO_SECTIONS_DIR pointing at an empty directory), so the L0 flag-on
++// server tests stay green after the lanes land.
++func New(env demoenv.Env) Service {
++	_ = env
++	return stubService{}
++}
++
++// Stage returns a zero Preview and an error until L1 lands.
++func (stubService) Stage(ctx context.Context, actor string, items []Item) (Preview, error) {
++	_, _, _ = ctx, actor, items
++	return Preview{}, errNotImplemented
++}
++
++// Confirm returns a zero Result and an error until L1 lands.
++func (stubService) Confirm(ctx context.Context, actor, id, token string) (Result, error) {
++	_, _, _, _ = ctx, actor, id, token
++	return Result{}, errNotImplemented
++}
+diff --git a/internal/changeset/service_test.go b/internal/changeset/service_test.go
+new file mode 100644
+index 0000000..9909c89
+--- /dev/null
++++ b/internal/changeset/service_test.go
+@@ -0,0 +1,18 @@
++package changeset
++
++import (
++	"context"
++	"testing"
++
++	"github.com/dantalabs/northern-lights/internal/demoenv"
++)
++
++func TestNewStubReturnsNotImplemented(t *testing.T) {
++	svc := New(demoenv.Env{})
++	if _, err := svc.Stage(context.Background(), "actor", []Item{{FieldName: "f"}}); err == nil {
++		t.Fatal("Stage: want not-implemented error")
++	}
++	if _, err := svc.Confirm(context.Background(), "actor", "id", "token"); err == nil {
++		t.Fatal("Confirm: want not-implemented error")
++	}
++}
+diff --git a/internal/demoenv/demoenv.go b/internal/demoenv/demoenv.go
+new file mode 100644
+index 0000000..fa74cd3
+--- /dev/null
++++ b/internal/demoenv/demoenv.go
+@@ -0,0 +1,21 @@
++// Package demoenv holds the shared dependencies handed to every demo lane
++// constructor (change set, section recipe, section text, data).
++package demoenv
++
++import (
++	"database/sql"
++
++	"github.com/dantalabs/northern-lights/internal/audit"
++	"github.com/dantalabs/northern-lights/internal/config"
++	"github.com/dantalabs/northern-lights/internal/mapping"
++	"github.com/dantalabs/northern-lights/internal/workivaprovider"
++)
++
++// Env is the set of shared dependencies passed to lane constructors.
++type Env struct {
++	DB     *sql.DB
++	Store  *mapping.Store
++	Audit  *audit.Log
++	Client workivaprovider.Backend
++	Cfg    *config.Config
++}
+diff --git a/internal/recipe/service.go b/internal/recipe/service.go
+new file mode 100644
+index 0000000..5fa262b
+--- /dev/null
++++ b/internal/recipe/service.go
+@@ -0,0 +1,42 @@
++package recipe
++
++import (
++	"context"
++	"errors"
++
++	"github.com/dantalabs/northern-lights/internal/changeset"
++	"github.com/dantalabs/northern-lights/internal/demoenv"
++)
++
++var errNotImplemented = errors.New("section recipe service is not implemented yet")
++
++type stubService struct{}
++
++type stubFactStore struct{}
++
++// New returns the section recipe Service and FactStore for the demo lane. main.go
++// calls New once when NL_DEMO_PIPELINE is on. L2 replaces the stub bodies.
++//
++// Contract: New must succeed in demo mode with an empty NL_DEMO_SECTIONS_DIR,
++// so the L0 flag-on server tests stay green after the lanes land.
++func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error) {
++	_, _ = env, changes
++	return stubService{}, stubFactStore{}, nil
++}
++
++// Prepare returns a zero Prepared and an error until L2 lands.
++func (stubService) Prepare(ctx context.Context, actor, sectionID string) (Prepared, error) {
++	_, _, _ = ctx, actor, sectionID
++	return Prepared{}, errNotImplemented
++}
++
++// Sections returns nil until L2 lands.
++func (stubService) Sections() []SectionInfo {
++	return nil
++}
++
++// LatestFacts returns an error until L2 lands.
++func (stubFactStore) LatestFacts(ctx context.Context, actor, sectionID string) ([]Fact, []VerbatimBlock, error) {
++	_, _, _ = ctx, actor, sectionID
++	return nil, nil, errNotImplemented
++}
+diff --git a/internal/recipe/service_test.go b/internal/recipe/service_test.go
+new file mode 100644
+index 0000000..f6a1e4a
+--- /dev/null
++++ b/internal/recipe/service_test.go
+@@ -0,0 +1,25 @@
++package recipe
++
++import (
++	"context"
++	"testing"
++
++	"github.com/dantalabs/northern-lights/internal/changeset"
++	"github.com/dantalabs/northern-lights/internal/demoenv"
++)
++
++func TestNewStubSucceedsAndReturnsNotImplemented(t *testing.T) {
++	svc, facts, err := New(demoenv.Env{}, changeset.New(demoenv.Env{}))
++	if err != nil {
++		t.Fatalf("New: unexpected error %v", err)
++	}
++	if _, err := svc.Prepare(context.Background(), "actor", "sec"); err == nil {
++		t.Fatal("Prepare: want not-implemented error")
++	}
++	if got := svc.Sections(); got != nil {
++		t.Fatalf("Sections: want nil, got %v", got)
++	}
++	if _, _, err := facts.LatestFacts(context.Background(), "actor", "sec"); err == nil {
++		t.Fatal("LatestFacts: want not-implemented error")
++	}
++}
+diff --git a/internal/recipe/types.go b/internal/recipe/types.go
+new file mode 100644
+index 0000000..83cbb99
+--- /dev/null
++++ b/internal/recipe/types.go
+@@ -0,0 +1,49 @@
++// Package recipe prepares a section recipe: findings, facts and verbatim blocks
++// for one section of a report document.
++package recipe
++
++import (
++	"context"
++
++	"github.com/dantalabs/northern-lights/internal/changeset"
++)
++
++// Finding is a check result raised while preparing a section.
++// Kind: missing | out_of_range | material_change | sign_change
++type Finding struct{ Kind, Field, Severity, Message string }
++
++// Fact is a narrative fact derived from a field and its prior period.
++type Fact struct {
++	Key, Label, Unit  string
++	Current, Prior    string // canonical decimal strings
++	Change, ChangePct string // canonical decimal strings, empty when prior is missing or zero
++	Direction         string // up | down | flat | new
++	Material          bool
++	Display           []string // every approved display form, e.g. "1.24 GWh", "8%", "8.2%"
++}
++
++// VerbatimBlock is approved text that must be reproduced exactly.
++type VerbatimBlock struct{ ID, Title, Text string }
++
++// Prepared is the result of preparing a section recipe.
++type Prepared struct {
++	SectionID string
++	Findings  []Finding
++	Facts     []Fact
++	Verbatim  []VerbatimBlock
++	ChangeSet changeset.Preview
++}
++
++// SectionInfo describes a section known to the recipe service.
++type SectionInfo struct{ ID, Title, Period, PriorPeriod, DocumentID string }
++
++// Service prepares section recipes.
++type Service interface {
++	Prepare(ctx context.Context, actor, sectionID string) (Prepared, error)
++	Sections() []SectionInfo
++}
++
++// FactStore reads the latest facts and verbatim blocks for a section.
++type FactStore interface {
++	LatestFacts(ctx context.Context, actor, sectionID string) ([]Fact, []VerbatimBlock, error)
++}
+diff --git a/internal/sectiontext/service.go b/internal/sectiontext/service.go
+new file mode 100644
+index 0000000..f83fd6b
+--- /dev/null
++++ b/internal/sectiontext/service.go
+@@ -0,0 +1,35 @@
++package sectiontext
++
++import (
++	"context"
++	"errors"
++
++	"github.com/dantalabs/northern-lights/internal/demoenv"
++	"github.com/dantalabs/northern-lights/internal/recipe"
++)
++
++var errNotImplemented = errors.New("section text service is not implemented yet")
++
++type stubService struct{}
++
++// New returns the section text Service for the demo lane. main.go calls New once
++// when NL_DEMO_PIPELINE is on. L3 replaces the stub body.
++//
++// Contract: New must succeed in demo mode with an empty NL_DEMO_SECTIONS_DIR,
++// so the L0 flag-on server tests stay green after the lanes land.
++func New(env demoenv.Env, recipes recipe.Service, facts recipe.FactStore) Service {
++	_, _, _ = env, recipes, facts
++	return stubService{}
++}
++
++// Stage returns a zero Preview and an error until L3 lands.
++func (stubService) Stage(ctx context.Context, actor, sectionID string, blocks []Block) (Preview, error) {
++	_, _, _, _ = ctx, actor, sectionID, blocks
++	return Preview{}, errNotImplemented
++}
++
++// Confirm returns a zero Result and an error until L3 lands.
++func (stubService) Confirm(ctx context.Context, actor, id, token string) (Result, error) {
++	_, _, _, _ = ctx, actor, id, token
++	return Result{}, errNotImplemented
++}
+diff --git a/internal/sectiontext/service_test.go b/internal/sectiontext/service_test.go
+new file mode 100644
+index 0000000..9778e31
+--- /dev/null
++++ b/internal/sectiontext/service_test.go
+@@ -0,0 +1,18 @@
++package sectiontext
++
++import (
++	"context"
++	"testing"
++
++	"github.com/dantalabs/northern-lights/internal/demoenv"
++)
++
++func TestNewStubReturnsNotImplemented(t *testing.T) {
++	svc := New(demoenv.Env{}, nil, nil)
++	if _, err := svc.Stage(context.Background(), "actor", "sec", []Block{{Kind: "narrative"}}); err == nil {
++		t.Fatal("Stage: want not-implemented error")
++	}
++	if _, err := svc.Confirm(context.Background(), "actor", "id", "token"); err == nil {
++		t.Fatal("Confirm: want not-implemented error")
++	}
++}
+diff --git a/internal/sectiontext/types.go b/internal/sectiontext/types.go
+new file mode 100644
+index 0000000..70a6612
+--- /dev/null
++++ b/internal/sectiontext/types.go
+@@ -0,0 +1,27 @@
++// Package sectiontext stages and confirms the narrative and verbatim text of a
++// report document section.
++package sectiontext
++
++import (
++	"context"
++	"time"
++)
++
++// Block is one paragraph of section text. Kind: narrative | verbatim
++type Block struct{ Kind, Text, VerbatimID string }
++
++// Preview is staged section text awaiting confirmation.
++type Preview struct {
++	ID, Token, SectionID, SectionTitle string
++	Blocks                             []Block
++	ExpiresAt                          time.Time
++}
++
++// Result is the outcome of confirming section text.
++type Result struct{ SectionID, DocumentID, WorkivaSectionID, Status, AuditID string }
++
++// Service stages section text and confirms it.
++type Service interface {
++	Stage(ctx context.Context, actor, sectionID string, blocks []Block) (Preview, error)
++	Confirm(ctx context.Context, actor, id, token string) (Result, error)
++}
+diff --git a/internal/workivaprovider/documents.go b/internal/workivaprovider/documents.go
+new file mode 100644
+index 0000000..6b2335f
+--- /dev/null
++++ b/internal/workivaprovider/documents.go
+@@ -0,0 +1,12 @@
++package workivaprovider
++
++import "context"
++
++// DocumentWriter is an additive optional capability for writing section text in
++// report documents. Callers probe for it by type assertion, the same pattern as
++// ContentMetadataReader in content_metadata.go. The Router does not implement it.
++type DocumentWriter interface {
++	EnsureSection(ctx context.Context, documentID, title string) (sectionID string, err error)
++	WriteSectionText(ctx context.Context, documentID, sectionID string, paragraphs []string) (operationURL string, err error)
++	ReadSectionText(ctx context.Context, documentID, sectionID string) ([]string, error)
++}

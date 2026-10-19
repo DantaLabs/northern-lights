@@ -1,0 +1,31 @@
+{
+  "task_id": "T2",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "nit",
+      "file": "internal/config/demo_pipeline_test.go",
+      "line": 129,
+      "issue": "The t.Setenv(\"\") then os.Unsetenv idiom to restore the host value is slightly indirect, though correct, and the plan prescribes it.",
+      "fix": "No action needed. Optionally add NL_DEMO_PIPELINE to configEnvKeys when config_test.go is next legitimately edited.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "nit",
+      "file": "internal/config/demo_pipeline_test.go",
+      "line": 129,
+      "issue": "The t.Setenv(\"\") then os.Unsetenv idiom to restore the host value is slightly indirect, though correct, and the plan prescribes it.",
+      "fix": "No action needed. Optionally add NL_DEMO_PIPELINE to configEnvKeys when config_test.go is next legitimately edited.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

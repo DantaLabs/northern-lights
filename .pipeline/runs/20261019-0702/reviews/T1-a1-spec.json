@@ -1,0 +1,36 @@
+{
+  "task_id": "T1",
+  "axis": "spec",
+  "verdict": "pass",
+  "implementation_commit": "9dd36aa3cd90b8a2ed59b08601074f2455cb177d",
+  "attempt": 1,
+  "findings": [
+    {
+      "severity": "nit",
+      "file": "internal/changeset/changeset.go",
+      "line": 26,
+      "issue": "The spec puts the Status values comment on the Result.ID/Status field line ('ID, Status string // Status: completed | partial | reconciliation_required'). The implementation moved it into the type doc comment. The plan instructions allow this and it has no effect on the API.",
+      "fix": "Optional: also keep the trailing field comment so the code reads verbatim against the spec."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/changeset/service_test.go",
+      "line": 10,
+      "issue": "The plan did not ask for the three new *_test.go files (changeset, recipe, sectiontext). They are inside owned paths and only check stub behaviour (not-implemented errors, recipe.New nil error, Sections nil). That is harmless, but lanes L1 to L3 will have to delete or rewrite them when they replace the stubs.",
+      "fix": "None needed. Lanes should treat these tests as stub-only and replace them."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R7",
+      "satisfied": true,
+      "evidence": "The types match the spec's 'Interfaces and data' section field by field: internal/changeset/changeset.go:10-36 (Item, PreviewItem, Preview, ItemResult, Result, Service); internal/recipe/types.go:13-49 (Finding with Kind comment, Fact with Direction/decimal/Display comments, VerbatimBlock, Prepared.ChangeSet changeset.Preview, SectionInfo, Service, FactStore); internal/sectiontext/types.go:11-27 (Block, Preview, Result, Service); internal/workivaprovider/documents.go:8-12 (DocumentWriter with named results sectionID/operationURL, no Router implementation). checks/T1-a1.log: go build ./..., go vet and the go doc greps for Service.Confirm, FactStore.LatestFacts, Block.VerbatimID and DocumentWriter.WriteSectionText all pass. Acceptance scenario 4 is met."
+    },
+    {
+      "requirement": "R12",
+      "satisfied": true,
+      "evidence": "Constructor half only, as scoped (the main.go wiring is T5). internal/demoenv/demoenv.go:15-21 Env{DB *sql.DB; Store *mapping.Store; Audit *audit.Log; Client workivaprovider.Backend; Cfg *config.Config}. Stub constructors: internal/changeset/service.go:20, internal/recipe/service.go:22 (returns nil error) and internal/sectiontext/service.go:20, each with the empty NL_DEMO_SECTIONS_DIR contract in its doc comment. The go doc signature greps pass in checks/T1-a1.log. TestNewStubSucceedsAndReturnsNotImplemented (recipe) and TestNewStubReturnsNotImplemented (changeset, sectiontext) prove the stub behaviour. The import graph is acyclic and no package imports mcpserver."
+    }
+  ],
+  "new_tasks": []
+}

@@ -1,0 +1,15 @@
+$ go build ./...
+$ go vet ./internal/demoenv/... ./internal/changeset/... ./internal/recipe/... ./internal/sectiontext/... ./internal/workivaprovider/...
+$ test -z "$(gofmt -l internal/demoenv internal/changeset internal/recipe internal/sectiontext internal/workivaprovider)"
+$ go doc ./internal/demoenv Env | grep -q 'Client workivaprovider.Backend'
+$ go doc ./internal/changeset New | grep -q 'func New(env demoenv.Env) Service'
+$ go doc ./internal/recipe New | grep -q 'func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)'
+$ go doc ./internal/sectiontext New | grep -q 'func New(env demoenv.Env, recipes recipe.Service, facts recipe.FactStore) Service'
+$ go doc ./internal/changeset Service | grep -q 'Confirm(ctx context.Context, actor, id, token string) (Result, error)'
+$ go doc ./internal/recipe FactStore | grep -q 'LatestFacts(ctx context.Context, actor, sectionID string) (\[\]Fact, \[\]VerbatimBlock, error)'
+$ go doc ./internal/sectiontext Block | grep -q 'VerbatimID'
+$ go doc ./internal/workivaprovider DocumentWriter | grep -q 'WriteSectionText(ctx context.Context, documentID, sectionID string, paragraphs \[\]string) (operationURL string, err error)'
+$ go test ./internal/workivaprovider/... -race -count=1
+ok  	github.com/dantalabs/northern-lights/internal/workivaprovider	1.022s
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

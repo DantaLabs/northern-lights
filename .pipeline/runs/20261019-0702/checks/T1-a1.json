@@ -1,0 +1,61 @@
+{
+  "task_id": "T1",
+  "attempt": 1,
+  "implementation_commit": "9dd36aa3cd90b8a2ed59b08601074f2455cb177d",
+  "commands": [
+    {
+      "command": "go build ./...",
+      "exit_code": 0
+    },
+    {
+      "command": "go vet ./internal/demoenv/... ./internal/changeset/... ./internal/recipe/... ./internal/sectiontext/... ./internal/workivaprovider/...",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l internal/demoenv internal/changeset internal/recipe internal/sectiontext internal/workivaprovider)\"",
+      "exit_code": 0
+    },
+    {
+      "command": "go doc ./internal/demoenv Env | grep -q 'Client workivaprovider.Backend'",
+      "exit_code": 0
+    },
+    {
+      "command": "go doc ./internal/changeset New | grep -q 'func New(env demoenv.Env) Service'",
+      "exit_code": 0
+    },
+    {
+      "command": "go doc ./internal/recipe New | grep -q 'func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)'",
+      "exit_code": 0
+    },
+    {
+      "command": "go doc ./internal/sectiontext New | grep -q 'func New(env demoenv.Env, recipes recipe.Service, facts recipe.FactStore) Service'",
+      "exit_code": 0
+    },
+    {
+      "command": "go doc ./internal/changeset Service | grep -q 'Confirm(ctx context.Context, actor, id, token string) (Result, error)'",
+      "exit_code": 0
+    },
+    {
+      "command": "go doc ./internal/recipe FactStore | grep -q 'LatestFacts(ctx context.Context, actor, sectionID string) (\\[\\]Fact, \\[\\]VerbatimBlock, error)'",
+      "exit_code": 0
+    },
+    {
+      "command": "go doc ./internal/sectiontext Block | grep -q 'VerbatimID'",
+      "exit_code": 0
+    },
+    {
+      "command": "go doc ./internal/workivaprovider DocumentWriter | grep -q 'WriteSectionText(ctx context.Context, documentID, sectionID string, paragraphs \\[\\]string) (operationURL string, err error)'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test ./internal/workivaprovider/... -race -count=1",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    }
+  ],
+  "checkout_clean": true,
+  "created_at": "2026-10-19T07:37:17Z"
+}

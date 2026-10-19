@@ -63,8 +63,8 @@
         "go doc ./internal/workivaprovider DocumentWriter | grep -q 'WriteSectionText(ctx context.Context, documentID, sectionID string, paragraphs \\[\\]string) (operationURL string, err error)'",
         "go test ./internal/workivaprovider/... -race -count=1"
       ],
-      "status": "running",
-      "attempts": 0,
+      "status": "passed",
+      "attempts": 1,
       "base_commit": "56b9f95dacd66219208721d55ac7ff990e0da8e8",
       "route": {
         "worker_model": "haiku",
@@ -77,14 +77,37 @@
         "environment": "local",
         "router": "laya"
       },
-      "active_attempt": 1,
       "execution": {
         "router": "laya",
         "worker_model": "haiku",
         "spec_reviewer_model": "opus",
         "standards_reviewer_model": "sonnet",
         "environment": "local"
-      }
+      },
+      "branch": "task/20261019-0702-T1-a1",
+      "implementation_commit": "9dd36aa3cd90b8a2ed59b08601074f2455cb177d",
+      "history": [
+        {
+          "attempt": 1,
+          "evidence_attempt": 1,
+          "worker": "haiku",
+          "spec_reviewer": "opus",
+          "standards_reviewer": "sonnet",
+          "verdict": "pass",
+          "axes": {
+            "spec": "pass",
+            "standards": "pass"
+          },
+          "blocking_major": 0,
+          "router": "laya",
+          "worker_model": "haiku",
+          "spec_reviewer_model": "opus",
+          "standards_reviewer_model": "sonnet",
+          "environment": "local",
+          "implementation_commit": "9dd36aa3cd90b8a2ed59b08601074f2455cb177d",
+          "decision_id": "e8a714889c2b"
+        }
+      ]
     },
     {
       "id": "T2",
@@ -110,8 +133,8 @@
         "go vet ./internal/config/...",
         "test -z \"$(gofmt -l internal/config)\""
       ],
-      "status": "running",
-      "attempts": 0,
+      "status": "passed",
+      "attempts": 1,
       "base_commit": "56b9f95dacd66219208721d55ac7ff990e0da8e8",
       "route": {
         "worker_model": "haiku",
@@ -124,14 +147,37 @@
         "environment": "local",
         "router": "laya"
       },
-      "active_attempt": 1,
       "execution": {
         "router": "laya",
         "worker_model": "haiku",
         "spec_reviewer_model": "opus",
         "standards_reviewer_model": "sonnet",
         "environment": "local"
-      }
+      },
+      "branch": "task/20261019-0702-T2-a1",
+      "implementation_commit": "75c7b90b13b18217b216564172b66d0ed1b3923d",
+      "history": [
+        {
+          "attempt": 1,
+          "evidence_attempt": 1,
+          "worker": "haiku",
+          "spec_reviewer": "opus",
+          "standards_reviewer": "sonnet",
+          "verdict": "pass",
+          "axes": {
+            "spec": "pass",
+            "standards": "pass"
+          },
+          "blocking_major": 0,
+          "router": "laya",
+          "worker_model": "haiku",
+          "spec_reviewer_model": "opus",
+          "standards_reviewer_model": "sonnet",
+          "environment": "local",
+          "implementation_commit": "75c7b90b13b18217b216564172b66d0ed1b3923d",
+          "decision_id": "13eb72f21acd"
+        }
+      ]
     },
     {
       "id": "T3",
@@ -182,9 +228,9 @@
         "test -z \"$(gofmt -l internal/mcpserver)\"",
         "test -z \"$(git diff --diff-filter=MD --name-only 56b9f95 -- '*_test.go')\""
       ],
-      "status": "pending",
+      "status": "running",
       "attempts": 0,
-      "base_commit": null,
+      "base_commit": "d7b526dff3ac5ea44424a6e4d7f044cead67cae6",
       "route": {
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
@@ -197,6 +243,14 @@
         ],
         "environment": "local",
         "router": "laya"
+      },
+      "active_attempt": 1,
+      "execution": {
+        "router": "laya",
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "environment": "local"
       }
     },
     {
