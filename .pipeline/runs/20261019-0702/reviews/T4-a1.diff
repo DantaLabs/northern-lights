@@ -1,0 +1,310 @@
+commit afc24c95bdb3871069dc1bbaf5ab8aca1605c22c
+Author: Sam <samvillaf@gmail.com>
+Date:   Mon Oct 19 14:44:26 2026 +0700
+
+    T4: route demo documents, content and ESG paths to lane hooks
+    
+    Demo fixture transport sends /documents and /content paths to
+    demoDocumentsResponse and /spreadsheets/demo-esg-* paths to
+    demoESGResponse. Both return 404 JSON until L3 and L4 fill them.
+    Adds routing and not-found tests; existing fixture routes unchanged.
+    
+    Co-Authored-By: Claude Haiku 5.5 <noreply@anthropic.com>
+
+diff --git a/.pipeline/runs/20261019-0702/reports/T4-a1.md b/.pipeline/runs/20261019-0702/reports/T4-a1.md
+new file mode 100644
+index 0000000..17d8167
+--- /dev/null
++++ b/.pipeline/runs/20261019-0702/reports/T4-a1.md
+@@ -0,0 +1,25 @@
++# T4 attempt 1: route demo /documents, /content and demo-esg- paths to lane hooks
++
++## What changed
++- `internal/workiva/demo_client.go`: added `isDemoDocumentsPath` and `isDemoESGPath` predicates next to `isSheetsPath`. `RoundTrip` routes to `t.demoDocumentsResponse` and `t.demoESGResponse` directly after the token case and before every spreadsheet case. No struct fields added.
++- `internal/workiva/demo_documents.go` (new): `demoDocumentsResponse` returns a 404 JSON body `{"error":"demo report documents not served yet: <path>"}` built with encoding/json through a local helper `demoLaneHookNotFound`. Doc comment says L3 replaces the body.
++- `internal/workiva/demo_esg.go` (new): `demoESGResponse` returns a 404 JSON body `{"error":"demo ESG fixture not served yet: <path>"}` through its own local helper `demoESGNotFound`. Doc comment says L4 replaces the body.
++- `internal/workiva/demo_client_routes_test.go` (new): `TestDemoTransportRoutesLaneHooks`, table test over both predicates, plus GET `/spreadsheets` and GET `/spreadsheets/demo-sp-energy-2026/sheets` returning 200.
++- `internal/workiva/demo_documents_test.go` (new): `TestDemoDocumentsResponseNotFound`.
++- `internal/workiva/demo_esg_test.go` (new): `TestDemoESGResponseNotFound`.
++- Not touched: `demo_client_test.go`, go.mod, go.sum, any existing `*_test.go`, and the excluded packages.
++
++## Acceptance results
++- `go test ./internal/workiva/... -race -count=1`: PASS.
++- Verbose `-run` check for the three named tests: all three `--- PASS` lines present, including all subtests of `TestDemoTransportRoutesLaneHooks`.
++- `go vet ./internal/workiva/...`: clean.
++- `test -z "$(gofmt -l internal/workiva)"`: clean.
++- `git diff --diff-filter=MD --name-only 56b9f95 -- '*_test.go'`: empty, so no existing test files were modified or deleted.
++- `go build ./...`: OK.
++- Repo-wide `go test ./... -race -count=1`: all packages ok.
++- Repo-wide `gofmt -l .`, `go vet ./...` and `golangci-lint run`: clean (0 issues).
++
++## Decisions and notes
++- The ESG case sits before the spreadsheet cases in the switch, as the spec requires, so `/spreadsheets/demo-esg-*/sheets` never reaches `isSheetsPath`. Existing fixture routes for `demo-sp-*` are unaffected.
++- Each lane hook file has its own 404 helper, which keeps L3 and L4 from editing a shared helper. `demoNotFound` is unchanged.
++- No new module dependencies.
+diff --git a/internal/workiva/demo_client.go b/internal/workiva/demo_client.go
+index 130a5b9..41bf627 100644
+--- a/internal/workiva/demo_client.go
++++ b/internal/workiva/demo_client.go
+@@ -48,6 +48,10 @@ func (t *DemoTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+ 	switch {
+ 	case path == "/iam/v1/oauth2/token" && method == http.MethodPost:
+ 		return demoTokenResponse(), nil
++	case isDemoDocumentsPath(path):
++		return t.demoDocumentsResponse(req), nil
++	case isDemoESGPath(path):
++		return t.demoESGResponse(req), nil
+ 	case path == "/spreadsheets" && method == http.MethodGet:
+ 		return demoSpreadsheetsResponse(), nil
+ 	case isSheetsPath(path) && method == http.MethodGet:
+@@ -65,6 +69,19 @@ func (t *DemoTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+ 	}
+ }
+ 
++// isDemoDocumentsPath reports whether path is a report document or content
++// endpoint. Requests are handed to demoDocumentsResponse.
++func isDemoDocumentsPath(path string) bool {
++	return path == "/documents" || strings.HasPrefix(path, "/documents/") ||
++		path == "/content" || strings.HasPrefix(path, "/content/")
++}
++
++// isDemoESGPath reports whether path is an ESG demo spreadsheet endpoint.
++// Requests are handed to demoESGResponse.
++func isDemoESGPath(path string) bool {
++	return strings.HasPrefix(path, "/spreadsheets/demo-esg-")
++}
++
+ func isSheetsPath(path string) bool {
+ 	parts := strings.Split(path, "/")
+ 	return len(parts) == 4 && parts[1] == "spreadsheets" && parts[3] == "sheets"
+diff --git a/internal/workiva/demo_client_routes_test.go b/internal/workiva/demo_client_routes_test.go
+new file mode 100644
+index 0000000..c9c3892
+--- /dev/null
++++ b/internal/workiva/demo_client_routes_test.go
+@@ -0,0 +1,47 @@
++package workiva
++
++import (
++	"context"
++	"net/http"
++	"testing"
++)
++
++func TestDemoTransportRoutesLaneHooks(t *testing.T) {
++	cases := []struct {
++		name string
++		path string
++		want func(string) bool
++		yes  bool
++	}{
++		{"documents root", "/documents", isDemoDocumentsPath, true},
++		{"documents child", "/documents/x", isDemoDocumentsPath, true},
++		{"content child", "/content/x", isDemoDocumentsPath, true},
++		{"documents prefix only", "/documentsx", isDemoDocumentsPath, false},
++		{"spreadsheet sheets is not documents", "/spreadsheets/demo-sp-energy-2026/sheets", isDemoDocumentsPath, false},
++		{"esg sheets", "/spreadsheets/demo-esg-x/sheets", isDemoESGPath, true},
++		{"fixture sheets is not esg", "/spreadsheets/demo-sp-energy-2026/sheets", isDemoESGPath, false},
++	}
++	for _, tc := range cases {
++		t.Run(tc.name, func(t *testing.T) {
++			if got := tc.want(tc.path); got != tc.yes {
++				t.Errorf("predicate(%q) = %v, want %v", tc.path, got, tc.yes)
++			}
++		})
++	}
++
++	transport := NewDemoTransport()
++	for _, path := range []string{"/spreadsheets", "/spreadsheets/demo-sp-energy-2026/sheets"} {
++		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://api.eu.wdesk.com"+path, nil)
++		if err != nil {
++			t.Fatalf("build request %s: %v", path, err)
++		}
++		resp, err := transport.RoundTrip(req)
++		if err != nil {
++			t.Fatalf("RoundTrip GET %s: %v", path, err)
++		}
++		_ = resp.Body.Close()
++		if resp.StatusCode != http.StatusOK {
++			t.Errorf("GET %s status = %d, want 200", path, resp.StatusCode)
++		}
++	}
++}
+diff --git a/internal/workiva/demo_documents.go b/internal/workiva/demo_documents.go
+new file mode 100644
+index 0000000..7f14b98
+--- /dev/null
++++ b/internal/workiva/demo_documents.go
+@@ -0,0 +1,28 @@
++package workiva
++
++import (
++	"bytes"
++	"encoding/json"
++	"io"
++	"net/http"
++	"net/url"
++)
++
++// demoDocumentsResponse serves report document and content requests in demo mode. L3 replaces this body with an in-memory report document.
++func (t *DemoTransport) demoDocumentsResponse(req *http.Request) *http.Response {
++	return demoLaneHookNotFound("demo report documents not served yet: " + req.URL.Path)
++}
++
++// demoLaneHookNotFound returns a 404 JSON response for a lane hook that has not been filled yet.
++func demoLaneHookNotFound(message string) *http.Response {
++	body, err := json.Marshal(map[string]string{"error": message})
++	if err != nil {
++		return demoServerError("marshal lane hook error")
++	}
++	return &http.Response{
++		StatusCode: http.StatusNotFound,
++		Header:     http.Header{"Content-Type": []string{"application/json"}},
++		Body:       io.NopCloser(bytes.NewReader(body)),
++		Request:    &http.Request{Method: http.MethodGet, URL: &url.URL{Path: "/"}},
++	}
++}
+diff --git a/internal/workiva/demo_documents_test.go b/internal/workiva/demo_documents_test.go
+new file mode 100644
+index 0000000..2d9e8a3
+--- /dev/null
++++ b/internal/workiva/demo_documents_test.go
+@@ -0,0 +1,49 @@
++package workiva
++
++import (
++	"context"
++	"encoding/json"
++	"io"
++	"net/http"
++	"strings"
++	"testing"
++)
++
++func TestDemoDocumentsResponseNotFound(t *testing.T) {
++	transport := NewDemoTransport()
++	cases := []struct {
++		method string
++		path   string
++	}{
++		{http.MethodGet, "/documents/x"},
++		{http.MethodPost, "/documents/x"},
++		{http.MethodGet, "/content/x"},
++	}
++	for _, tc := range cases {
++		req, err := http.NewRequestWithContext(context.Background(), tc.method, "https://api.eu.wdesk.com"+tc.path, nil)
++		if err != nil {
++			t.Fatalf("build request %s %s: %v", tc.method, tc.path, err)
++		}
++		resp, err := transport.RoundTrip(req)
++		if err != nil {
++			t.Fatalf("RoundTrip %s %s: %v", tc.method, tc.path, err)
++		}
++		body, err := io.ReadAll(resp.Body)
++		_ = resp.Body.Close()
++		if err != nil {
++			t.Fatalf("read body %s %s: %v", tc.method, tc.path, err)
++		}
++		if resp.StatusCode != http.StatusNotFound {
++			t.Errorf("%s %s status = %d, want 404", tc.method, tc.path, resp.StatusCode)
++		}
++		if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
++			t.Errorf("%s %s Content-Type = %q, want application/json", tc.method, tc.path, ct)
++		}
++		if !json.Valid(body) {
++			t.Errorf("%s %s body is not valid JSON: %s", tc.method, tc.path, body)
++		}
++		if !strings.Contains(string(body), "demo report documents not served yet") {
++			t.Errorf("%s %s body = %s, want lane hook message", tc.method, tc.path, body)
++		}
++	}
++}
+diff --git a/internal/workiva/demo_esg.go b/internal/workiva/demo_esg.go
+new file mode 100644
+index 0000000..4d7ddd8
+--- /dev/null
++++ b/internal/workiva/demo_esg.go
+@@ -0,0 +1,28 @@
++package workiva
++
++import (
++	"bytes"
++	"encoding/json"
++	"io"
++	"net/http"
++	"net/url"
++)
++
++// demoESGResponse serves demo-esg spreadsheet requests in demo mode. L4 replaces this body with the ESG fixture spreadsheets.
++func (t *DemoTransport) demoESGResponse(req *http.Request) *http.Response {
++	return demoESGNotFound("demo ESG fixture not served yet: " + req.URL.Path)
++}
++
++// demoESGNotFound returns a 404 JSON response for an ESG fixture that has not been filled yet.
++func demoESGNotFound(message string) *http.Response {
++	body, err := json.Marshal(map[string]string{"error": message})
++	if err != nil {
++		return demoServerError("marshal ESG fixture error")
++	}
++	return &http.Response{
++		StatusCode: http.StatusNotFound,
++		Header:     http.Header{"Content-Type": []string{"application/json"}},
++		Body:       io.NopCloser(bytes.NewReader(body)),
++		Request:    &http.Request{Method: http.MethodGet, URL: &url.URL{Path: "/"}},
++	}
++}
+diff --git a/internal/workiva/demo_esg_test.go b/internal/workiva/demo_esg_test.go
+new file mode 100644
+index 0000000..b2c447c
+--- /dev/null
++++ b/internal/workiva/demo_esg_test.go
+@@ -0,0 +1,49 @@
++package workiva
++
++import (
++	"context"
++	"encoding/json"
++	"io"
++	"net/http"
++	"strings"
++	"testing"
++)
++
++func TestDemoESGResponseNotFound(t *testing.T) {
++	transport := NewDemoTransport()
++	cases := []struct {
++		method string
++		path   string
++	}{
++		{http.MethodGet, "/spreadsheets/demo-esg-x/sheets"},
++		{http.MethodGet, "/spreadsheets/demo-esg-x/sheets/s1/sheetdata"},
++		{http.MethodPost, "/spreadsheets/demo-esg-x/sheets/s1/update"},
++	}
++	for _, tc := range cases {
++		req, err := http.NewRequestWithContext(context.Background(), tc.method, "https://api.eu.wdesk.com"+tc.path, nil)
++		if err != nil {
++			t.Fatalf("build request %s %s: %v", tc.method, tc.path, err)
++		}
++		resp, err := transport.RoundTrip(req)
++		if err != nil {
++			t.Fatalf("RoundTrip %s %s: %v", tc.method, tc.path, err)
++		}
++		body, err := io.ReadAll(resp.Body)
++		_ = resp.Body.Close()
++		if err != nil {
++			t.Fatalf("read body %s %s: %v", tc.method, tc.path, err)
++		}
++		if resp.StatusCode != http.StatusNotFound {
++			t.Errorf("%s %s status = %d, want 404", tc.method, tc.path, resp.StatusCode)
++		}
++		if ct := resp.Header.Get("Content-Type"); ct != "application/json" {
++			t.Errorf("%s %s Content-Type = %q, want application/json", tc.method, tc.path, ct)
++		}
++		if !json.Valid(body) {
++			t.Errorf("%s %s body is not valid JSON: %s", tc.method, tc.path, body)
++		}
++		if !strings.Contains(string(body), "demo ESG fixture not served yet") {
++			t.Errorf("%s %s body = %s, want lane hook message", tc.method, tc.path, body)
++		}
++	}
++}

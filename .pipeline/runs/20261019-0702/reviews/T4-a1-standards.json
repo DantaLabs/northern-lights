@@ -1,0 +1,15 @@
+{
+  "task_id": "T4",
+  "axis": "standards",
+  "verdict": "pass",
+  "implementation_commit": "afc24c95bdb3871069dc1bbaf5ab8aca1605c22c",
+  "attempt": 1,
+  "findings": [
+    {"severity": "minor", "file": "internal/workiva/demo_esg.go", "line": 18, "issue": "Possible Duplicated Code: demoESGNotFound and demoLaneHookNotFound (demo_documents.go) are byte-for-byte the same 404 JSON builder, and both resemble existing demoNotFound in demo_client.go. The worker justifies it by lane file ownership (AGENTS.md rule 1), and both are stubs that L3/L4 will replace, so this is tolerable.", "fix": "Optional: have both hooks call one shared helper. If lane ownership forbids that, leave as is; delete the helper when the lane fills its body."},
+    {"severity": "nit", "file": "internal/workiva/demo_documents.go", "line": 12, "issue": "Doc comments on demoDocumentsResponse and demoESGResponse are single very long lines; the repo's other doc comments wrap.", "fix": "Wrap at about 80 columns."}
+  ],
+  "requirements_checked": [
+    {"requirement": "R8", "satisfied": true, "evidence": "demo_client.go RoundTrip cases before spreadsheet cases; TestDemoTransportRoutesLaneHooks, TestDemoDocumentsResponseNotFound, TestDemoESGResponseNotFound pass in checks/T4-a1.log"}
+  ],
+  "new_tasks": []
+}

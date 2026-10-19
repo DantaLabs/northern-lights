@@ -1,0 +1,8 @@
+$ go test ./internal/workiva/... -race -count=1
+ok  	github.com/dantalabs/northern-lights/internal/workiva	12.985s
+$ out=$(go test ./internal/workiva/ -race -count=1 -run '^(TestDemoTransportRoutesLaneHooks|TestDemoDocumentsResponseNotFound|TestDemoESGResponseNotFound)$' -v 2>&1); echo "$out" | grep -qE -- "^ *--- PASS: TestDemoTransportRoutesLaneHooks \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoDocumentsResponseNotFound \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestDemoESGResponseNotFound \(" || exit 1
+$ go vet ./internal/workiva/...
+$ test -z "$(gofmt -l internal/workiva)"
+$ test -z "$(git diff --diff-filter=MD --name-only 56b9f95 -- '*_test.go')"
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

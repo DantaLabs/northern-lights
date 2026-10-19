@@ -1,0 +1,33 @@
+{
+  "task_id": "T4",
+  "attempt": 1,
+  "implementation_commit": "afc24c95bdb3871069dc1bbaf5ab8aca1605c22c",
+  "commands": [
+    {
+      "command": "go test ./internal/workiva/... -race -count=1",
+      "exit_code": 0
+    },
+    {
+      "command": "out=$(go test ./internal/workiva/ -race -count=1 -run '^(TestDemoTransportRoutesLaneHooks|TestDemoDocumentsResponseNotFound|TestDemoESGResponseNotFound)$' -v 2>&1); echo \"$out\" | grep -qE -- \"^ *--- PASS: TestDemoTransportRoutesLaneHooks \\(\" || exit 1; echo \"$out\" | grep -qE -- \"^ *--- PASS: TestDemoDocumentsResponseNotFound \\(\" || exit 1; echo \"$out\" | grep -qE -- \"^ *--- PASS: TestDemoESGResponseNotFound \\(\" || exit 1",
+      "exit_code": 0
+    },
+    {
+      "command": "go vet ./internal/workiva/...",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l internal/workiva)\"",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(git diff --diff-filter=MD --name-only 56b9f95 -- '*_test.go')\"",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    }
+  ],
+  "checkout_clean": true,
+  "created_at": "2026-10-19T07:44:52Z"
+}
