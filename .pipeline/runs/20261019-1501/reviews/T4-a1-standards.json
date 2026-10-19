@@ -1,0 +1,52 @@
+{
+  "task_id": "T4",
+  "axis": "standards",
+  "implementation_commit": "73a180611cb3e01d04190dd628cc2f9d54942d19",
+  "attempt": 1,
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "blocking",
+      "file": "cmd/nl-demo-seed/data.go",
+      "line": 35,
+      "issue": "The diff adds three linter ignore comments: `//nolint:gosec` on os.ReadFile at lines 35, 121 and 158. This repository has never used nolint (git grep finds none outside this diff), and other code calls os.ReadFile(path) without one (internal/bootstrap/bootstrap.go:105, internal/config/config.go:140, cmd/nl-assurance/main.go:115). The repo has no .golangci config, so golangci-lint v2.14.0 runs only its default linters (errcheck, govet, ineffassign, staticcheck, unused) and gosec is not one of them. The comments therefore silence nothing today. If CI ever enables gosec, they would hide G304 in advance. AGENTS.md rule 3, the user's global rules and the reviewer policy all forbid adding ignore comments.",
+      "fix": "Delete the three `//nolint:gosec ...` trailing comments. Lint stays green without them. If you want to record that the path is trusted, use a normal comment that does not suppress anything."
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 330,
+      "issue": "Possible duplicated code. descriptionOf repeats the spreadsheet/sheet/field walk from Mappings.Field (data.go:173) only to get Description, which FieldRef leaves out.",
+      "fix": "Add Description to FieldRef, fill it in Mappings.Field, and remove descriptionOf. FieldRef is new in this task, so later tasks can use the extra field without breaking anything."
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 160,
+      "issue": "Duplicated code. The year-on-year change calculation (subtract; for non-% units divide by the prior value and multiply by 100) appears twice in TestDataConsistency: once in the findings loop and again in the 'non-planted change below 10' loop. If one copy changes, the two checks can quietly disagree.",
+      "fix": "Extract a helper such as `changeOf(cur, prior *big.Rat, unit string) *big.Rat` and call it from both loops."
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 133,
+      "issue": "`strings.TrimPrefix(rc, \"esg-\")[:3]` builds the section short name with a string-slicing trick. It only works because of how the two recipe ids are spelled, and TestRecipesMatchSchemaAndMappings already has an explicit table of {id, short} pairs.",
+      "fix": "Share one sections table (id, short name, minimum field count) between both tests and loop over it."
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/data.go",
+      "line": 133,
+      "issue": "LoadRecipes checks the required keys by ranging over a map, so when several keys are missing, which one the error names changes from run to run.",
+      "fix": "Range over an ordered slice of name/value pairs."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "AGENTS.md rule 3 (never weaken a test, lint rule or check)", "satisfied": false, "evidence": "cmd/nl-demo-seed/data.go:35,121,158 add //nolint:gosec"},
+    {"requirement": "AGENTS.md testing 1 (gofmt, vet, race tests)", "satisfied": true, "evidence": "checks/T4-a1.log: gofmt empty, go vet ok, go test -race 4 PASS, golangci-lint 0 issues"},
+    {"requirement": "No new module dependencies; exact decimal comparison with big.Rat; GetSheetDataTyped only", "satisfied": true, "evidence": "data.go imports only stdlib, yaml.v3 and bootstrap; data_test.go uses big.Rat throughout and calls GetSheetDataTyped"},
+    {"requirement": "Security (risky): no secrets or real Workiva IDs, no network, no unsafe file writes", "satisfied": true, "evidence": "Diff contains only demo IDs; TestDemoReadReturnsCSVValue uses workiva.NewDemoClient; file writes only under t.TempDir() with mode 0o600; YAML recipes decoded with KnownFields(true)"},
+    {"requirement": "CONTEXT.md vocabulary", "satisfied": true, "evidence": "Uses section recipe, field, finding, verbatim block; no workbook/batch/alert/KPI"}
+  ],
+  "new_tasks": []
+}

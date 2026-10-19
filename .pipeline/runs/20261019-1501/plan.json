@@ -354,7 +354,9 @@
         "spec_reviewer_model": "opus",
         "standards_reviewer_model": "opus",
         "environment": "local"
-      }
+      },
+      "branch": "task/20261019-1501-T4-a1",
+      "implementation_commit": "73a180611cb3e01d04190dd628cc2f9d54942d19"
     },
     {
       "id": "T5",
@@ -519,7 +521,9 @@
         "spec_reviewer_model": "opus",
         "standards_reviewer_model": "opus",
         "environment": "local"
-      }
+      },
+      "branch": "task/20261019-1501-T7-a1",
+      "implementation_commit": "cb892d7d4b9af840929dc914ea7ab1610bb68c3a"
     },
     {
       "id": "T8",

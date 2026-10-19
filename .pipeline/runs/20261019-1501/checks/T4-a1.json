@@ -1,0 +1,37 @@
+{
+  "task_id": "T4",
+  "attempt": 1,
+  "implementation_commit": "73a180611cb3e01d04190dd628cc2f9d54942d19",
+  "commands": [
+    {
+      "command": "mkdir -p .scratch && go test ./cmd/nl-demo-seed/ -race -count=1 -v > .scratch/t4.log 2>&1; for n in TestDataConsistency TestRecipesMatchSchemaAndMappings TestDemoReadReturnsCSVValue TestDecimalText; do grep -q -- \"--- PASS: $n\" .scratch/t4.log || exit 1; done",
+      "exit_code": 0
+    },
+    {
+      "command": "go build -o /dev/null ./cmd/nl-demo-seed",
+      "exit_code": 0
+    },
+    {
+      "command": "go vet ./cmd/nl-demo-seed/",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l cmd internal)\"",
+      "exit_code": 0
+    },
+    {
+      "command": "golangci-lint run ./cmd/nl-demo-seed/...",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -q GetSheetDataTyped cmd/nl-demo-seed/data_test.go && ! grep -qE 'GetSheetData\\(' cmd/nl-demo-seed/data_test.go",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    }
+  ],
+  "checkout_clean": true,
+  "created_at": "2026-10-19T16:24:08Z"
+}
