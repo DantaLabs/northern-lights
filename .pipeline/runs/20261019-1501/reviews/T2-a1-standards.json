@@ -1,0 +1,53 @@
+{
+  "task_id": "T2",
+  "axis": "standards",
+  "implementation_commit": "458b478df9cb80683e5b3decdc9b88193b35b4fc",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 129,
+      "issue": "esgGrid applies overlay edits with cells[pos[0]][pos[1]] and no bounds check. Edits are only checked against the grid when they are written, but the CSV is read again on every request. If esg-*.csv loses rows after a write (for example while the data is regenerated during the sprint), the next read panics inside RoundTrip instead of returning a JSON error.",
+      "fix": "Skip (or drop) overlay entries whose row or column falls outside the current grid before assigning: if pos[0] < len(cells) && pos[1] < esgColumnCount { ... }."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 113,
+      "issue": "Security (information disclosure): the 500 body includes the resolved data directory and the raw os/csv error, which can contain an absolute filesystem path. The body goes back through the MCP client to Copilot. The task only asks for NL_DEMO_ESG_DATA and the file name in the message.",
+      "fix": "Return only the env var name and file name (plus a short cause such as 'missing' or 'invalid header') in the response, and leave the directory and raw error out of the client-facing body."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 234,
+      "issue": "Possible Duplicated Code: esgJSON builds the same http.Response literal (JSON Content-Type, NopCloser body, synthetic GET Request) as demoJSONResponse and demoServerError in demo_client.go. The update path then changes resp.Request.Method to POST after the fact (line 221). Together with the extra helpers, this puts the file at 241 lines, over the task's 'under about 200 lines' guideline.",
+      "fix": "Build on the canonical helper: r := demoJSONResponse(body); r.StatusCode = status. Pass the method in, or drop the POST mutation if no caller checks it, which also brings the file closer to the size guideline."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 56,
+      "issue": "parts[2] is indexed before any length check. This is safe only because demo_client.go routes nothing but '/spreadsheets/demo-esg-' paths here, and the code does not state that assumption. The sheet lookup loop at line 69 also keeps scanning after a match.",
+      "fix": "Check len(parts) before indexing, or add a one-line comment naming the dispatcher's prefix guarantee. Break (or return) on the first matching sheet."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 48,
+      "issue": "The package-level overlay registry keyed by *DemoTransport never releases entries. The plan and worker report both acknowledge this, and cmd/workiva-mcp/main.go builds a single demo client per process, so the cost is negligible.",
+      "fix": "No action now; T9's request for an L0 field removes it."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "AGENTS.md rule 3 (no weakened tests/checks)", "satisfied": true, "evidence": "TestDemoESGResponseNotFound was the L0 stub test that the task explicitly says to replace; replaced by 10 TestDemoESG* tests; no nolint/skip/ignore comments in the diff"},
+    {"requirement": "Lane ownership (edit only owned files)", "satisfied": true, "evidence": "diff touches only internal/workiva/demo_esg.go, demo_esg_test.go and the run report; demo_client.go untouched"},
+    {"requirement": "AGENTS.md rule 6 (no LLM call in server)", "satisfied": true, "evidence": "demo_esg.go only reads CSV and serves JSON"},
+    {"requirement": "CONTRIBUTING.md code style (gofmt, no em dashes, TDD)", "satisfied": true, "evidence": "checks/T2-a1.log gofmt/vet/golangci-lint clean; no em dashes; report records red run against stub"},
+    {"requirement": "Test quality (exact decimal text, GetSheetDataTyped, no fmt.Sprint)", "satisfied": true, "evidence": "demo_esg_test.go esgCellText/esgRead compare json.Number text; acceptance greps pass"},
+    {"requirement": "Security (risky): input validation, path safety, secrets", "satisfied": true, "evidence": "file names come from a fixed year map (no path traversal); update body decoded with UseNumber and validated for bounds and scalar types; no secrets; overlay guarded by mutex (race tests pass). Minor info-disclosure in 500 body noted."}
+  ],
+  "new_tasks": []
+}

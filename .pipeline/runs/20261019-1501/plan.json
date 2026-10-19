@@ -123,8 +123,8 @@
         "for n in SheetsList SourceReadsCurrentYear PriorPeriodAndTarget WriteThenReadBack ValuesEndpoint UnknownIDs MissingDataDir DefaultDataDir KeepsVSMERoutes; do grep -q \"func TestDemoESG$n(\" internal/workiva/demo_esg_test.go || exit 1; done",
         "! grep -q 'fmt.Sprint' internal/workiva/demo_esg_test.go && grep -q 'GetSheetDataTyped' internal/workiva/demo_esg_test.go"
       ],
-      "status": "running",
-      "attempts": 0,
+      "status": "passed",
+      "attempts": 1,
       "base_commit": "573b4748bf41c08b1f5aa3a681379f12db7fa78f",
       "route": {
         "worker_model": "sonnet",
@@ -139,14 +139,37 @@
         "environment": "local",
         "router": "planner-hint"
       },
-      "active_attempt": 1,
       "execution": {
         "router": "planner-hint",
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
         "standards_reviewer_model": "opus",
         "environment": "local"
-      }
+      },
+      "branch": "task/20261019-1501-T2-a1",
+      "implementation_commit": "458b478df9cb80683e5b3decdc9b88193b35b4fc",
+      "history": [
+        {
+          "attempt": 1,
+          "evidence_attempt": 1,
+          "worker": "sonnet",
+          "spec_reviewer": "opus",
+          "standards_reviewer": "opus",
+          "verdict": "pass",
+          "axes": {
+            "spec": "pass",
+            "standards": "pass"
+          },
+          "blocking_major": 0,
+          "router": "planner-hint",
+          "worker_model": "sonnet",
+          "spec_reviewer_model": "opus",
+          "standards_reviewer_model": "opus",
+          "environment": "local",
+          "implementation_commit": "458b478df9cb80683e5b3decdc9b88193b35b4fc",
+          "decision_id": "59c9c211e01d"
+        }
+      ]
     },
     {
       "id": "T3",
@@ -458,8 +481,8 @@
         "grep -q 'NL-LIVE-002' docs/demo/IT_BRIEF.md && grep -qi 'per-user' docs/demo/IT_BRIEF.md && grep -qi 'entra' docs/demo/IT_BRIEF.md",
         "awk '/^## Open risks/{f=1;next} /^## /{f=0} f && /^- /{n++; if ($0 !~ /Mitigation: / && $0 !~ /Status: open/) bad++} END{exit (n>=4 && bad==0)?0:1}' docs/demo/IT_BRIEF.md"
       ],
-      "status": "running",
-      "attempts": 0,
+      "status": "passed",
+      "attempts": 1,
       "base_commit": "573b4748bf41c08b1f5aa3a681379f12db7fa78f",
       "route": {
         "worker_model": "sonnet",
@@ -474,14 +497,37 @@
         "environment": "local",
         "router": "planner-hint"
       },
-      "active_attempt": 1,
       "execution": {
         "router": "planner-hint",
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
         "standards_reviewer_model": "opus",
         "environment": "local"
-      }
+      },
+      "branch": "task/20261019-1501-T8-a1",
+      "implementation_commit": "f82b2dbbcf547a43a08e34226845118abb27af22",
+      "history": [
+        {
+          "attempt": 1,
+          "evidence_attempt": 1,
+          "worker": "sonnet",
+          "spec_reviewer": "opus",
+          "standards_reviewer": "opus",
+          "verdict": "pass",
+          "axes": {
+            "spec": "pass",
+            "standards": "pass"
+          },
+          "blocking_major": 0,
+          "router": "planner-hint",
+          "worker_model": "sonnet",
+          "spec_reviewer_model": "opus",
+          "standards_reviewer_model": "opus",
+          "environment": "local",
+          "implementation_commit": "f82b2dbbcf547a43a08e34226845118abb27af22",
+          "decision_id": "eb058499c168"
+        }
+      ]
     },
     {
       "id": "T9",

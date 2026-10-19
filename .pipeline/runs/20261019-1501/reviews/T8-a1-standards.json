@@ -1,0 +1,30 @@
+{
+  "task_id": "T8",
+  "axis": "standards",
+  "implementation_commit": "f82b2dbbcf547a43a08e34226845118abb27af22",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "docs/demo/IT_BRIEF.md",
+      "line": 29,
+      "issue": "The 'What is written and how' section states change-set and section-text behaviour in the present tense as built controls: 10-minute token expiry, one update per sheet, no retry after an uncertain outcome, read-back statuses. That behaviour comes from the L1/L3 specs (demo-l1-change-set.md R5/R8/R9/R11, demo-l3-section-text.md R9), which are not merged. The code today has a 5-minute pendingWriteTTL in internal/mcpserver/tools/update_field.go:24. The worker report admits this, but the brief does not. The task says 'Do not invent controls the code does not have; when unsure, mark the item open'.",
+      "fix": "Either add a one-line note that the change-set and section-text flows are described as specified for the demo (lanes L1/L3), or recheck the figures against the merged code before the brief goes to the firm's IT team."
+    },
+    {
+      "severity": "nit",
+      "file": "docs/demo/IT_BRIEF.md",
+      "line": 31,
+      "issue": "'Writes are not retried after an uncertain outcome; the status says so' does not name the status. The specs define it as reconciliation_required.",
+      "fix": "Name `reconciliation_required` so IT can match it to tool output and audit rows."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R11", "satisfied": true, "evidence": "docs/demo/IT_BRIEF.md: 877 words; five required headings in order; NL-LIVE-002, per-user and Entra present; six single-line risk bullets, each ending in 'Mitigation:' or 'Status: open' (check log T8-a1.log, all acceptance commands exit 0; gofmt/vet/golangci-lint 0 issues)"},
+    {"requirement": "public-repo hygiene", "satisfied": true, "evidence": "No tenant names, UPNs, tenant/environment/sandbox IDs, spreadsheet IDs, tokens or KPMG text in the diff. 'UPN' appears only as a generic term at IT_BRIEF.md:23"},
+    {"requirement": "no invented controls (spot-checked)", "satisfied": true, "evidence": "workiva.write.preview/confirm and evidence.export in internal/identity/principal.go:27-37; X-NL-Actor in internal/mcpserver/server.go:40; 32-byte rand token in update_field.go:171; audit verify/export in cmd/workiva-mcp/audit.go:47-55; final-row deletion and completeness limits match docs/compliance/AUDIT.md:9,111"},
+    {"requirement": "CONTEXT.md vocabulary / no marketing language", "satisfied": true, "evidence": "No workbook, template file, batch, alert or KPI; uses change set, finding, narrative fact, verbatim block, narrative block, number guard"}
+  ],
+  "new_tasks": []
+}

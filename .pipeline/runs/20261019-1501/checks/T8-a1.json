@@ -1,0 +1,29 @@
+{
+  "task_id": "T8",
+  "attempt": 1,
+  "implementation_commit": "f82b2dbbcf547a43a08e34226845118abb27af22",
+  "commands": [
+    {
+      "command": "test $(wc -w < docs/demo/IT_BRIEF.md) -le 900",
+      "exit_code": 0
+    },
+    {
+      "command": "for h in 'Data flow' 'Identity' 'What is written and how' 'Audit trail and evidence export' 'Open risks'; do grep -qx \"## $h\" docs/demo/IT_BRIEF.md || exit 1; done",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -q 'NL-LIVE-002' docs/demo/IT_BRIEF.md && grep -qi 'per-user' docs/demo/IT_BRIEF.md && grep -qi 'entra' docs/demo/IT_BRIEF.md",
+      "exit_code": 0
+    },
+    {
+      "command": "awk '/^## Open risks/{f=1;next} /^## /{f=0} f && /^- /{n++; if ($0 !~ /Mitigation: / && $0 !~ /Status: open/) bad++} END{exit (n>=4 && bad==0)?0:1}' docs/demo/IT_BRIEF.md",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    }
+  ],
+  "checkout_clean": true,
+  "created_at": "2026-10-19T15:41:16Z"
+}

@@ -1,0 +1,12 @@
+$ go test ./internal/workiva/ -race -count=1
+ok  	github.com/dantalabs/northern-lights/internal/workiva	12.992s
+$ go vet ./internal/workiva/
+$ test -z "$(gofmt -l internal/workiva)"
+$ golangci-lint run ./internal/workiva/...
+0 issues.
+$ grep -q NL_DEMO_ESG_DATA internal/workiva/demo_esg.go
+$ ! grep -q 'demo ESG fixture not served yet' internal/workiva/demo_esg_test.go
+$ for n in SheetsList SourceReadsCurrentYear PriorPeriodAndTarget WriteThenReadBack ValuesEndpoint UnknownIDs MissingDataDir DefaultDataDir KeepsVSMERoutes; do grep -q "func TestDemoESG$n(" internal/workiva/demo_esg_test.go || exit 1; done
+$ ! grep -q 'fmt.Sprint' internal/workiva/demo_esg_test.go && grep -q 'GetSheetDataTyped' internal/workiva/demo_esg_test.go
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

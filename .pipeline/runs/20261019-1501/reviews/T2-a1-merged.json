@@ -1,0 +1,143 @@
+{
+  "task_id": "T2",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 200,
+      "issue": "The update validation accepts edits to row 0 (the header row) and to columns A to C (key, label, unit). The task says a write outside the data rows returns 400, and the header row is not a data row. TestDemoESGUnknownIDs only covers rows past the end, columns past D and negative rows.",
+      "fix": "Reject edit.Row == 0 with a 400, and add a header-row case to TestDemoESGUnknownIDs. Restricting edits to column D (the value column) is optional.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 129,
+      "issue": "Overlay edits are applied with cells[pos[0]][pos[1]], with no bounds check against the grid as it is re-read on this request. The CSV is read on every request, so if the file shrinks after a write, a later read indexes out of range and RoundTrip panics instead of returning a JSON error.",
+      "fix": "Skip any overlay position that falls outside the current grid, or return a 500 JSON error for it.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 1,
+      "issue": "The file is about 250 lines, above the 'under about 200 lines' guideline in the task instructions. The worker report says so.",
+      "fix": "Optional: tighten the code when L0 adds the overlay field (T9).",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 129,
+      "issue": "esgGrid applies overlay edits with cells[pos[0]][pos[1]] and no bounds check. Edits are only checked against the grid when they are written, but the CSV is read again on every request. If esg-*.csv loses rows after a write (for example while the data is regenerated during the sprint), the next read panics inside RoundTrip instead of returning a JSON error.",
+      "fix": "Skip (or drop) overlay entries whose row or column falls outside the current grid before assigning: if pos[0] < len(cells) && pos[1] < esgColumnCount { ... }.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 113,
+      "issue": "Security (information disclosure): the 500 body includes the resolved data directory and the raw os/csv error, which can contain an absolute filesystem path. The body goes back through the MCP client to Copilot. The task only asks for NL_DEMO_ESG_DATA and the file name in the message.",
+      "fix": "Return only the env var name and file name (plus a short cause such as 'missing' or 'invalid header') in the response, and leave the directory and raw error out of the client-facing body.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 234,
+      "issue": "Possible Duplicated Code: esgJSON builds the same http.Response literal (JSON Content-Type, NopCloser body, synthetic GET Request) as demoJSONResponse and demoServerError in demo_client.go. The update path then changes resp.Request.Method to POST after the fact (line 221). Together with the extra helpers, this puts the file at 241 lines, over the task's 'under about 200 lines' guideline.",
+      "fix": "Build on the canonical helper: r := demoJSONResponse(body); r.StatusCode = status. Pass the method in, or drop the POST mutation if no caller checks it, which also brings the file closer to the size guideline.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 56,
+      "issue": "parts[2] is indexed before any length check. This is safe only because demo_client.go routes nothing but '/spreadsheets/demo-esg-' paths here, and the code does not state that assumption. The sheet lookup loop at line 69 also keeps scanning after a match.",
+      "fix": "Check len(parts) before indexing, or add a one-line comment naming the dispatcher's prefix guarantee. Break (or return) on the first matching sheet.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 48,
+      "issue": "The package-level overlay registry keyed by *DemoTransport never releases entries. The plan and worker report both acknowledge this, and cmd/workiva-mcp/main.go builds a single demo client per process, so the cost is negligible.",
+      "fix": "No action now; T9's request for an L0 field removes it.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 200,
+      "issue": "The update validation accepts edits to row 0 (the header row) and to columns A to C (key, label, unit). The task says a write outside the data rows returns 400, and the header row is not a data row. TestDemoESGUnknownIDs only covers rows past the end, columns past D and negative rows.",
+      "fix": "Reject edit.Row == 0 with a 400, and add a header-row case to TestDemoESGUnknownIDs. Restricting edits to column D (the value column) is optional.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 129,
+      "issue": "Overlay edits are applied with cells[pos[0]][pos[1]], with no bounds check against the grid as it is re-read on this request. The CSV is read on every request, so if the file shrinks after a write, a later read indexes out of range and RoundTrip panics instead of returning a JSON error.",
+      "fix": "Skip any overlay position that falls outside the current grid, or return a 500 JSON error for it.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 1,
+      "issue": "The file is about 250 lines, above the 'under about 200 lines' guideline in the task instructions. The worker report says so.",
+      "fix": "Optional: tighten the code when L0 adds the overlay field (T9).",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 129,
+      "issue": "esgGrid applies overlay edits with cells[pos[0]][pos[1]] and no bounds check. Edits are only checked against the grid when they are written, but the CSV is read again on every request. If esg-*.csv loses rows after a write (for example while the data is regenerated during the sprint), the next read panics inside RoundTrip instead of returning a JSON error.",
+      "fix": "Skip (or drop) overlay entries whose row or column falls outside the current grid before assigning: if pos[0] < len(cells) && pos[1] < esgColumnCount { ... }.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 113,
+      "issue": "Security (information disclosure): the 500 body includes the resolved data directory and the raw os/csv error, which can contain an absolute filesystem path. The body goes back through the MCP client to Copilot. The task only asks for NL_DEMO_ESG_DATA and the file name in the message.",
+      "fix": "Return only the env var name and file name (plus a short cause such as 'missing' or 'invalid header') in the response, and leave the directory and raw error out of the client-facing body.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 234,
+      "issue": "Possible Duplicated Code: esgJSON builds the same http.Response literal (JSON Content-Type, NopCloser body, synthetic GET Request) as demoJSONResponse and demoServerError in demo_client.go. The update path then changes resp.Request.Method to POST after the fact (line 221). Together with the extra helpers, this puts the file at 241 lines, over the task's 'under about 200 lines' guideline.",
+      "fix": "Build on the canonical helper: r := demoJSONResponse(body); r.StatusCode = status. Pass the method in, or drop the POST mutation if no caller checks it, which also brings the file closer to the size guideline.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 56,
+      "issue": "parts[2] is indexed before any length check. This is safe only because demo_client.go routes nothing but '/spreadsheets/demo-esg-' paths here, and the code does not state that assumption. The sheet lookup loop at line 69 also keeps scanning after a match.",
+      "fix": "Check len(parts) before indexing, or add a one-line comment naming the dispatcher's prefix guarantee. Break (or return) on the first matching sheet.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 48,
+      "issue": "The package-level overlay registry keyed by *DemoTransport never releases entries. The plan and worker report both acknowledge this, and cmd/workiva-mcp/main.go builds a single demo client per process, so the cost is negligible.",
+      "fix": "No action now; T9's request for an L0 field removes it.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}
