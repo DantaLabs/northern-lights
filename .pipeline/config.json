@@ -1,0 +1,22 @@
+{
+  "project": "northern-lights",
+  "stack": "Go 1.27, MCP Go SDK, SQLite, Azure Container Apps",
+  "default_branch": "claude/demo-integration",
+  "source_dir": "internal",
+  "test_dir": "internal",
+  "commands": {
+    "install": "go mod download",
+    "test": "go test ./... -race",
+    "lint": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+    "typecheck": "none",
+    "build": "go build ./..."
+  },
+  "detected_from": {
+    "install": "go.mod",
+    "test": ".github/workflows/ci.yml (go test ./... -race)",
+    "lint": ".github/workflows/ci.yml (gofmt, go vet, golangci-lint v2.14.0)",
+    "typecheck": "go.mod (compiler checks types during build)",
+    "build": "go.mod",
+    "default_branch": "demo sprint until 2026-11-02; set back to main after the demo merges"
+  }
+}

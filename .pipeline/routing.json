@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "mode": {
+    "worker": "shadow",
+    "reviewer": "shadow"
+  },
+  "relative_cost": {
+    "haiku": 1,
+    "sonnet": 3,
+    "opus": 5
+  },
+  "fail_penalty": 2,
+  "rules": {
+    "haiku_kinds": [
+      "docs",
+      "config",
+      "rename",
+      "format",
+      "browser_check",
+      "data_extract"
+    ],
+    "haiku_max_owned_globs": 2,
+    "haiku_max_instruction_chars": 1500,
+    "risky_kinds": [
+      "migration",
+      "refactor"
+    ],
+    "risky_keywords": [
+      "auth",
+      "security",
+      "payment",
+      "billing",
+      "permission",
+      "migration",
+      "concurrency",
+      "encryption",
+      "secret",
+      "delete",
+      "schema"
+    ]
+  },
+  "promotion": {
+    "min_labeled": 50,
+    "min_regret_gain": 0.1,
+    "max_under_route_rate": 0.1,
+    "min_reviewer_replays": 20,
+    "min_sonnet_catch_rate": 0.9
+  },
+  "limits": {
+    "max_parallel": 3,
+    "max_attempts_task": 3,
+    "max_review_rounds": 10,
+    "plan_critic_rounds": 2,
+    "replay_max_tasks": 2,
+    "replay_max_reviews": 2
+  }
+}
