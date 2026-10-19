@@ -1,0 +1,70 @@
+$ grep -q Demo configs/demo/company.md && grep -q 2024 configs/demo/company.md && grep -q 2025 configs/demo/company.md
+$ v=$(python3 -I -c 'import csv; print([r["value"] for r in csv.DictReader(open("configs/demo/data/esg-2025.csv")) if r["key"]=="employees_total"][0])') && test -n "$v" && grep -qF "$v" configs/demo/company.md
+$ python3 -I -c '
+import csv, re
+from decimal import Decimal as D
+load = lambda y: list(csv.DictReader(open("configs/demo/data/esg-%s.csv" % y)))
+a, b = load("2024"), load("2025")
+assert [(r["key"], r["label"], r["unit"]) for r in a] == [(r["key"], r["label"], r["unit"]) for r in b]
+num = re.compile(r"-?[0-9]+(\.[0-9]+)?")
+assert all(num.fullmatch(r["value"]) for r in a), "2024 values all filled"
+assert all(r["value"] == "" or num.fullmatch(r["value"]) for r in b)
+assert sum(1 for r in b if r["value"] == "") == 1, "exactly one empty 2025 value"
+tot = list(csv.DictReader(open("configs/demo/data/totals.csv")))
+assert any(t["total_key"] == "energy_total" for t in tot) and any(t["total_key"] == "employees_total" for t in tot)
+for rows in (a, b):
+    v = {r["key"]: D(r["value"]) for r in rows if r["value"]}
+    for t in tot:
+        assert v[t["total_key"]] == sum(v[p] for p in t["part_keys"].split("+")), t
+    for r in rows:
+        if r["unit"] == "%" and r["value"]:
+            assert D(0) <= D(r["value"]) <= D(100), r["key"]
+unit = {r["key"]: r["unit"] for r in a}
+pv = {r["key"]: D(r["value"]) for r in a}
+rec = {}
+for sec in ("environmental", "social"):
+    key = None
+    for line in open("configs/demo/sections/esg-%s.yaml" % sec):
+        m = re.match(r"\s*- key:\s*(\S+)", line)
+        if m:
+            key = m.group(1).strip(chr(34)); rec[key] = {"sec": sec}
+            continue
+        m = re.match(r"\s*(required|min|max):\s*(\S+)", line)
+        if m and key:
+            rec[key][m.group(1)] = m.group(2).strip(chr(34))
+assert [r["key"] for r in b] == list(rec), "recipe fields follow CSV order"
+found = []
+for r in b:
+    k, f = r["key"], rec[r["key"]]
+    if r["value"] == "":
+        if f.get("required") == "true": found.append(("missing", f["sec"]))
+        continue
+    c, p = D(r["value"]), pv[k]
+    if "min" in f and c < D(f["min"]): found.append(("out_of_range", f["sec"]))
+    if "max" in f and c > D(f["max"]): found.append(("out_of_range", f["sec"]))
+    ch = abs(c - p) if unit[k] == "%" else (abs(c - p) / abs(p) * 100 if p else D(0))
+    if ch >= 10: found.append(("material_change", f["sec"])); assert unit[k] != "%", ("material plant on a percent field", k)
+    if c * p < 0: found.append(("sign_change", f["sec"]))
+assert sorted(found) == sorted([("missing", "environmental"), ("out_of_range", "environmental"), ("material_change", "environmental"), ("material_change", "social")]), found
+'
+$ test $(grep -cE '^- `?(missing|material_change|out_of_range)' configs/demo/data/README.md) -eq 4
+$ grep -qx 'materiality_pct: 10' configs/demo/sections/esg-environmental.yaml && grep -qx 'materiality_pct: 10' configs/demo/sections/esg-social.yaml
+$ for f in configs/demo/sections/verbatim/env-policy.txt configs/demo/sections/verbatim/social-policy.txt; do test -s $f && head -1 $f | grep -qv '^#' || exit 1; done
+$ python3 -I -c '
+import re
+d = open("configs/demo/mappings-demo.yaml").read()
+s = open("configs/demo/mappings-sandbox.example.yaml").read()
+for f in ("configs/demo/sections/esg-environmental.yaml", "configs/demo/sections/esg-social.yaml"):
+    y = open(f).read()
+    names = re.findall(r"(?:source|target|prior): *\"?((?:src|rpt)_[a-z0-9_]+)", y)
+    assert len(names) >= 36, f
+    for n in names:
+        assert re.search(r"name: *%s\b" % n, d), ("demo", n)
+        assert re.search(r"name: *%s\b" % n, s), ("sandbox", n)
+assert all(re.fullmatch(r"\"?demo-esg-[a-z0-9-]+\"?", i) for i in re.findall(r"^ *-? *id: *(\S+)", d, re.M))
+'
+$ mkdir -p .scratch/l4-smoke && rm -f .scratch/l4-smoke/* && go build -o .scratch/l4-smoke/mcp ./cmd/workiva-mcp && (NL_DEMO_MODE=true NL_DEMO_PIPELINE=true NL_DEMO_SECTIONS_DIR=configs/demo/sections NL_DB_PATH=.scratch/l4-smoke/demo.db NL_API_KEY=smoke NL_LISTEN_ADDR=127.0.0.1:0 timeout 20 .scratch/l4-smoke/mcp -mappings configs/demo/mappings-demo.yaml > .scratch/l4-smoke/log 2>&1; true) && grep -q 'loaded extra mappings from configs/demo/mappings-demo.yaml' .scratch/l4-smoke/log && grep -q 'demo pipeline enabled' .scratch/l4-smoke/log
+$ python3 -I configs/demo/check_no_sandbox_ids.py "$HOME/northern-lights-workspace/versions/demo-l0/docs/demo/evidence/2026-10-19-RB-01/step-3.local.json" "$HOME/northern-lights-workspace/versions/nl-l3/docs/demo/evidence/2026-10-19-RB-02/step-2.local.json"
+ok: no sandbox IDs in 558 files
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

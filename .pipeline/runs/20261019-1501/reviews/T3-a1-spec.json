@@ -1,0 +1,32 @@
+{
+  "task_id": "T3",
+  "axis": "spec",
+  "verdict": "pass",
+  "implementation_commit": "38f726e777da58ad261065dfdf57ff3afa9a1bcb",
+  "attempt": 1,
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "configs/demo/sections/esg-environmental.yaml",
+      "line": 1,
+      "issue": "Acceptance scenario 2 (R5, R6) is only partly proven. The smoke start shows the mapping file loads and the demo pipeline is on, but no recipe loader exists yet (L2 not merged), so nothing yet checks the recipes against the L2 schema or that unknown keys are rejected. Schema fidelity was checked by hand against docs/specs/demo-l2-section-recipe.md 'Interfaces and data' and found to match (only the documented top-level and field keys, verbatim as a list of id/title/file).",
+      "fix": "No change in T3. Once L2 merges, rerun acceptance 8 and check the log for recipe loading of esg-environmental and esg-social, as the plan already says."
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/README.md",
+      "line": 26,
+      "issue": "Edits to configs/demo/README.md (waste type/unit note) and configs/demo/.gitignore (__pycache__/) are outside T3's owns list. The orchestrator directed both, so they are not scope creep. The worker report records them.",
+      "fix": "None."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R1", "satisfied": true, "evidence": "configs/demo/company.md: 'Demo Harbour Components Ltd (fictional)', sector, countries NL/PL/PT, three sites table, headcount 2024 412 / 2025 428 (= employees_total in esg-2025.csv), reporting years 2024 and 2025; acceptance cmds 1-2 exit 0 (checks/T3-a1.json)"},
+    {"requirement": "R2", "satisfied": true, "evidence": "configs/demo/data/esg-2024.csv and esg-2025.csv: header key,label,unit,value, 26 environmental + 16 social rows; keys/labels/units/order are T1's and only the value column changed (diff); acceptance cmd 3 asserts both files share the same key/label/unit order"},
+    {"requirement": "R3", "satisfied": true, "evidence": "acceptance cmd 3 (exact Decimal check, exit 0): totals.csv energy_total/land_use_total/employees_total equal sums in both years, no % fields out of 0..100, no change >=10% other than the plants, no sign change; manual review: employees_start 2025 = employees_end 2024 = 412"},
+    {"requirement": "R4", "satisfied": true, "evidence": "acceptance cmd 3 asserts found == {missing env, out_of_range env, material_change env, material_change soc} using recipe required/min/max; configs/demo/data/README.md 'Planted findings' lists water_discharge_production (missing), ghg_scope3_business_travel 140->165, training_hours_female 22.0->25.5, electricity_renewable 520->490 < min 500; acceptance cmd 4 counts 4 bullets"},
+    {"requirement": "R5", "satisfied": true, "evidence": "configs/demo/sections/esg-environmental.yaml:1-7 and esg-social.yaml:1-7 (id, title, period, prior_period, document_id demo placeholder, materiality_pct: 10), one field per CSV row in CSV order with source/target/prior, required on totals and the missing plant, min 500 at esg-environmental.yaml:26; one verbatim block each; verbatim/*.txt are invented single paragraphs with no heading; acceptance cmds 5-6 exit 0. Loader proof waits on L2 (see minor finding)"},
+    {"requirement": "R6", "satisfied": true, "evidence": "configs/demo/mappings-demo.yaml: demo-esg-source/demo-esg-source-2025 (src_ fields) and demo-esg-report with -cy (rpt_*_2025) and -py (rpt_*_2024), 126 fields, range D<n+1>, field_type number; acceptance cmd 7 shows every recipe source/target/prior name is in both the demo mapping and mappings-sandbox.example.yaml and every id starts with demo-esg-; acceptance cmd 8 smoke log has 'loaded extra mappings from configs/demo/mappings-demo.yaml'"}
+  ],
+  "new_tasks": []
+}

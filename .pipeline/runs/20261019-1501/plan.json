@@ -243,8 +243,8 @@
         "mkdir -p .scratch/l4-smoke && rm -f .scratch/l4-smoke/* && go build -o .scratch/l4-smoke/mcp ./cmd/workiva-mcp && (NL_DEMO_MODE=true NL_DEMO_PIPELINE=true NL_DEMO_SECTIONS_DIR=configs/demo/sections NL_DB_PATH=.scratch/l4-smoke/demo.db NL_API_KEY=smoke NL_LISTEN_ADDR=127.0.0.1:0 timeout 20 .scratch/l4-smoke/mcp -mappings configs/demo/mappings-demo.yaml > .scratch/l4-smoke/log 2>&1; true) && grep -q 'loaded extra mappings from configs/demo/mappings-demo.yaml' .scratch/l4-smoke/log && grep -q 'demo pipeline enabled' .scratch/l4-smoke/log",
         "python3 -I configs/demo/check_no_sandbox_ids.py \"$HOME/northern-lights-workspace/versions/demo-l0/docs/demo/evidence/2026-10-19-RB-01/step-3.local.json\" \"$HOME/northern-lights-workspace/versions/nl-l3/docs/demo/evidence/2026-10-19-RB-02/step-2.local.json\""
       ],
-      "status": "running",
-      "attempts": 0,
+      "status": "passed",
+      "attempts": 1,
       "base_commit": "49d2e6d3a993b42f8e60c2abd58f499bdbef7902",
       "route": {
         "worker_model": "sonnet",
@@ -259,14 +259,37 @@
         "environment": "local",
         "router": "planner-hint"
       },
-      "active_attempt": 1,
       "execution": {
         "router": "planner-hint",
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
         "standards_reviewer_model": "opus",
         "environment": "local"
-      }
+      },
+      "branch": "task/20261019-1501-T3-a1",
+      "implementation_commit": "38f726e777da58ad261065dfdf57ff3afa9a1bcb",
+      "history": [
+        {
+          "attempt": 1,
+          "evidence_attempt": 1,
+          "worker": "sonnet",
+          "spec_reviewer": "opus",
+          "standards_reviewer": "opus",
+          "verdict": "pass",
+          "axes": {
+            "spec": "pass",
+            "standards": "pass"
+          },
+          "blocking_major": 0,
+          "router": "planner-hint",
+          "worker_model": "sonnet",
+          "spec_reviewer_model": "opus",
+          "standards_reviewer_model": "opus",
+          "environment": "local",
+          "implementation_commit": "38f726e777da58ad261065dfdf57ff3afa9a1bcb",
+          "decision_id": "2c6a05aa4d87"
+        }
+      ]
     },
     {
       "id": "T4",
@@ -308,9 +331,9 @@
         "golangci-lint run ./cmd/nl-demo-seed/...",
         "grep -q GetSheetDataTyped cmd/nl-demo-seed/data_test.go && ! grep -qE 'GetSheetData\\(' cmd/nl-demo-seed/data_test.go"
       ],
-      "status": "pending",
+      "status": "running",
       "attempts": 0,
-      "base_commit": null,
+      "base_commit": "fb537bac53af81685a84a291cb78812b132a9fc4",
       "route": {
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
@@ -323,6 +346,14 @@
         ],
         "environment": "local",
         "router": "planner-hint"
+      },
+      "active_attempt": 1,
+      "execution": {
+        "router": "planner-hint",
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "environment": "local"
       }
     },
     {
@@ -465,9 +496,9 @@
         "grep -q 'RB-03' docs/demo/agent/INSTRUCTIONS.md",
         "python3 -I configs/demo/check_no_sandbox_ids.py \"$HOME/northern-lights-workspace/versions/demo-l0/docs/demo/evidence/2026-10-19-RB-01/step-3.local.json\" \"$HOME/northern-lights-workspace/versions/nl-l3/docs/demo/evidence/2026-10-19-RB-02/step-2.local.json\""
       ],
-      "status": "pending",
+      "status": "running",
       "attempts": 0,
-      "base_commit": null,
+      "base_commit": "fb537bac53af81685a84a291cb78812b132a9fc4",
       "route": {
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
@@ -480,6 +511,14 @@
         ],
         "environment": "local",
         "router": "planner-hint"
+      },
+      "active_attempt": 1,
+      "execution": {
+        "router": "planner-hint",
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "environment": "local"
       }
     },
     {

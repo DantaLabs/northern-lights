@@ -1,0 +1,79 @@
+{
+  "task_id": "T3",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "configs/demo/sections/esg-environmental.yaml",
+      "line": 1,
+      "issue": "Acceptance scenario 2 (R5, R6) is only partly proven. The smoke start shows the mapping file loads and the demo pipeline is on, but no recipe loader exists yet (L2 not merged), so nothing yet checks the recipes against the L2 schema or that unknown keys are rejected. Schema fidelity was checked by hand against docs/specs/demo-l2-section-recipe.md 'Interfaces and data' and found to match (only the documented top-level and field keys, verbatim as a list of id/title/file).",
+      "fix": "No change in T3. Once L2 merges, rerun acceptance 8 and check the log for recipe loading of esg-environmental and esg-social, as the plan already says.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/README.md",
+      "line": 26,
+      "issue": "Edits to configs/demo/README.md (waste type/unit note) and configs/demo/.gitignore (__pycache__/) are outside T3's owns list. The orchestrator directed both, so they are not scope creep. The worker report records them.",
+      "fix": "None.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/mappings-demo.yaml",
+      "line": 13,
+      "issue": "Possible Duplicated Code: each of the 42 field labels is written four times by hand (esg-2024.csv, esg-2025.csv, mapping descriptions twice, recipe labels), and the src/rpt names and D<n+1> ranges follow CSV row order. The worker produced them with a throwaway generator (.scratch/gen.py, git-ignored), so a later edit to one CSV row cannot be repeated reliably and the copies can drift. Acceptance check 7 covers name existence but not label or row-order agreement.",
+      "fix": "Either commit the generator under configs/demo/ (or cmd/nl-demo-seed/) and note it in configs/demo/README.md, or add a small consistency check (label and row order: CSV vs mapping vs recipe) to the demo_esg test that L4 owns.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/data/README.md",
+      "line": 19,
+      "issue": "The planted-findings list repeats the literal 2024/2025 values and percentages from the CSVs, so it is a second source of truth that goes stale if the data changes.",
+      "fix": "Keep the key, finding type and reason only, or accept the duplication because it is demo documentation.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "configs/demo/sections/esg-environmental.yaml",
+      "line": 1,
+      "issue": "Acceptance scenario 2 (R5, R6) is only partly proven. The smoke start shows the mapping file loads and the demo pipeline is on, but no recipe loader exists yet (L2 not merged), so nothing yet checks the recipes against the L2 schema or that unknown keys are rejected. Schema fidelity was checked by hand against docs/specs/demo-l2-section-recipe.md 'Interfaces and data' and found to match (only the documented top-level and field keys, verbatim as a list of id/title/file).",
+      "fix": "No change in T3. Once L2 merges, rerun acceptance 8 and check the log for recipe loading of esg-environmental and esg-social, as the plan already says.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/README.md",
+      "line": 26,
+      "issue": "Edits to configs/demo/README.md (waste type/unit note) and configs/demo/.gitignore (__pycache__/) are outside T3's owns list. The orchestrator directed both, so they are not scope creep. The worker report records them.",
+      "fix": "None.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/mappings-demo.yaml",
+      "line": 13,
+      "issue": "Possible Duplicated Code: each of the 42 field labels is written four times by hand (esg-2024.csv, esg-2025.csv, mapping descriptions twice, recipe labels), and the src/rpt names and D<n+1> ranges follow CSV row order. The worker produced them with a throwaway generator (.scratch/gen.py, git-ignored), so a later edit to one CSV row cannot be repeated reliably and the copies can drift. Acceptance check 7 covers name existence but not label or row-order agreement.",
+      "fix": "Either commit the generator under configs/demo/ (or cmd/nl-demo-seed/) and note it in configs/demo/README.md, or add a small consistency check (label and row order: CSV vs mapping vs recipe) to the demo_esg test that L4 owns.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/data/README.md",
+      "line": 19,
+      "issue": "The planted-findings list repeats the literal 2024/2025 values and percentages from the CSVs, so it is a second source of truth that goes stale if the data changes.",
+      "fix": "Keep the key, finding type and reason only, or accept the duplication because it is demo documentation.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}
