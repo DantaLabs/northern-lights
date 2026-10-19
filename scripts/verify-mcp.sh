@@ -4,15 +4,22 @@
 #   NL_URL=https://<host>/mcp NL_KEY=<api key> scripts/verify-mcp.sh
 #
 # Sends initialize, notifications/initialized (keeping Mcp-Session-Id when
-# the server returns one) and tools/list, checks for exactly 13 current tools
-# application/json responses, then repeats tools/list with a malformed key
-# and expects 401. Exits non-zero on the first failed check. NL_KEY is
-# passed to curl through a private header file and is never printed.
+# the server returns one) and tools/list, checks for exactly NL_EXPECT_TOOLS
+# current tools (default 13; set NL_EXPECT_TOOLS=17 when the server runs with
+# NL_DEMO_PIPELINE=true) application/json responses, then repeats tools/list
+# with a malformed key and expects 401. Exits non-zero on the first failed
+# check. NL_KEY is passed to curl through a private header file and is never
+# printed.
 set -euo pipefail
 
 : "${NL_URL:?set NL_URL to the /mcp endpoint, e.g. http://localhost:8090/mcp}"
 : "${NL_KEY:?set NL_KEY to the Northern Lights API key}"
 command -v python3 >/dev/null || { echo "FAIL: python3 is required to parse JSON" >&2; exit 2; }
+expected="${NL_EXPECT_TOOLS:-13}"
+if ! [[ "$expected" =~ ^[1-9][0-9]*$ ]]; then
+  echo "FAIL: NL_EXPECT_TOOLS must be a positive integer" >&2
+  exit 2
+fi
 
 umask 077
 work=$(mktemp -d)
@@ -60,7 +67,7 @@ try:
     print(len(json.load(sys.stdin)["result"]["tools"]))
 except Exception:
     print(-1)')
-check "tools/list has exactly 13 current tools (got $count)" "$([ "$count" = 13 ]; echo $?)"
+check "tools/list has exactly $expected tools (got $count)" "$([ "$count" = "$expected" ]; echo $?)"
 
 post "$work/badauth" '{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}'
 check "malformed key is rejected with 401 (got $status)" "$([ "$status" = 401 ]; echo $?)"
