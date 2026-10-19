@@ -1,0 +1,71 @@
+{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "result": {
+        "content": [
+            {
+                "type": "text",
+                "text": "{\"fetched_at\":\"2026-10-19T11:53:54.395140916Z\",\"nl_audit_id\":\"<audit-id>\",\"range\":\"A1:C10\",\"rows\":[[\"Field\",\"Value\",\"Field 3\"],[\"Scope 1 Energy (kWh)\",\"1200\",\"1500\"],[\"Scope 2 Energy (kWh)\",\"800\",\"600\"],[\"Test Write Value\",\"0\",\"\"],[\"\",\"\",\"\"],[\"\",\"\",\"\"],[\"\",\"\",\"\"],[\"\",\"\",\"\"],[\"\",\"\",\"\"],[\"\",\"\",\"\"]],\"sheet_id\":\"<id-47>\",\"spreadsheet_id\":\"<id-46>\"}"
+            }
+        ],
+        "structuredContent": {
+            "fetched_at": "2026-10-19T11:53:54.395140916Z",
+            "nl_audit_id": "<audit-id>",
+            "range": "A1:C10",
+            "rows": [
+                [
+                    "Field",
+                    "Value",
+                    "Field 3"
+                ],
+                [
+                    "Scope 1 Energy (kWh)",
+                    "1200",
+                    "1500"
+                ],
+                [
+                    "Scope 2 Energy (kWh)",
+                    "800",
+                    "600"
+                ],
+                [
+                    "Test Write Value",
+                    "0",
+                    ""
+                ],
+                [
+                    "",
+                    "",
+                    ""
+                ],
+                [
+                    "",
+                    "",
+                    ""
+                ],
+                [
+                    "",
+                    "",
+                    ""
+                ],
+                [
+                    "",
+                    "",
+                    ""
+                ],
+                [
+                    "",
+                    "",
+                    ""
+                ],
+                [
+                    "",
+                    "",
+                    ""
+                ]
+            ],
+            "sheet_id": "<id-47>",
+            "spreadsheet_id": "<id-46>"
+        }
+    }
+}

@@ -1,0 +1,225 @@
+{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "result": {
+        "content": [
+            {
+                "type": "text",
+                "text": "{\"nl_audit_id\":\"<audit-id>\",\"spreadsheets\":[{\"id\":\"<id-48>\",\"name\":\"NL_RO_Scratch_20261009\",\"region\":\"eu\",\"sheets\":[{\"id\":\"<id-49>\",\"name\":\"Sheet1\"}]},{\"id\":\"<id-46>\",\"name\":\"Testing MCP\",\"region\":\"eu\",\"sheets\":[{\"id\":\"<id-47>\",\"name\":\"Sheet1\"}]},{\"id\":\"<id-19>\",\"name\":\"VSME - Factbook template\",\"region\":\"eu\",\"sheets\":[{\"id\":\"<id-20>\",\"name\":\"Dates\"},{\"id\":\"<id-21>\",\"name\":\"Agent - Data Mapping\"},{\"id\":\"<id-22>\",\"name\":\"Agent - Specs\"},{\"id\":\"<id-23>\",\"name\":\"Agent - Text Generated\"},{\"id\":\"<id-24>\",\"name\":\"Users list\"},{\"id\":\"<id-25>\",\"name\":\"Data validation\"},{\"id\":\"<id-26>\",\"name\":\"CY Data Output\"},{\"id\":\"<id-27>\",\"name\":\"PY Data Output\"},{\"id\":\"<id-28>\",\"name\":\"VSME Factbook\"},{\"id\":\"<id-29>\",\"name\":\"General Information\"},{\"id\":\"<id-30>\",\"name\":\"B1 - Basis for preparation\"},{\"id\":\"<id-31>\",\"name\":\"B1 - Basis for Preparation 1\"},{\"id\":\"<id-32>\",\"name\":\"B1 - Basis for Preparation 2\"},{\"id\":\"<id-33>\",\"name\":\"B1 - List of subsidiaries (If applicable)\"},{\"id\":\"<id-34>\",\"name\":\"B1 - List of sites (Always to be reported)\"},{\"id\":\"<id-35>\",\"name\":\"B2 - Practices, policies and future initiatives for transitioning towards a more sustainable economy\"},{\"id\":\"<id-36>\",\"name\":\"B2 - Practices, policies and future initiatives for transitioning towards..\"},{\"id\":\"<id-37>\",\"name\":\"B2 - Cooperative specific disclosures\"},{\"id\":\"<id-38>\",\"name\":\"C2 \u2013 Description of practices, policies and future initiatives for transitioning towards a more...\"},{\"id\":\"<id-39>\",\"name\":\"Environmental Disclosures\"},{\"id\":\"<id-40>\",\"name\":\"B3 - Energy consumption\"},{\"id\":\"<id-41>\",\"name\":\"C3 - GHG reduction targets and climate transition\"},{\"id\":\"<id-42>\",\"name\":\"B4 \u2013 Pollution of air, water and soil\"},{\"id\":\"<id-43>\",\"name\":\"B5 \u2013 Biodiversity\"},{\"id\":\"<id-44>\",\"name\":\"B6 - Water withdrawal and water consumption\"},{\"id\":\"<id-45>\",\"name\":\"B7 - Resource use, circular economy and waste management\"}]},{\"id\":\"<id-01>\",\"name\":\"VSME-Digital-Template-1.0.1 Unlocked\",\"region\":\"eu\",\"sheets\":[{\"id\":\"<id-02>\",\"name\":\"Data Collection\"},{\"id\":\"<id-03>\",\"name\":\"Mapper\"},{\"id\":\"<id-04>\",\"name\":\"Specs\"},{\"id\":\"<id-05>\",\"name\":\"Text Generated\"},{\"id\":\"<id-06>\",\"name\":\"VSME template\"},{\"id\":\"<id-07>\",\"name\":\"Introduction\"},{\"id\":\"<id-08>\",\"name\":\"Table of Contents \\u0026 Validation\"},{\"id\":\"<id-09>\",\"name\":\"General Information\"},{\"id\":\"<id-10>\",\"name\":\"Environmental Disclosures\"},{\"id\":\"<id-11>\",\"name\":\"Social Disclosures\"},{\"id\":\"<id-12>\",\"name\":\"Governance Disclosures\"},{\"id\":\"<id-13>\",\"name\":\"Fuel Converter\"},{\"id\":\"<id-14>\",\"name\":\"Fuel Conversion Parameters\"},{\"id\":\"<id-15>\",\"name\":\"Unit Of Measurement Converter\"},{\"id\":\"<id-16>\",\"name\":\"License\"},{\"id\":\"<id-17>\",\"name\":\"Enumeration Lists\"},{\"id\":\"<id-18>\",\"name\":\"Technical Sheet\"}]}]}"
+            }
+        ],
+        "structuredContent": {
+            "nl_audit_id": "<audit-id>",
+            "spreadsheets": [
+                {
+                    "id": "<id-48>",
+                    "name": "NL_RO_Scratch_20261009",
+                    "region": "eu",
+                    "sheets": [
+                        {
+                            "id": "<id-49>",
+                            "name": "Sheet1"
+                        }
+                    ]
+                },
+                {
+                    "id": "<id-46>",
+                    "name": "Testing MCP",
+                    "region": "eu",
+                    "sheets": [
+                        {
+                            "id": "<id-47>",
+                            "name": "Sheet1"
+                        }
+                    ]
+                },
+                {
+                    "id": "<id-19>",
+                    "name": "VSME - Factbook template",
+                    "region": "eu",
+                    "sheets": [
+                        {
+                            "id": "<id-20>",
+                            "name": "Dates"
+                        },
+                        {
+                            "id": "<id-21>",
+                            "name": "Agent - Data Mapping"
+                        },
+                        {
+                            "id": "<id-22>",
+                            "name": "Agent - Specs"
+                        },
+                        {
+                            "id": "<id-23>",
+                            "name": "Agent - Text Generated"
+                        },
+                        {
+                            "id": "<id-24>",
+                            "name": "Users list"
+                        },
+                        {
+                            "id": "<id-25>",
+                            "name": "Data validation"
+                        },
+                        {
+                            "id": "<id-26>",
+                            "name": "CY Data Output"
+                        },
+                        {
+                            "id": "<id-27>",
+                            "name": "PY Data Output"
+                        },
+                        {
+                            "id": "<id-28>",
+                            "name": "VSME Factbook"
+                        },
+                        {
+                            "id": "<id-29>",
+                            "name": "General Information"
+                        },
+                        {
+                            "id": "<id-30>",
+                            "name": "B1 - Basis for preparation"
+                        },
+                        {
+                            "id": "<id-31>",
+                            "name": "B1 - Basis for Preparation 1"
+                        },
+                        {
+                            "id": "<id-32>",
+                            "name": "B1 - Basis for Preparation 2"
+                        },
+                        {
+                            "id": "<id-33>",
+                            "name": "B1 - List of subsidiaries (If applicable)"
+                        },
+                        {
+                            "id": "<id-34>",
+                            "name": "B1 - List of sites (Always to be reported)"
+                        },
+                        {
+                            "id": "<id-35>",
+                            "name": "B2 - Practices, policies and future initiatives for transitioning towards a more sustainable economy"
+                        },
+                        {
+                            "id": "<id-36>",
+                            "name": "B2 - Practices, policies and future initiatives for transitioning towards.."
+                        },
+                        {
+                            "id": "<id-37>",
+                            "name": "B2 - Cooperative specific disclosures"
+                        },
+                        {
+                            "id": "<id-38>",
+                            "name": "C2 \u2013 Description of practices, policies and future initiatives for transitioning towards a more..."
+                        },
+                        {
+                            "id": "<id-39>",
+                            "name": "Environmental Disclosures"
+                        },
+                        {
+                            "id": "<id-40>",
+                            "name": "B3 - Energy consumption"
+                        },
+                        {
+                            "id": "<id-41>",
+                            "name": "C3 - GHG reduction targets and climate transition"
+                        },
+                        {
+                            "id": "<id-42>",
+                            "name": "B4 \u2013 Pollution of air, water and soil"
+                        },
+                        {
+                            "id": "<id-43>",
+                            "name": "B5 \u2013 Biodiversity"
+                        },
+                        {
+                            "id": "<id-44>",
+                            "name": "B6 - Water withdrawal and water consumption"
+                        },
+                        {
+                            "id": "<id-45>",
+                            "name": "B7 - Resource use, circular economy and waste management"
+                        }
+                    ]
+                },
+                {
+                    "id": "<id-01>",
+                    "name": "VSME-Digital-Template-1.0.1 Unlocked",
+                    "region": "eu",
+                    "sheets": [
+                        {
+                            "id": "<id-02>",
+                            "name": "Data Collection"
+                        },
+                        {
+                            "id": "<id-03>",
+                            "name": "Mapper"
+                        },
+                        {
+                            "id": "<id-04>",
+                            "name": "Specs"
+                        },
+                        {
+                            "id": "<id-05>",
+                            "name": "Text Generated"
+                        },
+                        {
+                            "id": "<id-06>",
+                            "name": "VSME template"
+                        },
+                        {
+                            "id": "<id-07>",
+                            "name": "Introduction"
+                        },
+                        {
+                            "id": "<id-08>",
+                            "name": "Table of Contents & Validation"
+                        },
+                        {
+                            "id": "<id-09>",
+                            "name": "General Information"
+                        },
+                        {
+                            "id": "<id-10>",
+                            "name": "Environmental Disclosures"
+                        },
+                        {
+                            "id": "<id-11>",
+                            "name": "Social Disclosures"
+                        },
+                        {
+                            "id": "<id-12>",
+                            "name": "Governance Disclosures"
+                        },
+                        {
+                            "id": "<id-13>",
+                            "name": "Fuel Converter"
+                        },
+                        {
+                            "id": "<id-14>",
+                            "name": "Fuel Conversion Parameters"
+                        },
+                        {
+                            "id": "<id-15>",
+                            "name": "Unit Of Measurement Converter"
+                        },
+                        {
+                            "id": "<id-16>",
+                            "name": "License"
+                        },
+                        {
+                            "id": "<id-17>",
+                            "name": "Enumeration Lists"
+                        },
+                        {
+                            "id": "<id-18>",
+                            "name": "Technical Sheet"
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

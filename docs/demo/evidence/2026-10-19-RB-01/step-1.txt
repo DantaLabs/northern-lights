@@ -1,0 +1,28 @@
+== build
+== server on :8090 (NL_DEBUG_HEADERS=1)
+PASS: initialize returns 200 (got 200)
+PASS: initialize answers application/json, not SSE (got application/json)
+INFO: server issued Mcp-Session-Id (kept for the session)
+PASS: notifications/initialized returns 202 (got 202)
+PASS: tools/list returns 200 (got 200)
+PASS: tools/list answers application/json (got application/json)
+PASS: tools/list has exactly 13 tools (got 13)
+PASS: malformed key is rejected with 401 (got 401)
+all checks passed against http://localhost:8090/mcp
+== Quick Tunnel
+PASS: initialize returns 200 (got 200)
+PASS: initialize answers application/json, not SSE (got application/json)
+INFO: server issued Mcp-Session-Id (kept for the session)
+PASS: notifications/initialized returns 202 (got 202)
+PASS: tools/list returns 200 (got 200)
+PASS: tools/list answers application/json (got application/json)
+PASS: tools/list has exactly 13 tools (got 13)
+PASS: malformed key is rejected with 401 (got 401)
+all checks passed against https://constitutional-treo-semiconductor-restored.trycloudflare.com/mcp
+
+Ready.
+  MCP URL:        https://constitutional-treo-semiconductor-restored.trycloudflare.com/mcp
+  Connector Host: constitutional-treo-semiconductor-restored.trycloudflare.com   (also written to deployments/copilot-studio/northern-lights-connector.local.yaml)
+If the host differs from the one in the Copilot Studio connector: update
+Custom connectors > Edit > General > Host, save, then remove and re-add the
+Northern Lights tool on the agent.

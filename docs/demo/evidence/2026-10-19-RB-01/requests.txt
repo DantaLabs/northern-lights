@@ -1,0 +1,18 @@
+configured key_sha256=<keyfp>; last 60 min: 15 request(s)
+(key fingerprint replaced with <keyfp>; times are local, UTC+7)
+time      mcp method                 status auth         key      match  user agent                     nl-actor                           error
+18:53:02  initialize                 200    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:02  notifications/initialized  202    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:02  tools/list                 200    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:15  initialize                 200    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:16  notifications/initialized  202    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:16  tools/list                 200    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:21  initialize                 200    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:21  notifications/initialized  202    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:21  tools/list                 200    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:34  initialize                 200    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:34  notifications/initialized  202    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:39  tools/call                 200    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:53  initialize                 200    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:53  notifications/initialized  202    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
+18:53:54  tools/call                 200    bearer/53    <keyfp> yes    curl/7.81.0                    -                                  
