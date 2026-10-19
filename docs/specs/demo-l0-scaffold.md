@@ -28,6 +28,7 @@ R8: `internal/workiva/demo_client.go` routes request paths starting with `/docum
 R9: In demo mode, when `-mappings` is set, `cmd/workiva-mcp` loads that file after the built-in demo mappings, so L4's `configs/demo/mappings-demo.yaml` can add the ESG fixture fields. Without `-mappings`, demo mode behaves as today.
 R10: After L1 to L4 merge, `internal/demoe2e` has one test that, in demo mode with the flag on, calls prepare, confirm change set, stage text and confirm text in sequence and asserts the written values, the section text and one audit row per written field.
 R11: `scripts/verify-mcp.sh` reads the expected tool count from `NL_EXPECT_TOOLS`, default 13, so it checks 17 when the flag is on.
+R12: `internal/demoenv` defines `Env{DB *sql.DB; Store *mapping.Store; Audit *audit.Log; Client workivaprovider.Backend; Cfg *config.Config}`, and each lane package exposes a constructor with a stub body: `changeset.New(env) changeset.Service`, `recipe.New(env, changeset.Service) (recipe.Service, recipe.FactStore, error)`, `sectiontext.New(env, recipe.Service, recipe.FactStore) sectiontext.Service`. `cmd/workiva-mcp` calls them once when the flag is on and puts the results in `Deps`, so lanes never edit `main.go`.
 
 ## Interfaces and data
 
@@ -114,6 +115,7 @@ type DocumentWriter interface {
 6. (R9) Demo mode with `-mappings` pointing at a test YAML loads both the built-in demo fields and the YAML fields; demo mode without `-mappings` loads only the built-in fields.
 7. (R10) The end-to-end test passes on `claude/demo-integration` after L1 to L4 merge.
 8. (R11) `verify-mcp.sh` passes against a server without the flag and, with `NL_EXPECT_TOOLS=17`, against a server with the flag on.
+9. (R12) With the flag on, the server starts, the three constructors are called once each, and the services reach the tools through `Deps`; lanes can replace stub bodies without touching `main.go`.
 
 ## Open questions
 

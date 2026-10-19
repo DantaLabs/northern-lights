@@ -31,7 +31,8 @@ Every lane also edits its own row in `docs/demo/STATUS.md`.
 - `scripts/verify-mcp.sh`: expected tool count from `NL_EXPECT_TOOLS`.
 - `internal/mcpserver/registry.go`: any new field on `Deps` (for example `ChangeSets`, `Recipes`, `SectionText`).
 - `internal/workiva/demo_client.go`: one hook that sends `/documents` and `/content` paths to `demoDocumentsResponse` in `demo_documents.go` (L3) and `demo-esg-` spreadsheet IDs to `demoESGResponse` in `demo_esg.go` (L4).
-- Interface files, created by L0 and then owned by the lane named: `internal/changeset/changeset.go` (L1), `internal/recipe/types.go` (L2), `internal/sectiontext/types.go` (L3), `internal/workivaprovider/documents.go` (L3).
+- `internal/demoenv/`: the `Env` struct passed to every lane constructor.
+- Files created by L0 and then owned by the lane named: interface files `internal/changeset/changeset.go` (L1), `internal/recipe/types.go` (L2), `internal/sectiontext/types.go` (L3), `internal/workivaprovider/documents.go` (L3); stub constructors in each lane package; tool stubs `internal/mcpserver/tools/change_set.go` (L1), `prepare_section.go` (L2) and `section_text.go` (L3). Lanes replace stub bodies and never edit `main.go` to wire their service.
 
 After L0 merges, a lane may add to its interface file but must not change or remove what L0 defined without a request in `STATUS.md`.
 
