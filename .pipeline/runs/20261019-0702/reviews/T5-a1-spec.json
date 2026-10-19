@@ -1,0 +1,23 @@
+{
+  "task_id": "T5",
+  "axis": "spec",
+  "implementation_commit": "29e0af3c15e001973f3d678b344804d6127cd48d",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/demo_pipeline_test.go",
+      "line": 98,
+      "issue": "TestDemoPipelineServicesReachTools only fails if the text contains \"is not available\". It never checks that the call got past input validation. If a stub rejected the input, or a lane later changes the schema, the test would pass without proving the dependency check ran. Deps.Facts is also never checked by any tool, so the test cannot show Facts reached the tools (R12 'services reach the tools through Deps').",
+      "fix": "Optional follow-up: also assert the result is not an input-validation error, for example by checking that structured error codes are not invalid_request. Prove Facts wiring once L2/L3 use it."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R3", "satisfied": true, "evidence": "cmd/workiva-mcp/main.go:408-412 registers tools.Demo() only when cfg.DemoPipelineEnabled, after the unchanged tools.All() loop; TestDemoPipelineFlagOnAddsFourTools (17 names = All() + 4 demo); order proven in T3 on Demo()/Registry.Names() per plan assumption"},
+    {"requirement": "R4", "satisfied": true, "evidence": "TestDemoPipelineFlagOffKeepsThirteenTools (13 names = tools.All()); check log: go test ./cmd/workiva-mcp/... passes and the diff-filter=MD *_test.go check is empty, so existing tests are unchanged"},
+    {"requirement": "R9", "satisfied": true, "evidence": "cmd/workiva-mcp/main.go:318-330 (os.Stat then bootstrap.LoadMappings after LoadDemoMappings, 'load demo extra mappings: %w'); TestDemoModeLoadsMappingsFile, TestDemoModeWithoutMappingsLoadsBuiltInOnly, TestDemoModeMissingMappingsFileFailsStartup"},
+    {"requirement": "R12", "satisfied": true, "evidence": "cmd/workiva-mcp/main.go:449-460 wireDemoPipeline calls changeset.New, recipe.New and sectiontext.New once each (grep -c acceptance = 1) and sets Deps; main.go:432-439 wires it when the flag is on and runs cleanup on error; TestDemoPipelineServicesReachTools (no 'is not available' for ChangeSets/Recipes/SectionText)"}
+  ],
+  "new_tasks": []
+}

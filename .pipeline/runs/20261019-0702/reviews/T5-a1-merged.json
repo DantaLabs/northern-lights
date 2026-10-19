@@ -1,0 +1,79 @@
+{
+  "task_id": "T5",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/demo_pipeline_test.go",
+      "line": 98,
+      "issue": "TestDemoPipelineServicesReachTools only fails if the text contains \"is not available\". It never checks that the call got past input validation. If a stub rejected the input, or a lane later changes the schema, the test would pass without proving the dependency check ran. Deps.Facts is also never checked by any tool, so the test cannot show Facts reached the tools (R12 'services reach the tools through Deps').",
+      "fix": "Optional follow-up: also assert the result is not an input-validation error, for example by checking that structured error codes are not invalid_request. Prove Facts wiring once L2/L3 use it.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/demo_pipeline_test.go",
+      "line": 187,
+      "issue": "Hand-rolled contains() duplicates slices.Contains from the standard library (possible Duplicated Code / reinvented helper).",
+      "fix": "Use slices.Contains if the module Go version allows it.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/demo_pipeline_test.go",
+      "line": 181,
+      "issue": "searchFieldNames uses unchecked type assertions on the structured result; a changed response shape panics instead of failing with a clear message.",
+      "fix": "Use comma-ok assertions with t.Fatalf.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/workiva-mcp/demo_pipeline_test.go",
+      "line": 221,
+      "issue": "TestDemoModeMissingMappingsFileFailsStartup repeats the five demo env setenv lines already in demoSession.",
+      "fix": "Extract a setDemoEnv(t) helper used by both.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/demo_pipeline_test.go",
+      "line": 98,
+      "issue": "TestDemoPipelineServicesReachTools only fails if the text contains \"is not available\". It never checks that the call got past input validation. If a stub rejected the input, or a lane later changes the schema, the test would pass without proving the dependency check ran. Deps.Facts is also never checked by any tool, so the test cannot show Facts reached the tools (R12 'services reach the tools through Deps').",
+      "fix": "Optional follow-up: also assert the result is not an input-validation error, for example by checking that structured error codes are not invalid_request. Prove Facts wiring once L2/L3 use it.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/demo_pipeline_test.go",
+      "line": 187,
+      "issue": "Hand-rolled contains() duplicates slices.Contains from the standard library (possible Duplicated Code / reinvented helper).",
+      "fix": "Use slices.Contains if the module Go version allows it.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/demo_pipeline_test.go",
+      "line": 181,
+      "issue": "searchFieldNames uses unchecked type assertions on the structured result; a changed response shape panics instead of failing with a clear message.",
+      "fix": "Use comma-ok assertions with t.Fatalf.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/workiva-mcp/demo_pipeline_test.go",
+      "line": 221,
+      "issue": "TestDemoModeMissingMappingsFileFailsStartup repeats the five demo env setenv lines already in demoSession.",
+      "fix": "Extract a setDemoEnv(t) helper used by both.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

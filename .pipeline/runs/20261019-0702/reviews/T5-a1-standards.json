@@ -1,0 +1,19 @@
+{
+  "task_id": "T5",
+  "axis": "standards",
+  "implementation_commit": "29e0af3c15e001973f3d678b344804d6127cd48d",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {"severity": "minor", "file": "cmd/workiva-mcp/demo_pipeline_test.go", "line": 187, "issue": "Hand-rolled contains() duplicates slices.Contains from the standard library (possible Duplicated Code / reinvented helper).", "fix": "Use slices.Contains if the module Go version allows it."},
+    {"severity": "minor", "file": "cmd/workiva-mcp/demo_pipeline_test.go", "line": 181, "issue": "searchFieldNames uses unchecked type assertions on the structured result; a changed response shape panics instead of failing with a clear message.", "fix": "Use comma-ok assertions with t.Fatalf."},
+    {"severity": "nit", "file": "cmd/workiva-mcp/demo_pipeline_test.go", "line": 221, "issue": "TestDemoModeMissingMappingsFileFailsStartup repeats the five demo env setenv lines already in demoSession.", "fix": "Extract a setDemoEnv(t) helper used by both."}
+  ],
+  "requirements_checked": [
+    {"requirement": "R3", "satisfied": true, "evidence": "main.go wireDemoPipeline; TestDemoPipelineServicesReachTools"},
+    {"requirement": "R4", "satisfied": true, "evidence": "TestDemoPipelineFlagOffKeepsThirteenTools"},
+    {"requirement": "R9", "satisfied": true, "evidence": "TestDemoModeLoadsMappingsFile, TestDemoModeMissingMappingsFileFailsStartup"},
+    {"requirement": "R12", "satisfied": true, "evidence": "main.go deps wiring; each New( appears once; checks log all exit 0"}
+  ],
+  "new_tasks": []
+}
