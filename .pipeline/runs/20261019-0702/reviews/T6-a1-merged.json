@@ -1,0 +1,79 @@
+{
+  "task_id": "T6",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "scripts/verify-mcp.sh",
+      "line": 18,
+      "issue": "The check that NL_EXPECT_TOOLS is a positive integer (exit 2 with 'FAIL: NL_EXPECT_TOOLS must be a positive integer') has no automated test. The task did not ask for one: its three listed cases do not cover it, and the worker only checked it by hand (abc, 0, 007x).",
+      "fix": "Optional follow-up: add an invalid_expectation subtest (NL_EXPECT_TOOLS=abc) that asserts exit code 2 and the FAIL message.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/verify_mcp_script_test.go",
+      "line": 19,
+      "issue": "Possible Mysterious Name: `wantExit bool` means 'script must exit 0' when true and 'must exit non-zero' when false. The name says the opposite of what a reader expects, so the inline comment has to explain it.",
+      "fix": "Rename to `wantSuccess` (or `wantZeroExit`) and drop the explanatory comment.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/verify_mcp_script_test.go",
+      "line": 88,
+      "issue": "The subprocess is started with exec.Command and has no deadline. The curl calls in scripts/verify-mcp.sh have no --max-time either, so a stalled handler makes the test hang until the global go test timeout instead of failing fast with the captured output.",
+      "fix": "Use exec.CommandContext(t.Context(), \"bash\", ...) and wrap the context with a short timeout such as 30s. t.Context() is already used elsewhere in the repo.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "scripts/verify-mcp.sh",
+      "line": 7,
+      "issue": "The rewritten header sentence still reads 'checks for exactly NL_EXPECT_TOOLS current tools (...) application/json responses'. The garbled grammar is carried over from the old text, and the parenthetical now makes it harder to parse.",
+      "fix": "Split it into two sentences: one saying the script checks for application/json responses, and one saying it expects exactly $NL_EXPECT_TOOLS tools (default 13; 17 with NL_DEMO_PIPELINE=true).",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "scripts/verify-mcp.sh",
+      "line": 18,
+      "issue": "The check that NL_EXPECT_TOOLS is a positive integer (exit 2 with 'FAIL: NL_EXPECT_TOOLS must be a positive integer') has no automated test. The task did not ask for one: its three listed cases do not cover it, and the worker only checked it by hand (abc, 0, 007x).",
+      "fix": "Optional follow-up: add an invalid_expectation subtest (NL_EXPECT_TOOLS=abc) that asserts exit code 2 and the FAIL message.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/verify_mcp_script_test.go",
+      "line": 19,
+      "issue": "Possible Mysterious Name: `wantExit bool` means 'script must exit 0' when true and 'must exit non-zero' when false. The name says the opposite of what a reader expects, so the inline comment has to explain it.",
+      "fix": "Rename to `wantSuccess` (or `wantZeroExit`) and drop the explanatory comment.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/verify_mcp_script_test.go",
+      "line": 88,
+      "issue": "The subprocess is started with exec.Command and has no deadline. The curl calls in scripts/verify-mcp.sh have no --max-time either, so a stalled handler makes the test hang until the global go test timeout instead of failing fast with the captured output.",
+      "fix": "Use exec.CommandContext(t.Context(), \"bash\", ...) and wrap the context with a short timeout such as 30s. t.Context() is already used elsewhere in the repo.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "scripts/verify-mcp.sh",
+      "line": 7,
+      "issue": "The rewritten header sentence still reads 'checks for exactly NL_EXPECT_TOOLS current tools (...) application/json responses'. The garbled grammar is carried over from the old text, and the parenthetical now makes it harder to parse.",
+      "fix": "Split it into two sentences: one saying the script checks for application/json responses, and one saying it expects exactly $NL_EXPECT_TOOLS tools (default 13; 17 with NL_DEMO_PIPELINE=true).",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

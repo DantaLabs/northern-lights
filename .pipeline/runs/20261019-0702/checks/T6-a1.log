@@ -1,0 +1,38 @@
+$ bash -n scripts/verify-mcp.sh
+$ grep -q 'NL_EXPECT_TOOLS:-13' scripts/verify-mcp.sh
+$ out=$(go test ./cmd/workiva-mcp/ -race -count=1 -run '^(TestVerifyMCPScript)$' -v 2>&1); echo "$out" | grep -qE -- "^ *--- PASS: TestVerifyMCPScript \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestVerifyMCPScript/flag_off \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestVerifyMCPScript/flag_on \(" || exit 1; echo "$out" | grep -qE -- "^ *--- PASS: TestVerifyMCPScript/flag_on_default_expectation \(" || exit 1
+$ go test ./cmd/workiva-mcp/... -race -count=1
+ok  	github.com/dantalabs/northern-lights/cmd/workiva-mcp	80.512s
+$ grep -E '^\| L0 Scaffold \|' docs/demo/STATUS.md | grep -qv 'not started'
+$ grep -q 'requiredPermission' docs/demo/STATUS.md
+$ go test ./... -race -count=1
+ok  	github.com/dantalabs/northern-lights/cmd/nl-assurance	5.733s
+ok  	github.com/dantalabs/northern-lights/cmd/nl-backup-job	1.041s
+ok  	github.com/dantalabs/northern-lights/cmd/workiva-mcp	106.594s
+ok  	github.com/dantalabs/northern-lights/internal/assurance	322.259s
+ok  	github.com/dantalabs/northern-lights/internal/audit	6.637s
+ok  	github.com/dantalabs/northern-lights/internal/backupjob	1.151s
+ok  	github.com/dantalabs/northern-lights/internal/bootstrap	1.903s
+ok  	github.com/dantalabs/northern-lights/internal/changeset	1.023s
+ok  	github.com/dantalabs/northern-lights/internal/config	1.107s
+ok  	github.com/dantalabs/northern-lights/internal/content	91.883s
+?   	github.com/dantalabs/northern-lights/internal/demoenv	[no test files]
+ok  	github.com/dantalabs/northern-lights/internal/identity	2.206s
+ok  	github.com/dantalabs/northern-lights/internal/mapping	17.176s
+ok  	github.com/dantalabs/northern-lights/internal/mcpserver	7.490s
+ok  	github.com/dantalabs/northern-lights/internal/mcpserver/tools	143.020s
+ok  	github.com/dantalabs/northern-lights/internal/mutation	1.021s
+ok  	github.com/dantalabs/northern-lights/internal/ratelimit	1.166s
+ok  	github.com/dantalabs/northern-lights/internal/recipe	1.019s
+ok  	github.com/dantalabs/northern-lights/internal/relationships	30.427s
+ok  	github.com/dantalabs/northern-lights/internal/sectiontext	1.021s
+ok  	github.com/dantalabs/northern-lights/internal/sqlitedb	17.317s
+ok  	github.com/dantalabs/northern-lights/internal/transfer	277.061s
+ok  	github.com/dantalabs/northern-lights/internal/workiva	13.006s
+ok  	github.com/dantalabs/northern-lights/internal/workivaprovider	1.030s
+$ golangci-lint run ./...
+0 issues.
+$ test -z "$(gofmt -l cmd)"
+$ test -z "$(git diff --diff-filter=MD --name-only 56b9f95 -- '*_test.go')"
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

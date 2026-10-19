@@ -1,0 +1,232 @@
+commit da1ee03d1850c2e69b0f86cdb3b49f01aa0fc52b
+Author: Sam <samvillaf@gmail.com>
+Date:   Mon Oct 19 15:09:26 2026 +0700
+
+    T6: read expected tool count from NL_EXPECT_TOOLS in verify-mcp.sh
+    
+    Co-Authored-By: Claude Haiku 5.5 <noreply@anthropic.com>
+
+diff --git a/.pipeline/runs/20261019-0702/reports/T6-a1.md b/.pipeline/runs/20261019-0702/reports/T6-a1.md
+new file mode 100644
+index 0000000..5ff39f6
+--- /dev/null
++++ b/.pipeline/runs/20261019-0702/reports/T6-a1.md
+@@ -0,0 +1,41 @@
++# T6 attempt 1 report
++
++- Task: T6, Read expected tool count from NL_EXPECT_TOOLS in verify-mcp.sh (covers R11)
++- Branch: task/20261019-0702-T6-a1 (durable task branch), attempt 1
++- Base: 19b03ea (T1-T5 merged). Commit SHA: the HEAD of this branch after the T6 commit (see `git log -1`).
++- Model route: worker haiku (risky, laya local)
++
++## What changed
++
++- `scripts/verify-mcp.sh`
++  - `expected="${NL_EXPECT_TOOLS:-13}"`; non-positive-integer values print `FAIL: NL_EXPECT_TOOLS must be a positive integer` to stderr and exit 2.
++  - tools/list check uses `$expected`, message `tools/list has exactly $expected tools (got $count)`.
++  - Header comment updated (default 13; 17 with NL_DEMO_PIPELINE=true). NL_KEY is still never printed.
++- `cmd/workiva-mcp/verify_mcp_script_test.go` (new): `TestVerifyMCPScript` with subtests `flag_off`, `flag_on`, `flag_on_default_expectation`. Skips only at top level when bash, curl or python3 is missing. Runs the script against an in-process `buildServer` handler through httptest. Strips any inherited NL_EXPECT_TOOLS from the environment.
++- `docs/demo/STATUS.md`: only the L0 Scaffold row (status, branch, last commit 19b03ea, blocked on) and one line under "Requests to other lanes" about requiredPermission for the four demo tools.
++- No changes to existing `*_test.go` files, go.mod or go.sum.
++
++## Commands run
++
++| Command | Exit |
++|---|---|
++| `bash -n scripts/verify-mcp.sh` | 0 |
++| `grep -q 'NL_EXPECT_TOOLS:-13' scripts/verify-mcp.sh` | 0 |
++| `go test ./cmd/workiva-mcp/ -race -count=1 -run '^(TestVerifyMCPScript)$' -v` | 0 (all three subtests PASS) |
++| `go test ./cmd/workiva-mcp/... -race -count=1` | 0 |
++| `grep -E '^\| L0 Scaffold \|' docs/demo/STATUS.md \| grep -qv 'not started'` | 0 |
++| `grep -q requiredPermission docs/demo/STATUS.md` | 0 |
++| `go test ./... -race -count=1` | 0 |
++| `golangci-lint run ./...` | 0 (0 issues) |
++| `test -z "$(gofmt -l cmd)"` and `test -z "$(gofmt -l .)"` | 0 |
++| `go vet ./...` | 0 |
++| `go build ./...` | 0 |
++| `test -z "$(git diff --diff-filter=MD --name-only 56b9f95 -- '*_test.go')"` | 0 |
++| Manual: `NL_EXPECT_TOOLS` = abc, 0, 007x | exit 2 with the FAIL message |
++
++Typecheck is `none` in config and was skipped.
++
++## Notes
++
++- Empty `NL_EXPECT_TOOLS=` falls back to 13 because of the `:-` expansion. This follows the spec's `${NL_EXPECT_TOOLS:-13}` form.
++- Nothing blocked. No NEEDS_DECISION raised.
+diff --git a/cmd/workiva-mcp/verify_mcp_script_test.go b/cmd/workiva-mcp/verify_mcp_script_test.go
+new file mode 100644
+index 0000000..d03d3e0
+--- /dev/null
++++ b/cmd/workiva-mcp/verify_mcp_script_test.go
+@@ -0,0 +1,112 @@
++package main
++
++import (
++	"bytes"
++	"errors"
++	"net/http/httptest"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"strings"
++	"testing"
++)
++
++// verifyMCPCase drives scripts/verify-mcp.sh against an in-process server.
++type verifyMCPCase struct {
++	name        string
++	pipeline    bool   // NL_DEMO_PIPELINE=true on the server when set
++	expectTools string // NL_EXPECT_TOOLS for the script; empty leaves it unset
++	wantExit    bool   // true: script must exit 0; false: must exit non-zero
++	wantOutput  []string
++}
++
++func TestVerifyMCPScript(t *testing.T) {
++	for _, bin := range []string{"bash", "curl", "python3"} {
++		if _, err := exec.LookPath(bin); err != nil {
++			t.Skipf("%s not on PATH: %v", bin, err)
++		}
++	}
++
++	cases := []verifyMCPCase{
++		{
++			name:     "flag_off",
++			pipeline: false,
++			wantExit: true,
++		},
++		{
++			name:        "flag_on",
++			pipeline:    true,
++			expectTools: "17",
++			wantExit:    true,
++		},
++		{
++			name:       "flag_on_default_expectation",
++			pipeline:   true,
++			wantExit:   false,
++			wantOutput: []string{"tools/list has exactly 13 tools (got 17)"},
++		},
++	}
++
++	for _, tc := range cases {
++		t.Run(tc.name, func(t *testing.T) {
++			t.Setenv("NL_DEMO_MODE", "true")
++			t.Setenv("NL_DB_PATH", filepath.Join(t.TempDir(), "demo.db"))
++			t.Setenv("NL_API_KEY", "demo")
++			t.Setenv("NL_LISTEN_ADDR", "127.0.0.1:0")
++			t.Setenv("NL_READ_CACHE_TTL", "0")
++			if tc.pipeline {
++				t.Setenv("NL_DEMO_PIPELINE", "true")
++				t.Setenv("NL_DEMO_SECTIONS_DIR", t.TempDir())
++			} else {
++				t.Setenv("NL_DEMO_PIPELINE", "")
++				if err := os.Unsetenv("NL_DEMO_PIPELINE"); err != nil {
++					t.Fatalf("unset NL_DEMO_PIPELINE: %v", err)
++				}
++			}
++
++			_, handler, cleanup, err := buildServer("", "")
++			if err != nil {
++				t.Fatalf("buildServer: %v", err)
++			}
++			t.Cleanup(cleanup)
++			srv := httptest.NewServer(handler)
++			t.Cleanup(srv.Close)
++
++			env := make([]string, 0, len(os.Environ())+3)
++			for _, kv := range os.Environ() {
++				if strings.HasPrefix(kv, "NL_EXPECT_TOOLS=") {
++					continue
++				}
++				env = append(env, kv)
++			}
++			env = append(env, "NL_URL="+srv.URL+"/mcp", "NL_KEY=demo")
++			if tc.expectTools != "" {
++				env = append(env, "NL_EXPECT_TOOLS="+tc.expectTools)
++			}
++
++			var out bytes.Buffer
++			cmd := exec.Command("bash", filepath.Join("..", "..", "scripts", "verify-mcp.sh"))
++			cmd.Env = env
++			cmd.Stdout = &out
++			cmd.Stderr = &out
++			runErr := cmd.Run()
++			output := out.String()
++
++			if tc.wantExit {
++				if runErr != nil {
++					t.Fatalf("verify-mcp.sh exited with error: %v\n%s", runErr, output)
++				}
++			} else {
++				var exitErr *exec.ExitError
++				if !errors.As(runErr, &exitErr) || exitErr.ExitCode() == 0 {
++					t.Fatalf("verify-mcp.sh want non-zero exit, got %v\n%s", runErr, output)
++				}
++			}
++			for _, want := range tc.wantOutput {
++				if !strings.Contains(output, want) {
++					t.Fatalf("verify-mcp.sh output missing %q\n%s", want, output)
++				}
++			}
++		})
++	}
++}
+diff --git a/docs/demo/STATUS.md b/docs/demo/STATUS.md
+index 160b153..a5317b9 100644
+--- a/docs/demo/STATUS.md
++++ b/docs/demo/STATUS.md
+@@ -6,7 +6,7 @@ Plan day: 1 of 11 (Monday 19 October 2026).
+ 
+ | Lane | Status | Branch | Last commit | Blocked on |
+ |---|---|---|---|---|
+-| L0 Scaffold | not started | `claude/demo-l0-scaffold` | | Tom approves the spec |
++| L0 Scaffold | ready for review (R10 end-to-end test waits for L1-L4) | `claude/demo-l0-scaffold` | 19b03ea | Entra permission mapping for demo tools |
+ | L1 Change set | waiting for L0 | `codex/demo-l1-change-set` | | L0 merge |
+ | L2 Section recipe | waiting for L0 | `claude/demo-l2-section-recipe` | | L0 merge |
+ | L3 Section text | RB-02 spike can start now | `codex/demo-l3-section-text` | | RB-02 result for the document writer |
+@@ -24,3 +24,5 @@ Plan day: 1 of 11 (Monday 19 October 2026).
+ ## Requests to other lanes
+ 
+ Write one line: requesting lane, owning lane, file, what you need and why.
++
++L0 -> owner (no lane owns it), internal/mcpserver/server.go: add requiredPermission entries for the four demo tools (prepare_section and stage_section_text -> workiva.write.preview; confirm_change_set and confirm_section_text -> workiva.write.confirm) and list them in writeTools, because under NL_AUTH_MODE=entra every demo tool call is denied today.
+diff --git a/scripts/verify-mcp.sh b/scripts/verify-mcp.sh
+index 02c2b19..7758cba 100755
+--- a/scripts/verify-mcp.sh
++++ b/scripts/verify-mcp.sh
+@@ -4,15 +4,22 @@
+ #   NL_URL=https://<host>/mcp NL_KEY=<api key> scripts/verify-mcp.sh
+ #
+ # Sends initialize, notifications/initialized (keeping Mcp-Session-Id when
+-# the server returns one) and tools/list, checks for exactly 13 current tools
+-# application/json responses, then repeats tools/list with a malformed key
+-# and expects 401. Exits non-zero on the first failed check. NL_KEY is
+-# passed to curl through a private header file and is never printed.
++# the server returns one) and tools/list, checks for exactly NL_EXPECT_TOOLS
++# current tools (default 13; set NL_EXPECT_TOOLS=17 when the server runs with
++# NL_DEMO_PIPELINE=true) application/json responses, then repeats tools/list
++# with a malformed key and expects 401. Exits non-zero on the first failed
++# check. NL_KEY is passed to curl through a private header file and is never
++# printed.
+ set -euo pipefail
+ 
+ : "${NL_URL:?set NL_URL to the /mcp endpoint, e.g. http://localhost:8090/mcp}"
+ : "${NL_KEY:?set NL_KEY to the Northern Lights API key}"
+ command -v python3 >/dev/null || { echo "FAIL: python3 is required to parse JSON" >&2; exit 2; }
++expected="${NL_EXPECT_TOOLS:-13}"
++if ! [[ "$expected" =~ ^[1-9][0-9]*$ ]]; then
++  echo "FAIL: NL_EXPECT_TOOLS must be a positive integer" >&2
++  exit 2
++fi
+ 
+ umask 077
+ work=$(mktemp -d)
+@@ -60,7 +67,7 @@ try:
+     print(len(json.load(sys.stdin)["result"]["tools"]))
+ except Exception:
+     print(-1)')
+-check "tools/list has exactly 13 current tools (got $count)" "$([ "$count" = 13 ]; echo $?)"
++check "tools/list has exactly $expected tools (got $count)" "$([ "$count" = "$expected" ]; echo $?)"
+ 
+ post "$work/badauth" '{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}'
+ check "malformed key is rejected with 401 (got $status)" "$([ "$status" = 401 ]; echo $?)"

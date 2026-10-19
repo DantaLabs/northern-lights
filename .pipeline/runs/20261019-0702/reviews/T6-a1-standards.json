@@ -1,0 +1,38 @@
+{
+  "task_id": "T6",
+  "axis": "standards",
+  "implementation_commit": "da1ee03d1850c2e69b0f86cdb3b49f01aa0fc52b",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/verify_mcp_script_test.go",
+      "line": 19,
+      "issue": "Possible Mysterious Name: `wantExit bool` means 'script must exit 0' when true and 'must exit non-zero' when false. The name says the opposite of what a reader expects, so the inline comment has to explain it.",
+      "fix": "Rename to `wantSuccess` (or `wantZeroExit`) and drop the explanatory comment."
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/workiva-mcp/verify_mcp_script_test.go",
+      "line": 88,
+      "issue": "The subprocess is started with exec.Command and has no deadline. The curl calls in scripts/verify-mcp.sh have no --max-time either, so a stalled handler makes the test hang until the global go test timeout instead of failing fast with the captured output.",
+      "fix": "Use exec.CommandContext(t.Context(), \"bash\", ...) and wrap the context with a short timeout such as 30s. t.Context() is already used elsewhere in the repo."
+    },
+    {
+      "severity": "nit",
+      "file": "scripts/verify-mcp.sh",
+      "line": 7,
+      "issue": "The rewritten header sentence still reads 'checks for exactly NL_EXPECT_TOOLS current tools (...) application/json responses'. The garbled grammar is carried over from the old text, and the parenthetical now makes it harder to parse.",
+      "fix": "Split it into two sentences: one saying the script checks for application/json responses, and one saying it expects exactly $NL_EXPECT_TOOLS tools (default 13; 17 with NL_DEMO_PIPELINE=true)."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R11",
+      "satisfied": true,
+      "evidence": "scripts/verify-mcp.sh:18-22 validates NL_EXPECT_TOOLS with ^[1-9][0-9]*$ before use and exits 2 if it fails; line 70 compares against $expected. NL_KEY is still written only to the umask-077 header file. TestVerifyMCPScript flag_off/flag_on/flag_on_default_expectation pass according to checks/T6-a1.log."
+    }
+  ],
+  "new_tasks": []
+}
