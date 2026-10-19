@@ -48,6 +48,10 @@ func (t *DemoTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	switch {
 	case path == "/iam/v1/oauth2/token" && method == http.MethodPost:
 		return demoTokenResponse(), nil
+	case isDemoDocumentsPath(path):
+		return t.demoDocumentsResponse(req), nil
+	case isDemoESGPath(path):
+		return t.demoESGResponse(req), nil
 	case path == "/spreadsheets" && method == http.MethodGet:
 		return demoSpreadsheetsResponse(), nil
 	case isSheetsPath(path) && method == http.MethodGet:
@@ -63,6 +67,19 @@ func (t *DemoTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	default:
 		return demoNotFound(path), nil
 	}
+}
+
+// isDemoDocumentsPath reports whether path is a report document or content
+// endpoint. Requests are handed to demoDocumentsResponse.
+func isDemoDocumentsPath(path string) bool {
+	return path == "/documents" || strings.HasPrefix(path, "/documents/") ||
+		path == "/content" || strings.HasPrefix(path, "/content/")
+}
+
+// isDemoESGPath reports whether path is an ESG demo spreadsheet endpoint.
+// Requests are handed to demoESGResponse.
+func isDemoESGPath(path string) bool {
+	return strings.HasPrefix(path, "/spreadsheets/demo-esg-")
 }
 
 func isSheetsPath(path string) bool {
