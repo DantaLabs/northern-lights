@@ -12,3 +12,7 @@ deployments/copilot-studio/*.local.log.prev
 
 # Windows download metadata
 *.Zone.Identifier
+
+# Agent scratch space and worktrees
+.scratch/
+.worktrees/

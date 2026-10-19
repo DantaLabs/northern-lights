@@ -1,0 +1,3 @@
+# Copilot drafts, the server verifies and writes
+
+For the KPMG demo and pilot, the server does not call any language model. Copilot (inside the firm's Microsoft tenant) asks questions and drafts narrative text; Northern Lights computes every number, checks drafted text against verbatim blocks and narrative facts, stages one change set per section and writes to Workiva after one human approval. We rejected server-side AI extraction in an Azure container because it adds a new model endpoint and a new data flow for the firm's IT team to review, and it would take weeks to build. Copilot already holds the firm's approval to process this data, so keeping the model there keeps the IT review to components that already exist.
