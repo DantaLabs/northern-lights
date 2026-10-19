@@ -1,0 +1,74 @@
+{
+  "exact_match": true,
+  "exchange": {
+    "note": "read paragraphs",
+    "method": "GET",
+    "path": "/content/richText/<rich-text-id-1>/paragraphs",
+    "status": 200,
+    "response": {
+      "data": [
+        {
+          "elements": [
+            {
+              "textSpan": {
+                "format": {},
+                "length": 69,
+                "offset": 0,
+                "style": {
+                  "revision": "2c6438ab45553e0c",
+                  "style": "c3R5bGUta2V5Ol90eHQ",
+                  "styleGuide": "<document-id>"
+                },
+                "text": "Energy consumption fell 8.1% to 1.24 GWh in 2025, compared with 2024."
+              },
+              "type": "textSpan"
+            }
+          ],
+          "format": {},
+          "index": 0,
+          "properties": {},
+          "style": {
+            "revision": "2c6438ab45553e0c",
+            "style": "c3R5bGUta2V5Ol90eHQ",
+            "styleGuide": "<document-id>"
+          }
+        },
+        {
+          "elements": [
+            {
+              "textSpan": {
+                "format": {},
+                "length": 79,
+                "offset": 0,
+                "style": {
+                  "revision": "2c6438ab45553e0c",
+                  "style": "c3R5bGUta2V5Ol90eHQ",
+                  "styleGuide": "<document-id>"
+                },
+                "text": "This is the second NL test paragraph, written by the RB-02 documents API spike."
+              },
+              "type": "textSpan"
+            }
+          ],
+          "format": {},
+          "index": 1,
+          "properties": {},
+          "style": {
+            "revision": "2c6438ab45553e0c",
+            "style": "c3R5bGUta2V5Ol90eHQ",
+            "styleGuide": "<document-id>"
+          }
+        }
+      ],
+      "revision": "2c6438ab45553e0c"
+    }
+  },
+  "expected": [
+    "Energy consumption fell 8.1% to 1.24 GWh in 2025, compared with 2024.",
+    "This is the second NL test paragraph, written by the RB-02 documents API spike."
+  ],
+  "read_back": [
+    "Energy consumption fell 8.1% to 1.24 GWh in 2025, compared with 2024.",
+    "This is the second NL test paragraph, written by the RB-02 documents API spike."
+  ]
+}

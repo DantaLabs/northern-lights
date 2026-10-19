@@ -1,0 +1,26 @@
+{
+  "base_url": "https://api.eu.wdesk.com",
+  "pages": [
+    {
+      "note": "list documents",
+      "method": "GET",
+      "path": "/documents?$maxpagesize=100",
+      "status": 200,
+      "response": {
+        "data": [
+          {
+            "created": {
+              "dateTime": "2026-01-12T04:42:49Z"
+            },
+            "id": "<document-id>",
+            "modified": {
+              "dateTime": "2026-01-14T11:44:25Z"
+            },
+            "name": "2025 Annual Report - EN",
+            "template": false
+          }
+        ]
+      }
+    }
+  ]
+}

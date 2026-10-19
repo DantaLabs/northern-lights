@@ -9,7 +9,7 @@ Plan day: 1 of 11 (Monday 19 October 2026).
 | L0 Scaffold | ready for review (R10 end-to-end test waits for L1-L4) | `claude/demo-l0-scaffold` | 19b03ea | Entra permission mapping for demo tools |
 | L1 Change set | waiting for L0 | `codex/demo-l1-change-set` | | L0 merge |
 | L2 Section recipe | waiting for L0 | `claude/demo-l2-section-recipe` | | L0 merge |
-| L3 Section text | RB-02 spike can start now | `codex/demo-l3-section-text` | | RB-02 result for the document writer |
+| L3 Section text | RB-02 done: decision "document"; R2+ next (L0 merged) | `codex/demo-l3-section-text` | 3bdcb35 | nothing |
 | L4 Data and agent | can start now (YAML, data, instructions) | `claude/demo-l4-data-and-agent` | | Sandbox names from RB-01 |
 | L5 Manual tests | RB-01 today | `claude/demo-integration` | | |
 
@@ -18,7 +18,7 @@ Plan day: 1 of 11 (Monday 19 October 2026).
 | Runbook | Date | Result | Evidence |
 |---|---|---|---|
 | RB-01 Baseline smoke | 2026-10-19 | pass (13 tools, 401 on bad key, reads OK; report document ID PENDIENTE for RB-02) | `docs/demo/evidence/2026-10-19-RB-01/` |
-| RB-02 Documents API spike | | | |
+| RB-02 Documents API spike | 2026-10-19 | pass: document (create section, rich-text edit, read-back exact, delete) | `docs/demo/evidence/2026-10-19-RB-02/` |
 | RB-03 Demo acts in Copilot | | | |
 
 ## Requests to other lanes
