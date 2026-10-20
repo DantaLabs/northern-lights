@@ -169,9 +169,9 @@
         "! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'",
         "test -z \"$(gofmt -l internal/recipe internal/mcpserver/tools)\""
       ],
-      "status": "pending",
+      "status": "running",
       "attempts": 0,
-      "base_commit": null,
+      "base_commit": "e98ca109fa508a017bbc7a320344605f9337b618",
       "route": {
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
@@ -184,6 +184,14 @@
         ],
         "environment": "local",
         "router": "planner-hint"
+      },
+      "active_attempt": 1,
+      "execution": {
+        "router": "planner-hint",
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "environment": "local"
       }
     },
     {
