@@ -3,11 +3,9 @@
   "run_id": "20261019-1501",
   "spec": "docs/specs/demo-l4-data-and-agent.md",
   "branch": "claude/demo-l4-data-and-agent",
-  "status": "running",
+  "status": "done",
   "round": 0,
   "checkpoint": null,
-  "active_tasks": [
-    "T9"
-  ],
+  "active_tasks": [],
   "run_base_commit": "573b4748bf41c08b1f5aa3a681379f12db7fa78f"
 }

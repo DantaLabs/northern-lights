@@ -1,0 +1,31 @@
+{
+  "task_id": "T4",
+  "axis": "spec",
+  "implementation_commit": "73a180611cb3e01d04190dd628cc2f9d54942d19",
+  "attempt": 1,
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "major",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 311,
+      "issue": "R6 says mappings-demo.yaml maps every field to demo-esg- spreadsheet IDs, but the test checks spreadsheet and sheet IDs for only three hard-coded energy_total names. If any other field (or any rpt_ target or prior field) were mapped to a non-demo ID, or to the wrong sheet (CY vs PY vs source), no test would fail. The per-field loop checks only existence, description and range.",
+      "fix": "In the per-field loop, for mappings-demo.yaml, assert Source is on demo-esg-source/demo-esg-source-2025, Target on demo-esg-report/demo-esg-report-cy and Prior on demo-esg-report/demo-esg-report-py. This implies the demo-esg- prefix for every field. Then drop or keep the three-name block."
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data.go",
+      "line": 35,
+      "issue": "Three //nolint:gosec trailing comments (lines 35, 121, 158) suppress a linter. They were not asked for, and the working rules forbid ignore comments to get green. Lint passes without them (0 issues).",
+      "fix": "Delete the nolint comments. If a note that the path is trusted is wanted, use a plain comment that suppresses nothing."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R2", "satisfied": true, "evidence": "TestRecipesMatchSchemaAndMappings: recipe fields equal CSV rows in order (>=20 env, >=12 soc); every src_/rpt_ description equals the CSV label in the demo and example mappings (data_test.go ~L262-275); CSVs agree on keys, labels, units and order"},
+    {"requirement": "R3", "satisfied": true, "evidence": "TestDataConsistency: totals.csv sums for both years (data_test.go L73-105), % fields within 0..100, non-planted change below 10, every change within 30, all computed with big.Rat"},
+    {"requirement": "R4", "satisfied": true, "evidence": "TestDataConsistency asserts exactly four findings (missing env, material_change env, material_change soc, out_of_range env) on four different fields, each field key mentioned in data/README.md (L181-190)"},
+    {"requirement": "R5", "satisfied": true, "evidence": "TestRecipesMatchSchemaAndMappings: LoadRecipes uses KnownFields(true); materiality_pct 10; exactly one verbatim block per recipe with a non-empty file not starting with # (L285-292)"},
+    {"requirement": "R6", "satisfied": false, "evidence": "Names and existence in the demo and example mappings are checked (data_test.go L262-277), but the demo-esg- IDs and the CY/PY/source sheet placement are asserted only for three energy_total fields (L311-320), not for every field. See finding 1."},
+    {"requirement": "R7", "satisfied": true, "evidence": "TestDemoReadReturnsCSVValue (L337): NL_DEMO_ESG_DATA set, GetSheetDataTyped read of src_env_energy_total and rpt_env_energy_total_2024, compared with DecimalText to the exact CSV text. TestDecimalText covers the helper."}
+  ]
+}

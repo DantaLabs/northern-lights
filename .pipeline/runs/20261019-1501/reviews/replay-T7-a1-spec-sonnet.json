@@ -1,0 +1,50 @@
+{
+  "task_id": "T7",
+  "axis": "spec",
+  "verdict": "revise",
+  "implementation_commit": "cb892d7d4b9af840929dc914ea7ab1610bb68c3a",
+  "attempt": 1,
+  "findings": [
+    {
+      "severity": "major",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 69,
+      "issue": "Prompt 2.1 says 'The four planted findings' but lists three (missing water discharge, material_change business travel, out_of_range renewable electricity). The fourth planted finding in configs/demo/data/README.md (training_hours_female) belongs to the social section (Act 5). R10 asks for what a correct answer contains, and the count contradicts the list, so a presenter checking RB-03 against it gets a wrong expectation.",
+      "fix": "Change to 'The three planted findings for the environmental section' (or list exactly the findings prepare_section returns for esg-environmental)."
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/NARRATIVE_STYLE.md",
+      "line": 5,
+      "issue": "The observed conventions (company name, British spelling, number format, tense) sit above '## Rules'. The INSTRUCTIONS.md paste note appends only the Rules section to the agent, so the conventions never reach Copilot. This weakens R9 (style guide matches what the agent is given).",
+      "fix": "Move the conventions under '## Rules' as numbered rules or a sub-list, or change the paste note to append the conventions as well."
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/INSTRUCTIONS.md",
+      "line": 140,
+      "issue": "The RB-03 maintenance line is inside the '## Instructions' section, which the paste note says to paste into the agent. It is labelled 'not part of the agent instructions' but would be pasted.",
+      "fix": "Put the maintenance line outside '## Instructions', for example next to the paste note at the top."
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 97,
+      "issue": "Prompt 4.3 has no deterministic expected result. workiva_export_evidence accepts only snapshot, validation_run, comparison or transfer subjects, so 'what we just did' has no subject unless an earlier step produced one. The worker flagged this itself. The 'correct answer' branches (subject given, or agent says none) are both accepted, so the line cannot fail RB-03.",
+      "fix": "Pin the act flow so a subject exists (for example run workiva_compare_periods in Act 1 and name that comparison), or record the gap as a request to L1/L3 in docs/demo/STATUS.md."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R9",
+      "satisfied": true,
+      "evidence": "INSTRUCTIONS.md lines 15-22 and 28-33 name prepare/confirm/stage/confirm-text/export tools with output field names; the acceptance script (check log, command 1) confirms every workiva_ name is a real Name() constant; RB-03 maintenance line at INSTRUCTIONS.md:140. Caveat: the conventions list is not in the Rules section that gets pasted (minor finding)."
+    },
+    {
+      "requirement": "R10",
+      "satisfied": false,
+      "evidence": "DEMO_PROMPTS.md has Act 1 to 5 headings and 13 'Correct answer contains:' lines (acceptance commands 3 and 4 pass). Values, cells and item counts match the CSV, README and mapping (energy_total 1978/2030, L2/L28/L15/L3 cells, 25 environmental items = 26 fields minus the missing water field, 16 social items). Prompt 2.1 miscounts the planted findings (line 69), and prompt 4.3 is not testable."
+    }
+  ],
+  "new_tasks": []
+}
