@@ -1,0 +1,63 @@
+{
+  "task_id": "T6",
+  "axis": "spec",
+  "verdict": "pass",
+  "attempt": 1,
+  "implementation_commit": "9a4446d78d0ff013566e231e9c3057eea54c95df",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 11,
+      "issue": "The L2 row does not match the task text. Last commit says 'see PR' where the task asked for a short SHA (the parent 55ad776 would do). Blocked on says 'L1 merge: switch summary to Preview.Summary' and leaves out the requested 'L1 changeset.Service (tests use a fake)' part.",
+      "fix": "Put 55ad776 (or the final short SHA) in Last commit. Set Blocked on to 'L1 changeset.Service (tests use a fake); switch summary to Preview.Summary when L1 merges'."
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 30,
+      "issue": "Removing the handled L4 -> L2 request line also removed L4's separate, still-unconfirmed note that sandbox percent fields hold fractions if percent-cells-store-fractions is yes. L2 did not handle that note, and nothing else in the file keeps it.",
+      "fix": "Keep the percent-fraction sentence as a short L4 -> L2 note, or move it to the L2 row's Blocked on cell. Remove only the document-ID request that was handled."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/demo_scenario_test.go",
+      "line": 93,
+      "issue": "The findings check compares the length and then checks that each finding's kind matches the expected label. A duplicated planted finding that replaces a missing one, such as water/missing twice with no electricity/out_of_range, would still pass. So the test does not fully prove 'exactly the three planted findings'.",
+      "fix": "Collect the findings into a map from Field to Kind (or a set of pairs) and compare it for equality with wantFindings."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R4",
+      "satisfied": true,
+      "evidence": "internal/recipe/demo_scenario_test.go TestScenario9DemoModeEnvironmentalSection: Prepare reads through workivaprovider.NewRouter(workiva.NewDemoClient) over the committed configs/demo data. Without values read through the router there are no findings, items or the energy_total display of 1.98/2.03 GWh. Not reading the cache is covered by earlier tasks."
+    },
+    {
+      "requirement": "R8",
+      "satisfied": true,
+      "evidence": "TestScenario9DemoModeEnvironmentalSection checks one Stage call whose 25 items are derived from esg-2025.csv: FieldName rpt_env_<key>_2025, Source src_env_<key>, Value is the canonical CSV value. TestScenario9PrepareSectionToolOnDemoData checks 25 change_set items and 25 summary lines through workiva_prepare_section."
+    },
+    {
+      "requirement": "Acceptance scenario 9",
+      "satisfied": true,
+      "evidence": "demo_scenario_test.go wantFindings: water_discharge_production missing, ghg_scope3_business_travel material_change, electricity_renewable out_of_range. These match the environmental planted findings in configs/demo/data/README.md (training_hours_female is social, so it is correctly left out). The tool test asserts IsError false, 3 findings and a non-empty next_step."
+    },
+    {
+      "requirement": "Demo mode keeps demo-doc-annual-report with NL_DEMO_DOCUMENT_ID set",
+      "satisfied": true,
+      "evidence": "internal/recipe/demo_scenario_test.go TestDemoModeIgnoresDocumentIDOverride. It would fail if the !env.Cfg.DemoMode guard at internal/recipe/service.go:61 were removed."
+    },
+    {
+      "requirement": "STATUS L2 row updated; handled L4 -> L2 line removed; only the L2 row changes",
+      "satisfied": true,
+      "evidence": "docs/demo/STATUS.md:11: ready for review, branch claude/demo-l2-section-recipe, mentions the NL_DEMO_DOCUMENT_ID sandbox override. No other row was edited. The L4 -> L2 line was removed. Text deviations are noted in the minor findings."
+    },
+    {
+      "requirement": "Scope: owns only; no float identifiers; types.go unchanged; checks green",
+      "satisfied": true,
+      "evidence": "The diff touches only internal/recipe/demo_scenario_test.go, internal/mcpserver/tools/prepare_section_test.go and docs/demo/STATUS.md. In checks/T6-a1.json all 13 commands exit 0, including go test ./... -race, golangci-lint (0 issues), the float grep and the types.go diff check."
+    }
+  ],
+  "new_tasks": []
+}

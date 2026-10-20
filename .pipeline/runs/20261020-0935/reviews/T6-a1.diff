@@ -1,0 +1,311 @@
+diff --git a/docs/demo/STATUS.md b/docs/demo/STATUS.md
+index 5c5f8cf..0a91c9f 100644
+--- a/docs/demo/STATUS.md
++++ b/docs/demo/STATUS.md
+@@ -8,7 +8,7 @@ Plan day: 1 of 11 (Monday 19 October 2026).
+ |---|---|---|---|---|
+ | L0 Scaffold | ready for review (R10 end-to-end test waits for L1-L4) | `claude/demo-l0-scaffold` | 19b03ea | Entra permission mapping for demo tools |
+ | L1 Change set | waiting for L0 | `codex/demo-l1-change-set` | | L0 merge |
+-| L2 Section recipe | waiting for L0 | `claude/demo-l2-section-recipe` | | L0 merge |
++| L2 Section recipe | ready for review (draft PR); scenario 9 proven on L4 demo data; `NL_DEMO_DOCUMENT_ID` overrides the recipe document ID in sandbox mode only (ignored in demo mode) | `claude/demo-l2-section-recipe` | see PR | L1 merge: switch summary to Preview.Summary |
+ | L3 Section text | RB-02 spike can start now | `codex/demo-l3-section-text` | | RB-02 result for the document writer |
+ | L4 Data and agent | ready for review (draft PR); live seed done 2026-10-19 (42 fields, 126 cells read back, 0 mismatch, 99.7 s vs 1-minute target) | `claude/demo-l4-data-and-agent` | 7002483 | L2 `workiva_prepare_section` for scenario 5; Tom's RB-03 for scenario 6 |
+ | L5 Manual tests | RB-01 today | `claude/demo-integration` | | |
+@@ -27,6 +27,5 @@ Write one line: requesting lane, owning lane, file, what you need and why.
+ 
+ L0 -> owner (no lane owns it), internal/mcpserver/server.go: add requiredPermission entries for the four demo tools (prepare_section and stage_section_text -> workiva.write.preview; confirm_change_set and confirm_section_text -> workiva.write.confirm) and list them in writeTools, because under NL_AUTH_MODE=entra every demo tool call is denied today.
+ 
+-L4 -> L2, internal section recipe loading: the committed recipes carry `document_id: "demo-doc-annual-report"`; sandbox runs need a way to use the real report document ID without committing it (for example NL_DEMO_SECTIONS_DIR pointing to a git-ignored copy, or an environment override). Sandbox percent fields hold fractions if `percent-cells-store-fractions: yes` in configs/demo/README.md (still unconfirmed on a literal percent cell; no mapped sandbox cell is a percent cell).
+ L4 -> L0, internal/workiva/demo_client.go: `demoSpreadsheetsResponse` should list `demo-esg-source` and `demo-esg-report` so act 1 works offline.
+ L4 -> L0, internal/workiva/demo_esg.go and DemoTransport: add an ESG overlay field (or WrittenCells entries) on DemoTransport so demo_esg.go can drop its package-level registry.
+diff --git a/internal/mcpserver/tools/prepare_section_test.go b/internal/mcpserver/tools/prepare_section_test.go
+index 487e926..b5d9389 100644
+--- a/internal/mcpserver/tools/prepare_section_test.go
++++ b/internal/mcpserver/tools/prepare_section_test.go
+@@ -2,15 +2,25 @@ package tools
+ 
+ import (
+ 	"context"
++	"errors"
+ 	"net/http"
++	"net/url"
++	"path/filepath"
+ 	"strings"
+ 	"testing"
+ 	"time"
+ 
+ 	"github.com/modelcontextprotocol/go-sdk/mcp"
+ 
++	"github.com/dantalabs/northern-lights/internal/bootstrap"
+ 	"github.com/dantalabs/northern-lights/internal/changeset"
++	"github.com/dantalabs/northern-lights/internal/config"
++	"github.com/dantalabs/northern-lights/internal/demoenv"
++	"github.com/dantalabs/northern-lights/internal/mapping"
+ 	"github.com/dantalabs/northern-lights/internal/recipe"
++	"github.com/dantalabs/northern-lights/internal/sqlitedb"
++	"github.com/dantalabs/northern-lights/internal/workiva"
++	"github.com/dantalabs/northern-lights/internal/workivaprovider"
+ )
+ 
+ // fakeRecipes is a recipe.Service with canned data that records calls.
+@@ -184,3 +194,91 @@ func TestPrepareSectionRequiresRecipes(t *testing.T) {
+ 		t.Fatalf("want Recipes is not available, got %s", resultText(result))
+ 	}
+ }
++
++// stagingChanges is a changeset.Service whose previews resolve each item
++// through the mapping store, as L1's real service will.
++type stagingChanges struct{ store *mapping.Store }
++
++func (c stagingChanges) Stage(ctx context.Context, _ string, items []changeset.Item) (changeset.Preview, error) {
++	p := changeset.Preview{ID: "cs-demo", Token: "tok-demo", ExpiresAt: time.Now().Add(time.Hour)}
++	for _, it := range items {
++		f, err := c.store.GetField(ctx, it.FieldName)
++		if err != nil || f == nil {
++			return changeset.Preview{}, errors.New("unknown target " + it.FieldName)
++		}
++		p.Items = append(p.Items, changeset.PreviewItem{
++			FieldName: it.FieldName, SpreadsheetID: f.SpreadsheetID, SheetID: f.SheetID,
++			Range: f.CellRange, After: it.Value, Source: it.Source,
++		})
++	}
++	return p, nil
++}
++
++func (stagingChanges) Confirm(context.Context, string, string, string) (changeset.Result, error) {
++	return changeset.Result{}, errors.New("not used")
++}
++
++func TestScenario9PrepareSectionToolOnDemoData(t *testing.T) {
++	abs := func(rel string) string {
++		p, err := filepath.Abs(filepath.Join("..", "..", "..", "configs", "demo", rel))
++		if err != nil {
++			t.Fatal(err)
++		}
++		return p
++	}
++	t.Setenv("NL_DEMO_ESG_DATA", abs("data"))
++	t.Setenv("NL_DEMO_SECTIONS_DIR", abs("sections"))
++
++	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "demo.db"))
++	if err != nil {
++		t.Fatalf("open db: %v", err)
++	}
++	t.Cleanup(func() { _ = db.Close() })
++	store, err := mapping.NewWithDB(db)
++	if err != nil {
++		t.Fatalf("mapping store: %v", err)
++	}
++	ctx := context.Background()
++	if err := bootstrap.LoadMappings(ctx, abs("mappings-demo.yaml"), store); err != nil {
++		t.Fatalf("load mappings: %v", err)
++	}
++	if f, err := store.GetField(ctx, "src_env_energy_total"); err != nil || f == nil {
++		t.Fatalf("src_env_energy_total not loaded (wrong configs path?): %v", err)
++	}
++	base, err := url.Parse("https://demo.invalid")
++	if err != nil {
++		t.Fatal(err)
++	}
++	router := workivaprovider.NewRouter(workiva.NewDemoClient(base))
++	svc, facts, err := recipe.New(demoenv.Env{DB: db, Store: store, Client: router, Cfg: &config.Config{DemoMode: true}}, stagingChanges{store: store})
++	if err != nil {
++		t.Fatalf("recipe.New: %v", err)
++	}
++
++	deps := newTestEnv(t, http.NotFound).deps
++	deps.Store, deps.Client, deps.Recipes, deps.Facts = store, router, svc, facts
++	session := serveDemoTools(t, deps)
++	result, err := session.CallTool(ctx, &mcp.CallToolParams{
++		Name: "workiva_prepare_section", Arguments: map[string]any{"section_id": "esg-environmental"},
++	})
++	if err != nil {
++		t.Fatalf("CallTool: %v", err)
++	}
++	if result.IsError {
++		t.Fatalf("unexpected error: %s", resultText(result))
++	}
++	out := structuredContent(t, result)
++	if n := len(out["findings"].([]any)); n != 3 {
++		t.Errorf("findings = %d, want 3: %v", n, out["findings"])
++	}
++	items := out["change_set"].(map[string]any)["items"].([]any)
++	if len(items) != 25 {
++		t.Errorf("change_set items = %d, want 25", len(items))
++	}
++	if lines := strings.Split(out["summary"].(string), "\n"); len(lines) != 25 {
++		t.Errorf("summary lines = %d, want 25", len(lines))
++	}
++	if next, _ := out["next_step"].(string); next == "" {
++		t.Error("next_step is empty")
++	}
++}
+diff --git a/internal/recipe/demo_scenario_test.go b/internal/recipe/demo_scenario_test.go
+new file mode 100644
+index 0000000..1838b76
+--- /dev/null
++++ b/internal/recipe/demo_scenario_test.go
+@@ -0,0 +1,163 @@
++package recipe
++
++import (
++	"context"
++	"encoding/csv"
++	"net/url"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++
++	"github.com/dantalabs/northern-lights/internal/bootstrap"
++	"github.com/dantalabs/northern-lights/internal/config"
++	"github.com/dantalabs/northern-lights/internal/demoenv"
++	"github.com/dantalabs/northern-lights/internal/mapping"
++	"github.com/dantalabs/northern-lights/internal/sqlitedb"
++	"github.com/dantalabs/northern-lights/internal/workiva"
++	"github.com/dantalabs/northern-lights/internal/workivaprovider"
++)
++
++// demoScenarioAbs resolves a path under configs/demo from this package.
++func demoScenarioAbs(t *testing.T, rel string) string {
++	t.Helper()
++	abs, err := filepath.Abs(filepath.Join("..", "..", "configs", "demo", rel))
++	if err != nil {
++		t.Fatal(err)
++	}
++	return abs
++}
++
++// demoScenarioEnv builds the recipe service over the committed demo mappings,
++// sections and data, with the offline demo client in demo mode.
++func demoScenarioEnv(t *testing.T) (Service, *prepareTestChanges) {
++	t.Helper()
++	t.Setenv("NL_DEMO_ESG_DATA", demoScenarioAbs(t, "data"))
++	t.Setenv("NL_DEMO_SECTIONS_DIR", demoScenarioAbs(t, "sections"))
++	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "demo.db"))
++	if err != nil {
++		t.Fatalf("open db: %v", err)
++	}
++	t.Cleanup(func() { _ = db.Close() })
++	store, err := mapping.NewWithDB(db)
++	if err != nil {
++		t.Fatalf("mapping store: %v", err)
++	}
++	if err := bootstrap.LoadMappings(context.Background(), demoScenarioAbs(t, "mappings-demo.yaml"), store); err != nil {
++		t.Fatalf("load mappings: %v", err)
++	}
++	if f, err := store.GetField(context.Background(), "src_env_energy_total"); err != nil || f == nil {
++		t.Fatalf("src_env_energy_total not loaded (wrong mappings path?): %v", err)
++	}
++	base, err := url.Parse("https://demo.invalid")
++	if err != nil {
++		t.Fatal(err)
++	}
++	env := demoenv.Env{DB: db, Store: store, Client: workivaprovider.NewRouter(workiva.NewDemoClient(base)), Cfg: &config.Config{DemoMode: true}}
++	changes := &prepareTestChanges{store: store}
++	svc, _, err := New(env, changes)
++	if err != nil {
++		t.Fatalf("New: %v", err)
++	}
++	return svc, changes
++}
++
++// demoScenarioCanonical strips trailing zeros of a decimal string.
++func demoScenarioCanonical(v string) string {
++	if strings.Contains(v, ".") {
++		v = strings.TrimRight(strings.TrimRight(v, "0"), ".")
++	}
++	return v
++}
++
++func TestScenario9DemoModeEnvironmentalSection(t *testing.T) {
++	svc, changes := demoScenarioEnv(t)
++	ids := map[string]bool{}
++	for _, s := range svc.Sections() {
++		ids[s.ID] = true
++	}
++	if !ids["esg-environmental"] || !ids["esg-social"] || len(ids) != 2 {
++		t.Fatalf("sections = %v, want esg-environmental and esg-social", ids)
++	}
++	got, err := svc.Prepare(context.Background(), "analyst", "esg-environmental")
++	if err != nil {
++		t.Fatalf("Prepare: %v", err)
++	}
++
++	wantFindings := map[string]string{
++		"Water discharge from undertaking production processes (m³)": "missing",
++		"6. Business Travel": "material_change",
++		"Electricity (as reflected in utility billings) - Renewable": "out_of_range",
++	}
++	if len(got.Findings) != len(wantFindings) {
++		t.Errorf("findings = %+v, want exactly %d", got.Findings, len(wantFindings))
++	}
++	for _, f := range got.Findings {
++		if wantFindings[f.Field] != f.Kind {
++			t.Errorf("unexpected finding %+v", f)
++		}
++	}
++
++	// Expected change set: CSV rows whose key is an esg-environmental field key
++	// and whose value is non-empty.
++	keys := map[string]bool{}
++	for _, f := range svc.(*service).recipes["esg-environmental"].Fields {
++		keys[f.Key] = true
++	}
++	file, err := os.Open(demoScenarioAbs(t, "data/esg-2025.csv"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer func() { _ = file.Close() }()
++	rows, err := csv.NewReader(file).ReadAll()
++	if err != nil {
++		t.Fatal(err)
++	}
++	type want struct{ field, source, value string }
++	var wantItems []want
++	for _, row := range rows[1:] {
++		if keys[row[0]] && row[3] != "" {
++			wantItems = append(wantItems, want{"rpt_env_" + row[0] + "_2025", "src_env_" + row[0], demoScenarioCanonical(row[3])})
++		}
++	}
++	if len(wantItems) != 25 {
++		t.Fatalf("expected %d items from CSV, want 25", len(wantItems))
++	}
++	if len(changes.calls) != 1 || len(changes.calls[0]) != len(wantItems) {
++		t.Fatalf("Stage calls = %d, want 1 call with %d items", len(changes.calls), len(wantItems))
++	}
++	for i, it := range changes.calls[0] {
++		w := wantItems[i]
++		if it.FieldName != w.field || it.Source != w.source || it.Value != w.value {
++			t.Errorf("item %d = %+v, want %+v", i, it, w)
++		}
++	}
++
++	var energy *Fact
++	for i := range got.Facts {
++		if got.Facts[i].Key == "energy_total" {
++			energy = &got.Facts[i]
++		}
++	}
++	if energy == nil {
++		t.Fatal("no energy_total fact")
++	}
++	shown := strings.Join(energy.Display, "|")
++	if !strings.Contains(shown, "1.98 GWh") || !strings.Contains(shown, "2.03 GWh") {
++		t.Errorf("energy_total display = %v, want 1.98 GWh and 2.03 GWh", energy.Display)
++	}
++}
++
++func TestDemoModeIgnoresDocumentIDOverride(t *testing.T) {
++	t.Setenv("NL_DEMO_DOCUMENT_ID", "real-document-id")
++	svc, _ := demoScenarioEnv(t)
++	for _, s := range svc.Sections() {
++		if s.ID == "esg-environmental" {
++			if s.DocumentID != "demo-doc-annual-report" {
++				t.Errorf("DocumentID = %q, want demo-doc-annual-report in demo mode", s.DocumentID)
++			}
++			return
++		}
++	}
++	t.Fatal("esg-environmental not loaded")
++}

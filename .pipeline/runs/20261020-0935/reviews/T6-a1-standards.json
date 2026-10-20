@@ -1,0 +1,59 @@
+{
+  "task_id": "T6",
+  "axis": "standards",
+  "attempt": 1,
+  "implementation_commit": "9a4446d78d0ff013566e231e9c3057eea54c95df",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 271,
+      "issue": "Unchecked type assertions (out[\"findings\"].([]any), out[\"change_set\"].(map[string]any)[\"items\"].([]any), out[\"summary\"].(string)) panic instead of failing with a message if the structured output shape regresses. The package mixes both styles, but the comma-ok form (discover_relationships_test.go) reports better.",
+      "fix": "Use the comma-ok form and t.Fatalf with the raw output when a key is missing or has the wrong type."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/demo_scenario_test.go",
+      "line": 92,
+      "issue": "The findings check only verifies the count and that each returned (Field, Kind) is in the expected map. A duplicate expected finding that replaced a missing one (for example two 'missing' findings for water discharge and no out_of_range) would still pass.",
+      "fix": "Track which expected fields were seen (delete from a copy of wantFindings as they match) and fail on any field left over."
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 11,
+      "issue": "The L2 row's Last commit cell holds 'see PR' while every other populated row holds a short SHA. The Blocked-on cell also drops the planned '(tests use a fake)' qualifier on the L1 dependency. Edits are correctly limited to the L2 row and the handled L4 -> L2 request line, and the percent-cell note removed with that line is still recorded in configs/demo/README.md:84-86, so nothing is lost.",
+      "fix": "Put the short SHA (for example 55ad776, the parent) in Last commit and use the planned Blocked-on wording."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 202,
+      "issue": "Possible Duplicated Code: stagingChanges.Stage repeats prepareTestChanges.Stage (internal/recipe/prepare_test.go:72-89) line for line, and the env setup repeats demoScenarioEnv. Test helpers cannot be shared across packages without a testutil package, so this is acceptable for now.",
+      "fix": "Optional: once a third copy appears, move the mapping-resolving fake changeset.Service and the demo env builder into a shared internal test-helper package."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/demo_scenario_test.go",
+      "line": 118,
+      "issue": "Hard-coded CSV column indexes row[0] and row[3] depend silently on the header order 'key,label,unit,value'.",
+      "fix": "Resolve the column indexes from rows[0] by header name, or name them as constants."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/demo_scenario_test.go",
+      "line": 104,
+      "issue": "svc.(*service).recipes reaches into unexported service state to derive the field keys, which couples the scenario test to the implementation.",
+      "fix": "Acceptable in an in-package test. Alternatively, read the field keys from the committed esg-environmental recipe file."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R4", "satisfied": true, "evidence": "internal/recipe/demo_scenario_test.go TestScenario9DemoModeEnvironmentalSection: committed configs/demo files via filepath.Abs, t.Setenv without t.Parallel, temp DB"},
+    {"requirement": "R8", "satisfied": true, "evidence": "internal/mcpserver/tools/prepare_section_test.go TestScenario9PrepareSectionToolOnDemoData: end-to-end through workiva_prepare_section with a path sanity check on src_env_energy_total; checks/T6-a1.json shows the full race suite, gofmt, vet and golangci-lint all at exit 0"},
+    {"requirement": "scenario 9", "satisfied": true, "evidence": "Both Scenario9 tests are listed and pass; TestDemoModeIgnoresDocumentIDOverride covers critique c2"},
+    {"requirement": "STATUS row update", "satisfied": true, "evidence": "docs/demo/STATUS.md diff touches only the L2 row and removes the handled L4 -> L2 line; see the minor finding on the Last commit cell"},
+    {"requirement": "security", "satisfied": true, "evidence": "Test-only change; no secrets or real IDs (demo.invalid, real-document-id placeholder, demo-doc-annual-report); no float types; no weakened tests, skipped checks or ignore comments; checkout clean"}
+  ],
+  "new_tasks": []
+}

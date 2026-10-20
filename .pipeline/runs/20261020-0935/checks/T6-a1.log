@@ -1,0 +1,42 @@
+$ go test -list '^TestScenario9PrepareSectionToolOnDemoData$' ./internal/mcpserver/tools/ | grep -qx 'TestScenario9PrepareSectionToolOnDemoData'
+$ go test -race -count=1 -run '^TestScenario9PrepareSectionToolOnDemoData$' ./internal/mcpserver/tools/
+ok  	github.com/dantalabs/northern-lights/internal/mcpserver/tools	3.603s
+$ go test -list '^TestScenario9DemoModeEnvironmentalSection$' ./internal/recipe/ | grep -qx 'TestScenario9DemoModeEnvironmentalSection'
+$ go test -race -count=1 -run '^(TestScenario9DemoModeEnvironmentalSection)$' ./internal/recipe/
+ok  	github.com/dantalabs/northern-lights/internal/recipe	3.001s
+$ for n in 1 2 3 4 5 6 7 8 9; do (go test -list '^TestScenario'$n ./internal/recipe/ ./internal/mcpserver/tools/ | grep -q '^TestScenario'$n) || exit 1; done
+$ go build ./...
+$ go test ./... -race -timeout 40m
+ok  	github.com/dantalabs/northern-lights/cmd/nl-assurance	(cached)
+ok  	github.com/dantalabs/northern-lights/cmd/nl-backup-job	(cached)
+ok  	github.com/dantalabs/northern-lights/cmd/nl-demo-seed	(cached)
+ok  	github.com/dantalabs/northern-lights/cmd/workiva-mcp	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/assurance	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/audit	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/backupjob	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/bootstrap	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/changeset	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/config	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/content	(cached)
+?   	github.com/dantalabs/northern-lights/internal/demoenv	[no test files]
+ok  	github.com/dantalabs/northern-lights/internal/identity	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/mapping	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/mcpserver	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/mcpserver/tools	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/mutation	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/ratelimit	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/recipe	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/relationships	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/sectiontext	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/sqlitedb	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/transfer	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/workiva	(cached)
+ok  	github.com/dantalabs/northern-lights/internal/workivaprovider	(cached)
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.
+$ ! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'
+$ grep -E '^\| L2 Section recipe' docs/demo/STATUS.md | grep -q 'ready for review'
+$ git diff --name-only 48269d9ee2ab52f64d4277931374fd7a4d7f3c76 -- . ':!internal/recipe' ':!internal/mcpserver/tools/prepare_section.go' ':!internal/mcpserver/tools/prepare_section_test.go' ':!docs/demo/STATUS.md' ':!.pipeline' ':!PLAN.md' | (! grep -q .)
+$ git diff --quiet $(git merge-base HEAD origin/claude/demo-integration) -- internal/recipe/types.go
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.
