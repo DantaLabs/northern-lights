@@ -94,28 +94,31 @@ func planWrite(m Mappings, year, field, value string) (Write, error) {
 		return Write{}, fmt.Errorf("field %s is not in the mapping file", field)
 	}
 	if ref.FieldType == "percent" && percentCellsStoreFractions && value != "" {
-		value = percentToFraction(value)
+		var err error
+		if value, err = percentToFraction(value); err != nil {
+			return Write{}, fmt.Errorf("field %s: %w", field, err)
+		}
 	}
 	return Write{Year: year, Field: field, Ref: ref, Value: value}, nil
 }
 
 // percentToFraction divides a plain decimal by 100 and returns the shortest
-// exact decimal text (46.5 -> 0.465).
-func percentToFraction(s string) string {
+// exact decimal text (46.5 -> 0.465). Text that is not a number is an error.
+func percentToFraction(s string) (string, error) {
 	r, ok := new(big.Rat).SetString(s)
 	if !ok {
-		return s
+		return "", fmt.Errorf("percent value %q is not a decimal number", s)
 	}
 	r.Quo(r, big.NewRat(100, 1))
 	ten := big.NewRat(10, 1)
 	scaled := new(big.Rat).Set(r)
 	for n := 0; n < 64; n++ {
 		if scaled.IsInt() {
-			return r.FloatString(n)
+			return r.FloatString(n), nil
 		}
 		scaled.Mul(scaled, ten)
 	}
-	return r.FloatString(64)
+	return "", fmt.Errorf("percent value %q has no exact decimal fraction", s)
 }
 
 // Print writes one line per planned item and a summary. It prints spreadsheet
