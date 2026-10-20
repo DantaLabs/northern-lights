@@ -1,0 +1,95 @@
+{
+  "task_id": "T5",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 49,
+      "issue": "The task requires the unknown-section error to list sections in Sections() order. The handler does this (prepare_section.go:180-190 iterates the slice it was given), but TestScenario8UnknownSectionListsSections only checks that each entry is present, so a change that reorders the list would still pass. Sorting by ID is Sections()' job under R13 and is tested elsewhere, so this does not block.",
+      "fix": "Optional: assert that the hint contains the exact text 'available sections: environmental (Environmental Disclosures), governance (Governance Disclosures)'.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 76,
+      "issue": "The R12 mapping test does not check every field of Prepared. These are never asserted: finding kind/field/severity, fact key/label/unit, verbatim title, and item field_name/spreadsheet_id/sheet_id/before/after. The summary check covers field_name/before/after only indirectly, through Preview. Getting one of the unchecked fields wrong in newPrepareSectionOutput would not fail any test.",
+      "fix": "Optional: compare the whole structured output against an expected map with reflect.DeepEqual, or add asserts for the remaining fields.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 109,
+      "issue": "The test uses unchecked type assertions such as out[\"findings\"].([]any) and facts[0].(map[string]any). A shape regression panics the test instead of failing it with a readable message.",
+      "fix": "Use the comma-ok form and call t.Fatalf on a mismatch, or decode the structured content into prepareSectionOutput and compare fields.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 56,
+      "issue": "The test matches the JSON-escaped form `unknown section ID \\\"nope\\\"`, so it depends on the error envelope's encoding and not on the message itself.",
+      "fix": "Parse the error envelope with json.Unmarshal and assert on error.message and hint, or match only the unquoted parts.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/tools/prepare_section.go",
+      "line": 156,
+      "issue": "The hand-written known-section loop could be slices.ContainsFunc, which says the intent in one line.",
+      "fix": "known := slices.ContainsFunc(sections, func(s recipe.SectionInfo) bool { return s.ID == in.SectionID })",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 49,
+      "issue": "The task requires the unknown-section error to list sections in Sections() order. The handler does this (prepare_section.go:180-190 iterates the slice it was given), but TestScenario8UnknownSectionListsSections only checks that each entry is present, so a change that reorders the list would still pass. Sorting by ID is Sections()' job under R13 and is tested elsewhere, so this does not block.",
+      "fix": "Optional: assert that the hint contains the exact text 'available sections: environmental (Environmental Disclosures), governance (Governance Disclosures)'.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 76,
+      "issue": "The R12 mapping test does not check every field of Prepared. These are never asserted: finding kind/field/severity, fact key/label/unit, verbatim title, and item field_name/spreadsheet_id/sheet_id/before/after. The summary check covers field_name/before/after only indirectly, through Preview. Getting one of the unchecked fields wrong in newPrepareSectionOutput would not fail any test.",
+      "fix": "Optional: compare the whole structured output against an expected map with reflect.DeepEqual, or add asserts for the remaining fields.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 109,
+      "issue": "The test uses unchecked type assertions such as out[\"findings\"].([]any) and facts[0].(map[string]any). A shape regression panics the test instead of failing it with a readable message.",
+      "fix": "Use the comma-ok form and call t.Fatalf on a mismatch, or decode the structured content into prepareSectionOutput and compare fields.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 56,
+      "issue": "The test matches the JSON-escaped form `unknown section ID \\\"nope\\\"`, so it depends on the error envelope's encoding and not on the message itself.",
+      "fix": "Parse the error envelope with json.Unmarshal and assert on error.message and hint, or match only the unquoted parts.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/tools/prepare_section.go",
+      "line": 156,
+      "issue": "The hand-written known-section loop could be slices.ContainsFunc, which says the intent in one line.",
+      "fix": "known := slices.ContainsFunc(sections, func(s recipe.SectionInfo) bool { return s.ID == in.SectionID })",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

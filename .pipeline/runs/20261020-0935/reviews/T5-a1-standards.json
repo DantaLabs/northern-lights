@@ -1,0 +1,36 @@
+{
+  "task_id": "T5",
+  "axis": "standards",
+  "verdict": "pass",
+  "attempt": 1,
+  "implementation_commit": "29becb1bdc48e5b75bbb188c321102e499c88b11",
+  "findings": [
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 109,
+      "issue": "The test uses unchecked type assertions such as out[\"findings\"].([]any) and facts[0].(map[string]any). A shape regression panics the test instead of failing it with a readable message.",
+      "fix": "Use the comma-ok form and call t.Fatalf on a mismatch, or decode the structured content into prepareSectionOutput and compare fields."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 56,
+      "issue": "The test matches the JSON-escaped form `unknown section ID \\\"nope\\\"`, so it depends on the error envelope's encoding and not on the message itself.",
+      "fix": "Parse the error envelope with json.Unmarshal and assert on error.message and hint, or match only the unquoted parts."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/mcpserver/tools/prepare_section.go",
+      "line": 156,
+      "issue": "The hand-written known-section loop could be slices.ContainsFunc, which says the intent in one line.",
+      "fix": "known := slices.ContainsFunc(sections, func(s recipe.SectionInfo) bool { return s.ID == in.SectionID })"
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R11", "satisfied": true, "evidence": "prepare_section.go unknownSectionError; TestScenario8UnknownSectionListsSections, TestScenario8UnknownSectionWithNoRecipes"},
+    {"requirement": "R12", "satisfied": true, "evidence": "prepare_section.go newPrepareSectionOutput, changeSetSummary, prepareSectionNextStep; TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep"},
+    {"requirement": "R13", "satisfied": true, "evidence": "tool side: error hint lists Sections() in order; TestScenario8UnknownSectionListsSections"}
+  ],
+  "new_tasks": []
+}
