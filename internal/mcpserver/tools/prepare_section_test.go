@@ -2,15 +2,25 @@ package tools
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"net/url"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/dantalabs/northern-lights/internal/bootstrap"
 	"github.com/dantalabs/northern-lights/internal/changeset"
+	"github.com/dantalabs/northern-lights/internal/config"
+	"github.com/dantalabs/northern-lights/internal/demoenv"
+	"github.com/dantalabs/northern-lights/internal/mapping"
 	"github.com/dantalabs/northern-lights/internal/recipe"
+	"github.com/dantalabs/northern-lights/internal/sqlitedb"
+	"github.com/dantalabs/northern-lights/internal/workiva"
+	"github.com/dantalabs/northern-lights/internal/workivaprovider"
 )
 
 // fakeRecipes is a recipe.Service with canned data that records calls.
@@ -182,5 +192,93 @@ func TestPrepareSectionRequiresRecipes(t *testing.T) {
 	}
 	if !result.IsError || !strings.Contains(resultText(result), "Recipes is not available") {
 		t.Fatalf("want Recipes is not available, got %s", resultText(result))
+	}
+}
+
+// stagingChanges is a changeset.Service whose previews resolve each item
+// through the mapping store, as L1's real service will.
+type stagingChanges struct{ store *mapping.Store }
+
+func (c stagingChanges) Stage(ctx context.Context, _ string, items []changeset.Item) (changeset.Preview, error) {
+	p := changeset.Preview{ID: "cs-demo", Token: "tok-demo", ExpiresAt: time.Now().Add(time.Hour)}
+	for _, it := range items {
+		f, err := c.store.GetField(ctx, it.FieldName)
+		if err != nil || f == nil {
+			return changeset.Preview{}, errors.New("unknown target " + it.FieldName)
+		}
+		p.Items = append(p.Items, changeset.PreviewItem{
+			FieldName: it.FieldName, SpreadsheetID: f.SpreadsheetID, SheetID: f.SheetID,
+			Range: f.CellRange, After: it.Value, Source: it.Source,
+		})
+	}
+	return p, nil
+}
+
+func (stagingChanges) Confirm(context.Context, string, string, string) (changeset.Result, error) {
+	return changeset.Result{}, errors.New("not used")
+}
+
+func TestScenario9PrepareSectionToolOnDemoData(t *testing.T) {
+	abs := func(rel string) string {
+		p, err := filepath.Abs(filepath.Join("..", "..", "..", "configs", "demo", rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	t.Setenv("NL_DEMO_ESG_DATA", abs("data"))
+	t.Setenv("NL_DEMO_SECTIONS_DIR", abs("sections"))
+
+	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "demo.db"))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store, err := mapping.NewWithDB(db)
+	if err != nil {
+		t.Fatalf("mapping store: %v", err)
+	}
+	ctx := context.Background()
+	if err := bootstrap.LoadMappings(ctx, abs("mappings-demo.yaml"), store); err != nil {
+		t.Fatalf("load mappings: %v", err)
+	}
+	if f, err := store.GetField(ctx, "src_env_energy_total"); err != nil || f == nil {
+		t.Fatalf("src_env_energy_total not loaded (wrong configs path?): %v", err)
+	}
+	base, err := url.Parse("https://demo.invalid")
+	if err != nil {
+		t.Fatal(err)
+	}
+	router := workivaprovider.NewRouter(workiva.NewDemoClient(base))
+	svc, facts, err := recipe.New(demoenv.Env{DB: db, Store: store, Client: router, Cfg: &config.Config{DemoMode: true}}, stagingChanges{store: store})
+	if err != nil {
+		t.Fatalf("recipe.New: %v", err)
+	}
+
+	deps := newTestEnv(t, http.NotFound).deps
+	deps.Store, deps.Client, deps.Recipes, deps.Facts = store, router, svc, facts
+	session := serveDemoTools(t, deps)
+	result, err := session.CallTool(ctx, &mcp.CallToolParams{
+		Name: "workiva_prepare_section", Arguments: map[string]any{"section_id": "esg-environmental"},
+	})
+	if err != nil {
+		t.Fatalf("CallTool: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected error: %s", resultText(result))
+	}
+	out := structuredContent(t, result)
+	if n := len(out["findings"].([]any)); n != 3 {
+		t.Errorf("findings = %d, want 3: %v", n, out["findings"])
+	}
+	items := out["change_set"].(map[string]any)["items"].([]any)
+	if len(items) != 25 {
+		t.Errorf("change_set items = %d, want 25", len(items))
+	}
+	if lines := strings.Split(out["summary"].(string), "\n"); len(lines) != 25 {
+		t.Errorf("summary lines = %d, want 25", len(lines))
+	}
+	if next, _ := out["next_step"].(string); next == "" {
+		t.Error("next_step is empty")
 	}
 }
