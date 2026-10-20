@@ -1,0 +1,45 @@
+{
+  "task_id": "T4",
+  "axis": "standards",
+  "implementation_commit": "449a466971ff90f80a92e39895700c2fbaa933ef",
+  "attempt": 2,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 330,
+      "issue": "Carried over from attempt 1, still present. Possible duplicated code: descriptionOf repeats the spreadsheet/sheet/field walk from Mappings.Field only to get Description, which FieldRef leaves out.",
+      "fix": "Add Description to FieldRef, fill it in Mappings.Field, and remove descriptionOf."
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 160,
+      "issue": "Carried over from attempt 1, still present. Duplicated code: the year-on-year change calculation appears twice in TestDataConsistency (the findings loop and the 'non-planted change below 10' loop), so the two checks can drift apart.",
+      "fix": "Extract a helper such as changeOf(cur, prior *big.Rat, unit string) *big.Rat and call it from both loops."
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 135,
+      "issue": "Carried over from attempt 1. strings.TrimPrefix(rc, \"esg-\")[:3] derives the section short name by slicing a string, while TestRecipesMatchSchemaAndMappings keeps an explicit {id, short} table.",
+      "fix": "Share one sections table between both tests."
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/data.go",
+      "line": 133,
+      "issue": "Carried over from attempt 1. LoadRecipes checks required keys by ranging over a map, so which missing key the error names is not deterministic.",
+      "fix": "Range over an ordered slice of name/value pairs."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "Attempt-1 blocking finding: remove the three //nolint:gosec comments", "satisfied": true, "evidence": "git diff 73a1806 449a466 -- cmd/nl-demo-seed/data.go deletes all three trailing comments on os.ReadFile (lines 35, 121, 158) and adds nothing else; git grep for nolint|nosec|lint:ignore in cmd/nl-demo-seed returns nothing"},
+    {"requirement": "AGENTS.md rule 3 / owner rules: no weakened test, skipped check or ignore comment", "satisfied": true, "evidence": "No t.Skip/SkipNow, no nolint/nosec, no .golangci config or CI/Makefile/go.mod changes in c882993..449a466. The removed 'demo layout' block in data_test.go is a superset replacement: the per-field loop now asserts spreadsheet and sheet for every Source/Target/Prior name (data_test.go:269-289), so coverage grew. The share check now covers 2024 as well (data_test.go:105-113). The only '_ =' is t.Cleanup(func() { _ = store.Close() }), which matches existing repo idiom (cmd/nl-assurance/main.go:62, cmd/workiva-mcp/backup_config.go:233)"},
+    {"requirement": "AGENTS.md testing (gofmt, vet, race tests, lint)", "satisfied": true, "evidence": "checks/T4-a2.log: four acceptance tests PASS under -race; go build, go vet ok; gofmt -l . empty; golangci-lint run 0 issues on the full repo"},
+    {"requirement": "No new module dependencies; exact decimals; GetSheetDataTyped only", "satisfied": true, "evidence": "No go.mod/go.sum change; big.Rat used throughout; check log greps that GetSheetData( is absent from data_test.go"},
+    {"requirement": "Security (risky): no secrets or real Workiva IDs, no network, safe file handling", "satisfied": true, "evidence": "Only demo-esg-* IDs appear; os.ReadFile reads operator-supplied local files, the same pattern as internal/bootstrap/bootstrap.go and internal/config/config.go; YAML decoded with KnownFields(true); test writes only under t.TempDir()"}
+  ],
+  "new_tasks": []
+}

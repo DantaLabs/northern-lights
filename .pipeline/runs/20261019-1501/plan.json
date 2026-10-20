@@ -331,8 +331,8 @@
         "golangci-lint run ./cmd/nl-demo-seed/...",
         "grep -q GetSheetDataTyped cmd/nl-demo-seed/data_test.go && ! grep -qE 'GetSheetData\\(' cmd/nl-demo-seed/data_test.go"
       ],
-      "status": "running",
-      "attempts": 1,
+      "status": "passed",
+      "attempts": 2,
       "base_commit": "7fc544a2bf74b6895d95ab96814b7821738621fa",
       "route": {
         "worker_model": "sonnet",
@@ -354,7 +354,7 @@
         "standards_reviewer_model": "opus",
         "environment": "local"
       },
-      "branch": "task/20261019-1501-T4-a1",
+      "branch": "task/20261019-1501-T4-a2",
       "history": [
         {
           "attempt": 1,
@@ -375,9 +375,29 @@
           "environment": "local",
           "implementation_commit": "73a180611cb3e01d04190dd628cc2f9d54942d19",
           "decision_id": "4f0eab9aae0a"
+        },
+        {
+          "attempt": 2,
+          "evidence_attempt": 2,
+          "worker": "sonnet",
+          "spec_reviewer": "opus",
+          "standards_reviewer": "opus",
+          "verdict": "pass",
+          "axes": {
+            "spec": "pass",
+            "standards": "pass"
+          },
+          "blocking_major": 0,
+          "router": "planner-hint",
+          "worker_model": "sonnet",
+          "spec_reviewer_model": "opus",
+          "standards_reviewer_model": "opus",
+          "environment": "local",
+          "implementation_commit": "449a466971ff90f80a92e39895700c2fbaa933ef",
+          "decision_id": "4f0eab9aae0a"
         }
       ],
-      "active_attempt": 2
+      "implementation_commit": "449a466971ff90f80a92e39895700c2fbaa933ef"
     },
     {
       "id": "T5",
@@ -414,9 +434,9 @@
         "mkdir -p .scratch && env -u NL_WORKIVA_CLIENT_ID -u NL_WORKIVA_CLIENT_SECRET go run ./cmd/nl-demo-seed -dry-run -mappings configs/demo/mappings-sandbox.example.yaml > .scratch/t5-dry.txt && f=$(cat configs/demo/sections/esg-environmental.yaml configs/demo/sections/esg-social.yaml | grep -cE '^ *- key:') && test $(grep -c '^write ' .scratch/t5-dry.txt) -eq $((2*f)) && grep -q '^planned: ' .scratch/t5-dry.txt && ! grep -q '<id-' .scratch/t5-dry.txt",
         "go run ./cmd/nl-demo-seed -dry-run -reset -mappings configs/demo/mappings-sandbox.example.yaml > .scratch/t5-reset.txt && grep -q '^delete-section \"' .scratch/t5-reset.txt && grep -q '^clear 2025 rpt_' .scratch/t5-reset.txt"
       ],
-      "status": "pending",
+      "status": "running",
       "attempts": 0,
-      "base_commit": null,
+      "base_commit": "201da5a8a92ef7c0f10a5ae75bce01b7d2a8bb04",
       "route": {
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
@@ -429,6 +449,14 @@
         ],
         "environment": "local",
         "router": "planner-hint"
+      },
+      "active_attempt": 1,
+      "execution": {
+        "router": "planner-hint",
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "environment": "local"
       }
     },
     {
