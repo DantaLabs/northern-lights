@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -85,9 +86,27 @@ func TestBuildPlanPercentConvention(t *testing.T) {
 		}
 	}
 	for in, want := range map[string]string{"46.5": "0.465", "100": "1", "0": "0", "-5": "-0.05", "12.345": "0.12345", "7": "0.07"} {
-		if got := percentToFraction(in); got != want {
-			t.Errorf("percentToFraction(%s) = %q, want %q", in, got, want)
+		got, err := percentToFraction(in)
+		if err != nil || got != want {
+			t.Errorf("percentToFraction(%s) = %q, %v, want %q", in, got, err, want)
 		}
+	}
+	for _, in := range []string{"abc", "", "1e", "4,5", "1/3"} {
+		if got, err := percentToFraction(in); err == nil {
+			t.Errorf("percentToFraction(%q) = %q, want an error", in, got)
+		}
+	}
+}
+
+func TestBuildPlanRejectsNonNumericPercent(t *testing.T) {
+	m, rs, cur, pri := fixtures(t)
+	for i := range cur {
+		if cur[i].Key == "share" {
+			cur[i].Value = "n/a"
+		}
+	}
+	if p, err := BuildPlan(m, rs, cur, pri, false); err == nil || !strings.Contains(err.Error(), "src_soc_share") {
+		t.Errorf("BuildPlan = %+v, %v; want an error naming src_soc_share", p, err)
 	}
 }
 
@@ -174,7 +193,7 @@ func TestRunDryRunSendsNothing(t *testing.T) {
 	old := newWorkiva
 	newWorkiva = func(context.Context) (Workiva, error) {
 		t.Error("newWorkiva called in dry run")
-		return nil, nil
+		return nil, errRealClientInTest
 	}
 	t.Cleanup(func() { newWorkiva = old })
 	var out, errb bytes.Buffer
@@ -208,10 +227,19 @@ func TestRunErrors(t *testing.T) {
 	if code := run(context.Background(), []string{"-dry-run", "-mappings", "testdata/absent.yaml"}, &out, &errb); code != 2 {
 		t.Errorf("load error exit %d", code)
 	}
-	old := newWorkiva
-	t.Cleanup(func() { newWorkiva = old })
 	args := []string{"-mappings", fxMappings, "-data", fxData, "-sections", fxSections}
-	if code := run(context.Background(), args, &out, &errb); code != 1 || !strings.Contains(errb.String(), "not implemented") {
-		t.Errorf("live stub exit %d stderr %q", code, errb.String())
+	fakeSeam(t, nil, errors.New("no credentials"))
+	errb.Reset()
+	if code := run(context.Background(), args, &out, &errb); code != 1 || !strings.Contains(errb.String(), "no credentials") {
+		t.Errorf("client error exit %d stderr %q", code, errb.String())
+	}
+	fakeSeam(t, &fakeWorkiva{failWrite: errors.New("boom")}, nil)
+	errb.Reset()
+	if code := run(context.Background(), args, &out, &errb); code != 1 || !strings.Contains(errb.String(), "boom") {
+		t.Errorf("apply error exit %d stderr %q", code, errb.String())
+	}
+	fakeSeam(t, &fakeWorkiva{}, nil)
+	if code := run(context.Background(), args, &out, &errb); code != 0 {
+		t.Errorf("fake run exit %d stderr %q", code, errb.String())
 	}
 }

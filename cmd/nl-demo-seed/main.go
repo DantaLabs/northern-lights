@@ -3,19 +3,12 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 )
-
-// newWorkiva builds the live client. It is a seam: tests replace it, and a
-// dry run never calls it.
-var newWorkiva = func(ctx context.Context) (Workiva, error) {
-	return nil, errors.New("live Workiva client is not implemented yet")
-}
 
 func main() {
 	os.Exit(run(context.Background(), os.Args[1:], os.Stdout, os.Stderr))
