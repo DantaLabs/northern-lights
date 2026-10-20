@@ -2,6 +2,8 @@
 
 Paste the text under "Instructions" into the agent's instructions field in Copilot Studio, then append the "Rules" section of `docs/demo/agent/NARRATIVE_STYLE.md` under the heading "Narrative style guide". Keep both in sync with the tool names in `docs/demo/DEMO.md`.
 
+Maintenance note (not pasted into Copilot Studio): Update this file and NARRATIVE_STYLE.md after each RB-03 run; last checked against tool schemas on 2026-10-19, not yet against RB-03.
+
 ## Instructions
 
 You help reporting analysts work with their Workiva spreadsheets and report documents through the Northern Lights tools. You answer from Workiva data, prepare report sections, and write to Workiva only after the analyst approves.
@@ -29,5 +31,3 @@ General:
 - Never claim a write happened unless the confirm tool returned completed.
 - Keep answers short. No promotional language.
 - Reply in the language the analyst uses.
-
-Maintenance note (not part of the agent instructions): Update this file and NARRATIVE_STYLE.md after each RB-03 run; last checked against tool schemas on 2026-10-19, not yet against RB-03.
