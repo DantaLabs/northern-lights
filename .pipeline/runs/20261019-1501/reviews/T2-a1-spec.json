@@ -1,0 +1,48 @@
+{
+  "task_id": "T2",
+  "axis": "spec",
+  "verdict": "pass",
+  "implementation_commit": "458b478df9cb80683e5b3decdc9b88193b35b4fc",
+  "attempt": 1,
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 200,
+      "issue": "The update validation accepts edits to row 0 (the header row) and to columns A to C (key, label, unit). The task says a write outside the data rows returns 400, and the header row is not a data row. TestDemoESGUnknownIDs only covers rows past the end, columns past D and negative rows.",
+      "fix": "Reject edit.Row == 0 with a 400, and add a header-row case to TestDemoESGUnknownIDs. Restricting edits to column D (the value column) is optional."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 129,
+      "issue": "Overlay edits are applied with cells[pos[0]][pos[1]], with no bounds check against the grid as it is re-read on this request. The CSV is read on every request, so if the file shrinks after a write, a later read indexes out of range and RoundTrip panics instead of returning a JSON error.",
+      "fix": "Skip any overlay position that falls outside the current grid, or return a 500 JSON error for it."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 1,
+      "issue": "The file is about 250 lines, above the 'under about 200 lines' guideline in the task instructions. The worker report says so.",
+      "fix": "Optional: tighten the code when L0 adds the overlay field (T9)."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R7",
+      "satisfied": true,
+      "evidence": "internal/workiva/demo_esg.go esgGrid reads NL_DEMO_ESG_DATA with default configs/demo/data and serves esg-2025.csv / esg-2024.csv for demo-esg-source and demo-esg-report. Tests: TestDemoESGSourceReadsCurrentYear (exact 2025 text 1240000.5 at D2), TestDemoESGPriorPeriodAndTarget, TestDemoESGValuesEndpoint, TestDemoESGWriteThenReadBack, TestDemoESGSheetsList, TestDemoESGUnknownIDs, TestDemoESGMissingDataDir (500 naming NL_DEMO_ESG_DATA), TestDemoESGInvalidCSV, TestDemoESGDefaultDataDir (default path proven through t.Chdir). All of them would fail against the 404 stub."
+    },
+    {
+      "requirement": "Acceptance scenario 3 (R7)",
+      "satisfied": true,
+      "evidence": "Transport layer only: TestDemoESGSourceReadsCurrentYear reads demo-esg-source/demo-esg-source-2025 D2 = the 2025 CSV value through GetSheetDataTyped. Mapping the field name src_env_energy_total to that range belongs to the mappings-demo.yaml task, not T2."
+    },
+    {
+      "requirement": "Constraint: demo_esg.go must not change the existing VSME demo fixture routes",
+      "satisfied": true,
+      "evidence": "TestDemoESGKeepsVSMERoutes (demo-sp-energy-2026/sheets returns 200 with demo-sh-b3-energy). git diff 458b478~1..458b478 touches only demo_esg.go, demo_esg_test.go and the worker report. demo_client.go is untouched."
+    }
+  ],
+  "new_tasks": []
+}

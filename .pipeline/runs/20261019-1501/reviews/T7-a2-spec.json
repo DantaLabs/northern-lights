@@ -1,0 +1,46 @@
+{
+  "task_id": "T7",
+  "axis": "spec",
+  "implementation_commit": "1e46b5b76236b1664288ff35c80f4701f2dff974",
+  "attempt": 2,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "nit",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 47,
+      "issue": "When the Act 2 expected answer was split into bullets, the label 'The three planted environmental findings:' and the first finding (missing water discharge) were left inside the bullet about findings-before-change-set. The other two findings (lines 48-49) are their own bullets, so the three findings are not listed at the same level. The content is correct, but the layout is uneven for an RB-03 operator ticking items off.",
+      "fix": "Optional: end bullet 2 after 'no tool call that writes yet', then give each of the three findings its own bullet (or a nested list under 'The three planted environmental findings:'). Do the same with the trailing 'Then the change set summary...' on line 49."
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 94,
+      "issue": "Carried from a1 (no change expected in this attempt): prompt 4.3 assumes an export subject exists, but workiva_export_evidence accepts only snapshot, validation_run, comparison or transfer, and Acts 1-4 do not guarantee any of them. The prompt hedges correctly. This stays an open item for scenario 6 (RB-03), which the spec defers to Tom.",
+      "fix": "No change for T7. Resolve during RB-03 / scenario 6: add a workiva_compare_periods step before 4.3, or extend the evidence subjects."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R9",
+      "satisfied": true,
+      "evidence": "docs/demo/agent/INSTRUCTIONS.md names only existing tools (acceptance cmds 1-2 exit 0 in checks/T7-a2.log). Output field names match the code as verified in a1 (prepare_section.go, change_set.go, section_text.go, export_evidence.go:69,76). The RB-03 maintenance line is now at INSTRUCTIONS.md:5, above '## Instructions', and labelled 'not pasted into Copilot Studio', so a1-standards finding 2 is resolved (acceptance cmd 6). NARRATIVE_STYLE.md has no PENDIENTE (acceptance cmd 5) and is unchanged since a1."
+    },
+    {
+      "requirement": "R10",
+      "satisfied": true,
+      "evidence": "DEMO_PROMPTS.md has '## Act 1' to '## Act 5' with 13 'Correct answer contains:' blocks (acceptance cmd 3), and energy_total 1978/2030 appear verbatim (acceptance cmd 4). a1-spec finding 1 is resolved: DEMO_PROMPTS.md:47 now says 'The three planted environmental findings' and lists three, and the social finding stays in Act 5 (line 108). The bullet split changed layout only: the diff cb892d7..1e46b5b changes no values, citations or counts. Scenario 6 (RB-03 behavioural run) is deferred to Tom per spec line 61."
+    },
+    {
+      "requirement": "Scope",
+      "satisfied": true,
+      "evidence": "The diff c882993..1e46b5b touches only docs/demo/agent/{DEMO_PROMPTS,INSTRUCTIONS,NARRATIVE_STYLE}.md and the worker reports. The bullet list follows up the a1-standards nit, and no code, tests or checks were changed."
+    },
+    {
+      "requirement": "Checks",
+      "satisfied": true,
+      "evidence": "checks/T7-a2.log: all 7 acceptance commands pass, check_no_sandbox_ids ok over 567 files, gofmt clean, go vet clean, golangci-lint 0 issues."
+    }
+  ],
+  "new_tasks": []
+}

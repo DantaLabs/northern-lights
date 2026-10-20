@@ -1,0 +1,48 @@
+{
+  "task_id": "T1",
+  "axis": "spec",
+  "verdict": "pass",
+  "implementation_commit": "019d9a6b5ff0394ba53189dd2be7247be9d0b8c8",
+  "attempt": 1,
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "configs/demo/mappings-sandbox.example.yaml",
+      "line": 15,
+      "issue": "energy_total (G5) is a literal input, but its mapped parts (electricity G12/J12, self-generated G13/J13) leave out fuels (row 14, a Fuel Converter formula that is not mapped). A totals check of energy_total against the mapped parts only holds if fuels are taken as zero.",
+      "fix": "No change needed in T1. T3 should either make energy_total equal the sum of the four mapped parts (fuels treated as 0) or not list it as a checked total. Record this in the T3 instructions."
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/README.md",
+      "line": 23,
+      "issue": "The waste fields map only J/K of waste table rows 189/190. The 'Type of waste' (D) and 'Unit of measurement' (G) cells are not mapped, and the CSV unit 'kg' is the worker's choice because the template unit cell is a user input. The report says the seed task will fill them, but R8 has the seed write only mapped fields, so the sandbox could show waste values with no type and no unit.",
+      "fix": "Have the seed task either write the type and unit cells for these rows as fixed, documented extra writes inside the mapped spreadsheet, or note in the README that the type and unit stay blank in the sandbox."
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/README.md",
+      "line": 86,
+      "issue": "Nobody has verified writes to the fallback rpt_ block (CY/PY Data Output I:L) or to the template input cells; the probe wrote only to the scratch sheet. The README states this. Also, columns I to K are 'reserved for key, label and unit' but not mapped, so no file in this task says who writes them.",
+      "fix": "The seed task's first live run should confirm one write and read-back on the L column and say whether it writes the I:K labels (outside the mapping) or leaves them blank."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R2",
+      "satisfied": true,
+      "evidence": "configs/demo/data/esg-2025.csv and esg-2024.csv: header key,label,unit,value, 26 environmental + 16 social rows, identical, environmental first (acceptance cmd 9 exit 0 in checks/T1-a1.json). I compared the labels and order with the raw template dump (.scratch/wt/T1/.scratch/l4-discovery/out/env.json, soc.json): every src_ cell sits on the row of its template label (for example G5 'Total Energy Consumption', D22 'Gross Scope 1 GHG Emissions', D161 'Total sealed area'), in sheet order. Values are left empty as the task asks (T3 fills them)."
+    },
+    {
+      "requirement": "R6 (sandbox half)",
+      "satisfied": true,
+      "evidence": "configs/demo/mappings-sandbox.example.yaml: 42 src_ + 84 rpt_ fields, placeholder IDs only (<id-01>, <id-09>, <id-10>, <id-11>, <id-19>, <id-26>, <id-27> match docs/demo/evidence/2026-10-19-RB-01/resources.md:21-23,45-46), document_id \"<document-id>\". The real file is git-ignored by configs/demo/.gitignore:1, per the Approval owner decision (acceptance cmds 1-8 exit 0). Raw dump check: all 42 src_ cells and rpt_ L2:L43 on CY/PY Data Output are empty, with no formulas. check_no_sandbox_ids.py passes against both local ID files (acceptance cmd 12 exit 0). The demo-mode half of R6 (mappings-demo.yaml) belongs to another task."
+    },
+    {
+      "requirement": "Scope / naming",
+      "satisfied": true,
+      "evidence": "The diff touches only T1 owns files plus the run report .pipeline/runs/20261019-1501/reports/T1-a1.md (pipeline evidence). It uses CONTEXT.md terms: spreadsheet, section, field, section recipe. No workbook, KPI or batch. Lint/vet/gofmt exit 0 (checks/T1-a1.json)."
+    }
+  ],
+  "new_tasks": []
+}

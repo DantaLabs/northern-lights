@@ -1,0 +1,33 @@
+{
+  "task_id": "T3",
+  "axis": "standards",
+  "implementation_commit": "38f726e777da58ad261065dfdf57ff3afa9a1bcb",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "configs/demo/mappings-demo.yaml",
+      "line": 13,
+      "issue": "Possible Duplicated Code: each of the 42 field labels is written four times by hand (esg-2024.csv, esg-2025.csv, mapping descriptions twice, recipe labels), and the src/rpt names and D<n+1> ranges follow CSV row order. The worker produced them with a throwaway generator (.scratch/gen.py, git-ignored), so a later edit to one CSV row cannot be repeated reliably and the copies can drift. Acceptance check 7 covers name existence but not label or row-order agreement.",
+      "fix": "Either commit the generator under configs/demo/ (or cmd/nl-demo-seed/) and note it in configs/demo/README.md, or add a small consistency check (label and row order: CSV vs mapping vs recipe) to the demo_esg test that L4 owns."
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/data/README.md",
+      "line": 19,
+      "issue": "The planted-findings list repeats the literal 2024/2025 values and percentages from the CSVs, so it is a second source of truth that goes stale if the data changes.",
+      "fix": "Keep the key, finding type and reason only, or accept the duplication because it is demo documentation."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "AGENTS.md rule 1 (lane ownership)", "satisfied": true, "evidence": "All files are under configs/demo/ (L4 owns it per docs/demo/LANES.md:21). The .gitignore and README.md edits were requested by the orchestrator and are inside the lane"},
+    {"requirement": "AGENTS.md rule 3 (no weakened tests/checks)", "satisfied": true, "evidence": "No test, lint or ignore change in the diff. The .gitignore adds __pycache__/ only, which is build output from configs/demo/check_no_sandbox_ids.py"},
+    {"requirement": "AGENTS.md rules 5-7 (flag, no LLM, frozen packages)", "satisfied": true, "evidence": "Data and config only. No Go code changed"},
+    {"requirement": "L2 recipe schema conformance (R5)", "satisfied": true, "evidence": "sections/esg-*.yaml use only the keys in docs/specs/demo-l2-section-recipe.md:40-61. Verbatim paths are relative to the sections directory. materiality_pct: 10"},
+    {"requirement": "Mapping matches demo transport layout", "satisfied": true, "evidence": "Spreadsheet and sheet IDs and names in mappings-demo.yaml match esgSheets in internal/workiva/demo_esg.go:26-32. The header row plus D<n+1> matches esgValueColumn=3"},
+    {"requirement": "Security / public repo hygiene", "satisfied": true, "evidence": "No secrets, tokens, real sandbox IDs (all IDs are demo-*), tenant data or new KPMG text added. The company is clearly fictional. check_no_sandbox_ids.py passed in checks/T3-a1.log"},
+    {"requirement": "Checks green", "satisfied": true, "evidence": "checks/T3-a1.log: gofmt/vet/golangci-lint 0 issues; acceptance commands pass"}
+  ],
+  "new_tasks": []
+}

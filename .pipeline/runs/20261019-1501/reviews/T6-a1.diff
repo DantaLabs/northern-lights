@@ -1,0 +1,895 @@
+diff --git a/.pipeline/runs/20261019-1501/reports/T6-a1.md b/.pipeline/runs/20261019-1501/reports/T6-a1.md
+new file mode 100644
+index 0000000..d601f95
+--- /dev/null
++++ b/.pipeline/runs/20261019-1501/reports/T6-a1.md
+@@ -0,0 +1,25 @@
++# T6 attempt 1 report
++
++Branch task/20261019-1501-T6-a1 (base c1ce620). Status: done, with one pre-existing failure outside this task (internal/assurance).
++
++## Changed
++- cmd/nl-demo-seed/apply.go: Apply. One WriteCells per sheet (writes then clears, first-seen sheet order), row/column from A1ToRange. Clear value is the empty string (README `clear-value: empty-string`). Read-back through GetSheetDataTyped, exact big.Rat comparison via DecimalText. Prints `read-back: N ok, M mismatch`, `mismatch <field>: wrote <v> read <v>`, `deleted-section "<title>" (<n>)`, `done: elapsed Ns`. Mismatches return an error at the end; Workiva errors stop Apply, wrapped with field or title, no IDs.
++- cmd/nl-demo-seed/workiva.go: liveWorkiva (embeds *workiva.Client) with ListSections (follows @nextLink, refuses a link to another host so the token is not sent there) and DeleteSection (DELETE, expects 204). newWorkiva now builds the real client from NL_WORKIVA_CLIENT_ID, NL_WORKIVA_CLIENT_SECRET, NL_REGION (default eu); errors name the variable only.
++- cmd/nl-demo-seed/main.go: removed the stub newWorkiva (moved to workiva.go).
++- cmd/nl-demo-seed/plan.go and plan_test.go (not in T6 owns; edited because the dispatcher's must-fix asked for it): percentToFraction returns (string, error) instead of falling back silently, including for "1/3" which has no exact decimal. planWrite wraps the error with the field name.
++- Tests: apply_test.go, workiva_test.go (new), plan_test.go.
++
++## Must-fix from T5 review
++- workiva_test.go has TestMain that replaces newWorkiva with a guard returning errRealClientInTest, so no test can build the real client or reach the network, even with credentials in the environment. TestNewWorkivaSeamIsFakedInTests asserts the guard. The credentials test calls newLiveWorkivaFromEnv with a fake getenv map, never the process environment.
++- TestRunErrors last case now uses fakeSeam for three cases: client error (exit 1), Apply error from a fake Workiva (exit 1), success with a fake (exit 0). TestRunDryRunSendsNothing still fails if the seam is called.
++- New tests: TestBuildPlanRejectsNonNumericPercent, percentToFraction error cases.
++
++## Commands
++- `go test ./cmd/nl-demo-seed/ -race -count=1 -v` and the 8 named tests: all PASS (exit 0).
++- grep acceptance for /sections, MethodDelete, GetSheetDataTyped: exit 0.
++- lint `test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run`: exit 0, 0 issues.
++- `go build ./...`: exit 0.
++- `go test ./... -race`: exit 1 only because internal/assurance timed out (600 s, goroutine dump in database/sql). Every other package ok, including cmd/nl-demo-seed and cmd/workiva-mcp.
++- `go test ./internal/assurance -race -count=1` alone: also timed out at 600 s (load average about 1, so not parallel load). T6 changes nothing under internal/, so this is not caused by it. Not touched, as instructed.
++
++No live sandbox access was used. No //nolint comments.
+diff --git a/cmd/nl-demo-seed/apply.go b/cmd/nl-demo-seed/apply.go
+index 728f74c..bb94bc2 100644
+--- a/cmd/nl-demo-seed/apply.go
++++ b/cmd/nl-demo-seed/apply.go
+@@ -2,8 +2,10 @@ package main
+ 
+ import (
+ 	"context"
+-	"errors"
++	"fmt"
+ 	"io"
++	"math/big"
++	"time"
+ 
+ 	"github.com/dantalabs/northern-lights/internal/workiva"
+ )
+@@ -20,7 +22,143 @@ type Workiva interface {
+ 	DeleteSection(ctx context.Context, documentID, sectionID string) error
+ }
+ 
+-// Apply carries out a plan. Not implemented yet.
++// clearValue is what a cleared cell is sent as: the README line
++// "clear-value: empty-string" in configs/demo/README.md (Live write
++// semantics). Workiva rejects JSON null with HTTP 400.
++const clearValue = ""
++
++type sheetGroup struct {
++	spreadsheetID, sheetID string
++	cells                  []Write
++}
++
++// Apply carries out a plan: one WriteCells per sheet for the writes and
++// clears, a read-back of every written cell, then the section deletes. A
++// Workiva error stops it; read-back mismatches are reported and make it
++// return an error at the end. It touches nothing that is not in the plan.
+ func Apply(ctx context.Context, p Plan, wk Workiva, out io.Writer) error {
+-	return errors.New("apply is not implemented yet")
++	start := time.Now()
++	groups, err := groupBySheet(p)
++	if err != nil {
++		return err
++	}
++	for _, g := range groups {
++		edits := make([]workiva.CellEdit, len(g.cells))
++		for i, c := range g.cells {
++			r, _ := workiva.A1ToRange(c.Ref.Range)
++			v := c.Value
++			if v == "" {
++				v = clearValue
++			}
++			edits[i] = workiva.CellEdit{Row: r.StartRow, Column: r.StartCol, Value: v}
++		}
++		if err := wk.WriteCells(ctx, g.spreadsheetID, g.sheetID, edits); err != nil {
++			return fmt.Errorf("write %s / %s (from %s): %w", g.cells[0].Ref.SpreadsheetName, g.cells[0].Ref.SheetName, g.cells[0].Field, err)
++		}
++	}
++	ok, bad := 0, 0
++	for _, g := range groups {
++		for _, c := range g.cells {
++			read, err := readCell(ctx, wk, c)
++			if err != nil {
++				return fmt.Errorf("read back %s: %w", c.Field, err)
++			}
++			if sameDecimal(c.Value, read) {
++				ok++
++				continue
++			}
++			bad++
++			if _, err := fmt.Fprintf(out, "mismatch %s: wrote %s read %s\n", c.Field, shown(c.Value), shown(read)); err != nil {
++				return err
++			}
++		}
++	}
++	if len(groups) > 0 {
++		if _, err := fmt.Fprintf(out, "read-back: %d ok, %d mismatch\n", ok, bad); err != nil {
++			return err
++		}
++	}
++	for _, d := range p.SectionDeletes {
++		secs, err := wk.ListSections(ctx, d.DocumentID)
++		if err != nil {
++			return fmt.Errorf("list sections for %q: %w", d.Title, err)
++		}
++		n := 0
++		for _, s := range secs {
++			if s.Name != d.Title {
++				continue
++			}
++			if err := wk.DeleteSection(ctx, d.DocumentID, s.ID); err != nil {
++				return fmt.Errorf("delete section %q: %w", d.Title, err)
++			}
++			n++
++		}
++		if _, err := fmt.Fprintf(out, "deleted-section %q (%d)\n", d.Title, n); err != nil {
++			return err
++		}
++	}
++	if _, err := fmt.Fprintf(out, "done: elapsed %.1fs\n", time.Since(start).Seconds()); err != nil {
++		return err
++	}
++	if bad > 0 {
++		return fmt.Errorf("read-back: %d of %d cells do not hold the written value", bad, ok+bad)
++	}
++	return nil
++}
++
++// groupBySheet orders writes then clears by first appearance of each sheet.
++func groupBySheet(p Plan) ([]*sheetGroup, error) {
++	var groups []*sheetGroup
++	idx := map[[2]string]*sheetGroup{}
++	for _, c := range append(append([]Write(nil), p.Writes...), p.Clears...) {
++		if _, err := workiva.A1ToRange(c.Ref.Range); err != nil {
++			return nil, fmt.Errorf("field %s: %w", c.Field, err)
++		}
++		k := [2]string{c.Ref.SpreadsheetID, c.Ref.SheetID}
++		g, ok := idx[k]
++		if !ok {
++			g = &sheetGroup{spreadsheetID: c.Ref.SpreadsheetID, sheetID: c.Ref.SheetID}
++			idx[k] = g
++			groups = append(groups, g)
++		}
++		g.cells = append(g.cells, c)
++	}
++	return groups, nil
++}
++
++// readCell returns the cell's exact decimal text, "" for an empty cell, or
++// the marker "(not a number)". Values are read typed so numbers keep their
++// text.
++func readCell(ctx context.Context, wk Workiva, c Write) (string, error) {
++	d, err := wk.GetSheetDataTyped(ctx, c.Ref.SpreadsheetID, c.Ref.SheetID, c.Ref.Range, []string{"cells.value"})
++	if err != nil {
++		return "", err
++	}
++	if d == nil || len(d.Cells) == 0 || len(d.Cells[0]) == 0 {
++		return "", nil
++	}
++	text, ok := DecimalText(d.Cells[0][0].Value)
++	if !ok {
++		return notANumber, nil
++	}
++	return text, nil
++}
++
++const notANumber = "(not a number)"
++
++// sameDecimal compares two decimal texts exactly. "" equals only "".
++func sameDecimal(wrote, read string) bool {
++	if wrote == "" || read == "" {
++		return wrote == read
++	}
++	a, ok1 := new(big.Rat).SetString(wrote)
++	b, ok2 := new(big.Rat).SetString(read)
++	return ok1 && ok2 && a.Cmp(b) == 0
++}
++
++func shown(s string) string {
++	if s == "" {
++		return "(empty)"
++	}
++	return s
+ }
+diff --git a/cmd/nl-demo-seed/apply_test.go b/cmd/nl-demo-seed/apply_test.go
+new file mode 100644
+index 0000000..0e21b4b
+--- /dev/null
++++ b/cmd/nl-demo-seed/apply_test.go
+@@ -0,0 +1,226 @@
++package main
++
++import (
++	"bytes"
++	"context"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"strings"
++	"testing"
++
++	"github.com/dantalabs/northern-lights/internal/workiva"
++)
++
++type sheetKey struct{ spreadsheet, sheet string }
++
++type writeCall struct {
++	key   sheetKey
++	edits []workiva.CellEdit
++}
++
++// fakeWorkiva records every call. Read-backs come from readBack when the
++// cell is listed there, otherwise from what was written.
++type fakeWorkiva struct {
++	writes    []writeCall
++	deletes   []string
++	sections  map[string][]Section
++	readBack  map[string]any
++	cells     map[string]any
++	failWrite error
++	failList  error
++}
++
++func cellKey(k sheetKey, row, col int) string {
++	return fmt.Sprintf("%s/%s/%d/%d", k.spreadsheet, k.sheet, row, col)
++}
++
++func (f *fakeWorkiva) WriteCells(_ context.Context, sp, sh string, edits []workiva.CellEdit) error {
++	if f.failWrite != nil {
++		return f.failWrite
++	}
++	k := sheetKey{sp, sh}
++	f.writes = append(f.writes, writeCall{k, edits})
++	if f.cells == nil {
++		f.cells = map[string]any{}
++	}
++	for _, e := range edits {
++		f.cells[cellKey(k, e.Row, e.Column)] = e.Value
++	}
++	return nil
++}
++
++func (f *fakeWorkiva) GetSheetDataTyped(_ context.Context, sp, sh, cellRange string, _ []string) (*workiva.SheetData, error) {
++	r, err := workiva.A1ToRange(cellRange)
++	if err != nil {
++		return nil, err
++	}
++	key := cellKey(sheetKey{sp, sh}, r.StartRow, r.StartCol)
++	v, ok := f.readBack[key]
++	if !ok {
++		v = f.cells[key]
++	}
++	return &workiva.SheetData{Cells: [][]workiva.Cell{{{Value: v}}}}, nil
++}
++
++func (f *fakeWorkiva) ListSections(_ context.Context, doc string) ([]Section, error) {
++	if f.failList != nil {
++		return nil, f.failList
++	}
++	return f.sections[doc], nil
++}
++
++func (f *fakeWorkiva) DeleteSection(_ context.Context, doc, id string) error {
++	f.deletes = append(f.deletes, doc+"/"+id)
++	return nil
++}
++
++func ref(sp, sh, a1 string) FieldRef {
++	return FieldRef{SpreadsheetID: sp, SheetID: sh, Range: a1, SpreadsheetName: "Fixture Book " + strings.ToUpper(sp), SheetName: "Fixture Sheet " + strings.ToUpper(sh)}
++}
++
++func testPlan() Plan {
++	return Plan{
++		Writes: []Write{
++			{Year: "2025", Field: "src_a", Ref: ref("sp1", "sh1", "B2"), Value: "1200.5"},
++			{Year: "2025", Field: "src_b", Ref: ref("sp1", "sh1", "B3"), Value: ""},
++			{Year: "2024", Field: "rpt_a_2024", Ref: ref("sp2", "sh3", "D2"), Value: "0.4"},
++		},
++		Clears: []Write{
++			{Year: "2025", Field: "rpt_a_2025", Ref: ref("sp2", "sh2", "D2"), Value: ""},
++		},
++	}
++}
++
++func applyOut(t *testing.T, p Plan, wk Workiva) (string, error) {
++	t.Helper()
++	var out bytes.Buffer
++	err := Apply(context.Background(), p, wk, &out)
++	return out.String(), err
++}
++
++func TestApplyWritesOnePerSheetAndReadsBack(t *testing.T) {
++	f := &fakeWorkiva{}
++	out, err := applyOut(t, testPlan(), f)
++	if err != nil {
++		t.Fatalf("Apply: %v\n%s", err, out)
++	}
++	if len(f.writes) != 3 {
++		t.Fatalf("WriteCells calls = %d, want 3 (one per sheet): %+v", len(f.writes), f.writes)
++	}
++	first := f.writes[0]
++	if first.key != (sheetKey{"sp1", "sh1"}) || len(first.edits) != 2 {
++		t.Fatalf("first call = %+v", first)
++	}
++	want := []workiva.CellEdit{{Row: 1, Column: 1, Value: "1200.5"}, {Row: 2, Column: 1, Value: ""}}
++	for i, e := range want {
++		if first.edits[i] != e {
++			t.Errorf("edit %d = %+v, want %+v", i, first.edits[i], e)
++		}
++	}
++	clear := f.writes[2]
++	if clear.key != (sheetKey{"sp2", "sh2"}) || clear.edits[0].Value != "" {
++		t.Errorf("clear call = %+v; the README clear-value is the empty string, not null", clear)
++	}
++	if b, _ := json.Marshal(clear.edits[0]); !strings.Contains(string(b), `"value":""`) {
++		t.Errorf("clear edit JSON = %s", b)
++	}
++	for _, line := range []string{"read-back: 4 ok, 0 mismatch\n", "done: elapsed "} {
++		if !strings.Contains(out, line) {
++			t.Errorf("missing %q in:\n%s", line, out)
++		}
++	}
++	if strings.Contains(out, "sp1") || strings.Contains(out, "sh1") {
++		t.Errorf("output contains IDs:\n%s", out)
++	}
++}
++
++func TestApplyReadBackAcceptsStringsAndNumbers(t *testing.T) {
++	f := &fakeWorkiva{readBack: map[string]any{
++		cellKey(sheetKey{"sp1", "sh1"}, 1, 1): json.Number("1200.50"),
++		cellKey(sheetKey{"sp2", "sh3"}, 1, 3): "0.40",
++		cellKey(sheetKey{"sp1", "sh1"}, 2, 1): nil,
++	}}
++	out, err := applyOut(t, testPlan(), f)
++	if err != nil {
++		t.Fatalf("Apply: %v\n%s", err, out)
++	}
++	if !strings.Contains(out, "read-back: 4 ok, 0 mismatch\n") {
++		t.Errorf("output:\n%s", out)
++	}
++	p := Plan{Writes: []Write{{Year: "2025", Field: "x", Ref: ref("sp1", "sh1", "B2"), Value: "46.5"}}}
++	for _, v := range []any{json.Number("46.50"), "46.5", " 46.5 "} {
++		f := &fakeWorkiva{readBack: map[string]any{cellKey(sheetKey{"sp1", "sh1"}, 1, 1): v}}
++		if out, err := applyOut(t, p, f); err != nil {
++			t.Errorf("value %#v: %v\n%s", v, err, out)
++		}
++	}
++}
++
++func TestApplyReportsMismatch(t *testing.T) {
++	f := &fakeWorkiva{readBack: map[string]any{
++		cellKey(sheetKey{"sp1", "sh1"}, 1, 1): json.Number("1200.6"),
++		cellKey(sheetKey{"sp1", "sh1"}, 2, 1): json.Number("7"),
++	}}
++	out, err := applyOut(t, testPlan(), f)
++	if err == nil {
++		t.Fatalf("Apply returned nil with mismatches:\n%s", out)
++	}
++	for _, line := range []string{
++		"read-back: 2 ok, 2 mismatch\n",
++		"mismatch src_a: wrote 1200.5 read 1200.6\n",
++		"mismatch src_b: wrote (empty) read 7\n",
++		"done: elapsed ",
++	} {
++		if !strings.Contains(out, line) {
++			t.Errorf("missing %q in:\n%s", line, out)
++		}
++	}
++	if len(f.writes) != 3 {
++		t.Errorf("mismatch stopped the writes: %d calls", len(f.writes))
++	}
++}
++
++func TestApplyDeletesOnlyMatchingSections(t *testing.T) {
++	f := &fakeWorkiva{sections: map[string][]Section{"doc1": {
++		{ID: "s1", Name: "Environmental disclosures"},
++		{ID: "s2", Name: "2. Environmental information"},
++		{ID: "s3", Name: "Social disclosures"},
++	}}}
++	p := Plan{SectionDeletes: []SectionDelete{{DocumentID: "doc1", Title: "Environmental disclosures"}}}
++	out, err := applyOut(t, p, f)
++	if err != nil {
++		t.Fatalf("Apply: %v\n%s", err, out)
++	}
++	if len(f.deletes) != 1 || f.deletes[0] != "doc1/s1" {
++		t.Errorf("deletes = %v, want [doc1/s1]", f.deletes)
++	}
++	if len(f.writes) != 0 {
++		t.Errorf("unplanned writes: %+v", f.writes)
++	}
++	if !strings.Contains(out, `deleted-section "Environmental disclosures" (1)`+"\n") {
++		t.Errorf("output:\n%s", out)
++	}
++}
++
++func TestApplyStopsOnError(t *testing.T) {
++	boom := errors.New("boom")
++	f := &fakeWorkiva{failWrite: boom}
++	out, err := applyOut(t, testPlan(), f)
++	if !errors.Is(err, boom) {
++		t.Fatalf("err = %v, want wrapped boom", err)
++	}
++	if !strings.Contains(err.Error(), "src_a") || strings.Contains(err.Error(), "sp1") {
++		t.Errorf("error should name the field and no ID: %v", err)
++	}
++	if strings.Contains(out, "read-back") || strings.Contains(out, "done:") {
++		t.Errorf("Apply went on after an error:\n%s", out)
++	}
++
++	f = &fakeWorkiva{failList: boom}
++	p := Plan{SectionDeletes: []SectionDelete{{DocumentID: "doc1", Title: "Social disclosures"}}}
++	_, err = applyOut(t, p, f)
++	if !errors.Is(err, boom) || !strings.Contains(err.Error(), "Social disclosures") || strings.Contains(err.Error(), "doc1") {
++		t.Errorf("list error = %v", err)
++	}
++}
+diff --git a/cmd/nl-demo-seed/main.go b/cmd/nl-demo-seed/main.go
+index a7eed60..c5d3de9 100644
+--- a/cmd/nl-demo-seed/main.go
++++ b/cmd/nl-demo-seed/main.go
+@@ -3,7 +3,6 @@ package main
+ 
+ import (
+ 	"context"
+-	"errors"
+ 	"flag"
+ 	"fmt"
+ 	"io"
+@@ -11,12 +10,6 @@ import (
+ 	"path/filepath"
+ )
+ 
+-// newWorkiva builds the live client. It is a seam: tests replace it, and a
+-// dry run never calls it.
+-var newWorkiva = func(ctx context.Context) (Workiva, error) {
+-	return nil, errors.New("live Workiva client is not implemented yet")
+-}
+-
+ func main() {
+ 	os.Exit(run(context.Background(), os.Args[1:], os.Stdout, os.Stderr))
+ }
+diff --git a/cmd/nl-demo-seed/plan.go b/cmd/nl-demo-seed/plan.go
+index 69550f3..5de5e12 100644
+--- a/cmd/nl-demo-seed/plan.go
++++ b/cmd/nl-demo-seed/plan.go
+@@ -94,28 +94,31 @@ func planWrite(m Mappings, year, field, value string) (Write, error) {
+ 		return Write{}, fmt.Errorf("field %s is not in the mapping file", field)
+ 	}
+ 	if ref.FieldType == "percent" && percentCellsStoreFractions && value != "" {
+-		value = percentToFraction(value)
++		var err error
++		if value, err = percentToFraction(value); err != nil {
++			return Write{}, fmt.Errorf("field %s: %w", field, err)
++		}
+ 	}
+ 	return Write{Year: year, Field: field, Ref: ref, Value: value}, nil
+ }
+ 
+ // percentToFraction divides a plain decimal by 100 and returns the shortest
+-// exact decimal text (46.5 -> 0.465).
+-func percentToFraction(s string) string {
++// exact decimal text (46.5 -> 0.465). Text that is not a number is an error.
++func percentToFraction(s string) (string, error) {
+ 	r, ok := new(big.Rat).SetString(s)
+ 	if !ok {
+-		return s
++		return "", fmt.Errorf("percent value %q is not a decimal number", s)
+ 	}
+ 	r.Quo(r, big.NewRat(100, 1))
+ 	ten := big.NewRat(10, 1)
+ 	scaled := new(big.Rat).Set(r)
+ 	for n := 0; n < 64; n++ {
+ 		if scaled.IsInt() {
+-			return r.FloatString(n)
++			return r.FloatString(n), nil
+ 		}
+ 		scaled.Mul(scaled, ten)
+ 	}
+-	return r.FloatString(64)
++	return "", fmt.Errorf("percent value %q has no exact decimal fraction", s)
+ }
+ 
+ // Print writes one line per planned item and a summary. It prints spreadsheet
+diff --git a/cmd/nl-demo-seed/plan_test.go b/cmd/nl-demo-seed/plan_test.go
+index fc76325..2d0b506 100644
+--- a/cmd/nl-demo-seed/plan_test.go
++++ b/cmd/nl-demo-seed/plan_test.go
+@@ -3,6 +3,7 @@ package main
+ import (
+ 	"bytes"
+ 	"context"
++	"errors"
+ 	"path/filepath"
+ 	"strings"
+ 	"testing"
+@@ -85,12 +86,30 @@ func TestBuildPlanPercentConvention(t *testing.T) {
+ 		}
+ 	}
+ 	for in, want := range map[string]string{"46.5": "0.465", "100": "1", "0": "0", "-5": "-0.05", "12.345": "0.12345", "7": "0.07"} {
+-		if got := percentToFraction(in); got != want {
+-			t.Errorf("percentToFraction(%s) = %q, want %q", in, got, want)
++		got, err := percentToFraction(in)
++		if err != nil || got != want {
++			t.Errorf("percentToFraction(%s) = %q, %v, want %q", in, got, err, want)
++		}
++	}
++	for _, in := range []string{"abc", "", "1e", "4,5", "1/3"} {
++		if got, err := percentToFraction(in); err == nil {
++			t.Errorf("percentToFraction(%q) = %q, want an error", in, got)
+ 		}
+ 	}
+ }
+ 
++func TestBuildPlanRejectsNonNumericPercent(t *testing.T) {
++	m, rs, cur, pri := fixtures(t)
++	for i := range cur {
++		if cur[i].Key == "share" {
++			cur[i].Value = "n/a"
++		}
++	}
++	if p, err := BuildPlan(m, rs, cur, pri, false); err == nil || !strings.Contains(err.Error(), "src_soc_share") {
++		t.Errorf("BuildPlan = %+v, %v; want an error naming src_soc_share", p, err)
++	}
++}
++
+ func TestBuildPlanResetAddsClearsAndSectionDeletes(t *testing.T) {
+ 	m, rs, cur, pri := fixtures(t)
+ 	p, err := BuildPlan(m, rs, cur, pri, true)
+@@ -174,7 +193,7 @@ func TestRunDryRunSendsNothing(t *testing.T) {
+ 	old := newWorkiva
+ 	newWorkiva = func(context.Context) (Workiva, error) {
+ 		t.Error("newWorkiva called in dry run")
+-		return nil, nil
++		return nil, errRealClientInTest
+ 	}
+ 	t.Cleanup(func() { newWorkiva = old })
+ 	var out, errb bytes.Buffer
+@@ -208,10 +227,19 @@ func TestRunErrors(t *testing.T) {
+ 	if code := run(context.Background(), []string{"-dry-run", "-mappings", "testdata/absent.yaml"}, &out, &errb); code != 2 {
+ 		t.Errorf("load error exit %d", code)
+ 	}
+-	old := newWorkiva
+-	t.Cleanup(func() { newWorkiva = old })
+ 	args := []string{"-mappings", fxMappings, "-data", fxData, "-sections", fxSections}
+-	if code := run(context.Background(), args, &out, &errb); code != 1 || !strings.Contains(errb.String(), "not implemented") {
+-		t.Errorf("live stub exit %d stderr %q", code, errb.String())
++	fakeSeam(t, nil, errors.New("no credentials"))
++	errb.Reset()
++	if code := run(context.Background(), args, &out, &errb); code != 1 || !strings.Contains(errb.String(), "no credentials") {
++		t.Errorf("client error exit %d stderr %q", code, errb.String())
++	}
++	fakeSeam(t, &fakeWorkiva{failWrite: errors.New("boom")}, nil)
++	errb.Reset()
++	if code := run(context.Background(), args, &out, &errb); code != 1 || !strings.Contains(errb.String(), "boom") {
++		t.Errorf("apply error exit %d stderr %q", code, errb.String())
++	}
++	fakeSeam(t, &fakeWorkiva{}, nil)
++	if code := run(context.Background(), args, &out, &errb); code != 0 {
++		t.Errorf("fake run exit %d stderr %q", code, errb.String())
+ 	}
+ }
+diff --git a/cmd/nl-demo-seed/workiva.go b/cmd/nl-demo-seed/workiva.go
+new file mode 100644
+index 0000000..643f34c
+--- /dev/null
++++ b/cmd/nl-demo-seed/workiva.go
+@@ -0,0 +1,147 @@
++package main
++
++import (
++	"context"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"net/http"
++	"net/url"
++	"os"
++	"time"
++
++	"github.com/dantalabs/northern-lights/internal/ratelimit"
++	"github.com/dantalabs/northern-lights/internal/workiva"
++)
++
++// newWorkiva builds the live client from the environment. It is a seam:
++// tests replace it with a fake, and a dry run never calls it.
++var newWorkiva = func(context.Context) (Workiva, error) {
++	return newLiveWorkivaFromEnv(os.Getenv)
++}
++
++// regionBaseURLs mirrors baseURLs in internal/config/config.go.
++var regionBaseURLs = map[string]string{
++	"eu":   "https://api.eu.wdesk.com",
++	"us":   "https://api.app.wdesk.com",
++	"apac": "https://api.apac.wdesk.com",
++}
++
++func regionBaseURL(region string) (*url.URL, error) {
++	if region == "" {
++		region = "eu"
++	}
++	raw, ok := regionBaseURLs[region]
++	if !ok {
++		return nil, fmt.Errorf("NL_REGION %q is not one of eu, us, apac", region)
++	}
++	return url.Parse(raw)
++}
++
++// newLiveWorkivaFromEnv reads NL_WORKIVA_CLIENT_ID, NL_WORKIVA_CLIENT_SECRET
++// and NL_REGION (default eu) through getenv. Errors name a variable, never
++// its value.
++func newLiveWorkivaFromEnv(getenv func(string) string) (*liveWorkiva, error) {
++	id := getenv("NL_WORKIVA_CLIENT_ID")
++	if id == "" {
++		return nil, errors.New("NL_WORKIVA_CLIENT_ID is not set")
++	}
++	secret := getenv("NL_WORKIVA_CLIENT_SECRET")
++	if secret == "" {
++		return nil, errors.New("NL_WORKIVA_CLIENT_SECRET is not set")
++	}
++	base, err := regionBaseURL(getenv("NL_REGION"))
++	if err != nil {
++		return nil, err
++	}
++	return newLiveWorkivaAt(base, id, secret, &http.Client{Timeout: 60 * time.Second}), nil
++}
++
++// newLiveWorkivaAt builds the client the way cmd/workiva-mcp buildServer does.
++func newLiveWorkivaAt(base *url.URL, id, secret string, hc *http.Client) *liveWorkiva {
++	tokens := workiva.NewTokenProvider(base, id, secret, "file:read file:write", hc)
++	return &liveWorkiva{Client: workiva.NewClient(base, tokens, ratelimit.NewLimiter(), hc), base: base}
++}
++
++// liveWorkiva adds the section calls the seed needs to *workiva.Client. The
++// report document writer in internal/workiva has no delete, so they live here.
++type liveWorkiva struct {
++	*workiva.Client
++	base *url.URL
++}
++
++type sectionsPage struct {
++	Data []struct {
++		ID   string `json:"id"`
++		Name string `json:"name"`
++	} `json:"data"`
++	NextLink string `json:"@nextLink"`
++}
++
++// ListSections returns every section of the report document, following
++// @nextLink.
++func (l *liveWorkiva) ListSections(ctx context.Context, documentID string) ([]Section, error) {
++	path := "/documents/" + url.PathEscape(documentID) + "/sections?$maxpagesize=100"
++	var out []Section
++	for path != "" {
++		page, err := l.sectionsPage(ctx, path)
++		if err != nil {
++			return nil, err
++		}
++		for _, s := range page.Data {
++			out = append(out, Section{ID: s.ID, Name: s.Name})
++		}
++		path, err = l.relativeLink(page.NextLink)
++		if err != nil {
++			return nil, err
++		}
++	}
++	return out, nil
++}
++
++func (l *liveWorkiva) sectionsPage(ctx context.Context, path string) (*sectionsPage, error) {
++	resp, err := l.Do(ctx, http.MethodGet, path, nil, ratelimit.CategoryReads)
++	if err != nil {
++		return nil, err
++	}
++	defer func() { _ = resp.Body.Close() }()
++	if resp.StatusCode != http.StatusOK {
++		return nil, fmt.Errorf("list sections: HTTP %d", resp.StatusCode)
++	}
++	var page sectionsPage
++	if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
++		return nil, fmt.Errorf("list sections: decode: %w", err)
++	}
++	return &page, nil
++}
++
++// relativeLink turns an absolute @nextLink into a path on the API host. A
++// link to another host is refused, so the access token is never sent there.
++func (l *liveWorkiva) relativeLink(link string) (string, error) {
++	if link == "" {
++		return "", nil
++	}
++	u, err := url.Parse(link)
++	if err != nil {
++		return "", fmt.Errorf("list sections: bad @nextLink: %w", err)
++	}
++	if u.IsAbs() && (u.Scheme != l.base.Scheme || u.Host != l.base.Host) {
++		return "", errors.New("list sections: @nextLink points to another host")
++	}
++	return u.RequestURI(), nil
++}
++
++// DeleteSection deletes one section of the report document; Workiva answers
++// 204.
++func (l *liveWorkiva) DeleteSection(ctx context.Context, documentID, sectionID string) error {
++	path := "/documents/" + url.PathEscape(documentID) + "/sections/" + url.PathEscape(sectionID)
++	resp, err := l.Do(ctx, http.MethodDelete, path, nil, ratelimit.CategoryWrites)
++	if err != nil {
++		return err
++	}
++	defer func() { _ = resp.Body.Close() }()
++	if resp.StatusCode != http.StatusNoContent {
++		return fmt.Errorf("delete section: HTTP %d", resp.StatusCode)
++	}
++	return nil
++}
+diff --git a/cmd/nl-demo-seed/workiva_test.go b/cmd/nl-demo-seed/workiva_test.go
+new file mode 100644
+index 0000000..ea4e349
+--- /dev/null
++++ b/cmd/nl-demo-seed/workiva_test.go
+@@ -0,0 +1,166 @@
++package main
++
++import (
++	"context"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"net/http"
++	"net/http/httptest"
++	"net/url"
++	"os"
++	"strings"
++	"testing"
++)
++
++// errRealClientInTest is what the default newWorkiva returns during unit
++// tests: no test can build the real client or reach the network, even when
++// credentials are in the environment. A test that needs a Workiva replaces
++// newWorkiva with a fake.
++var errRealClientInTest = errors.New("real Workiva client is disabled in unit tests; replace newWorkiva with a fake")
++
++func TestMain(m *testing.M) {
++	newWorkiva = func(context.Context) (Workiva, error) { return nil, errRealClientInTest }
++	os.Exit(m.Run())
++}
++
++// fakeSeam installs wk (or err) as the result of newWorkiva for one test.
++func fakeSeam(t *testing.T, wk Workiva, err error) {
++	t.Helper()
++	old := newWorkiva
++	newWorkiva = func(context.Context) (Workiva, error) { return wk, err }
++	t.Cleanup(func() { newWorkiva = old })
++}
++
++func TestLiveWorkivaSections(t *testing.T) {
++	var deletes []string
++	var srv *httptest.Server
++	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		switch {
++		case r.Method == http.MethodPost && r.URL.Path == "/iam/v1/oauth2/token":
++			_, _ = w.Write([]byte(`{"access_token":"t","expires_in":3600}`))
++		case r.Method == http.MethodGet && r.URL.Path == "/documents/doc-1/sections":
++			if r.Header.Get("Authorization") != "Bearer t" {
++				http.Error(w, "no token", http.StatusUnauthorized)
++				return
++			}
++			if r.URL.Query().Get("page") == "2" {
++				_, _ = w.Write([]byte(`{"data":[{"id":"s3","name":"Social disclosures"}]}`))
++				return
++			}
++			if r.URL.Query().Get("$maxpagesize") != "100" {
++				http.Error(w, "missing $maxpagesize", http.StatusBadRequest)
++				return
++			}
++			_, _ = fmt.Fprintf(w, `{"data":[{"id":"s1","name":"Environmental disclosures"},{"id":"s2","name":"Other"}],"@nextLink":%q}`,
++				srv.URL+"/documents/doc-1/sections?page=2")
++		case r.Method == http.MethodDelete && strings.HasPrefix(r.URL.Path, "/documents/doc-1/sections/"):
++			deletes = append(deletes, strings.TrimPrefix(r.URL.Path, "/documents/doc-1/sections/"))
++			w.WriteHeader(http.StatusNoContent)
++		default:
++			http.Error(w, "unexpected "+r.Method+" "+r.URL.String(), http.StatusTeapot)
++		}
++	}))
++	defer srv.Close()
++	base, err := url.Parse(srv.URL)
++	if err != nil {
++		t.Fatal(err)
++	}
++	lw := newLiveWorkivaAt(base, "id", "secret", srv.Client())
++
++	got, err := lw.ListSections(context.Background(), "doc-1")
++	if err != nil {
++		t.Fatalf("ListSections: %v", err)
++	}
++	want := []Section{{"s1", "Environmental disclosures"}, {"s2", "Other"}, {"s3", "Social disclosures"}}
++	if len(got) != len(want) {
++		t.Fatalf("sections = %+v, want %+v", got, want)
++	}
++	for i := range want {
++		if got[i] != want[i] {
++			t.Errorf("section %d = %+v, want %+v", i, got[i], want[i])
++		}
++	}
++
++	if err := lw.DeleteSection(context.Background(), "doc-1", "s1"); err != nil {
++		t.Fatalf("DeleteSection: %v", err)
++	}
++	if len(deletes) != 1 || deletes[0] != "s1" {
++		t.Errorf("deletes = %v", deletes)
++	}
++}
++
++func TestLiveWorkivaRefusesForeignNextLink(t *testing.T) {
++	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		if r.URL.Path == "/iam/v1/oauth2/token" {
++			_, _ = w.Write([]byte(`{"access_token":"t","expires_in":3600}`))
++			return
++		}
++		_, _ = w.Write([]byte(`{"data":[],"@nextLink":"https://evil.example/documents/d/sections?page=2"}`))
++	}))
++	defer srv.Close()
++	base, _ := url.Parse(srv.URL)
++	lw := newLiveWorkivaAt(base, "id", "secret", srv.Client())
++	if _, err := lw.ListSections(context.Background(), "d"); err == nil {
++		t.Error("a nextLink on another host was followed")
++	}
++}
++
++func TestLiveWorkivaDeleteRejectsOtherStatus(t *testing.T) {
++	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		if r.URL.Path == "/iam/v1/oauth2/token" {
++			_, _ = w.Write([]byte(`{"access_token":"t","expires_in":3600}`))
++			return
++		}
++		w.WriteHeader(http.StatusNotFound)
++		_ = json.NewEncoder(w).Encode(map[string]string{"message": "nope"})
++	}))
++	defer srv.Close()
++	base, _ := url.Parse(srv.URL)
++	lw := newLiveWorkivaAt(base, "id", "secret", srv.Client())
++	if err := lw.DeleteSection(context.Background(), "d", "s"); err == nil || !strings.Contains(err.Error(), "404") {
++		t.Errorf("err = %v, want status 404", err)
++	}
++}
++
++func TestNewWorkivaRequiresCredentials(t *testing.T) {
++	env := map[string]string{}
++	get := func(k string) string { return env[k] }
++	_, err := newLiveWorkivaFromEnv(get)
++	if err == nil || !strings.Contains(err.Error(), "NL_WORKIVA_CLIENT_ID") {
++		t.Fatalf("err = %v, want it to name NL_WORKIVA_CLIENT_ID", err)
++	}
++	env["NL_WORKIVA_CLIENT_ID"] = "the-id"
++	_, err = newLiveWorkivaFromEnv(get)
++	if err == nil || !strings.Contains(err.Error(), "NL_WORKIVA_CLIENT_SECRET") {
++		t.Fatalf("err = %v, want it to name NL_WORKIVA_CLIENT_SECRET", err)
++	}
++	env["NL_WORKIVA_CLIENT_SECRET"] = "the-secret-value"
++	env["NL_REGION"] = "mars"
++	_, err = newLiveWorkivaFromEnv(get)
++	if err == nil || !strings.Contains(err.Error(), "NL_REGION") {
++		t.Fatalf("err = %v, want it to name NL_REGION", err)
++	}
++	for _, e := range []error{err} {
++		if strings.Contains(e.Error(), "the-secret-value") || strings.Contains(e.Error(), "the-id") {
++			t.Errorf("error leaks a credential: %v", e)
++		}
++	}
++	for region, host := range map[string]string{"": "api.eu.wdesk.com", "eu": "api.eu.wdesk.com", "us": "api.app.wdesk.com", "apac": "api.apac.wdesk.com"} {
++		env["NL_REGION"] = region
++		base, err := regionBaseURL(region)
++		if err != nil || base.Host != host || base.Scheme != "https" {
++			t.Errorf("region %q: %v %v", region, base, err)
++		}
++		if _, err := newLiveWorkivaFromEnv(get); err != nil {
++			t.Errorf("region %q: %v", region, err)
++		}
++	}
++}
++
++// The default newWorkiva must never be the real one while tests run.
++func TestNewWorkivaSeamIsFakedInTests(t *testing.T) {
++	if _, err := newWorkiva(context.Background()); !errors.Is(err, errRealClientInTest) {
++		t.Errorf("newWorkiva = %v, want the test guard", err)
++	}
++}

@@ -1,0 +1,32 @@
+$ git check-ignore -q configs/demo/mappings-sandbox.yaml
+$ ! git check-ignore -q configs/demo/mappings-sandbox.example.yaml
+$ test $(grep -cE 'name: *src_env_[a-z0-9_]+' configs/demo/mappings-sandbox.example.yaml) -ge 20
+$ test $(grep -cE 'name: *src_soc_[a-z0-9_]+' configs/demo/mappings-sandbox.example.yaml) -ge 12
+$ grep -qE 'name: *src_env_energy_total\b' configs/demo/mappings-sandbox.example.yaml && grep -qE 'name: *src_soc_employees_total\b' configs/demo/mappings-sandbox.example.yaml
+$ grep -qE '^document_id: *"<document-id>"' configs/demo/mappings-sandbox.example.yaml
+$ ! grep -E '^ *-? *id:' configs/demo/mappings-sandbox.example.yaml | grep -vqE '"<id-[0-9]{2}>"'
+$ ! grep -E 'field_type:' configs/demo/mappings-sandbox.example.yaml | grep -vqE 'field_type: *(number|percent)\b'
+$ python3 -I -c '
+import csv, re
+y = open("configs/demo/mappings-sandbox.example.yaml").read()
+src = re.findall(r"name: *src_(env|soc)_([a-z0-9_]+)", y)
+for sec, k in src:
+    for yr in ("2025", "2024"):
+        assert re.search(r"name: *rpt_%s_%s_%s\b" % (sec, k, yr), y), (sec, k, yr)
+rows = {}
+for yr in ("2025", "2024"):
+    p = "configs/demo/data/esg-%s.csv" % yr
+    assert open(p).readline().strip() == "key,label,unit,value", p
+    rows[yr] = [(r["key"], r["label"], r["unit"]) for r in csv.DictReader(open(p))]
+assert rows["2025"] == rows["2024"]
+assert [k for _, k in src] == [r[0] for r in rows["2025"]]
+assert len(set(k for _, k in src)) == len(src)
+env = [k for s, k in src if s == "env"]
+assert [k for _, k in src][:len(env)] == env, "environmental fields first"
+'
+$ grep -qx '## Live write semantics' configs/demo/README.md && grep -qxE 'clear-value: (null|empty-string)' configs/demo/README.md && grep -qxE 'percent-cells-store-fractions: (yes|no)' configs/demo/README.md
+$ grep -q 'Environmental disclosures' configs/demo/README.md && grep -q 'demo-esg-source' configs/demo/README.md
+$ python3 -I configs/demo/check_no_sandbox_ids.py "$HOME/northern-lights-workspace/versions/demo-l0/docs/demo/evidence/2026-10-19-RB-01/step-3.local.json" "$HOME/northern-lights-workspace/versions/nl-l3/docs/demo/evidence/2026-10-19-RB-02/step-2.local.json"
+ok: no sandbox IDs in 528 files
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

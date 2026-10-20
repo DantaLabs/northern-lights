@@ -1,0 +1,36 @@
+{
+  "task_id": "T7",
+  "axis": "spec",
+  "implementation_commit": "cb892d7d4b9af840929dc914ea7ab1610bb68c3a",
+  "attempt": 1,
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "medium",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 31,
+      "issue": "Act 2 'Correct answer contains' says 'The four planted findings:' but lists three, which is correct for the environmental section. The fourth planted finding (material_change training_hours_female) is social and belongs to Act 5, where line 63 already lists it. An RB-03 operator checking this line would expect a fourth environmental finding that workiva_prepare_section esg-environmental will never return. R10 requires the line to state what a correct answer contains, so this is a factual error in the deliverable.",
+      "fix": "Change the wording to 'The three planted environmental findings:' (optionally adding 'the fourth planted finding is social, see Act 5'). Leave the three listed findings as they are."
+    },
+    {
+      "severity": "low",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 59,
+      "issue": "Act 4.3 assumes workiva_export_evidence can export 'what we just did', but subject_kind accepts only snapshot, validation_run, comparison or transfer (export_evidence.go:69). Nothing in Acts 1 to 4 is guaranteed to produce one of those subjects. The worker reports this gap and the line hedges by saying the agent should name the subject it needs. This is acceptable for a first version against schemas; it is recorded so RB-03 resolves it.",
+      "fix": "No change needed for this attempt. Carry it as an open item for RB-03 (scenario 6) / L1-L3: either add a workiva_compare_periods step before 4.3 or extend the evidence subjects."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "id": "R9",
+      "status": "implemented",
+      "evidence": "INSTRUCTIONS.md names only existing tools (acceptance cmd 1 passes; check log). Output field names match the code: prepare_section.go:30-33,46,72-81 (findings kind/field/severity/message, facts display, verbatim, change_set, summary, next_step); change_set.go:26-43 (change_set_id, confirm_token, items[].status, summary); section_text.go:39-58 (kind, verbatim_id, text_id, confirm_token, summary); export_evidence.go:69,76 (subject_kind enum, audit.integrity.chain_verified). Refusal texts match demo-l3-section-text.md R2, R4 and R5 word for word. The RB-03 maintenance line is present (acceptance cmd 6). NARRATIVE_STYLE.md: PENDIENTE is resolved with observed conventions (acceptance cmd 5), rules 1-10 are kept, and the example uses Demo Harbour Components with CSV-consistent display forms (1978 MWh -> 1.98 GWh at recipe decimals 2; 140 -> 165 = +17.9%). Proof is limited to the grep acceptance checks for this docs task. The behavioural proof (scenario 6, RB-03) is deferred by the spec."
+    },
+    {
+      "id": "R10",
+      "status": "implemented_with_defect",
+      "evidence": "DEMO_PROMPTS.md has ## Act 1 to ## Act 5 matching DEMO.md Ask/Catch/Build/Guard/Repeat, with 13 'Correct answer contains' lines (acceptance cmd 3), and energy_total 1978/2030 appear verbatim (acceptance cmd 4). Values checked against configs/demo/data/esg-2025.csv and esg-2024.csv (rows 2, 3, 15, 28, 41). Citations checked against mappings-sandbox.example.yaml:15,16,28,44,69,70,82,95,114,115,127,140. The 25 items in Act 3 = 26 environmental rows minus the empty water_discharge_production; the 16 items in Act 5 = 16 social rows. The out_of_range min of 500 matches esg-environmental.yaml. The confirm summary form matches demo-l1-change-set.md R12. Defect: DEMO_PROMPTS.md:31 'four planted findings' lists three (finding 1). Scenario 6 (RB-03 run) is deferred to Tom per spec line 61."
+    }
+  ],
+  "new_tasks": []
+}

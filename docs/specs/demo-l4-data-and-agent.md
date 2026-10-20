@@ -56,4 +56,6 @@ None
 
 ## Approval
 
-Approved: pending Tom
+Approved: yes
+
+Approved by Tom on 2026-10-19 ("continue with L4"). Owner decisions: the real `configs/demo/mappings-sandbox.yaml` is git-ignored because the repository is public; a committed `configs/demo/mappings-sandbox.example.yaml` carries placeholders for IDs. This run also performs the live seed against the sandbox. Acceptance scenario 5 waits for L2 (`workiva_prepare_section`) and scenario 6 is Tom's RB-03 run; both are recorded as open items.

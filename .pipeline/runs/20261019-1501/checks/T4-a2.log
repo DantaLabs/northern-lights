@@ -1,0 +1,9 @@
+$ mkdir -p .scratch && go test ./cmd/nl-demo-seed/ -race -count=1 -v > .scratch/t4.log 2>&1; for n in TestDataConsistency TestRecipesMatchSchemaAndMappings TestDemoReadReturnsCSVValue TestDecimalText; do grep -q -- "--- PASS: $n" .scratch/t4.log || exit 1; done
+$ go build -o /dev/null ./cmd/nl-demo-seed
+$ go vet ./cmd/nl-demo-seed/
+$ test -z "$(gofmt -l cmd internal)"
+$ golangci-lint run ./cmd/nl-demo-seed/...
+0 issues.
+$ grep -q GetSheetDataTyped cmd/nl-demo-seed/data_test.go && ! grep -qE 'GetSheetData\(' cmd/nl-demo-seed/data_test.go
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

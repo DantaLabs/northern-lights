@@ -1,0 +1,32 @@
+{
+  "task_id": "T7",
+  "axis": "standards",
+  "implementation_commit": "1e46b5b76236b1664288ff35c80f4701f2dff974",
+  "attempt": 2,
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "major",
+      "file": "docs/demo/agent/NARRATIVE_STYLE.md",
+      "line": 5,
+      "issue": "The conventions that replace PENDIENTE (company by name 'Demo Harbour Components', British spelling, digit/thousands/decimal format, unit symbols, tense) sit in the intro above '## Rules'. INSTRUCTIONS.md line 3 says to append only the 'Rules' section of NARRATIVE_STYLE.md to the Copilot Studio instructions, so these conventions never reach the agent. The resolved PENDIENTE has no effect on the drafted narrative, which is the point of R9's style work. This was carried over from attempt 1 and was not flagged then.",
+      "fix": "Move the conventions list under '## Rules' (as numbered rules or a 'Conventions' sub-list inside Rules), keeping only the 'checked on 2026-10-19 ... nothing copied' provenance sentence in the intro. Alternatively change the paste note in INSTRUCTIONS.md to append both the conventions and the Rules."
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 47,
+      "issue": "The bullets were produced by splitting each line mechanically at semicolons, so some bullets group the wrong things. In Act 2 the first bullet ends with the list lead-in 'The three planted environmental findings: `missing` for ...', so the first finding shares a bullet with the 'findings before any change set' requirement. The last bullet then attaches 'Then the change set summary and the question \"Approve these changes?\"' to the out_of_range finding. The same happens in 1.1 ('No other number.' inside the citations bullet), 1.4, 3.1, 4.3 and 5.2. An RB-03 operator ticking bullets can miss the trailing requirement.",
+      "fix": "Give each requirement its own bullet. In Act 2, make 'The three planted environmental findings:' a lead-in line or a nested list with each finding as its own bullet, and move 'the change set summary' and 'the question \"Approve these changes?\"' into separate bullets. Split the trailing sentences in 1.1, 1.4, 3.1, 4.3 and 5.2 the same way."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "a1 finding: planted-findings count", "satisfied": true, "evidence": "DEMO_PROMPTS.md Act 2 now reads 'The three planted environmental findings'"},
+    {"requirement": "a1 finding: maintenance note outside pasted text", "satisfied": true, "evidence": "INSTRUCTIONS.md line 5, above '## Instructions', labelled 'not pasted into Copilot Studio'"},
+    {"requirement": "a1 nit: bulleted expected answers", "satisfied": true, "evidence": "Every 'Correct answer contains:' in DEMO_PROMPTS.md is followed by a bullet list (grouping problems noted in the minor finding)"},
+    {"requirement": "R9 style conventions reach the agent", "satisfied": false, "evidence": "NARRATIVE_STYLE.md:5-11 sits outside '## Rules' (line 13); INSTRUCTIONS.md:3 pastes only Rules"},
+    {"requirement": "Public repo hygiene / security", "satisfied": true, "evidence": "checks/T7-a2.log: check_no_sandbox_ids.py ok over 567 files; docs-only diff; no secrets, tenant IDs or copied report text; spreadsheet names are the placeholders already in mappings-sandbox.example.yaml"},
+    {"requirement": "No weakened checks", "satisfied": true, "evidence": "docs-only diff; no test, lint config or ignore comment touched; gofmt/vet/golangci-lint 0 issues in checks/T7-a2.log"}
+  ],
+  "new_tasks": []
+}

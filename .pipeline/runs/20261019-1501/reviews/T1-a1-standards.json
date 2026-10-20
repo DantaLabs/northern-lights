@@ -1,0 +1,43 @@
+{
+  "task_id": "T1",
+  "axis": "standards",
+  "implementation_commit": "019d9a6b5ff0394ba53189dd2be7247be9d0b8c8",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "configs/demo/README.md",
+      "line": 28,
+      "issue": "Possible Duplicated Code: the 'Sandbox cells' table repeats every src_ sheet/range from mappings-sandbox.example.yaml (42 rows). They match today, but there are now two hand-maintained sources of truth for cell ranges, and later seed tasks may edit only one of them.",
+      "fix": "Keep the YAML as the only source of ranges. In the README, either point to it or keep only the reasoning (why each cell was chosen, merged-cell and waste-row notes), or add a small check that the two agree."
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/check_no_sandbox_ids.py",
+      "line": 75,
+      "issue": "The leak guard fails open. A tracked or untracked file that cannot be read is skipped silently ('except OSError: continue'), so a permission or encoding problem shows up as 'ok'. The guard is also manual only: it is not wired into CI, and it is the only Python file in a Go repository whose standard checks are gofmt, go vet, golangci-lint and go test.",
+      "fix": "Skip only paths that no longer exist (os.path.exists false). Report any other OSError and exit 2. Later, think about a Go test or a CI step that runs the guard when the local ID files are present."
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/check_no_sandbox_ids.py",
+      "line": 16,
+      "issue": "ID_RE / TEXT_RE only pick up tokens of 20 or more characters under keys ending in 'id'. All current real IDs meet that (verified: the checker collects every real resource ID in the RB-01 local evidence). A shorter ID format in the future would be missed without any warning.",
+      "fix": "Add a comment that states the assumption that IDs are at least 20 characters, or derive the minimum length from the IDs collected."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "Public-repo hygiene: no real sandbox IDs, tenant names or secrets",
+      "satisfied": true,
+      "evidence": "Checked every real ID in docs/demo/evidence/2026-10-19-RB-01/resources.local.md against the T1 diff. The only match is the public template name 'VSME-Digital-Template-1.0.1 Unlocked', which is already committed before this change, along with the other spreadsheet and sheet names. No tenant, email, URL or token appears. mappings-sandbox.yaml is git-ignored, and the example uses only <id-NN> and <document-id> placeholders."
+    },
+    {
+      "requirement": "AGENTS.md rules 3 and 7, and lane file ownership",
+      "satisfied": true,
+      "evidence": "No test, lint rule or check is weakened, and no ignore comment is added. Changes stay inside configs/demo/ and the run report. Frozen packages are untouched. The check log shows gofmt, go vet and golangci-lint clean (0 issues) and all 12 acceptance commands passing."
+    }
+  ],
+  "new_tasks": []
+}

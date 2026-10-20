@@ -1,0 +1,127 @@
+{
+  "task_id": "T5",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/plan_test.go",
+      "line": 38,
+      "issue": "The instructions require recipes sorted by ID in BuildPlan, but no test proves it. The fixtures reach BuildPlan already in ID order because LoadRecipes uses filepath.Glob, which returns sorted paths (fx-env, fx-soc). So deleting the sort.Slice in plan.go would not fail any test.",
+      "fix": "In TestBuildPlanWritesBothYears (or a new case), pass the recipes in reverse order and assert that the write order is unchanged.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/testdata/mappings.yaml",
+      "line": 5,
+      "issue": "The fixture spreadsheet names 'Fixture Source Book' and 'Fixture Report Book' lean on 'book', a near-synonym of the term CONTEXT.md says to avoid for spreadsheet ('workbook').",
+      "fix": "Rename them to 'Fixture Source Spreadsheet' / 'Fixture Report Spreadsheet' and update the expected lines in TestPlanPrintHasNoIDs.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/plan_test.go",
+      "line": 211,
+      "issue": "TestRunErrors' last case saves newWorkiva but never replaces it. It depends on the current stub returning 'not implemented'. Once T6 adds the real client, this case will run the live constructor without -dry-run, and with Tom's local .env present it could build a real client and call Apply against the sandbox from a unit test.",
+      "fix": "In that case, set newWorkiva to a stub that returns a fixed error (or a fake Workiva), so the test never depends on the production constructor.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/plan.go",
+      "line": 105,
+      "issue": "percentToFraction silently returns its input unchanged when the text does not parse as a decimal. If that path is ever hit, the percent cell gets the raw value written to it (46.5 instead of 0.465, which displays as 4650%). LoadCSV validates decimals today, so the path cannot currently be reached, but the fallback hides that invariant.",
+      "fix": "Return (string, error) and pass the error up through planWrite/BuildPlan, or panic with a comment stating that LoadCSV guarantees a decimal.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/main.go",
+      "line": 40,
+      "issue": "Possible Duplicated Code (judgement call): run() repeats the same 'print error, return 2' block five times for LoadMappings, LoadRecipes, two LoadCSV calls and BuildPlan.",
+      "fix": "Extract a helper such as loadPlan(mappings, data, sections string, reset bool) (Plan, error) and handle its error once in run().",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/plan.go",
+      "line": 30,
+      "issue": "Plan.Clears reuses the Write type, so Year and Value are always \"2025\" and \"\" there and carry no meaning.",
+      "fix": "Optional: give clears their own small type (Field plus Ref), or document that a clear is a Write with an empty Value.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/plan.go",
+      "line": 14,
+      "issue": "percentCellsStoreFractions is a constant true, so the check in planWrite is always on. It is documented as mirroring the README decision, so it is acceptable, but it is a branch that can never be false.",
+      "fix": "Optional: keep it as documented, or remove the constant and leave the README reference in the comment.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/plan_test.go",
+      "line": 38,
+      "issue": "The instructions require recipes sorted by ID in BuildPlan, but no test proves it. The fixtures reach BuildPlan already in ID order because LoadRecipes uses filepath.Glob, which returns sorted paths (fx-env, fx-soc). So deleting the sort.Slice in plan.go would not fail any test.",
+      "fix": "In TestBuildPlanWritesBothYears (or a new case), pass the recipes in reverse order and assert that the write order is unchanged.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/testdata/mappings.yaml",
+      "line": 5,
+      "issue": "The fixture spreadsheet names 'Fixture Source Book' and 'Fixture Report Book' lean on 'book', a near-synonym of the term CONTEXT.md says to avoid for spreadsheet ('workbook').",
+      "fix": "Rename them to 'Fixture Source Spreadsheet' / 'Fixture Report Spreadsheet' and update the expected lines in TestPlanPrintHasNoIDs.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/plan_test.go",
+      "line": 211,
+      "issue": "TestRunErrors' last case saves newWorkiva but never replaces it. It depends on the current stub returning 'not implemented'. Once T6 adds the real client, this case will run the live constructor without -dry-run, and with Tom's local .env present it could build a real client and call Apply against the sandbox from a unit test.",
+      "fix": "In that case, set newWorkiva to a stub that returns a fixed error (or a fake Workiva), so the test never depends on the production constructor.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/plan.go",
+      "line": 105,
+      "issue": "percentToFraction silently returns its input unchanged when the text does not parse as a decimal. If that path is ever hit, the percent cell gets the raw value written to it (46.5 instead of 0.465, which displays as 4650%). LoadCSV validates decimals today, so the path cannot currently be reached, but the fallback hides that invariant.",
+      "fix": "Return (string, error) and pass the error up through planWrite/BuildPlan, or panic with a comment stating that LoadCSV guarantees a decimal.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/main.go",
+      "line": 40,
+      "issue": "Possible Duplicated Code (judgement call): run() repeats the same 'print error, return 2' block five times for LoadMappings, LoadRecipes, two LoadCSV calls and BuildPlan.",
+      "fix": "Extract a helper such as loadPlan(mappings, data, sections string, reset bool) (Plan, error) and handle its error once in run().",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/plan.go",
+      "line": 30,
+      "issue": "Plan.Clears reuses the Write type, so Year and Value are always \"2025\" and \"\" there and carry no meaning.",
+      "fix": "Optional: give clears their own small type (Field plus Ref), or document that a clear is a Write with an empty Value.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/plan.go",
+      "line": 14,
+      "issue": "percentCellsStoreFractions is a constant true, so the check in planWrite is always on. It is documented as mirroring the README decision, so it is acceptable, but it is a branch that can never be false.",
+      "fix": "Optional: keep it as documented, or remove the constant and leave the README reference in the comment.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

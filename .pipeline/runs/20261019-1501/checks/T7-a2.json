@@ -1,0 +1,41 @@
+{
+  "task_id": "T7",
+  "attempt": 2,
+  "implementation_commit": "1e46b5b76236b1664288ff35c80f4701f2dff974",
+  "commands": [
+    {
+      "command": "python3 -I -c '\nimport glob, re\nsrc = \"\".join(open(f).read() for f in glob.glob(\"internal/mcpserver/tools/*.go\") if not f.endswith(\"_test.go\"))\nknown = set(re.findall(r\"\\\"(workiva_[a-z_]+)\\\"\", src))\nfor f in glob.glob(\"docs/demo/agent/*.md\"):\n    for n in set(re.findall(r\"\\bworkiva_[a-z_]+\\b\", open(f).read())):\n        assert n in known, (f, n)\n'",
+      "exit_code": 0
+    },
+    {
+      "command": "for n in workiva_prepare_section workiva_confirm_change_set workiva_stage_section_text workiva_confirm_section_text workiva_export_evidence; do grep -q $n docs/demo/agent/INSTRUCTIONS.md || exit 1; done",
+      "exit_code": 0
+    },
+    {
+      "command": "for i in 1 2 3 4 5; do grep -qE \"^## Act $i\" docs/demo/agent/DEMO_PROMPTS.md || exit 1; done && test $(grep -c 'Correct answer contains:' docs/demo/agent/DEMO_PROMPTS.md) -ge 8",
+      "exit_code": 0
+    },
+    {
+      "command": "for y in 2025 2024; do v=$(python3 -I -c \"import csv; print([r['value'] for r in csv.DictReader(open('configs/demo/data/esg-$y.csv')) if r['key']=='energy_total'][0])\") && grep -qF \"$v\" docs/demo/agent/DEMO_PROMPTS.md || exit 1; done",
+      "exit_code": 0
+    },
+    {
+      "command": "! grep -q PENDIENTE docs/demo/agent/NARRATIVE_STYLE.md",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -q 'RB-03' docs/demo/agent/INSTRUCTIONS.md",
+      "exit_code": 0
+    },
+    {
+      "command": "python3 -I configs/demo/check_no_sandbox_ids.py \"$HOME/northern-lights-workspace/versions/demo-l0/docs/demo/evidence/2026-10-19-RB-01/step-3.local.json\" \"$HOME/northern-lights-workspace/versions/nl-l3/docs/demo/evidence/2026-10-19-RB-02/step-2.local.json\"",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    }
+  ],
+  "checkout_clean": true,
+  "created_at": "2026-10-20T03:28:12Z"
+}

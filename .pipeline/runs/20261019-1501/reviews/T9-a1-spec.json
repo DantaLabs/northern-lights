@@ -1,0 +1,63 @@
+{
+  "task_id": "T9",
+  "axis": "spec",
+  "implementation_commit": "97f46561851ee53409ed0cd9aab62ee00429fdff",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "configs/demo/make_sandbox_mappings.py",
+      "line": 88,
+      "issue": "The generator's safety behaviour from step 1 has no test or acceptance command. Nothing proves that it refuses a non-ignored --out, fails on an unknown or leftover placeholder, or fails when the placeholder and real files differ in shape. Acceptance only runs --help and inspects the one generated file. The paths at lines 88-91, 106-109 and 112-114 look correct on reading, but deleting them would not turn any check red. The repository is public, so the guard against a non-ignored output is the one that protects against leaks.",
+      "fix": "Follow-up (no change needed in T9): add a small stdlib unittest under configs/demo/ that uses synthetic placeholder and real JSON in a temp dir. It should assert exit 1 for a non-ignored --out and for an unknown placeholder, and that the output keeps no <id-NN> or <document-id>. Wire it into acceptance for whoever next touches the generator."
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 33,
+      "issue": "The spec scenario says Tom's reset brings the sandbox back 'in under a minute'. The live run took 99.7 s. That is recorded honestly in README.md:113 and the worker report, but it is posted as an 'L4 -> L5' request. That line states an observation and asks L5 for nothing, which does not fit the 'what you need and why' format of that section. It is really an unmet target for the spec owner.",
+      "fix": "Record the 99.7 s against the under-a-minute target as an open item or follow-up for the owner (the task says pacing is the rate limiter's job and calls must not be rationed). Either drop the L4 -> L5 line or reword it into an actual request."
+    },
+    {
+      "severity": "nit",
+      "file": "docs/demo/STATUS.md",
+      "line": 13,
+      "issue": "Last-commit cell reads 'd7b4612 (T9 follows)' and README.md:108 cites base d7b4612 instead of the T9 commit. This is accurate, because the seed code is unchanged between d7b4612 and 97f4656 (no diff under cmd/ or internal/). It will go stale after merge.",
+      "fix": "Update the last-commit cell to the merged commit when the orchestrator lands T9."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R6 (sandbox mapping file)",
+      "satisfied": true,
+      "evidence": "configs/demo/make_sandbox_mappings.py:41-66 maps <id-NN> to real IDs by position, :69-82 finds the '2025 Annual Report - EN' document, :88-91 refuses a non-ignored output, and :106-114 fails on an unknown or leftover placeholder. Field names and ranges come unchanged from mappings-sandbox.example.yaml. Checks T9-a1 commands 2-3 (file exists, git-ignored, untracked, no placeholders left) exit 0. The owner decision (real file git-ignored, example committed) is respected: no mappings-sandbox.yaml in the diff."
+    },
+    {
+      "requirement": "R8 (live seed after dry run)",
+      "satisfied": true,
+      "evidence": "Raw .scratch output (not committed): the dry run has 84 write, 42 clear and 2 delete-section lines, i.e. 2 writes per field for 42 fields. The live run has the same plan plus 'read-back' and 'done:' lines. Check command 5 matches '^read-back: [0-9]+ ok, 0 mismatch' and '^done: elapsed' in seed-reset.txt and the README. Command 7 finds no bearer, secret, 32-hex or UUID text in the outputs. Command 11 (check_no_sandbox_ids.py): ok over 631 files. Seed code is unchanged from T6 (no diff under cmd/ or internal/), so the T6 tests still cover write-scope enforcement. 'go test ./cmd/nl-demo-seed/ -race' passed."
+    },
+    {
+      "requirement": "T9 step 2 (pre-check for existing recipe-title sections)",
+      "satisfied": true,
+      "evidence": "Worker report and README.md:111: sections were listed read-only and none matched a recipe title. The name list stays in .scratch only (section-names.txt is not committed)."
+    },
+    {
+      "requirement": "T9 step 6 (README Running the seed / Seed run 2026-10-19)",
+      "satisfied": true,
+      "evidence": "configs/demo/README.md:92-115: commands with path placeholders and no IDs; counts of 84 writes, 42 clears and 2 section deletes; read-back line; elapsed time; section-match answer of no; bounded fixes none; scenarios 5 and 6 deferred. The section is under 15 lines. Live write semantics are updated at :86, and percent-cells-store-fractions is honestly marked unconfirmed. Check command 4 exits 0."
+    },
+    {
+      "requirement": "T9 step 7 (STATUS L4 row and requests)",
+      "satisfied": true,
+      "evidence": "docs/demo/STATUS.md:13 updates only the L4 row (branch claude/demo-l4-data-and-agent; blocked on L2 and RB-03). Lines 30-33 add the L4 -> L2 request (document_id override plus the percent note) and two L4 -> L0 requests (demoSpreadsheetsResponse, ESG overlay). Check command 9 exits 0."
+    },
+    {
+      "requirement": "Scope / evidence folder / naming",
+      "satisfied": true,
+      "evidence": "The diff touches only owned files (make_sandbox_mappings.py, README.md, STATUS.md) plus the run report. Nothing is under docs/demo/evidence (check command 6). Wording follows CONTEXT.md: spreadsheet, report document, section, field, section recipe. None of the forbidden terms appear. Acceptance scenario 5 is deferred to L2 as the Approval section allows."
+    }
+  ],
+  "new_tasks": []
+}

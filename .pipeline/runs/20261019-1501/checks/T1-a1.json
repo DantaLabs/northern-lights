@@ -1,0 +1,61 @@
+{
+  "task_id": "T1",
+  "attempt": 1,
+  "implementation_commit": "019d9a6b5ff0394ba53189dd2be7247be9d0b8c8",
+  "commands": [
+    {
+      "command": "git check-ignore -q configs/demo/mappings-sandbox.yaml",
+      "exit_code": 0
+    },
+    {
+      "command": "! git check-ignore -q configs/demo/mappings-sandbox.example.yaml",
+      "exit_code": 0
+    },
+    {
+      "command": "test $(grep -cE 'name: *src_env_[a-z0-9_]+' configs/demo/mappings-sandbox.example.yaml) -ge 20",
+      "exit_code": 0
+    },
+    {
+      "command": "test $(grep -cE 'name: *src_soc_[a-z0-9_]+' configs/demo/mappings-sandbox.example.yaml) -ge 12",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -qE 'name: *src_env_energy_total\\b' configs/demo/mappings-sandbox.example.yaml && grep -qE 'name: *src_soc_employees_total\\b' configs/demo/mappings-sandbox.example.yaml",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -qE '^document_id: *\"<document-id>\"' configs/demo/mappings-sandbox.example.yaml",
+      "exit_code": 0
+    },
+    {
+      "command": "! grep -E '^ *-? *id:' configs/demo/mappings-sandbox.example.yaml | grep -vqE '\"<id-[0-9]{2}>\"'",
+      "exit_code": 0
+    },
+    {
+      "command": "! grep -E 'field_type:' configs/demo/mappings-sandbox.example.yaml | grep -vqE 'field_type: *(number|percent)\\b'",
+      "exit_code": 0
+    },
+    {
+      "command": "python3 -I -c '\nimport csv, re\ny = open(\"configs/demo/mappings-sandbox.example.yaml\").read()\nsrc = re.findall(r\"name: *src_(env|soc)_([a-z0-9_]+)\", y)\nfor sec, k in src:\n    for yr in (\"2025\", \"2024\"):\n        assert re.search(r\"name: *rpt_%s_%s_%s\\b\" % (sec, k, yr), y), (sec, k, yr)\nrows = {}\nfor yr in (\"2025\", \"2024\"):\n    p = \"configs/demo/data/esg-%s.csv\" % yr\n    assert open(p).readline().strip() == \"key,label,unit,value\", p\n    rows[yr] = [(r[\"key\"], r[\"label\"], r[\"unit\"]) for r in csv.DictReader(open(p))]\nassert rows[\"2025\"] == rows[\"2024\"]\nassert [k for _, k in src] == [r[0] for r in rows[\"2025\"]]\nassert len(set(k for _, k in src)) == len(src)\nenv = [k for s, k in src if s == \"env\"]\nassert [k for _, k in src][:len(env)] == env, \"environmental fields first\"\n'",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -qx '## Live write semantics' configs/demo/README.md && grep -qxE 'clear-value: (null|empty-string)' configs/demo/README.md && grep -qxE 'percent-cells-store-fractions: (yes|no)' configs/demo/README.md",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -q 'Environmental disclosures' configs/demo/README.md && grep -q 'demo-esg-source' configs/demo/README.md",
+      "exit_code": 0
+    },
+    {
+      "command": "python3 -I configs/demo/check_no_sandbox_ids.py \"$HOME/northern-lights-workspace/versions/demo-l0/docs/demo/evidence/2026-10-19-RB-01/step-3.local.json\" \"$HOME/northern-lights-workspace/versions/nl-l3/docs/demo/evidence/2026-10-19-RB-02/step-2.local.json\"",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    }
+  ],
+  "checkout_clean": true,
+  "created_at": "2026-10-19T15:57:47Z"
+}
