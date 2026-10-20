@@ -8,7 +8,6 @@
   "checkpoint": null,
   "active_tasks": [
     "T1",
-    "T3",
     "T5"
   ],
   "run_base_commit": "48269d9ee2ab52f64d4277931374fd7a4d7f3c76"
