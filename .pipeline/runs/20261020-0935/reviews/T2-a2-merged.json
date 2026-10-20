@@ -1,0 +1,95 @@
+{
+  "task_id": "T2",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 49,
+      "issue": "No test covers R1's default directory, configs/demo/sections, because every test sets NL_DEMO_SECTIONS_DIR. Attempt 1 already flagged this and it is still open. It is acceptable for T2 because T4 scenario 9 exercises the real sections.",
+      "fix": "Optional: add a test that points NL_DEMO_SECTIONS_DIR at ../../configs/demo/sections with the demo mappings and asserts that both real recipes load. Alternatively, leave this to T4.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/service_test.go",
+      "line": 543,
+      "issue": "The symlink containment subtests call t.Skipf when os.Symlink fails. On a host without symlink support, the attempt-1 fix would go unverified without any visible failure. It works on Linux CI, where the tests ran and passed.",
+      "fix": "Optional: use t.Fatalf on Linux, or accept as is.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 22,
+      "issue": "os.Root lifetime. loadRecipes closes the root on error and when zero recipes load, which is correct. When recipes do load, the shared *os.Root stays open for the life of the process, and neither service nor any other type owns or closes it. That is acceptable for a single New call from main.go. However, the ownership is implicit: only the field comment on recipeDef.root states it, and every test that loads recipes leaks one directory descriptor.",
+      "fix": "Keep the root on service rather than copying it into every recipeDef. State in New's doc comment that the root stays open for the life of the process, or give service a Close method and register a t.Cleanup in the tests.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/service.go",
+      "line": 29,
+      "issue": "storageCtx stores a context.Context in a struct. Go convention discourages this (it is the containedctx smell). No other struct in internal/ or cmd/ does it. It works here as a startup context that carries the Entra principal for T4's store calls.",
+      "fix": "When T4 lands, store the identity.Principal (or tenant ID) and derive the context per call from Prepare's ctx.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/service_test.go",
+      "line": 148,
+      "issue": "The symlink subtests t.Skipf when os.Symlink fails. This is a standard platform guard, not a check skipped to get a green result. I ran them with -v on Linux and they run and pass with no skips. On a platform without symlinks they would pass silently, though.",
+      "fix": "Optional: none needed. Alternatively, call t.Fatalf on Linux and skip only when runtime.GOOS == \"windows\".",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 49,
+      "issue": "No test covers R1's default directory, configs/demo/sections, because every test sets NL_DEMO_SECTIONS_DIR. Attempt 1 already flagged this and it is still open. It is acceptable for T2 because T4 scenario 9 exercises the real sections.",
+      "fix": "Optional: add a test that points NL_DEMO_SECTIONS_DIR at ../../configs/demo/sections with the demo mappings and asserts that both real recipes load. Alternatively, leave this to T4.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/service_test.go",
+      "line": 543,
+      "issue": "The symlink containment subtests call t.Skipf when os.Symlink fails. On a host without symlink support, the attempt-1 fix would go unverified without any visible failure. It works on Linux CI, where the tests ran and passed.",
+      "fix": "Optional: use t.Fatalf on Linux, or accept as is.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 22,
+      "issue": "os.Root lifetime. loadRecipes closes the root on error and when zero recipes load, which is correct. When recipes do load, the shared *os.Root stays open for the life of the process, and neither service nor any other type owns or closes it. That is acceptable for a single New call from main.go. However, the ownership is implicit: only the field comment on recipeDef.root states it, and every test that loads recipes leaks one directory descriptor.",
+      "fix": "Keep the root on service rather than copying it into every recipeDef. State in New's doc comment that the root stays open for the life of the process, or give service a Close method and register a t.Cleanup in the tests.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/service.go",
+      "line": 29,
+      "issue": "storageCtx stores a context.Context in a struct. Go convention discourages this (it is the containedctx smell). No other struct in internal/ or cmd/ does it. It works here as a startup context that carries the Entra principal for T4's store calls.",
+      "fix": "When T4 lands, store the identity.Principal (or tenant ID) and derive the context per call from Prepare's ctx.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/service_test.go",
+      "line": 148,
+      "issue": "The symlink subtests t.Skipf when os.Symlink fails. This is a standard platform guard, not a check skipped to get a green result. I ran them with -v on Linux and they run and pass with no skips. On a platform without symlinks they would pass silently, though.",
+      "fix": "Optional: none needed. Alternatively, call t.Fatalf on Linux and skip only when runtime.GOOS == \"windows\".",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

@@ -169,8 +169,8 @@
         "! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'",
         "test -z \"$(gofmt -l internal/recipe internal/mcpserver/tools)\""
       ],
-      "status": "running",
-      "attempts": 1,
+      "status": "passed",
+      "attempts": 2,
       "base_commit": "a1a9bbbf317b6f3fb5d7cbe96c56f3eae0e8c4d4",
       "route": {
         "worker_model": "sonnet",
@@ -192,7 +192,7 @@
         "standards_reviewer_model": "opus",
         "environment": "local"
       },
-      "branch": "task/20261020-0935-T2-a1",
+      "branch": "task/20261020-0935-T2-a2",
       "history": [
         {
           "attempt": 1,
@@ -213,9 +213,29 @@
           "environment": "local",
           "implementation_commit": "c65dfa3d2b77a6d0680f7a769a16e42b5068d816",
           "decision_id": "6b952f0600fd"
+        },
+        {
+          "attempt": 2,
+          "evidence_attempt": 2,
+          "worker": "sonnet",
+          "spec_reviewer": "opus",
+          "standards_reviewer": "opus",
+          "verdict": "pass",
+          "axes": {
+            "spec": "pass",
+            "standards": "pass"
+          },
+          "blocking_major": 0,
+          "router": "planner-hint",
+          "worker_model": "sonnet",
+          "spec_reviewer_model": "opus",
+          "standards_reviewer_model": "opus",
+          "environment": "local",
+          "implementation_commit": "cfd726259e3d3fe2d1cd5065c28a32671f4e7f06",
+          "decision_id": "6b952f0600fd"
         }
       ],
-      "active_attempt": 2
+      "implementation_commit": "cfd726259e3d3fe2d1cd5065c28a32671f4e7f06"
     },
     {
       "id": "T3",

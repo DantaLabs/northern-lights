@@ -1,0 +1,42 @@
+{
+  "task_id": "T2",
+  "axis": "standards",
+  "attempt": 2,
+  "implementation_commit": "cfd726259e3d3fe2d1cd5065c28a32671f4e7f06",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 22,
+      "issue": "os.Root lifetime. loadRecipes closes the root on error and when zero recipes load, which is correct. When recipes do load, the shared *os.Root stays open for the life of the process, and neither service nor any other type owns or closes it. That is acceptable for a single New call from main.go. However, the ownership is implicit: only the field comment on recipeDef.root states it, and every test that loads recipes leaks one directory descriptor.",
+      "fix": "Keep the root on service rather than copying it into every recipeDef. State in New's doc comment that the root stays open for the life of the process, or give service a Close method and register a t.Cleanup in the tests."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/service.go",
+      "line": 29,
+      "issue": "storageCtx stores a context.Context in a struct. Go convention discourages this (it is the containedctx smell). No other struct in internal/ or cmd/ does it. It works here as a startup context that carries the Entra principal for T4's store calls.",
+      "fix": "When T4 lands, store the identity.Principal (or tenant ID) and derive the context per call from Prepare's ctx."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/service_test.go",
+      "line": 148,
+      "issue": "The symlink subtests t.Skipf when os.Symlink fails. This is a standard platform guard, not a check skipped to get a green result. I ran them with -v on Linux and they run and pass with no skips. On a platform without symlinks they would pass silently, though.",
+      "fix": "Optional: none needed. Alternatively, call t.Fatalf on Linux and skip only when runtime.GOOS == \"windows\"."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "Prior major (symlink escape) fixed", "satisfied": true, "evidence": "recipe.go loadRecipes uses os.OpenRoot. loadRecipeFile reads with root.ReadFile, and verbatimDef.validate uses root.Stat. TestLoadRecipeVerbatimContainment symlink_file_outside and symlink_dir_outside pass, with no skips under -v. Mutation check: replacing root.Stat with os.Stat(filepath.Join(root.Name(), v.File)) makes TestLoadRecipeVerbatimContainment fail. The file was restored and git status is clean."},
+    {"requirement": "Prior minors", "satisfied": true, "evidence": "The ../ case now uses a real outside file and the absolute path is tested, both asserting 'must be relative'. The override is TrimSpace'd (sandbox_trims_env). A second YAML document is rejected (TestLoadRecipeRejectsSecondYAMLDocument). The no-store error keeps the file name (TestNewWithRecipesRequiresStore). The redundant sort is removed."},
+    {"requirement": "os.Root lifetime/closing", "satisfied": true, "evidence": "recipe.go loadRecipes closes the root on loadRecipesFromRoot error and when len(out)==0. On success it is kept intentionally for T4 verbatim reads (see minor finding on implicit ownership)."},
+    {"requirement": "NL_DEMO_DOCUMENT_ID never logged/committed", "satisfied": true, "evidence": "The only log line in service.go logs the count and dir. Error messages carry no document ID, and the fixtures use the placeholder doc-yaml/doc-env. The override applies only when Cfg != nil && !DemoMode, per TestDocumentIDOverrideFromEnvironment (6 subtests including nil_cfg_keeps_yaml)."},
+    {"requirement": "R1", "satisfied": true, "evidence": "TestScenario1ValidRecipeLoads, TestNewSucceedsWithoutRecipes, TestNewRejectsSectionsPathThatIsAFile"},
+    {"requirement": "R2", "satisfied": true, "evidence": "TestScenario1InvalidRecipeStopsStartup (unknown_key, unknown_field_key, unknown_verbatim_key, missing_id); KnownFields(true) in loadRecipeFile"},
+    {"requirement": "R3", "satisfied": true, "evidence": "TestScenario1InvalidRecipeStopsStartup/unknown_mapped_field; fieldDef.validate lookups"},
+    {"requirement": "R13", "satisfied": true, "evidence": "TestScenario8SectionsSortedByID; service.Sections sorts by ID"},
+    {"requirement": "No weakened tests or skipped checks", "satisfied": true, "evidence": "The removed TestNewStubSucceedsAndReturnsNotImplemented asserted the stub and its replacement is mandated by the plan. There are no ignore or nolint comments. checks/T2-a2.json shows all commands at exit 0, including gofmt, go vet ./... and golangci-lint (0 issues)."}
+  ],
+  "new_tasks": []
+}
