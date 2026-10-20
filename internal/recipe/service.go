@@ -2,7 +2,6 @@ package recipe
 
 import (
 	"context"
-	"errors"
 	"log"
 	"os"
 	"sort"
@@ -18,18 +17,15 @@ import (
 
 const defaultSectionsDir = "configs/demo/sections"
 
-var errNotImplemented = errors.New("section recipe service is not implemented yet")
-
 // service holds the loaded section recipes and the collaborators Prepare uses.
 type service struct {
 	recipes    map[string]recipeDef
 	store      *mapping.Store
-	client     workivaprovider.Backend
+	client     workivaprovider.Backend // asserted to cellReader in Prepare
+	facts      factRecorder
 	changes    changeset.Service
 	storageCtx context.Context
 }
-
-type stubFactStore struct{}
 
 // New returns the section recipe Service and FactStore for the demo lane. main.go
 // calls New once when NL_DEMO_PIPELINE is on.
@@ -67,9 +63,13 @@ func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)
 			override = strings.TrimSpace(v)
 		}
 	}
+	facts, err := newFactStore(env.DB)
+	if err != nil {
+		return nil, nil, err
+	}
 	svc := &service{
 		recipes: make(map[string]recipeDef, len(defs)),
-		store:   env.Store, client: env.Client, changes: changes, storageCtx: ctx,
+		store:   env.Store, client: env.Client, facts: facts, changes: changes, storageCtx: ctx,
 	}
 	for _, d := range defs {
 		if override != "" {
@@ -78,13 +78,7 @@ func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)
 		svc.recipes[d.ID] = d
 	}
 	log.Printf("section recipes: loaded %d from %s", len(defs), dir)
-	return svc, stubFactStore{}, nil
-}
-
-// Prepare returns a zero Prepared and an error until T4 lands.
-func (*service) Prepare(ctx context.Context, actor, sectionID string) (Prepared, error) {
-	_, _, _ = ctx, actor, sectionID
-	return Prepared{}, errNotImplemented
+	return svc, facts, nil
 }
 
 // Sections lists every loaded recipe, sorted by ID.
@@ -95,10 +89,4 @@ func (s *service) Sections() []SectionInfo {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
-}
-
-// LatestFacts returns an error until T4 lands.
-func (stubFactStore) LatestFacts(ctx context.Context, actor, sectionID string) ([]Fact, []VerbatimBlock, error) {
-	_, _, _ = ctx, actor, sectionID
-	return nil, nil, errNotImplemented
 }

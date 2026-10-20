@@ -1,0 +1,32 @@
+region: eu
+spreadsheets:
+  - id: "prep-src"
+    name: "Prepare source"
+    sheets:
+      - id: "prep-src-1"
+        name: "Source"
+        fields:
+          - { name: p_src_1, range: "A1", field_type: number, description: "p_src 1" }
+          - { name: p_tgt_1, range: "B1", field_type: number, description: "p_tgt 1" }
+          - { name: p_prior_1, range: "C1", field_type: number, description: "p_prior 1" }
+          - { name: p_src_2, range: "A2", field_type: number, description: "p_src 2" }
+          - { name: p_tgt_2, range: "B2", field_type: number, description: "p_tgt 2" }
+          - { name: p_prior_2, range: "C2", field_type: number, description: "p_prior 2" }
+          - { name: p_src_3, range: "A3", field_type: number, description: "p_src 3" }
+          - { name: p_tgt_3, range: "B3", field_type: number, description: "p_tgt 3" }
+          - { name: p_prior_3, range: "C3", field_type: number, description: "p_prior 3" }
+          - { name: p_src_4, range: "A4", field_type: number, description: "p_src 4" }
+          - { name: p_tgt_4, range: "B4", field_type: number, description: "p_tgt 4" }
+          - { name: p_prior_4, range: "C4", field_type: number, description: "p_prior 4" }
+          - { name: p_src_5, range: "A5", field_type: number, description: "p_src 5" }
+          - { name: p_tgt_5, range: "B5", field_type: number, description: "p_tgt 5" }
+          - { name: p_prior_5, range: "C5", field_type: number, description: "p_prior 5" }
+          - { name: p_src_6, range: "A6", field_type: number, description: "p_src 6" }
+          - { name: p_tgt_6, range: "B6", field_type: number, description: "p_tgt 6" }
+          - { name: p_prior_6, range: "C6", field_type: number, description: "p_prior 6" }
+          - { name: p_src_7, range: "A7", field_type: number, description: "p_src 7" }
+          - { name: p_tgt_7, range: "B7", field_type: number, description: "p_tgt 7" }
+          - { name: p_prior_7, range: "C7", field_type: number, description: "p_prior 7" }
+          - { name: p_src_8, range: "A8", field_type: number, description: "p_src 8" }
+          - { name: p_tgt_8, range: "B8", field_type: number, description: "p_tgt 8" }
+          - { name: p_prior_8, range: "C8", field_type: number, description: "p_prior 8" }
