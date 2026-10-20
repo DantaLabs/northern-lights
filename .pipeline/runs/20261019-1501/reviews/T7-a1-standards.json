@@ -1,0 +1,37 @@
+{
+  "task_id": "T7",
+  "axis": "standards",
+  "implementation_commit": "cb892d7d4b9af840929dc914ea7ab1610bb68c3a",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 29,
+      "issue": "Act 2 says 'The four planted findings' but lists three (missing water_discharge_production, material_change business travel, out_of_range electricity_renewable). The fourth planted finding in configs/demo/data/README.md (training_hours_female) belongs to the social section and appears under Act 5. The count misleads whoever checks the agent's reply during RB-03.",
+      "fix": "Write 'The three planted environmental findings' (or 'three of the four planted findings; the fourth is social, see Act 5')."
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/INSTRUCTIONS.md",
+      "line": 33,
+      "issue": "The maintenance note sits inside the '## Instructions' section. The paste note at the top says to paste the text under 'Instructions' into Copilot Studio, so the note would be pasted into the agent prompt despite its '(not part of the agent instructions)' label.",
+      "fix": "Move the maintenance note above '## Instructions' (for example after the paste note) or under its own '## Maintenance' heading after the instructions."
+    },
+    {
+      "severity": "nit",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 13,
+      "issue": "Prompt lines are long single paragraphs that pack tools, values, citations and negative checks together; hard to tick off during a live run.",
+      "fix": "Optional: split each 'Correct answer contains:' into a short bullet list (tools, values, citations, must-not)."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R9", "satisfied": true, "evidence": "docs/demo/agent/INSTRUCTIONS.md names only existing tool constants (acceptance check 1 exit 0), uses output field names, includes RB-03 maintenance line; NARRATIVE_STYLE.md PENDIENTE resolved, example uses Demo Harbour Components with CSV-consistent values (1978/2030 MWh, 165/140 tCO2e, 490/520 MWh)"},
+    {"requirement": "R10", "satisfied": true, "evidence": "docs/demo/agent/DEMO_PROMPTS.md has Acts 1-5 and 13 'Correct answer contains' lines; cited ranges (G5, L2, L28, E62, D35, L15, G12, L3) match configs/demo/mappings-sandbox.example.yaml; item counts 25/16 match recipes (26 and 16 fields)"},
+    {"requirement": "Public repo hygiene", "satisfied": true, "evidence": "check_no_sandbox_ids.py ok over 566 files; only spreadsheet/sheet/document names already committed as placeholders in mappings-sandbox.example.yaml and RB-01 resources.md; no copied report sentences or section names; no secrets"},
+    {"requirement": "No weakened checks", "satisfied": true, "evidence": "docs-only diff; gofmt/vet/golangci-lint 0 issues in checks/T7-a1.log; no tests or lint config touched"}
+  ],
+  "new_tasks": []
+}

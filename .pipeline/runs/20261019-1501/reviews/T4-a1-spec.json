@@ -1,0 +1,40 @@
+{
+  "task_id": "T4",
+  "axis": "spec",
+  "implementation_commit": "73a180611cb3e01d04190dd628cc2f9d54942d19",
+  "attempt": 1,
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "major",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 330,
+      "issue": "R6 says mappings-demo.yaml maps every field to demo-esg- spreadsheet IDs, but the test only checks spreadsheet and sheet for the three energy_total names (the 'demo layout' block). For every other field it checks only that the name exists and that its range is D<row>. If a src_ field were mapped to demo-esg-report-cy (empty values) or to a non-demo spreadsheet, every test would still pass. The demo read would then return empty and only scenario 3's single field would notice.",
+      "fix": "In the per-field loop, for mappings-demo.yaml, assert that the ref for Source is on demo-esg-source/demo-esg-source-2025, Target on demo-esg-report/demo-esg-report-cy and Prior on demo-esg-report/demo-esg-report-py (which implies the demo-esg- prefix). Then drop or keep the three-name block."
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 104,
+      "issue": "R3 says every share is between 0 and 100%, but the percent-range check loops only over the 2025 rows. Shares in esg-2024.csv are never checked, even though the totals check covers both years.",
+      "fix": "Run the 0..100 check over both cur and prior."
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data.go",
+      "line": 35,
+      "issue": "Three //nolint:gosec comments were added (lines 35, 120, 156). No other Go file in internal/ or cmd/ uses nolint. The owner's standing rule forbids adding ignore comments to get checks green. This is outside the spec axis, so it is noted here for the standards reviewer.",
+      "fix": "Remove the nolint comments and satisfy gosec another way (for example filepath.Clean on the path, or a repo-level gosec exclusion if the owner approves one). Otherwise record it as an open question."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R2", "satisfied": true, "evidence": "TestRecipesMatchSchemaAndMappings: the two CSVs agree on key/label/unit/order (data_test.go:231-235); env >= 20 and soc >= 12 fields (data_test.go:262); recipe fields equal the CSV rows in order (data_test.go:309-316); every src/rpt description in the demo and example mappings equals the CSV label (data_test.go:279-281)"},
+    {"requirement": "R3", "satisfied": true, "evidence": "TestDataConsistency: totals equal the sum of parts in both years via big.Rat (data_test.go:72-101); shares 0..100 (2025 only, see minor finding); |change| <= 30 (data_test.go:156-158); non-planted change < 10 (data_test.go:190-203); sign changes would add a finding and break the exact-four assertion. The worker's mutation check (energy_total 2025 -> 1979) failed the test as expected"},
+    {"requirement": "R4", "satisfied": true, "evidence": "TestDataConsistency: findings computed as in L2 R5-R7 (percentage points for % units, material at >= materiality_pct, direction new skipped); exactly four findings asserted, missing/env, material_change/env, material_change/soc and out_of_range/env, on four distinct fields, each named in data/README.md (data_test.go:164-188)"},
+    {"requirement": "R5", "satisfied": true, "evidence": "data.go Recipe/RecipeField/VerbatimRef match the L2 schema keys; LoadRecipes uses KnownFields(true) and checks required keys. TestRecipesMatchSchemaAndMappings checks materiality_pct == 10, exactly one verbatim block per recipe, and that the file exists, is non-empty and has no leading '#' (data_test.go:256-303)"},
+    {"requirement": "R6", "satisfied": false, "evidence": "Partly proven: TestRecipesMatchSchemaAndMappings checks that every source/target/prior name exists in mappings-demo.yaml and mappings-sandbox.example.yaml and that demo ranges are D<row> (data_test.go:270-287). The demo-esg- spreadsheet/sheet is checked for only 3 of the field names (data_test.go:323-333), see major finding"},
+    {"requirement": "R7", "satisfied": true, "evidence": "TestDemoReadReturnsCSVValue: NL_DEMO_ESG_DATA set, mapping store plus bootstrap.LoadMappings, NewDemoClient(...).GetSheetDataTyped, DecimalText equals the exact CSV text for src_env_energy_total (2025) and rpt_env_energy_total_2024 (2024) (data_test.go:350-384)"},
+    {"requirement": "T4 interface (Row/LoadCSV, Recipe, Mappings/FieldRef/Field, DecimalText)", "satisfied": true, "evidence": "cmd/nl-demo-seed/data.go matches the planned signatures; TestDecimalText covers every listed case plus 'abc'; TestLoadCSVRejectsBadInput covers header, value and duplicate errors naming file:line"}
+  ],
+  "new_tasks": []
+}
