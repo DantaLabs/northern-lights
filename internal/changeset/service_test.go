@@ -3,14 +3,18 @@ package changeset
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/config"
 	"github.com/dantalabs/northern-lights/internal/demoenv"
+	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/mapping"
 	"github.com/dantalabs/northern-lights/internal/sqlitedb"
 	"github.com/dantalabs/northern-lights/internal/workiva"
@@ -203,5 +207,79 @@ func TestNewWithoutDependenciesFailsClosed(t *testing.T) {
 	}
 	if _, err := s.Confirm(context.Background(), "actor", "id", "token"); err == nil {
 		t.Fatal("Confirm succeeded")
+	}
+}
+
+func TestChangeSet_S4_DistinctConfirmationErrors(t *testing.T) {
+	s, f, items := fixture(t, 1)
+	p := stage(t, s, items)
+	ctx := context.Background()
+	check := func(actor, id, token string, context context.Context, want error) {
+		t.Helper()
+		if _, err := s.Confirm(context, actor, id, token); !errors.Is(err, want) {
+			t.Fatalf("got %v want %v", err, want)
+		}
+		if f.updates != 0 {
+			t.Fatal("rejected confirmation wrote")
+		}
+	}
+	check("analyst", p.ID, "wrong", ctx, ErrUnknownToken)
+	check("other", p.ID, p.Token, ctx, ErrForeignActor)
+	denied := identity.ContextWithPrincipal(ctx, identity.Principal{})
+	check("analyst", p.ID, p.Token, denied, ErrMissingPermission)
+	if _, err := s.consume(ctx, "analyst", p.ID, p.Token); err != nil {
+		t.Fatal(err)
+	}
+	check("analyst", p.ID, p.Token, ctx, ErrReusedToken)
+	p = stage(t, s, items)
+	if _, err := s.env.DB.Exec(`UPDATE change_set_pending SET expires_at=0 WHERE id=?`, p.ID); err != nil {
+		t.Fatal(err)
+	}
+	check("analyst", p.ID, p.Token, ctx, ErrExpiredToken)
+}
+
+func TestChangeSet_S5_MappingChangedBeforeConfirmation(t *testing.T) {
+	s, f, items := fixture(t, 2)
+	p := stage(t, s, items)
+	field, err := s.env.Store.GetField(context.Background(), items[1].FieldName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	field.CellRange = "B20"
+	if _, err := s.env.Store.UpsertField(context.Background(), *field); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Confirm(context.Background(), "analyst", p.ID, p.Token); !errors.Is(err, ErrMappingChanged) {
+		t.Fatalf("got %v", err)
+	}
+	if f.updates != 0 {
+		t.Fatal("changed mapping wrote")
+	}
+	if _, err := s.Confirm(context.Background(), "analyst", p.ID, p.Token); !errors.Is(err, ErrReusedToken) {
+		t.Fatal("token not consumed")
+	}
+}
+
+func TestChangeSet_ConcurrentConsumptionAndRestart(t *testing.T) {
+	s, _, items := fixture(t, 1)
+	p := stage(t, s, items)
+	restarted := New(s.env).(*service)
+	var winners atomic.Int32
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := restarted.consume(context.Background(), "analyst", p.ID, p.Token)
+			if err == nil {
+				winners.Add(1)
+			} else if !errors.Is(err, ErrReusedToken) {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if winners.Load() != 1 {
+		t.Fatalf("%d consumers", winners.Load())
 	}
 }
