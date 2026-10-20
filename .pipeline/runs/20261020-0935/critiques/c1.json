@@ -1,0 +1,90 @@
+{
+  "verdict": "revise",
+  "coverage": [
+    {"requirement": "R1", "tasks": ["T2"], "adequate": true, "note": "TestScenario1InvalidRecipeStopsStartup (unknown_key, missing_id, unknown_mapped_field) and TestScenario1ValidRecipeLoads fail without the loader. Nothing tests the default directory configs/demo/sections. A missing directory is treated as zero recipes and New succeeds; the spec does not decide this (see minor finding)."},
+    {"requirement": "R2", "tasks": ["T2"], "adequate": false, "note": "The unknown_key subtest does not say where the unknown key goes. yaml.v3 KnownFields is not passed through custom UnmarshalYAML or Node.Decode, so an unknown key inside a field or verbatim entry can slip through while the top-level test still passes."},
+    {"requirement": "R3", "tasks": ["T2"], "adequate": true, "note": "The unknown_mapped_field subtest uses a real mapping.Store. It fails without the GetField check."},
+    {"requirement": "R4", "tasks": ["T4", "T6"], "adequate": true, "note": "TestScenario2PrepareReadsUncachedThroughRouter counts GetSheetDataTyped calls and checks that GetCachedCells stays empty. Scenario 9 reads through workivaprovider.NewRouter(NewDemoClient)."},
+    {"requirement": "R5", "tasks": ["T1"], "adequate": true, "note": "TestScenario2FactArithmetic and TestScenario3NewDirectionWhenPriorZeroOrMissing pin Change, ChangePct prefix, Direction and Material. The float grep enforces no float64."},
+    {"requirement": "R6", "tasks": ["T1"], "adequate": false, "note": "The negative case (scenario 4) has an exact Display list. The positive change display is not pinned: the instruction says 'with sign', so an implementation may emit '+25.0 tCO2e', and L3's exact-token guard would then reject '25.0'. For % fields the plan replaces the absolute change with percentage points; the spec says 'also'."},
+    {"requirement": "R7", "tasks": ["T4", "T6"], "adequate": true, "note": "TestScenario5Findings asserts one finding of each kind per field and checks the label. Scenario 9 checks the three planted findings exactly."},
+    {"requirement": "R8", "tasks": ["T4", "T6"], "adequate": true, "note": "TestScenario6 checks 5 of 6 items, with target and source. Scenario 9 derives 25 items from esg-2025.csv. T4 is unclear on whether Value is the raw text or the canonical form (minor finding)."},
+    {"requirement": "R9", "tasks": ["T4"], "adequate": true, "note": "TestScenario7VerbatimByteForByteAndLatestFacts writes a file with \\r\\n and non-ASCII characters at test time and compares the bytes."},
+    {"requirement": "R10", "tasks": ["T3", "T4"], "adequate": true, "note": "T3 runs scenario 7, replace and reopen tests against SQLite and in-memory storage, with actor and section isolation. T4 checks LatestFacts after Prepare. The table is recipe_prepared. Returning (nil,nil,nil) on an empty store fits L3's 'Prepare the section first.' check."},
+    {"requirement": "R11", "tasks": ["T5", "T4"], "adequate": true, "note": "TestScenario8UnknownSectionListsSections checks every ID and title and that Prepare is not called. T4 also has TestPrepareUnknownSectionListsAvailable."},
+    {"requirement": "R12", "tasks": ["T5"], "adequate": false, "note": "next_step order and the summary are only tested against a fake recipe.Service. The summary is built locally in a format different from L1's Preview.Summary, which already exists on codex/demo-l1-change-set. No test runs the tool against the real Prepared output, so the output-schema limits are never exercised."},
+    {"requirement": "R13", "tasks": ["T2", "T5"], "adequate": true, "note": "TestScenario8SectionsSortedByID checks the sort order and all five SectionInfo fields. TestDocumentIDOverrideFromEnvironment covers demo mode, sandbox with the variable set, and sandbox with it unset."}
+  ],
+  "findings": [
+    {
+      "severity": "major",
+      "task_ids": ["T5", "T6"],
+      "claim": "Prepared (T4) mapped by the tool (T5) gives a valid workiva_prepare_section result, so testing the tool against a fake recipe.Service and Prepare without the tool is enough. The plan has no end-to-end first slice.",
+      "doubt": "The two halves only meet in production. prepareSectionOutputSchema (internal/mcpserver/tools/prepare_section.go) requires minLength 1 on change_set items' spreadsheet_id, sheet_id and range, on change_set_id and confirm_token, and on verbatim text. It also caps display at maxItems 16 and current at maxLength 64. T4's fakeChanges 'echoing the items' leaves SpreadsheetID, SheetID and Range empty. Scenario 9 calls recipe.Prepare directly, never through the tool. A schema violation on real Prepared output (empty preview item fields, an empty verbatim file, a long canonical value) would pass every acceptance command and only fail during the L4 scenario 5 or RB-03 demo run. T1 to T3 are horizontal layers, so the first time the slice runs end to end is T6.",
+      "fix": "In T6 (which already owns prepare_section_test.go), add TestScenario9PrepareSectionToolOnDemoData. It builds the real recipe.New from configs/demo plus a fake changes service whose PreviewItems carry SpreadsheetID, SheetID and Range from the mapping store and a non-empty ExpiresAt. It then calls workiva_prepare_section through serveDemoTools and asserts the result is not an error, with 3 findings, 25 items and a non-empty next_step. In T4, make fakeChanges fill those PreviewItem fields. In T2 or T4, reject an empty verbatim file at load, because the schema requires text minLength 1."
+    },
+    {
+      "severity": "major",
+      "task_ids": ["T1"],
+      "claim": "The display rules are pinned exactly enough for L3's number guard.",
+      "doubt": "The change display rule reads 'same formatting as values (with sign, e.g. \"-0.11 GWh\")'. 'No plus sign for positives' is stated only for the percent displays. L3's numberPattern `[+-]?[0-9]+...` keeps a leading '+' in the token. If T1 emits '+25.0 tCO2e', the token is '+25.0', and the draft 'rose by 25.0 tCO2e' is refused. The positive-change test only checks 'no extra unsigned entries' and does not pin the list, so this would pass acceptance.",
+      "fix": "State that the change display has no '+' for positive changes. In TestScenario4DisplayForms, assert the exact list for a positive case, for example Unit tCO2e, Decimals 1, Current \"165\", Prior \"140\" -> [\"165.0 tCO2e\", \"140.0 tCO2e\", \"25.0 tCO2e\", \"18%\", \"17.9%\"]. Also assert a flat case."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T5", "T6"],
+      "claim": "R12's summary can be built locally in a new format until L1 lands, and switching later is a follow-up.",
+      "doubt": "L1's branch (versions/nl-l1, internal/changeset/changeset.go and service.go) already adds Preview.Summary, with lines in the form `field: before -> after (awaiting_confirmation)` and \\r\\n escaped. T5 invents a different format (a header line plus '- field: before -> after (from source)'), and the follow-up is not recorded anywhere a later lane will see it.",
+      "fix": "In changeSetSummary, use L1's line format, including escaping line breaks in before and after. In T6, add to the L2 STATUS 'Blocked on' cell: 'switch summary to Preview.Summary when L1 merges'."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T2"],
+      "claim": "Decoder.KnownFields(true) rejects unknown keys at every level.",
+      "doubt": "yaml.v3 does not pass KnownFields through custom UnmarshalYAML or Node.Decode. A worker who adds UnmarshalYAML to fieldDef or verbatimDef (for example, to handle flow mappings or defaults) silently disables nested key checking. The single unknown_key subtest might only use a top-level key.",
+      "fix": "Add subtests unknown_field_key (for example `displayunit:` inside a field) and unknown_verbatim_key. Allow UnmarshalYAML only on the scalar decimal type."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T1", "T2", "T3", "T4", "T6"],
+      "claim": "The acceptance check `! grep -rnE 'float(32|64)|ParseFloat' internal/recipe` only flags float arithmetic.",
+      "doubt": "The grep also matches comments ('// no float64') and test code. T4 tells the worker to return an error for 'any other Go type (float64, bool, ...)'. A `case float64:` branch, or a test feeding float64(1.5), fails acceptance even though no float arithmetic exists, which causes needless retries.",
+      "fix": "In the lane rules, say that the grep also covers comments and tests. Handle non-json.Number and non-string types in a `default:` branch, and test that path with a bool value."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T4", "T6"],
+      "claim": "The change set item Value is defined precisely.",
+      "doubt": "T4 says 'current value text exactly as read (canonical decimal for numbers ...)'. The demo client returns json.Number(\"585.0\"), and 'exactly as read' is \"585.0\", but T6 expects the canonical \"585\". The two tasks can disagree, and T6 would then have to rework T4's code.",
+      "fix": "In T4, state Value = canonical decimal (\"585.0\" -> \"585\") for numeric cells and the raw string for text. Assert this in TestScenario6 with a value that has a trailing zero."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T2", "T3"],
+      "claim": "T2 and T3 can run in parallel because their owned files do not overlap.",
+      "doubt": "Both write _test.go files in package recipe, and both need SQLite test setup. Same-named helpers (for example openTestDB) or package-level fakes compile alone in each worktree but break the package build after merge.",
+      "fix": "Prefix each task's test helpers with its area (loadTest*, factStoreTest*), or make T3 depend on T2."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T2", "T4"],
+      "claim": "T4 can replace the Prepare and LatestFacts stubs without touching service_test.go.",
+      "doubt": "T2 owns service_test.go and is told that Prepare keeps returning errNotImplemented. If T2's tests assert that stub behaviour, T4 cannot edit the file, and its `go test ./internal/recipe/` acceptance fails.",
+      "fix": "Tell T2 not to assert Prepare or LatestFacts stub results, or add internal/recipe/service_test.go to T4's owns."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T1", "T2", "T4"],
+      "claim": "The percent-field rules (displays in percent, min and max in raw cell scale, change shown only in percentage points) follow from the spec.",
+      "doubt": "The spec does not say what scale min and max use for % fields. R6 says the change is 'also' given in percentage points, while the plan replaces the absolute change with it. No committed recipe has a % field, so the impact is low, but these are design decisions made in the plan.",
+      "fix": "Record both choices in the package comment, and add a recipe-load test that documents the min/max scale. Alternatively, interpret min and max for % fields in percent, to match what a recipe author would write."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T2"],
+      "claim": "A missing NL_DEMO_SECTIONS_DIR directory should load zero recipes silently.",
+      "doubt": "The L0 contract only covers an empty directory. With the default relative path or a typo in the variable, a deployed server starts with no recipes. The only sign is a tool-time error, which shows up in the middle of the demo.",
+      "fix": "Keep the success path for the L0 tests, but log the number of loaded recipes and the directory at startup from New. Never log the document ID."
+    }
+  ]
+}

@@ -1,0 +1,365 @@
+{
+  "spec": "docs/specs/demo-l2-section-recipe.md",
+  "assumptions": [
+    "Lane scope (owner): only internal/recipe/**, internal/mcpserver/tools/prepare_section.go and its test, plus the L2 row of docs/demo/STATUS.md. Therefore docs/architecture.md is not updated and no ADR is written in this run; the cross-task decisions (rounding, display order, percent handling, fact store table, document ID override, summary format) are pinned in the task instructions and PLAN.md instead. No new architecture decision is introduced beyond the spec.",
+    "Display rounding is half away from zero (math/big; equivalent to assurance.RoundHalfUp). The codebase has no display-rounding convention; assurance's half-even is used only for internal ratio comparisons.",
+    "Percent fields (unit \"%\") store fractions (configs/demo/README.md percent-cells-store-fractions: yes): facts and displays are in percent (x100, exact). Per R6 \"also\" the change is shown both as an absolute change in % and in percentage points; Material uses the pp change. Recipe min/max for % fields are in percent (what a recipe author writes); change set values stay in raw cell scale. No committed recipe has a % field, so this is covered by unit tests.",
+    "Unit \"number\" displays without a unit suffix (\"428\"); other units display with a space (\"18,100 m3\", \"165.0 tCO2e\") per docs/demo/agent/NARRATIVE_STYLE.md.",
+    "R12 'summary from L1': changeset.Preview on this branch has no Summary field; L1's branch adds Preview.Summary with lines `field: before -> after (awaiting_confirmation)` and escaped line breaks. The tool builds the same format locally from the Preview; the switch to Preview.Summary after L1 merges is recorded in the L2 STATUS row (T6).",
+    "NL_DEMO_DOCUMENT_ID (L4 request) is read with os.LookupEnv inside internal/recipe (config.go is L0-owned). Sandbox mode (Cfg non-nil, DemoMode false) with the variable set and non-blank overrides every recipe's document_id; unset/blank keeps the YAML value; demo mode and nil Cfg always keep the YAML value. The value is never logged or committed.",
+    "NL_DEMO_SECTIONS_DIR is read with os.Getenv in internal/recipe (default configs/demo/sections). A missing or empty directory loads zero recipes and New succeeds (L0 contract and flag-on tests); New logs `section recipes: loaded <n> from <dir>` so a wrong directory is visible at startup. Document IDs are never logged.",
+    "R4 'provider router without the cache' is the existing workivaprovider.Router.ReadUncached (typed json.Number reads, CacheBypassed). env.Client in main.go is a *Router; tests wrap a fake backend or the demo client in workivaprovider.NewRouter.",
+    "The fact store creates its own table recipe_prepared with CREATE TABLE IF NOT EXISTS at New time instead of a sqlitedb migration, because internal/sqlitedb is outside the lane. With a nil DB (L0 tests pass demoenv.Env{}) an in-memory adapter is used.",
+    "Prepare refuses a section with no source values at all (nothing to stage), because the L0 output schema requires a non-empty change_set_id and confirm_token.",
+    "Test-first is applied inside each task (scenario tests are written red before implementation) rather than as separate test-only tasks, to keep the plan at six tasks; every scenario 1-9 has a named Go test checked by `go test -list` in acceptance.",
+    "PLAN.md is written in the run folder next to plan.json (as the launching agent asked), not at the repository root, to stay inside the lane's files.",
+    "Workers run in task worktrees under .scratch/wt/; owns globs are exclusive except where a dependency path exists (T4 and T6 extend files from earlier tasks).",
+    "Display forms: the signed spec scenario 4 forms come first, followed for negative changes by unsigned magnitudes (\"0.11 GWh\", \"8%\", \"8.1%\"), because L3's number guard (internal/sectiontext/guards.go on codex/demo-l3-section-text) matches tokens exactly and NARRATIVE_STYLE.md writes \"fell 3%\". Resolved by the orchestrator; was a planner open question.",
+    "Critique c1 (major, end-to-end slice): T6 adds TestScenario9PrepareSectionToolOnDemoData, running real Prepared output on L4 data through the tool and its output schema; T4's fake preview items carry spreadsheet, sheet and range; empty verbatim files are rejected at load.",
+    "Critique c1 (major, positive change display): T1 pins no '+' sign and exact Display lists for positive and flat changes.",
+    "Critique c1 (T2/T3 parallel test files in one package): kept parallel; each task prefixes its test helpers (factsTest, loadTest, factStoreTest, prepareTest) so merged worktrees compile. T4 also owns service_test.go, and T2 must not assert the Prepare/LatestFacts stubs.",
+    "Critique c1 (float grep): kept strict over comments and tests by design; the lane rules tell workers not to write those identifiers and to use a `default:` branch for unsupported value types (tested with a bool cell)."
+  ],
+  "open_questions": [],
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Compute narrative facts and display forms with exact decimals",
+      "kind": "feature",
+      "covers": [
+        "R5",
+        "R6"
+      ],
+      "tier_hint": "code",
+      "owns": [
+        "internal/recipe/facts.go",
+        "internal/recipe/facts_test.go"
+      ],
+      "reads": [
+        "internal/recipe/types.go",
+        "internal/assurance/decimal.go",
+        "internal/assurance/types.go",
+        "docs/demo/agent/NARRATIVE_STYLE.md",
+        "configs/demo/README.md"
+      ],
+      "depends_on": [],
+      "instructions": "Goal: pure decimal module that turns one field's current and prior values into a narrative fact (R5, R6). No I/O. File: internal/recipe/facts.go, tests in internal/recipe/facts_test.go.\n\nInterface to implement (package recipe, unexported):\n\n```go\n// factInput is one field's values in its stored unit, as canonical decimal text.\ntype factInput struct {\n    Key, Label, Unit string\n    DisplayUnit      string // \"\" means Unit\n    Decimals         int    // 0..6\n    Current          string // decimal text as read from the cell, required\n    Prior            string // decimal text, \"\" when the prior value is missing\n    MaterialityPct   string // decimal text, e.g. \"10\"\n}\nfunc computeFact(in factInput) (Fact, error)\n// unitShift returns n such that a value in `from` equals value * 1000^n in `to`.\n// Families: Wh, kWh, MWh, GWh and t, kt. to==\"\" or to==from gives 0. Any other pair is an error.\nfunc unitShift(from, to string) (int, error)\n// roundHalfAway rounds decimal text to places decimals, half away from zero, and returns\n// fixed-point text with exactly `places` decimals (\"-0\" never appears: a result that rounds to zero is unsigned).\nfunc roundHalfAway(value string, places int) (string, error)\n// groupThousands inserts commas in the integer part: \"18400.5\" -> \"18,400.5\", \"-1240000\" -> \"-1,240,000\".\nfunc groupThousands(fixed string) string\n```\n\nRules (pin these exactly; L3's number guard depends on them):\n- Canonical strings (Fact.Current, Prior, Change, ChangePct) use the canonical form of assurance.ParseDecimal output (no trailing zeros, e.g. \"585\" for \"585.0\"). Current/Prior/Change stay in the stored Unit (not converted).\n- Percent fields (Unit == \"%\"): the stored cell value is a fraction (configs/demo/README.md `percent-cells-store-fractions: yes`). Multiply Current and Prior by 100 exactly before anything else; Fact.Current/Prior are percent (\"0.46\" -> \"46\"); Change is the percentage-point difference.\n- Direction: \"new\" when Prior is \"\" or zero; else \"up\"/\"down\"/\"flat\" by the sign of Change. When \"new\": Change = \"\", ChangePct = \"\", Material = false.\n- Change = Current - Prior. ChangePct = DivideDecimal(Change*100, |Prior|, RoundHalfUp) in canonical form (38-place precision, e.g. \"-8.148148148...\"). Dividing by |Prior| keeps the sign of ChangePct equal to the direction.\n- Material = |ChangePct| >= MaterialityPct, compared on the full-precision value; for \"%\" fields Material = |Change in percentage points| >= MaterialityPct.\n- The package comment must record the percent-field choices: stored fractions are scaled x100; the change is shown both as an absolute change in % and in percentage points; Material uses percentage points; recipe min/max for % fields are written in percent (applied in T4).\n- Rounding: half away from zero everywhere (documented in a package comment: the codebase has no display-rounding convention; assurance validation uses half-even for ratio comparisons, which is not a display rule).\n- Value display: convert from Unit to DisplayUnit with unitShift (exact power-of-1000 shift), roundHalfAway to Decimals, groupThousands, then suffix: \" \" + (DisplayUnit or Unit); no suffix when Unit is \"number\"; \"%\" attached with no space when Unit is \"%\".\n- Display order (exact): [current, prior (only when Prior != \"\"), change, percent rounded to 0 dp, percent rounded to 1 dp]. change, pct0 and pct1 appear only when Direction != \"new\". Change display: same formatting as values, with \"-\" for negative changes and NO \"+\" for positive changes (\"-0.11 GWh\", \"25.0 tCO2e\"). For \"%\" fields (R6 \"also\"): keep the absolute change display in the value format (\"8%\") AND insert right after it the percentage-point form \"<pp> percentage points\" (pp rounded to Decimals, \"-\" only for negatives, e.g. \"8 percentage points\", \"-8 percentage points\"; \"percentage point\" when the rounded magnitude is exactly 1); skip any form that exactly duplicates an earlier entry. Percent displays: roundHalfAway(ChangePct, 0) + \"%\" and roundHalfAway(ChangePct, 1) + \"%\", signed for negatives (\"-8%\", \"-8.1%\"), no plus sign for positives (\"18%\", \"17.9%\"). Unsigned magnitudes (orchestrator decision, because L3's number guard matches tokens exactly and NARRATIVE_STYLE.md writes \"fell 3%\"): when Change is negative, append after the five forms the magnitude of the change display and of each percent display, in the same order (e.g. \"0.11 GWh\", \"8%\", \"8.1%\"; for \"%\" fields \"8 percentage points\"), skipping any that would duplicate an existing entry.\n- Invalid decimal text, Decimals outside 0..6 or a bad unit pair returns an error naming the field key.\n\nTests first (write them red, then implement), in internal/recipe/facts_test.go:\n- TestScenario2FactArithmetic: Unit kWh, Current \"1240000\", Prior \"1350000\", MaterialityPct \"10\" -> Change \"-110000\", ChangePct has prefix \"-8.148148\", Direction \"down\", Material false.\n- TestScenario3NewDirectionWhenPriorZeroOrMissing: Prior \"\" and Prior \"0\" -> Direction \"new\", ChangePct \"\", Change \"\", Material false; Display has no percent forms.\n- TestScenario4DisplayForms: Unit kWh, DisplayUnit GWh, Decimals 2, same values -> Display == [\"1.24 GWh\", \"1.35 GWh\", \"-0.11 GWh\", \"-8%\", \"-8.1%\", \"0.11 GWh\", \"8%\", \"8.1%\"] exactly (the first five are the spec scenario 4 forms; the rest are the unsigned magnitudes). A positive change has no unsigned extras and its exact list is pinned: Unit tCO2e, Decimals 1, Current \"165\", Prior \"140\" gives [\"165.0 tCO2e\", \"140.0 tCO2e\", \"25.0 tCO2e\", \"18%\", \"17.9%\"] (no \"+\" anywhere). A flat case: Unit m3, Decimals 0, Current \"100\", Prior \"100\" gives Direction \"flat\" and Display [\"100 m3\", \"100 m3\", \"0 m3\", \"0%\", \"0.0%\"].\n- TestPercentFieldsUsePercentAndPercentagePoints: Unit \"%\", Decimals 0, Current \"0.46\", Prior \"0.38\", MaterialityPct \"10\" -> Current \"46\", Prior \"38\", Change \"8\", Display == [\"46%\", \"38%\", \"8%\", \"8 percentage points\", \"21%\", \"21.1%\"] exactly; Material false (8 pp < 10); and Current \"0.50\", Prior \"0.38\" -> Material true (12 pp).\n- Name any test helper in facts_test.go with the prefix factsTest (T2, T3 and T4 write tests in the same package in parallel worktrees).\n- TestDisplayRoundingHalfAwayFromZero: roundHalfAway(\"2.5\",0)==\"3\", (\"-2.5\",0)==\"-3\", (\"0.125\",2)==\"0.13\", (\"-0.004\",2)==\"0.00\", (\"165\",1)==\"165.0\"; groupThousands(\"18400\")==\"18,400\", (\"-4050.0\")==\"-4,050.0\"; a fact with Unit m3, Decimals 0, Current \"18100\" displays \"18,100 m3\".\n\nLane rules (all tasks): you are lane L2 of the KPMG demo. Read AGENTS.md, CONTEXT.md and docs/specs/demo-l2-section-recipe.md first. Edit ONLY the files listed in this task's owns. Never edit cmd/workiva-mcp/main.go, internal/mcpserver/registry.go, internal/changeset/**, internal/demoenv/**, internal/config/**, internal/workiva/**, configs/demo/**, internal/assurance/** (read only) or any doc. The L0 definitions in internal/recipe/types.go (Finding, Fact, VerbatimBlock, Prepared, SectionInfo, Service, FactStore) and the signature `func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)` in internal/recipe/service.go must not change; adding new declarations is fine. Vocabulary (CONTEXT.md): section recipe, field, change set, finding, narrative fact, verbatim block, report document, section. No float32/float64/strconv.ParseFloat anywhere under internal/recipe (tests included) or in internal/mcpserver/tools/prepare_section*.go (the acceptance grep matches comments and test code too, so do not write those identifiers at all; reject unsupported Go value types in a `default:` switch branch): all arithmetic uses math/big or the read-only helpers in internal/assurance/decimal.go (ParseDecimal, AddDecimal, SubtractDecimal, AbsoluteDecimal, CompareDecimal, DivideDecimal with RoundHalfUp). L1 (changeset) has not merged: never depend on the real changeset.New; tests use a fake changeset.Service. Tests that use environment variables use t.Setenv and must not call t.Parallel. Name acceptance-scenario tests exactly as given so they are traceable. Before finishing run: gofmt -l internal/recipe internal/mcpserver/tools (must print nothing), go vet ./internal/recipe/ ./internal/mcpserver/tools/, and the acceptance commands below.",
+      "acceptance": [
+        "go test -list '^TestScenario2FactArithmetic$' ./internal/recipe/ | grep -qx 'TestScenario2FactArithmetic'",
+        "go test -list '^TestScenario3NewDirectionWhenPriorZeroOrMissing$' ./internal/recipe/ | grep -qx 'TestScenario3NewDirectionWhenPriorZeroOrMissing'",
+        "go test -list '^TestScenario4DisplayForms$' ./internal/recipe/ | grep -qx 'TestScenario4DisplayForms'",
+        "go test -list '^TestPercentFieldsUsePercentAndPercentagePoints$' ./internal/recipe/ | grep -qx 'TestPercentFieldsUsePercentAndPercentagePoints'",
+        "go test -list '^TestDisplayRoundingHalfAwayFromZero$' ./internal/recipe/ | grep -qx 'TestDisplayRoundingHalfAwayFromZero'",
+        "go test -race -count=1 -run '^(TestScenario2FactArithmetic|TestScenario3NewDirectionWhenPriorZeroOrMissing|TestScenario4DisplayForms|TestPercentFieldsUsePercentAndPercentagePoints|TestDisplayRoundingHalfAwayFromZero)$' ./internal/recipe/",
+        "go vet ./internal/recipe/",
+        "! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'",
+        "test -z \"$(gofmt -l internal/recipe internal/mcpserver/tools)\""
+      ],
+      "status": "pending",
+      "attempts": 0,
+      "base_commit": null,
+      "route": {
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "sonnet",
+        "source": "hint",
+        "decision_id": "abb9ab6e10af",
+        "risky": false,
+        "flags": [],
+        "environment": "local",
+        "router": "planner-hint"
+      }
+    },
+    {
+      "id": "T2",
+      "title": "Load and validate section recipes, list sections, override document ID",
+      "kind": "feature",
+      "covers": [
+        "R1",
+        "R2",
+        "R3",
+        "R13"
+      ],
+      "tier_hint": "code",
+      "owns": [
+        "internal/recipe/recipe.go",
+        "internal/recipe/recipe_test.go",
+        "internal/recipe/service.go",
+        "internal/recipe/service_test.go",
+        "internal/recipe/testdata/load/**"
+      ],
+      "reads": [
+        "internal/recipe/types.go",
+        "internal/recipe/facts.go",
+        "configs/demo/sections/**",
+        "configs/demo/mappings-demo.yaml",
+        "internal/mapping/store.go",
+        "internal/bootstrap/bootstrap.go",
+        "internal/config/config.go",
+        "internal/identity/principal.go",
+        "cmd/workiva-mcp/main.go",
+        "cmd/workiva-mcp/demo_pipeline_test.go",
+        "internal/mcpserver/tools/prepare_section_test.go",
+        "docs/demo/STATUS.md"
+      ],
+      "depends_on": [
+        "T1"
+      ],
+      "instructions": "Goal: load and validate section recipes at startup, expose Sections(), and apply the NL_DEMO_DOCUMENT_ID override (R1, R2, R3, R13). Prepare stays a not-implemented stub in this task (T4 fills it) and the FactStore stays the existing stub (T4 wires T3's store).\n\nFiles: internal/recipe/recipe.go (schema + loader), internal/recipe/recipe_test.go, internal/recipe/service.go (replace stub bodies, keep the New signature and its doc comment contract), internal/recipe/service_test.go (replace the L0 stub test TestNewStubSucceedsAndReturnsNotImplemented, which asserts the stub), fixtures under internal/recipe/testdata/load/**.\n\nRecipe schema (spec section \"Interfaces and data\"; real examples in configs/demo/sections/*.yaml, read them):\n```go\ntype recipeDef struct {\n    ID, Title, Period, PriorPeriod, DocumentID string\n    MaterialityPct string     // decimal text\n    Fields   []fieldDef\n    Verbatim []verbatimDef\n    dir      string           // absolute sections directory, for verbatim files\n    file     string           // base file name, for messages\n}\ntype fieldDef struct {\n    Key, Label, Unit, DisplayUnit string\n    Decimals int\n    Source, Target, Prior string // Prior \"\" when absent\n    Required bool\n    Min, Max string              // decimal text, \"\" when absent\n}\ntype verbatimDef struct{ ID, Title, File string }\n// loadRecipes reads every *.yaml file (not recursive, not .yml) in dir, sorted by name.\nfunc loadRecipes(ctx context.Context, dir string, fields fieldLookup) ([]recipeDef, error)\ntype fieldLookup interface{ GetField(ctx context.Context, name string) (*mapping.Field, error) } // *mapping.Store satisfies it\n```\nYAML keys: id, title, period, prior_period, document_id, materiality_pct, fields (key, label, unit, display_unit, decimals, source, target, prior, required, min, max), verbatim (id, title, file). Decode with gopkg.in/yaml.v3 Decoder.KnownFields(true) so unknown keys at any level are rejected (see internal/config/config.go for the pattern). Decode numbers (materiality_pct, min, max) through yaml.Node scalar text (a small type with UnmarshalYAML(*yaml.Node)), never via float. That scalar decimal type is the ONLY type allowed to implement UnmarshalYAML: yaml.v3 does not pass KnownFields through custom unmarshalers, so recipeDef, fieldDef and verbatimDef must decode as plain structs (yaml tags only); validate with assurance.ParseDecimal. Note verbatim entries may use YAML flow mappings ({ id: ..., file: ... }).\n\nValidation (each failure returns an error formatted `section recipe <file name>: <reason>`, reason naming the key/field):\n- id, title, period, prior_period, document_id, materiality_pct required; materiality_pct >= 0; at least one field; duplicate recipe id across files is an error naming both files.\n- each field: key, label, unit, source, target required; keys unique; decimals 0..6 (default 0); display_unit, when set, must be accepted by unitShift(unit, display_unit) (from T1's facts.go); min/max valid decimals.\n- R3: source, target and prior (when set) must exist in the mapping store (GetField returns nil -> \"unknown mapped field <name>\").\n- verbatim: id, title, file required; file is relative to the sections directory, must not be absolute or escape it (no \"..\"), and must exist as a regular, non-empty file (the tool output schema requires verbatim text of at least 1 character).\n- min/max of a \"%\" field are written in percent by the recipe author (min: 50 means 50%); T4 compares them against the percent-scaled value. Document this on fieldDef.\n\nNew(env, changes) behaviour (service.go):\n- Sections directory: os.Getenv(\"NL_DEMO_SECTIONS_DIR\"), default \"configs/demo/sections\". A missing directory or an empty one loads zero recipes and succeeds (L0 contract: L0 tests call New(demoenv.Env{}, nil) with an empty temp dir or none; cmd/workiva-mcp tests set NL_DEMO_SECTIONS_DIR to an empty t.TempDir()). A path that exists but is not a directory is an error.\n- If recipes exist and env.Store is nil: error \"mapping store is not available\".\n- Store lookups at load use a storage context: when env.Cfg != nil and env.Cfg.AuthMode == config.AuthModeEntra, identity.ContextWithPrincipal(context.Background(), identity.Principal{TenantID: env.Cfg.EntraTenantID}); otherwise context.Background() (mirrors storageContextForConfig in cmd/workiva-mcp/main.go).\n- Document ID override (L4 request in docs/demo/STATUS.md): when env.Cfg != nil && !env.Cfg.DemoMode (sandbox) and os.LookupEnv(\"NL_DEMO_DOCUMENT_ID\") is set and non-blank, every recipe's DocumentID becomes that value; when the variable is unset or blank in sandbox mode, the YAML value is kept; in demo mode (Cfg.DemoMode true) or with nil Cfg the YAML value is always kept. Never log the ID value. Document this in a comment on New.\n- After loading, New logs one line with the standard log package: `section recipes: loaded <n> from <dir>` (n may be 0, so a missing or mistyped directory is visible at startup). Never log document IDs.\n- The service struct keeps recipes by ID plus env.Store, env.Client, changes and the storage context so T4 can use them. Sections() returns []SectionInfo{ID, Title, Period, PriorPeriod, DocumentID} for every recipe sorted by ID (len 0 when none). Prepare keeps returning errNotImplemented; LatestFacts keeps the stub. Do NOT assert Prepare or LatestFacts stub results in any test (T4 replaces them).\n\nTests first, using a real mapping store (db via sqlitedb.Open(filepath.Join(t.TempDir(), \"t.db\")), store via mapping.NewWithDB(db), fields via bootstrap.LoadMappings from a testdata/load mappings YAML) and a recipe directory built from testdata/load (copy files into a t.TempDir() per case where needed):\n- Name every test helper and fixture builder in your test files with the prefix loadTest (T1, T3 and T4 add tests to the same package in parallel worktrees).\n- TestScenario1InvalidRecipeStopsStartup with subtests unknown_key (top level), unknown_field_key (e.g. `displayunit:` inside a field), unknown_verbatim_key (inside a verbatim entry, flow-mapping style), missing_id, unknown_mapped_field, empty_verbatim_file: New returns an error containing the file name and the reason (the unknown key name / \"id\" / the field name).\n- TestScenario1ValidRecipeLoads: a valid recipe loads; Sections() shows it.\n- TestScenario8SectionsSortedByID: two recipes (ids b-\u2026, a-\u2026) -> Sections() sorted by ID with all five SectionInfo fields.\n- TestDocumentIDOverrideFromEnvironment with subtests demo_mode_keeps_yaml, sandbox_uses_env, sandbox_unset_keeps_yaml.\n- TestNewSucceedsWithoutRecipes: New(demoenv.Env{}, nil) succeeds with NL_DEMO_SECTIONS_DIR set to an empty temp dir and to a missing path.\n\nLane rules (all tasks): you are lane L2 of the KPMG demo. Read AGENTS.md, CONTEXT.md and docs/specs/demo-l2-section-recipe.md first. Edit ONLY the files listed in this task's owns. Never edit cmd/workiva-mcp/main.go, internal/mcpserver/registry.go, internal/changeset/**, internal/demoenv/**, internal/config/**, internal/workiva/**, configs/demo/**, internal/assurance/** (read only) or any doc. The L0 definitions in internal/recipe/types.go (Finding, Fact, VerbatimBlock, Prepared, SectionInfo, Service, FactStore) and the signature `func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)` in internal/recipe/service.go must not change; adding new declarations is fine. Vocabulary (CONTEXT.md): section recipe, field, change set, finding, narrative fact, verbatim block, report document, section. No float32/float64/strconv.ParseFloat anywhere under internal/recipe (tests included) or in internal/mcpserver/tools/prepare_section*.go (the acceptance grep matches comments and test code too, so do not write those identifiers at all; reject unsupported Go value types in a `default:` switch branch): all arithmetic uses math/big or the read-only helpers in internal/assurance/decimal.go (ParseDecimal, AddDecimal, SubtractDecimal, AbsoluteDecimal, CompareDecimal, DivideDecimal with RoundHalfUp). L1 (changeset) has not merged: never depend on the real changeset.New; tests use a fake changeset.Service. Tests that use environment variables use t.Setenv and must not call t.Parallel. Name acceptance-scenario tests exactly as given so they are traceable. Before finishing run: gofmt -l internal/recipe internal/mcpserver/tools (must print nothing), go vet ./internal/recipe/ ./internal/mcpserver/tools/, and the acceptance commands below.",
+      "acceptance": [
+        "go test -list '^TestScenario1InvalidRecipeStopsStartup$' ./internal/recipe/ | grep -qx 'TestScenario1InvalidRecipeStopsStartup'",
+        "go test -list '^TestScenario1ValidRecipeLoads$' ./internal/recipe/ | grep -qx 'TestScenario1ValidRecipeLoads'",
+        "go test -list '^TestScenario8SectionsSortedByID$' ./internal/recipe/ | grep -qx 'TestScenario8SectionsSortedByID'",
+        "go test -list '^TestDocumentIDOverrideFromEnvironment$' ./internal/recipe/ | grep -qx 'TestDocumentIDOverrideFromEnvironment'",
+        "go test -list '^TestNewSucceedsWithoutRecipes$' ./internal/recipe/ | grep -qx 'TestNewSucceedsWithoutRecipes'",
+        "go test -race -count=1 -run '^(TestScenario1InvalidRecipeStopsStartup|TestScenario1ValidRecipeLoads|TestScenario8SectionsSortedByID|TestDocumentIDOverrideFromEnvironment|TestNewSucceedsWithoutRecipes)$' ./internal/recipe/",
+        "go test -race -count=1 -run '^TestDemoPipeline' ./cmd/workiva-mcp/",
+        "go vet ./internal/recipe/",
+        "! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'",
+        "test -z \"$(gofmt -l internal/recipe internal/mcpserver/tools)\""
+      ],
+      "status": "pending",
+      "attempts": 0,
+      "base_commit": null,
+      "route": {
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "source": "hint",
+        "decision_id": "6b952f0600fd",
+        "risky": true,
+        "flags": [
+          "risky"
+        ],
+        "environment": "local",
+        "router": "planner-hint"
+      }
+    },
+    {
+      "id": "T3",
+      "title": "Store narrative facts per actor and section in SQLite",
+      "kind": "feature",
+      "covers": [
+        "R10"
+      ],
+      "tier_hint": "code",
+      "owns": [
+        "internal/recipe/factstore.go",
+        "internal/recipe/factstore_test.go"
+      ],
+      "reads": [
+        "internal/recipe/types.go",
+        "internal/sqlitedb/connection.go",
+        "internal/identity/principal.go",
+        "internal/mapping/store.go"
+      ],
+      "depends_on": [],
+      "instructions": "Goal: the FactStore (R10): store the narrative facts and verbatim blocks per tenant, actor and section, replacing the previous set, and read them back with LatestFacts so L3 can check drafted text.\n\nFiles: internal/recipe/factstore.go, internal/recipe/factstore_test.go. Do not edit service.go (T4 wires the store into New).\n\nInterface to implement:\n```go\n// factRecorder is the FactStore plus the write side Prepare uses.\ntype factRecorder interface {\n    FactStore\n    replaceFacts(ctx context.Context, actor, sectionID string, facts []Fact, blocks []VerbatimBlock) error\n}\n// newFactStore returns a SQLite-backed store when db is non-nil and an in-memory store when db is nil\n// (L0 tests call recipe.New with a zero demoenv.Env).\nfunc newFactStore(db *sql.DB) (factRecorder, error)\n```\n- SQLite: newFactStore runs `CREATE TABLE IF NOT EXISTS recipe_prepared (tenant_id TEXT NOT NULL, actor TEXT NOT NULL, section_id TEXT NOT NULL, facts_json TEXT NOT NULL, verbatim_json TEXT NOT NULL, prepared_at TEXT NOT NULL, PRIMARY KEY (tenant_id, actor, section_id))` (tables must be prefixed recipe_; do not touch internal/sqlitedb migrations). replaceFacts upserts one row (INSERT ... ON CONFLICT DO UPDATE); facts and blocks are JSON-encoded. The shared DB handle has one connection (sqlitedb.Open sets SetMaxOpenConns(1)): close rows before issuing another statement and never hold a transaction across calls.\n- Tenant: identity.StorageTenant(ctx) for both adapters, so tenants never see each other's facts.\n- In-memory adapter: map keyed by tenant/actor/section guarded by a sync.Mutex; store and return copies (callers must not be able to mutate stored slices).\n- LatestFacts with nothing stored returns (nil, nil, nil). Text round-trips byte for byte (JSON keeps valid UTF-8 exactly).\n\nName every test helper in factstore_test.go with the prefix factStoreTest (T1, T2 and T4 add tests to the same package in parallel worktrees).\n\nTests first (run each against both adapters as subtests \"sqlite\" and \"memory\"; sqlite db via sqlitedb.Open(filepath.Join(t.TempDir(), \"facts.db\"))):\n- TestScenario7LatestFactsPerActorAndSection: store facts and a verbatim block containing \"Line one\\r\\nLigne deux: \u00e9missions \u2014 18 400 m\u00b3\\n\" for actor \"analyst-a\", section \"esg-environmental\"; LatestFacts for the same actor and section returns equal facts and blocks (reflect.DeepEqual, text byte-equal); actor \"analyst-b\" gets nothing; another section gets nothing.\n- TestFactStoreReplacesPreviousSet: a second replaceFacts for the same key replaces (not appends) the earlier set.\n- TestFactStoreSQLiteSurvivesReopen: a second newFactStore on the same db reads the stored set (table creation is idempotent).\n\nLane rules (all tasks): you are lane L2 of the KPMG demo. Read AGENTS.md, CONTEXT.md and docs/specs/demo-l2-section-recipe.md first. Edit ONLY the files listed in this task's owns. Never edit cmd/workiva-mcp/main.go, internal/mcpserver/registry.go, internal/changeset/**, internal/demoenv/**, internal/config/**, internal/workiva/**, configs/demo/**, internal/assurance/** (read only) or any doc. The L0 definitions in internal/recipe/types.go (Finding, Fact, VerbatimBlock, Prepared, SectionInfo, Service, FactStore) and the signature `func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)` in internal/recipe/service.go must not change; adding new declarations is fine. Vocabulary (CONTEXT.md): section recipe, field, change set, finding, narrative fact, verbatim block, report document, section. No float32/float64/strconv.ParseFloat anywhere under internal/recipe (tests included) or in internal/mcpserver/tools/prepare_section*.go (the acceptance grep matches comments and test code too, so do not write those identifiers at all; reject unsupported Go value types in a `default:` switch branch): all arithmetic uses math/big or the read-only helpers in internal/assurance/decimal.go (ParseDecimal, AddDecimal, SubtractDecimal, AbsoluteDecimal, CompareDecimal, DivideDecimal with RoundHalfUp). L1 (changeset) has not merged: never depend on the real changeset.New; tests use a fake changeset.Service. Tests that use environment variables use t.Setenv and must not call t.Parallel. Name acceptance-scenario tests exactly as given so they are traceable. Before finishing run: gofmt -l internal/recipe internal/mcpserver/tools (must print nothing), go vet ./internal/recipe/ ./internal/mcpserver/tools/, and the acceptance commands below.",
+      "acceptance": [
+        "go test -list '^TestScenario7LatestFactsPerActorAndSection$' ./internal/recipe/ | grep -qx 'TestScenario7LatestFactsPerActorAndSection'",
+        "go test -list '^TestFactStoreReplacesPreviousSet$' ./internal/recipe/ | grep -qx 'TestFactStoreReplacesPreviousSet'",
+        "go test -list '^TestFactStoreSQLiteSurvivesReopen$' ./internal/recipe/ | grep -qx 'TestFactStoreSQLiteSurvivesReopen'",
+        "go test -race -count=1 -run '^(TestScenario7LatestFactsPerActorAndSection|TestFactStoreReplacesPreviousSet|TestFactStoreSQLiteSurvivesReopen)$' ./internal/recipe/",
+        "go vet ./internal/recipe/",
+        "! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'",
+        "test -z \"$(gofmt -l internal/recipe internal/mcpserver/tools)\""
+      ],
+      "status": "pending",
+      "attempts": 0,
+      "base_commit": null,
+      "route": {
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "source": "hint",
+        "decision_id": "c51931de0bcb",
+        "risky": true,
+        "flags": [
+          "risky"
+        ],
+        "environment": "local",
+        "router": "planner-hint"
+      }
+    },
+    {
+      "id": "T4",
+      "title": "Prepare a section: read, find, stage change set, store facts",
+      "kind": "feature",
+      "covers": [
+        "R4",
+        "R7",
+        "R8",
+        "R9",
+        "R10"
+      ],
+      "tier_hint": "code",
+      "owns": [
+        "internal/recipe/prepare.go",
+        "internal/recipe/prepare_test.go",
+        "internal/recipe/service.go",
+        "internal/recipe/testdata/prepare/**",
+        "internal/recipe/service_test.go"
+      ],
+      "reads": [
+        "internal/recipe/**",
+        "internal/changeset/changeset.go",
+        "internal/workivaprovider/router.go",
+        "internal/assurance/snapshot.go",
+        "internal/assurance/decimal.go",
+        "internal/mapping/store.go",
+        "internal/bootstrap/bootstrap.go",
+        "internal/workiva/sheets.go"
+      ],
+      "depends_on": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "instructions": "Goal: implement Service.Prepare end to end inside internal/recipe (R4, R7, R8, R9, R10) and wire T3's fact store into New.\n\nFiles: internal/recipe/prepare.go, internal/recipe/prepare_test.go, internal/recipe/service.go (replace the Prepare stub and the stub FactStore; keep New's signature), internal/recipe/service_test.go (only if a T2 test there conflicts with the real Prepare), fixtures under internal/recipe/testdata/prepare/**. You may add declarations to internal/recipe/types.go but must not change L0's. Use computeFact/unitShift/roundHalfAway (facts.go, T1), recipeDef/fieldDef (recipe.go, T2), newFactStore/factRecorder (factstore.go, T3).\n\nWiring in New: facts, err := newFactStore(env.DB); New returns the service and that store as the FactStore. Reader: if env.Client implements `cellReader` use it; *workivaprovider.Router (what main.go passes) does. If env.Client is nil or does not implement it, Prepare returns an error \"Workiva client is not available\" (New still succeeds).\n```go\n// cellReader is the uncached read seam; *workivaprovider.Router satisfies it.\ntype cellReader interface {\n    ReadUncached(ctx context.Context, req assurance.SourceRequest) (assurance.ProviderRead, error)\n}\n```\nPrepare(ctx, actor, sectionID):\n1. Unknown sectionID -> error `unknown section ID \"<id>\"; available sections: <id> (<title>), ...` sorted by ID, or `...; no section recipes are loaded` when none.\n2. For each field in recipe order: resolve source and prior (when set) with store.GetField(ctx, name) (nil -> error naming the field); read each with reader.ReadUncached(ctx, assurance.SourceRequest{ExternalResourceID: f.SpreadsheetID, SubresourceID: f.SheetID, Locator: f.CellRange, Consistency: assurance.ConsistencyNone}) (R4: provider router, cache bypassed; never call the mapping cache). Take Value.CalculatedValue when Value.Formula != \"\", else Value.Value. Normalise: nil or blank string -> empty; json.Number or a string that assurance.ParseDecimal accepts -> numeric; other strings -> text; every other Go type goes to the `default:` branch of the type switch and returns an error naming the field (no float conversion, no float identifiers).\n3. Facts: computeFact for every field whose current value is numeric (prior numeric or empty; text prior counts as missing). Materiality from the recipe.\n4. Findings, appended per field in recipe order, Field = the field label, Message one sentence ending with \".\" that starts with the label:\n   - missing (Severity \"high\"): required and current empty.\n   - out_of_range (Severity \"high\"): numeric current < min or > max. For \"%\" fields min/max are in percent, so compare the percent-scaled value (raw x100, i.e. fact.Current); for other fields compare the stored value.\n   - material_change (Severity \"medium\"): fact.Material.\n   - sign_change (Severity \"medium\"): current and prior both non-zero numeric with opposite signs (such a field usually also gets material_change; that is expected).\n5. Change set (R8): one changeset.Item{FieldName: target, Value: for numeric cells the canonical decimal of the raw cell value (json.Number \"585.0\" becomes \"585\"; raw cell scale, no percent scaling), for text cells the raw string, Source: source field name} per field with a non-empty current value, in recipe order. If there is no item, return error `section \"<id>\" has no source values to stage`. If changes is nil return an error \"change set service is not available\". preview, err := changes.Stage(ctx, actor, items); on error return it wrapped and store nothing.\n6. Verbatim (R9): for each verbatim entry os.ReadFile(filepath.Join(dir, file)) and return the text byte for byte as VerbatimBlock{ID, Title, Text}; invalid UTF-8 is an error naming the file.\n7. R10: after a successful Stage, facts.replaceFacts(ctx, actor, sectionID, facts, blocks).\n8. Return Prepared{SectionID, Findings, Facts, Verbatim, ChangeSet: preview}; Findings, Facts and Verbatim are non-nil (empty slices when none).\n\nTests first, through the public New + Service + FactStore interface. Build env with db := sqlitedb.Open(temp file), store := mapping.NewWithDB(db), mappings loaded with bootstrap.LoadMappings from testdata/prepare/mappings.yaml, Client: workivaprovider.NewRouter(fakeBackend) where fakeBackend implements workivaprovider.Backend plus GetSheetDataTyped returning one cell per range with json.Number/\"\"/nil values from a map and counts calls, Cfg: &config.Config{DemoMode: true}. Use a recording fake changeset.Service named prepareTestChanges (T6 reuses it; name all other helpers with the prefix prepareTest) whose Stage records items and returns a Preview with non-empty ID and Token, a non-zero ExpiresAt, and one PreviewItem per item with FieldName, After=Value, Source, and SpreadsheetID, SheetID and Range resolved from the mapping store (store.GetField on the target), so the preview satisfies the tool's output schema (minLength 1). Name the tests:\n- TestScenario2PrepareReadsUncachedThroughRouter: 1240000 vs 1350000 kWh -> fact as in scenario 2; every read went through GetSheetDataTyped (ReadUncached path) and store.GetCachedCells for the spreadsheet stays empty.\n- TestScenario5Findings: a required empty field -> one missing; a value below min -> one out_of_range; a \"%\" field with min 50 and raw cell 0.46 -> one out_of_range (min in percent); a 25% increase -> one material_change; a positive-to-negative change -> one sign_change; assert per field the count of each expected kind is 1 and the message contains the label.\n- TestScenario6StagesOneItemPerSourceValue: six fields, five with values and one empty -> Stage called once with five items whose FieldName is the target and Source the source field name; one source cell is json.Number(\"585.0\") and its item Value is \"585\".\n- TestPrepareRejectsUnsupportedCellType: a source cell holding a bool returns an error naming the field.\n- TestScenario7VerbatimByteForByteAndLatestFacts: write the sections dir in t.TempDir() at test time (so git cannot normalise bytes) with a verbatim file containing \"\\r\\n\" line breaks and non-ASCII characters; Prepared.Verbatim[0].Text equals the file bytes; facts.LatestFacts for the same actor and section returns the facts and blocks; another actor gets nothing.\n- TestPrepareUnknownSectionListsAvailable.\n\nLane rules (all tasks): you are lane L2 of the KPMG demo. Read AGENTS.md, CONTEXT.md and docs/specs/demo-l2-section-recipe.md first. Edit ONLY the files listed in this task's owns. Never edit cmd/workiva-mcp/main.go, internal/mcpserver/registry.go, internal/changeset/**, internal/demoenv/**, internal/config/**, internal/workiva/**, configs/demo/**, internal/assurance/** (read only) or any doc. The L0 definitions in internal/recipe/types.go (Finding, Fact, VerbatimBlock, Prepared, SectionInfo, Service, FactStore) and the signature `func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)` in internal/recipe/service.go must not change; adding new declarations is fine. Vocabulary (CONTEXT.md): section recipe, field, change set, finding, narrative fact, verbatim block, report document, section. No float32/float64/strconv.ParseFloat anywhere under internal/recipe (tests included) or in internal/mcpserver/tools/prepare_section*.go (the acceptance grep matches comments and test code too, so do not write those identifiers at all; reject unsupported Go value types in a `default:` switch branch): all arithmetic uses math/big or the read-only helpers in internal/assurance/decimal.go (ParseDecimal, AddDecimal, SubtractDecimal, AbsoluteDecimal, CompareDecimal, DivideDecimal with RoundHalfUp). L1 (changeset) has not merged: never depend on the real changeset.New; tests use a fake changeset.Service. Tests that use environment variables use t.Setenv and must not call t.Parallel. Name acceptance-scenario tests exactly as given so they are traceable. Before finishing run: gofmt -l internal/recipe internal/mcpserver/tools (must print nothing), go vet ./internal/recipe/ ./internal/mcpserver/tools/, and the acceptance commands below.\n\nCritique c2 (minor): do not edit internal/recipe/types.go. The scenario 7 test copies its recipe YAML from internal/recipe/testdata/ (add it there) and generates only the verbatim file (CRLF + non-ASCII) at test time.",
+      "acceptance": [
+        "go test -list '^TestScenario2PrepareReadsUncachedThroughRouter$' ./internal/recipe/ | grep -qx 'TestScenario2PrepareReadsUncachedThroughRouter'",
+        "go test -list '^TestScenario5Findings$' ./internal/recipe/ | grep -qx 'TestScenario5Findings'",
+        "go test -list '^TestScenario6StagesOneItemPerSourceValue$' ./internal/recipe/ | grep -qx 'TestScenario6StagesOneItemPerSourceValue'",
+        "go test -list '^TestScenario7VerbatimByteForByteAndLatestFacts$' ./internal/recipe/ | grep -qx 'TestScenario7VerbatimByteForByteAndLatestFacts'",
+        "go test -list '^TestPrepareUnknownSectionListsAvailable$' ./internal/recipe/ | grep -qx 'TestPrepareUnknownSectionListsAvailable'",
+        "go test -list '^TestPrepareRejectsUnsupportedCellType$' ./internal/recipe/ | grep -qx 'TestPrepareRejectsUnsupportedCellType'",
+        "go test -race -count=1 -run '^(TestScenario2PrepareReadsUncachedThroughRouter|TestScenario5Findings|TestScenario6StagesOneItemPerSourceValue|TestScenario7VerbatimByteForByteAndLatestFacts|TestPrepareUnknownSectionListsAvailable|TestPrepareRejectsUnsupportedCellType)$' ./internal/recipe/",
+        "go test -race -count=1 ./internal/recipe/",
+        "go vet ./internal/recipe/",
+        "! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'",
+        "test -z \"$(gofmt -l internal/recipe internal/mcpserver/tools)\"",
+        "git diff --quiet $(git merge-base HEAD origin/claude/demo-integration) -- internal/recipe/types.go"
+      ],
+      "status": "pending",
+      "attempts": 0,
+      "base_commit": null,
+      "route": {
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "source": "hint",
+        "decision_id": "b3da09baabc2",
+        "risky": true,
+        "flags": [
+          "risky"
+        ],
+        "environment": "local",
+        "router": "planner-hint"
+      }
+    },
+    {
+      "id": "T5",
+      "title": "Serve workiva_prepare_section with summary and next step",
+      "kind": "feature",
+      "covers": [
+        "R11",
+        "R12",
+        "R13"
+      ],
+      "tier_hint": "code",
+      "owns": [
+        "internal/mcpserver/tools/prepare_section.go",
+        "internal/mcpserver/tools/prepare_section_test.go"
+      ],
+      "reads": [
+        "internal/mcpserver/tools/demo.go",
+        "internal/mcpserver/tools/demo_test.go",
+        "internal/mcpserver/tools/test_helpers_test.go",
+        "internal/mcpserver/tools/helpers.go",
+        "internal/mcpserver/tools/update_field.go",
+        "internal/mcpserver/server.go",
+        "internal/recipe/types.go",
+        "internal/changeset/changeset.go"
+      ],
+      "depends_on": [],
+      "instructions": "Goal: replace the workiva_prepare_section tool stub with the real handler (R11, R12, R13 listing in the error). File: internal/mcpserver/tools/prepare_section.go and internal/mcpserver/tools/prepare_section_test.go (delete the L0 stub test TestPrepareSectionStubNotImplementedYet; it asserts the stub). Keep the tool name, description intent, input schema and the output struct shape; you may correct output schema descriptions (current/prior/change/change_pct carry canonical decimal strings; display carries the approved display forms). Do not edit demo.go, helpers.go, registry.go or other tools.\n\nHandler:\n1. Keep `requireDemoDep(deps.Recipes != nil, \"Recipes\")` first (internal/mcpserver/tools/demo_test.go relies on it).\n2. actor := mcpserver.ActorFromContextOrRequest(ctx, req, deps.ActorHeader) (see update_field.go).\n3. R11: if input.SectionID is not in deps.Recipes.Sections(), return failMsg(`unknown section ID \"<id>\"`, \"available sections: <id> (<title>), <id> (<title>)\") listing every section in Sections() order, or hint \"no section recipes are loaded; check NL_DEMO_SECTIONS_DIR\" when empty.\n4. prepared, err := deps.Recipes.Prepare(ctx, actor, sectionID); on error return fail(err, \"fix the reported problem and call workiva_prepare_section again\").\n5. Map Prepared to prepareSectionOutput: findings, facts (Key, Label, Unit, Current, Prior, Change, ChangePct, Direction, Material, Display), verbatim, change_set {change_set_id: Preview.ID, confirm_token: Preview.Token, expires_at: Preview.ExpiresAt.UTC().Format(time.RFC3339), items}. All arrays are non-nil ([] not null) because the output schema requires arrays.\n6. R12 summary: changeset.Preview on this branch has no Summary field (L1 adds Preview.Summary but has not merged), so build it here in L1's exact format: one line per preview item, `<FieldName>: <Before> -> <After> (awaiting_confirmation)`, lines joined with \"\\n\", no header, and carriage returns and line feeds inside field, before and after escaped as the two-character text sequences backslash-r and backslash-n (L1 uses strings.NewReplacer(\"\\r\", \"\\\\r\", \"\\n\", \"\\\\n\")). Put this in `changeSetSummary(p changeset.Preview) string` with a comment that it mirrors L1's summaryLine and should be replaced by Preview.Summary when L1 merges.\n7. next_step, exactly: \"Show the analyst the findings first, then the change set summary. Ask for approval, and after the analyst approves call workiva_confirm_change_set with change_set_id and confirm_token.\"\n\nTests first, using a fake recipe.Service (canned Sections() and Prepared, records actor and section) and serveDemoTools/newTestEnv from the package test helpers (see demo_test.go and test_helpers_test.go):\n- TestScenario8UnknownSectionListsSections: unknown id -> IsError result whose text contains every ID and title from Sections(); Prepare not called.\n- TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep: the structured output contains the findings, facts (with display forms), verbatim text, change_set id/token/items, a summary equal to the exact L1-format lines (include one item whose After contains a line break and assert it is escaped), and next_step mentioning in order \"findings\", \"summary\", \"approval\", \"workiva_confirm_change_set\".\n- TestPrepareSectionRequiresRecipes: deps.Recipes nil -> \"Recipes is not available\" error.\n\nLane rules (all tasks): you are lane L2 of the KPMG demo. Read AGENTS.md, CONTEXT.md and docs/specs/demo-l2-section-recipe.md first. Edit ONLY the files listed in this task's owns. Never edit cmd/workiva-mcp/main.go, internal/mcpserver/registry.go, internal/changeset/**, internal/demoenv/**, internal/config/**, internal/workiva/**, configs/demo/**, internal/assurance/** (read only) or any doc. The L0 definitions in internal/recipe/types.go (Finding, Fact, VerbatimBlock, Prepared, SectionInfo, Service, FactStore) and the signature `func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)` in internal/recipe/service.go must not change; adding new declarations is fine. Vocabulary (CONTEXT.md): section recipe, field, change set, finding, narrative fact, verbatim block, report document, section. No float32/float64/strconv.ParseFloat anywhere under internal/recipe (tests included) or in internal/mcpserver/tools/prepare_section*.go (the acceptance grep matches comments and test code too, so do not write those identifiers at all; reject unsupported Go value types in a `default:` switch branch): all arithmetic uses math/big or the read-only helpers in internal/assurance/decimal.go (ParseDecimal, AddDecimal, SubtractDecimal, AbsoluteDecimal, CompareDecimal, DivideDecimal with RoundHalfUp). L1 (changeset) has not merged: never depend on the real changeset.New; tests use a fake changeset.Service. Tests that use environment variables use t.Setenv and must not call t.Parallel. Name acceptance-scenario tests exactly as given so they are traceable. Before finishing run: gofmt -l internal/recipe internal/mcpserver/tools (must print nothing), go vet ./internal/recipe/ ./internal/mcpserver/tools/, and the acceptance commands below.",
+      "acceptance": [
+        "go test -list '^TestScenario8UnknownSectionListsSections$' ./internal/mcpserver/tools/ | grep -qx 'TestScenario8UnknownSectionListsSections'",
+        "go test -list '^TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep$' ./internal/mcpserver/tools/ | grep -qx 'TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep'",
+        "go test -list '^TestPrepareSectionRequiresRecipes$' ./internal/mcpserver/tools/ | grep -qx 'TestPrepareSectionRequiresRecipes'",
+        "go test -race -count=1 -run '^(TestScenario8UnknownSectionListsSections|TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep|TestPrepareSectionRequiresRecipes)$' ./internal/mcpserver/tools/",
+        "go test -race -count=1 -run '^TestDemo' ./internal/mcpserver/tools/",
+        "! go test -list '^TestPrepareSectionStubNotImplementedYet$' ./internal/mcpserver/tools/ | grep -q TestPrepareSectionStubNotImplementedYet",
+        "! grep -nE 'float(32|64)|ParseFloat|notImplementedYet' internal/mcpserver/tools/prepare_section.go",
+        "go vet ./internal/mcpserver/tools/",
+        "test -z \"$(gofmt -l internal/recipe internal/mcpserver/tools)\""
+      ],
+      "status": "pending",
+      "attempts": 0,
+      "base_commit": null,
+      "route": {
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "source": "hint",
+        "decision_id": "a62bd65c5dba",
+        "risky": true,
+        "flags": [
+          "risky"
+        ],
+        "environment": "local",
+        "router": "planner-hint"
+      }
+    },
+    {
+      "id": "T6",
+      "title": "Prove scenario 9 on L4 demo data, run full suite, update STATUS",
+      "kind": "test",
+      "covers": [
+        "R4",
+        "R8"
+      ],
+      "tier_hint": "code",
+      "owns": [
+        "internal/recipe/demo_scenario_test.go",
+        "internal/recipe/*.go",
+        "internal/mcpserver/tools/prepare_section.go",
+        "internal/mcpserver/tools/prepare_section_test.go",
+        "docs/demo/STATUS.md"
+      ],
+      "reads": [
+        "configs/demo/**",
+        "internal/workiva/demo_client.go",
+        "internal/workiva/demo_esg.go",
+        "internal/workivaprovider/router.go",
+        "internal/bootstrap/bootstrap.go",
+        "internal/recipe/**"
+      ],
+      "depends_on": [
+        "T4",
+        "T5"
+      ],
+      "instructions": "Goal: prove scenario 9 against L4's real demo data and recipes in demo mode, then run the full suite and lint, then update the L2 STATUS row (R4, R8).\n\nFile: internal/recipe/demo_scenario_test.go. Use the committed configs/demo files, never copies: absolute paths from filepath.Abs(\"../../configs/demo/...\").\nTestScenario9DemoModeEnvironmentalSection:\n- t.Setenv(\"NL_DEMO_ESG_DATA\", abs configs/demo/data) and t.Setenv(\"NL_DEMO_SECTIONS_DIR\", abs configs/demo/sections).\n- db := sqlitedb.Open(temp file); store := mapping.NewWithDB(db); bootstrap.LoadMappings(ctx, abs configs/demo/mappings-demo.yaml, store).\n- base, _ := url.Parse(\"https://demo.invalid\"); client := workiva.NewDemoClient(base); env := demoenv.Env{DB: db, Store: store, Client: workivaprovider.NewRouter(client), Cfg: &config.Config{DemoMode: true}}.\n- New(env, fakeChanges) (reuse the recording fake from prepare_test.go) succeeds and loads both recipes; Prepare(ctx, \"analyst\", \"esg-environmental\").\n- Findings are exactly the three planted environmental findings in configs/demo/data/README.md: missing for \"Water discharge from undertaking production processes (m\u00b3)\", material_change for \"6. Business Travel\", out_of_range for \"Electricity (as reflected in utility billings) - Renewable\" (compare kind and Field label; no other findings, because the README states every other change is below 10% and no sign changes).\n- Stage was called once with one item per environmental field that has a 2025 value: derive the expected set from configs/demo/data/esg-2025.csv rows whose key matches an esg-environmental recipe field key and whose value is non-empty (25 items); each item FieldName rpt_env_<key>_2025, Source src_env_<key>, Value equal to the CSV value in canonical decimal form.\n- The energy_total fact displays \"1.98 GWh\" and \"2.03 GWh\" (sanity check of unit conversion on real data).\nTestScenario9PrepareSectionToolOnDemoData in internal/mcpserver/tools/prepare_section_test.go (end-to-end slice through the tool and its output schema): same env vars and files; build a mapping store with configs/demo/mappings-demo.yaml, the router over workiva.NewDemoClient, recipe.New with a fake changeset.Service defined in that test file whose PreviewItems carry SpreadsheetID, SheetID and Range from the mapping store and a non-zero ExpiresAt; put the store, router, Recipes and Facts in the deps from newTestEnv and call workiva_prepare_section with section_id \"esg-environmental\" through serveDemoTools. Assert the result is not an error (so the structured output passed the output schema), with 3 findings, 25 change_set items, a 25-line summary and a non-empty next_step.\n\nIf either test exposes a defect in internal/recipe or prepare_section.go, fix it there (minimal change, keep earlier tests green). If the defect is in another lane's file (for example internal/workiva/demo_esg.go), do not edit it: add one line under \"Requests to other lanes\" in docs/demo/STATUS.md and skip nothing.\n\nThen run the full suite with `go test ./... -race -timeout 40m` (internal/assurance alone takes about 620 s under -race; do not change any timeout in the repository) and the lint command from .pipeline/config.json. Fix only failures caused by this lane's files.\n\nFinally edit ONLY the L2 row of the table in docs/demo/STATUS.md: Status \"ready for review\", Branch `claude/demo-l2-section-recipe`, Last commit (short SHA of your final commit's parent is fine), Blocked on \"L1 changeset.Service (tests use a fake); switch summary to Preview.Summary when L1 merges\". Mention in the status cell that NL_DEMO_DOCUMENT_ID overrides the recipe document ID in sandbox mode (answers L4's request). Do not edit any other row or section except an added request line if needed.\n\nLane rules (all tasks): you are lane L2 of the KPMG demo. Read AGENTS.md, CONTEXT.md and docs/specs/demo-l2-section-recipe.md first. Edit ONLY the files listed in this task's owns. Never edit cmd/workiva-mcp/main.go, internal/mcpserver/registry.go, internal/changeset/**, internal/demoenv/**, internal/config/**, internal/workiva/**, configs/demo/**, internal/assurance/** (read only) or any doc. The L0 definitions in internal/recipe/types.go (Finding, Fact, VerbatimBlock, Prepared, SectionInfo, Service, FactStore) and the signature `func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)` in internal/recipe/service.go must not change; adding new declarations is fine. Vocabulary (CONTEXT.md): section recipe, field, change set, finding, narrative fact, verbatim block, report document, section. No float32/float64/strconv.ParseFloat anywhere under internal/recipe (tests included) or in internal/mcpserver/tools/prepare_section*.go (the acceptance grep matches comments and test code too, so do not write those identifiers at all; reject unsupported Go value types in a `default:` switch branch): all arithmetic uses math/big or the read-only helpers in internal/assurance/decimal.go (ParseDecimal, AddDecimal, SubtractDecimal, AbsoluteDecimal, CompareDecimal, DivideDecimal with RoundHalfUp). L1 (changeset) has not merged: never depend on the real changeset.New; tests use a fake changeset.Service. Tests that use environment variables use t.Setenv and must not call t.Parallel. Name acceptance-scenario tests exactly as given so they are traceable. Before finishing run: gofmt -l internal/recipe internal/mcpserver/tools (must print nothing), go vet ./internal/recipe/ ./internal/mcpserver/tools/, and the acceptance commands below.\n\nCritique c2 (minor): do not edit internal/recipe/types.go. The tool-level scenario 9 test lives in internal/mcpserver/tools/, so its paths are ../../../configs/demo/...; assert that at least one mapped field (e.g. src_env_energy_total) loaded, so a wrong path cannot pass silently. Add a test that with NL_DEMO_DOCUMENT_ID set (t.Setenv) and demo mode on, the committed esg-environmental recipe still reports DocumentID \"demo-doc-annual-report\" in Sections(). Exception to the lane rule \"never edit any doc\": this task edits ONLY the L2 row of docs/demo/STATUS.md and removes the handled \"L4 -> L2\" request line there.",
+      "acceptance": [
+        "go test -list '^TestScenario9PrepareSectionToolOnDemoData$' ./internal/mcpserver/tools/ | grep -qx 'TestScenario9PrepareSectionToolOnDemoData'",
+        "go test -race -count=1 -run '^TestScenario9PrepareSectionToolOnDemoData$' ./internal/mcpserver/tools/",
+        "go test -list '^TestScenario9DemoModeEnvironmentalSection$' ./internal/recipe/ | grep -qx 'TestScenario9DemoModeEnvironmentalSection'",
+        "go test -race -count=1 -run '^(TestScenario9DemoModeEnvironmentalSection)$' ./internal/recipe/",
+        "for n in 1 2 3 4 5 6 7 8 9; do (go test -list '^TestScenario'$n ./internal/recipe/ ./internal/mcpserver/tools/ | grep -q '^TestScenario'$n) || exit 1; done",
+        "go build ./...",
+        "go test ./... -race -timeout 40m",
+        "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+        "! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'",
+        "grep -E '^\\| L2 Section recipe' docs/demo/STATUS.md | grep -q 'ready for review'",
+        "git diff --name-only 48269d9ee2ab52f64d4277931374fd7a4d7f3c76 -- . ':!internal/recipe' ':!internal/mcpserver/tools/prepare_section.go' ':!internal/mcpserver/tools/prepare_section_test.go' ':!docs/demo/STATUS.md' ':!.pipeline' ':!PLAN.md' | (! grep -q .)",
+        "git diff --quiet $(git merge-base HEAD origin/claude/demo-integration) -- internal/recipe/types.go"
+      ],
+      "status": "pending",
+      "attempts": 0,
+      "base_commit": null,
+      "route": {
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "source": "hint",
+        "decision_id": "269088f93d40",
+        "risky": true,
+        "flags": [
+          "risky"
+        ],
+        "environment": "local",
+        "router": "planner-hint"
+      }
+    }
+  ]
+}

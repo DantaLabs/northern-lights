@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "run_id": "20261020-0935",
+  "spec": "docs/specs/demo-l2-section-recipe.md",
+  "branch": "claude/demo-l2-section-recipe",
+  "status": "running",
+  "round": 0,
+  "checkpoint": null,
+  "active_tasks": [],
+  "run_base_commit": "48269d9ee2ab52f64d4277931374fd7a4d7f3c76"
+}
