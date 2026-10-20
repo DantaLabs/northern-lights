@@ -1,0 +1,11 @@
+region: eu
+spreadsheets:
+  - id: "load-src"
+    name: "Load source"
+    sheets:
+      - id: "load-src-1"
+        name: "Source"
+        fields:
+          - { name: load_src_energy, range: "D2", field_type: number, description: "energy source" }
+          - { name: load_tgt_energy_2025, range: "D3", field_type: number, description: "energy target" }
+          - { name: load_tgt_energy_2024, range: "D4", field_type: number, description: "energy prior" }
