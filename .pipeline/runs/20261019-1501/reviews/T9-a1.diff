@@ -1,0 +1,224 @@
+diff --git a/.pipeline/runs/20261019-1501/reports/T9-a1.md b/.pipeline/runs/20261019-1501/reports/T9-a1.md
+new file mode 100644
+index 0000000..711ff68
+--- /dev/null
++++ b/.pipeline/runs/20261019-1501/reports/T9-a1.md
+@@ -0,0 +1,22 @@
++# T9 attempt 1 report (redacted)
++
++Status: done. Branch `task/20261019-1501-T9-a1`, base d7b4612. Committed SHA: see the branch head (single commit "T9: ...").
++
++## What changed
++- `configs/demo/make_sandbox_mappings.py` (new): generates the git-ignored real mapping file from the example; prints counts only; refuses a non-ignored output path.
++- `configs/demo/README.md`: `## Running the seed`, `## Seed run 2026-10-19`, updated `## Live write semantics` and generator description.
++- `docs/demo/STATUS.md`: L4 row and four request lines (L4 -> L2, two L4 -> L0, one L4 -> L5).
++- `configs/demo/mappings-sandbox.yaml` generated locally (8 distinct placeholders replaced), git-ignored via `configs/demo/.gitignore`, not committed.
++
++## Live run
++- Pre-check (read-only, throwaway code, since deleted): the report document has 16 sections; none matches a recipe title (names kept in .scratch only). No stop condition, so `-reset` was allowed.
++- Dry run: 84 writes, 42 clears, 2 section deletes; no IDs in the output (exit 0).
++- Live run: exit 0. `read-back: 126 ok, 0 mismatch`; `done: elapsed 99.7s`. Both section deletes found nothing to delete.
++- No code fix was needed; no seed code or tests changed.
++- Elapsed is above the one-minute target (rate limiter pacing).
++
++## Leak checks
++- Real IDs extracted from the two local files into .scratch/l4-seed/ids.txt (51 IDs); `grep -lFf` over the .scratch outputs printed nothing; no bearer/secret/token/client_id/32-hex text in the dry-run or seed output.
++
++## Commands and exit codes
++All 11 acceptance commands exit 0 (generator --help, ignore checks, no placeholders, README sections, read-back lines, no evidence files, output leak scan, STATUS row and requests, `go test ./cmd/nl-demo-seed/ -race -count=1`, `check_no_sandbox_ids.py`: ok, 631 files). Also: gofmt -l empty, go vet ./... exit 0, `go build -o /dev/null ./cmd/nl-demo-seed` exit 0, 32-hex grep over committed files finds nothing. golangci-lint was not run separately (no Go code changed).
+diff --git a/configs/demo/README.md b/configs/demo/README.md
+index 4281e10..53534b0 100644
+--- a/configs/demo/README.md
++++ b/configs/demo/README.md
+@@ -83,8 +83,35 @@ Probed on the scratch spreadsheet `Testing MCP` with `WriteCells`, then cleared.
+ clear-value: empty-string
+ percent-cells-store-fractions: yes
+ 
+-Not verified: writes into the empty block of the report sheets and into the template cells (only the scratch sheet was written).
++Verified in the live seed run of 2026-10-19 (see below): writes into the empty block of the report sheets and into the template cells, and clearing with an empty string, all read back as expected (126 cells, 0 mismatch). No percent cell is mapped, so `percent-cells-store-fractions` is still unconfirmed on a literal percent cell.
+ 
+ ## Generate the real mapping file
+ 
+-Copy `mappings-sandbox.example.yaml` to `mappings-sandbox.yaml` and replace the placeholders: `<id-NN>` from `resources.local.md` (or `step-3.local.json`) in the RB-01 evidence folder (`docs/demo/evidence/2026-10-19-RB-01/`) on Tom's machine, and `<document-id>` from `step-2.local.json` in the RB-02 folder. Then run the ID check against those two local files.
++`make_sandbox_mappings.py` maps each `<id-NN>` in the example to the real ID at the same position in `step-3.json` (placeholders, in the RB-01 evidence folder) and in `step-3.local.json` (real IDs, on Tom's machine), and takes `<document-id>` from the document list in `step-2.local.json` of the RB-02 folder. It refuses to write unless the output path is git-ignored and prints only counts.
++
++## Running the seed
++
++```
++python3 -I configs/demo/make_sandbox_mappings.py \
++  --example configs/demo/mappings-sandbox.example.yaml \
++  --placeholders docs/demo/evidence/2026-10-19-RB-01/step-3.json \
++  --real <RB-01 step-3.local.json> --document <RB-02 step-2.local.json> \
++  --out configs/demo/mappings-sandbox.yaml
++python3 -I configs/demo/check_no_sandbox_ids.py <RB-01 step-3.local.json> <RB-02 step-2.local.json>
++go run ./cmd/nl-demo-seed -dry-run -reset -mappings configs/demo/mappings-sandbox.yaml
++# live run, with NL_WORKIVA_CLIENT_ID, NL_WORKIVA_CLIENT_SECRET and NL_REGION loaded in a subshell:
++go run ./cmd/nl-demo-seed -reset -mappings configs/demo/mappings-sandbox.yaml
++```
++
++The dry run needs no network or credentials. A live run ends with `read-back: N ok, 0 mismatch` and `done: elapsed ...`.
++
++## Seed run 2026-10-19
++
++- Base commit d7b4612 (branch `task/20261019-1501-T9-a1`).
++- Commands: the four above; the dry run printed no IDs.
++- Planned and applied with `-reset`: 84 writes, 42 clears, 2 section deletes (the two deletes found nothing to delete).
++- Before the live run the report document's sections were listed read-only: does any match a recipe title? no.
++- `read-back: 126 ok, 0 mismatch`
++- `done: elapsed 99.7s` (above the one-minute target; the rate limiter paces the calls).
++- Bounded fixes to the seed code: none.
++- Deferred: acceptance scenario 5 (needs lane L2's `workiva_prepare_section`) and scenario 6 (Tom's RB-03).
+diff --git a/configs/demo/make_sandbox_mappings.py b/configs/demo/make_sandbox_mappings.py
+new file mode 100644
+index 0000000..9cfbc07
+--- /dev/null
++++ b/configs/demo/make_sandbox_mappings.py
+@@ -0,0 +1,126 @@
++#!/usr/bin/env python3
++"""Generate the real, git-ignored sandbox mapping file from the committed example.
++
++Usage (from the repository root):
++    python3 -I configs/demo/make_sandbox_mappings.py \
++        --example configs/demo/mappings-sandbox.example.yaml \
++        --placeholders docs/demo/evidence/2026-10-19-RB-01/step-3.json \
++        --real STEP3_LOCAL_JSON --document STEP2_LOCAL_JSON \
++        --out configs/demo/mappings-sandbox.yaml
++
++Each <id-NN> in the example is mapped to the real ID found at the same position
++in the placeholder JSON and in the local JSON with real IDs. <document-id> comes
++from the report document named "2025 Annual Report - EN" in the document list.
++Only counts are printed, never IDs. Exit codes: 0 ok, 1 failure.
++"""
++import argparse
++import json
++import re
++import subprocess
++import sys
++
++PLACEHOLDER_RE = re.compile(r"<id-\d{2}>")
++ANY_PLACEHOLDER_RE = re.compile(r"<(?:id-\d+|document-id)>")
++DOC_NAME = "2025 Annual Report - EN"
++
++
++def load(path):
++    with open(path, encoding="utf-8") as fh:
++        return json.load(fh)
++
++
++def maybe_json(text):
++    if text[:1] in "{[":
++        try:
++            return json.loads(text)
++        except ValueError:
++            return None
++    return None
++
++
++def pair(ph, real, out):
++    """Walk the two documents in parallel and record placeholder -> real ID."""
++    if isinstance(ph, dict) and isinstance(real, dict):
++        for key, value in ph.items():
++            if key in real:
++                pair(value, real[key], out)
++    elif isinstance(ph, list) and isinstance(real, list):
++        for a, b in zip(ph, real):
++            pair(a, b, out)
++    elif isinstance(ph, str) and isinstance(real, str):
++        inner_ph, inner_real = maybe_json(ph), maybe_json(real)
++        if inner_ph is not None and inner_real is not None:
++            pair(inner_ph, inner_real, out)
++            return
++        if not PLACEHOLDER_RE.search(ph):
++            return
++        parts = PLACEHOLDER_RE.split(ph)
++        names = PLACEHOLDER_RE.findall(ph)
++        regex = "^" + "(.+?)".join(re.escape(p) for p in parts) + "$"
++        match = re.match(regex, real)
++        if not match:
++            raise SystemExit("placeholder and real files differ in shape")
++        for name, value in zip(names, match.groups()):
++            if out.setdefault(name, value) != value:
++                raise SystemExit("placeholder maps to two different real values")
++
++
++def find_document(node):
++    if isinstance(node, dict):
++        if node.get("name") == DOC_NAME and isinstance(node.get("id"), str):
++            return node["id"]
++        for value in node.values():
++            found = find_document(value)
++            if found:
++                return found
++    elif isinstance(node, list):
++        for value in node:
++            found = find_document(value)
++            if found:
++                return found
++    return None
++
++
++def main():
++    ap = argparse.ArgumentParser(description="Generate the git-ignored sandbox mapping file with real IDs.")
++    ap.add_argument("--example", required=True)
++    ap.add_argument("--placeholders", required=True)
++    ap.add_argument("--real", required=True)
++    ap.add_argument("--document", required=True)
++    ap.add_argument("--out", required=True)
++    args = ap.parse_args()
++
++    ignored = subprocess.run(["git", "check-ignore", "-q", args.out]).returncode == 0
++    if not ignored:
++        print("refusing to write: output path is not git-ignored", file=sys.stderr)
++        return 1
++
++    mapping = {}
++    pair(load(args.placeholders), load(args.real), mapping)
++    doc_id = find_document(load(args.document))
++    if not doc_id:
++        print("report document not found in the document list", file=sys.stderr)
++        return 1
++    mapping["<document-id>"] = doc_id
++
++    with open(args.example, encoding="utf-8") as fh:
++        lines = [ln for ln in fh.read().splitlines(keepends=True) if not ln.lstrip().startswith("#")]
++    text = "# Generated by make_sandbox_mappings.py. Real IDs: git-ignored, never commit.\n" + "".join(lines)
++    unknown = {p for p in ANY_PLACEHOLDER_RE.findall(text) if p not in mapping}
++    if unknown:
++        print("example has %d placeholder(s) with no real ID" % len(unknown), file=sys.stderr)
++        return 1
++    used = set(ANY_PLACEHOLDER_RE.findall(text))
++    text = ANY_PLACEHOLDER_RE.sub(lambda m: mapping[m.group(0)], text)
++    if ANY_PLACEHOLDER_RE.search(text):
++        print("placeholder left after replacement", file=sys.stderr)
++        return 1
++
++    with open(args.out, "w", encoding="utf-8") as fh:
++        fh.write(text)
++    print("wrote %s: %d distinct placeholders replaced" % (args.out, len(used)))
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/docs/demo/STATUS.md b/docs/demo/STATUS.md
+index 2a17c14..cdef7c6 100644
+--- a/docs/demo/STATUS.md
++++ b/docs/demo/STATUS.md
+@@ -10,7 +10,7 @@ Plan day: 1 of 11 (Monday 19 October 2026).
+ | L1 Change set | waiting for L0 | `codex/demo-l1-change-set` | | L0 merge |
+ | L2 Section recipe | waiting for L0 | `claude/demo-l2-section-recipe` | | L0 merge |
+ | L3 Section text | RB-02 spike can start now | `codex/demo-l3-section-text` | | RB-02 result for the document writer |
+-| L4 Data and agent | can start now (YAML, data, instructions) | `claude/demo-l4-data-and-agent` | | Sandbox names from RB-01 |
++| L4 Data and agent | ready for review; live seed done 2026-10-19 (42 fields, 126 cells read back, 0 mismatch); agent instructions and RB-03 pending | `claude/demo-l4-data-and-agent` | d7b4612 (T9 follows) | L2 workiva_prepare_section for acceptance scenario 5; Tom's RB-03 for scenario 6 |
+ | L5 Manual tests | RB-01 today | `claude/demo-integration` | | |
+ 
+ ## Runbook results
+@@ -26,3 +26,8 @@ Plan day: 1 of 11 (Monday 19 October 2026).
+ Write one line: requesting lane, owning lane, file, what you need and why.
+ 
+ L0 -> owner (no lane owns it), internal/mcpserver/server.go: add requiredPermission entries for the four demo tools (prepare_section and stage_section_text -> workiva.write.preview; confirm_change_set and confirm_section_text -> workiva.write.confirm) and list them in writeTools, because under NL_AUTH_MODE=entra every demo tool call is denied today.
++
++L4 -> L2, internal section recipe loading: the committed recipes carry `document_id: "demo-doc-annual-report"`; sandbox runs need a way to use the real report document ID without committing it (for example NL_DEMO_SECTIONS_DIR pointing to a git-ignored copy, or an environment override). Sandbox percent fields hold fractions if `percent-cells-store-fractions: yes` in configs/demo/README.md (still unconfirmed on a literal percent cell; no mapped sandbox cell is a percent cell).
++L4 -> L0, internal/workiva/demo_client.go: `demoSpreadsheetsResponse` should list `demo-esg-source` and `demo-esg-report` so act 1 works offline.
++L4 -> L0, internal/workiva/demo_esg.go and DemoTransport: add an ESG overlay field (or WrittenCells entries) on DemoTransport so demo_esg.go can drop its package-level registry.
++L4 -> L5, docs/demo/evidence/: the live seed run took 99.7 s, above the one-minute target; re-seeding before a recording takes about two minutes.

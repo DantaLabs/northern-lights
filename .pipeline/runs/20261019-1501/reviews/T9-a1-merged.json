@@ -1,0 +1,143 @@
+{
+  "task_id": "T9",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "configs/demo/make_sandbox_mappings.py",
+      "line": 88,
+      "issue": "The generator's safety behaviour from step 1 has no test or acceptance command. Nothing proves that it refuses a non-ignored --out, fails on an unknown or leftover placeholder, or fails when the placeholder and real files differ in shape. Acceptance only runs --help and inspects the one generated file. The paths at lines 88-91, 106-109 and 112-114 look correct on reading, but deleting them would not turn any check red. The repository is public, so the guard against a non-ignored output is the one that protects against leaks.",
+      "fix": "Follow-up (no change needed in T9): add a small stdlib unittest under configs/demo/ that uses synthetic placeholder and real JSON in a temp dir. It should assert exit 1 for a non-ignored --out and for an unknown placeholder, and that the output keeps no <id-NN> or <document-id>. Wire it into acceptance for whoever next touches the generator.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 33,
+      "issue": "The spec scenario says Tom's reset brings the sandbox back 'in under a minute'. The live run took 99.7 s. That is recorded honestly in README.md:113 and the worker report, but it is posted as an 'L4 -> L5' request. That line states an observation and asks L5 for nothing, which does not fit the 'what you need and why' format of that section. It is really an unmet target for the spec owner.",
+      "fix": "Record the 99.7 s against the under-a-minute target as an open item or follow-up for the owner (the task says pacing is the rate limiter's job and calls must not be rationed). Either drop the L4 -> L5 line or reword it into an actual request.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "docs/demo/STATUS.md",
+      "line": 13,
+      "issue": "Last-commit cell reads 'd7b4612 (T9 follows)' and README.md:108 cites base d7b4612 instead of the T9 commit. This is accurate, because the seed code is unchanged between d7b4612 and 97f4656 (no diff under cmd/ or internal/). It will go stale after merge.",
+      "fix": "Update the last-commit cell to the merged commit when the orchestrator lands T9.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 13,
+      "issue": "The L4 row's last-commit cell reads 'd7b4612 (T9 follows)'. That is the base commit, not the lane's last commit, which AGENTS.md Reporting asks for. The README seed-run entry also names the ephemeral task branch 'task/20261019-1501-T9-a1', which will not exist after the merge.",
+      "fix": "Record the lane commit that contains the run, or leave the cell for the orchestrator to fill after the merge. In the README, cite the commit and drop the task branch name.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 33,
+      "issue": "The 'L4 -> L5' line states a fact (the seed took 99.7 s) but asks for nothing. The section's format rule is 'requesting lane, owning lane, file, what you need and why'.",
+      "fix": "Phrase it as a request, for example asking L5 to allow two minutes of re-seeding before a recording in the runbook, or move the note to the L4 row.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/make_sandbox_mappings.py",
+      "line": 22,
+      "issue": "The script uses two placeholder grammars: PLACEHOLDER_RE '<id-\\d{2}>' for pairing and ANY_PLACEHOLDER_RE '<id-\\d+>' for replacement. pair() also skips mismatched dict keys and truncates lists of different lengths without a word. The unknown-placeholder check catches the result, but it reports a count rather than the cause.",
+      "fix": "Use one placeholder regex for both. Fail in pair() when list lengths differ or a placeholder-bearing key is missing from the real file.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/make_sandbox_mappings.py",
+      "line": 41,
+      "issue": "Possible Mysterious Name: pair(ph, real, out) and the loop names a and b do not say what they hold.",
+      "fix": "Rename them, for example collect_id_pairs(placeholder_node, real_node, mapping) and ph_item/real_item.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/make_sandbox_mappings.py",
+      "line": 67,
+      "issue": "find_document returns the first document named '2025 Annual Report - EN', so a second document with the same name would be picked without warning. If git is missing, subprocess.run raises an uncaught FileNotFoundError with a traceback.",
+      "fix": "Collect all matches and fail unless exactly one is found. Catch FileNotFoundError around the git check-ignore call and exit 1 with a message.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "configs/demo/make_sandbox_mappings.py",
+      "line": 88,
+      "issue": "The generator's safety behaviour from step 1 has no test or acceptance command. Nothing proves that it refuses a non-ignored --out, fails on an unknown or leftover placeholder, or fails when the placeholder and real files differ in shape. Acceptance only runs --help and inspects the one generated file. The paths at lines 88-91, 106-109 and 112-114 look correct on reading, but deleting them would not turn any check red. The repository is public, so the guard against a non-ignored output is the one that protects against leaks.",
+      "fix": "Follow-up (no change needed in T9): add a small stdlib unittest under configs/demo/ that uses synthetic placeholder and real JSON in a temp dir. It should assert exit 1 for a non-ignored --out and for an unknown placeholder, and that the output keeps no <id-NN> or <document-id>. Wire it into acceptance for whoever next touches the generator.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 33,
+      "issue": "The spec scenario says Tom's reset brings the sandbox back 'in under a minute'. The live run took 99.7 s. That is recorded honestly in README.md:113 and the worker report, but it is posted as an 'L4 -> L5' request. That line states an observation and asks L5 for nothing, which does not fit the 'what you need and why' format of that section. It is really an unmet target for the spec owner.",
+      "fix": "Record the 99.7 s against the under-a-minute target as an open item or follow-up for the owner (the task says pacing is the rate limiter's job and calls must not be rationed). Either drop the L4 -> L5 line or reword it into an actual request.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "docs/demo/STATUS.md",
+      "line": 13,
+      "issue": "Last-commit cell reads 'd7b4612 (T9 follows)' and README.md:108 cites base d7b4612 instead of the T9 commit. This is accurate, because the seed code is unchanged between d7b4612 and 97f4656 (no diff under cmd/ or internal/). It will go stale after merge.",
+      "fix": "Update the last-commit cell to the merged commit when the orchestrator lands T9.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 13,
+      "issue": "The L4 row's last-commit cell reads 'd7b4612 (T9 follows)'. That is the base commit, not the lane's last commit, which AGENTS.md Reporting asks for. The README seed-run entry also names the ephemeral task branch 'task/20261019-1501-T9-a1', which will not exist after the merge.",
+      "fix": "Record the lane commit that contains the run, or leave the cell for the orchestrator to fill after the merge. In the README, cite the commit and drop the task branch name.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 33,
+      "issue": "The 'L4 -> L5' line states a fact (the seed took 99.7 s) but asks for nothing. The section's format rule is 'requesting lane, owning lane, file, what you need and why'.",
+      "fix": "Phrase it as a request, for example asking L5 to allow two minutes of re-seeding before a recording in the runbook, or move the note to the L4 row.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/make_sandbox_mappings.py",
+      "line": 22,
+      "issue": "The script uses two placeholder grammars: PLACEHOLDER_RE '<id-\\d{2}>' for pairing and ANY_PLACEHOLDER_RE '<id-\\d+>' for replacement. pair() also skips mismatched dict keys and truncates lists of different lengths without a word. The unknown-placeholder check catches the result, but it reports a count rather than the cause.",
+      "fix": "Use one placeholder regex for both. Fail in pair() when list lengths differ or a placeholder-bearing key is missing from the real file.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/make_sandbox_mappings.py",
+      "line": 41,
+      "issue": "Possible Mysterious Name: pair(ph, real, out) and the loop names a and b do not say what they hold.",
+      "fix": "Rename them, for example collect_id_pairs(placeholder_node, real_node, mapping) and ph_item/real_item.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/make_sandbox_mappings.py",
+      "line": 67,
+      "issue": "find_document returns the first document named '2025 Annual Report - EN', so a second document with the same name would be picked without warning. If git is missing, subprocess.run raises an uncaught FileNotFoundError with a traceback.",
+      "fix": "Collect all matches and fail unless exactly one is found. Catch FileNotFoundError around the git check-ignore call and exit 1 with a message.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

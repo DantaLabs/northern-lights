@@ -1,0 +1,15 @@
+$ python3 -I configs/demo/make_sandbox_mappings.py --help > /dev/null
+$ test -f configs/demo/mappings-sandbox.yaml && git check-ignore -q configs/demo/mappings-sandbox.yaml && ! git ls-files --error-unmatch configs/demo/mappings-sandbox.yaml 2>/dev/null
+$ ! grep -qE '<id-[0-9]{2}>|<document-id>' configs/demo/mappings-sandbox.yaml
+$ grep -q '^## Seed run 2026-10-19' configs/demo/README.md && grep -q '^## Running the seed' configs/demo/README.md
+$ grep -qE 'read-back: [0-9]+ ok, 0 mismatch' configs/demo/README.md && grep -qE '^read-back: [0-9]+ ok, 0 mismatch' .scratch/l4-seed/seed-reset.txt && grep -q '^done: elapsed' .scratch/l4-seed/seed-reset.txt
+$ ! git ls-files -co --exclude-standard docs/demo/evidence | grep -q 'L4-seed'
+$ ! grep -qiE 'bearer|client_secret|access_token|[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' .scratch/l4-seed/dry-run.txt .scratch/l4-seed/seed-reset.txt
+$ grep -E '^\| L4 Data and agent \|' docs/demo/STATUS.md | grep -q 'claude/demo-l4-data-and-agent' && ! grep -E '^\| L4 Data and agent \|' docs/demo/STATUS.md | grep -q 'can start now'
+$ test $(grep -c '^L4 -> L0' docs/demo/STATUS.md) -ge 2 && grep -q '^L4 -> L2' docs/demo/STATUS.md
+$ go test ./cmd/nl-demo-seed/ -race -count=1
+ok  	github.com/dantalabs/northern-lights/cmd/nl-demo-seed	2.918s
+$ python3 -I configs/demo/check_no_sandbox_ids.py "$HOME/northern-lights-workspace/versions/demo-l0/docs/demo/evidence/2026-10-19-RB-01/step-3.local.json" "$HOME/northern-lights-workspace/versions/nl-l3/docs/demo/evidence/2026-10-19-RB-02/step-2.local.json"
+ok: no sandbox IDs in 631 files
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.
