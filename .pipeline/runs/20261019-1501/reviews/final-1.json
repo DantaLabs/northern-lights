@@ -1,0 +1,133 @@
+{
+  "task_id": "FINAL",
+  "axis": "final",
+  "verdict": "pass",
+  "reviewed_head": "7002483de30bb499cc7d39c6b587b03e0a9c09dd",
+  "run_base_commit": "573b4748bf41c08b1f5aa3a681379f12db7fa78f",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/apply.go",
+      "line": 62,
+      "issue": "Read-back issues one GetSheetDataTyped call per cell (126 sequential round trips in the live run). The recorded live seed took 99.7 s, which misses the spec's user scenario 'sandbox is back to the starting state in under a minute'. Most of that time is likely these per-cell reads, not the 4 sheet writes. The gap is recorded in STATUS as a request to L5 but has no fix.",
+      "fix": "For each sheetGroup, read the bounding A1 range of its cells once (one GetSheetDataTyped call per sheet, about 4 in total), then compare each cell from the returned grid. Re-time the live run against the one-minute target. This changes what is read, not how fast: pacing stays with the rate limiter (AGENTS.md rule 4).",
+      "task_id": "T6"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 27,
+      "issue": "Prompt 1.2 (act 1) gives 'VSME - Factbook template / CY Data Output / L28' as the 2025 citation. `nl-demo-seed --reset` clears every 2025 target cell before a rehearsal, and those cells only fill in act 3, so the cell is empty during act 1. The 2025 citation should be the source cell. Prompts 1.1, 1.3 and 1.4 allow either cell, so they are not affected.",
+      "fix": "Make the source cell 'VSME-Digital-Template-1.0.1 Unlocked / General Information / E62' the 2025 citation for prompt 1.2. Add a note that CY Data Output cells are empty until act 3.",
+      "task_id": "T7"
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/README.md",
+      "line": 7,
+      "issue": "The 'Files' section still describes the state at T1, in change-history language: 'The `value` column is filled by a later task.' and 'Later tasks add `mappings-demo.yaml`, `company.md` and `sections/`.' Both are now false, and `make_sandbox_mappings.py` is not listed. This breaks the definition of done, which requires docs in timeless current-state language.",
+      "fix": "Rewrite the Files list to describe the current files: data CSVs with values, totals.csv, company.md, sections/ with verbatim/, mappings-demo.yaml, the example and git-ignored sandbox mapping, check_no_sandbox_ids.py and make_sandbox_mappings.py.",
+      "task_id": "T1"
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/README.md",
+      "line": 26,
+      "issue": "The README says the waste type and unit cells of the two stand-in waste rows 'are not mapped: the seed task must fill them itself'. nl-demo-seed writes only mapped fields (BuildPlan uses Mappings.Field only), and the T9 seed-run record does not mention these cells. So either the sandbox waste rows have amounts with no type or unit, or the README promises work nobody did.",
+      "fix": "Either state that the type and unit cells stay as the template leaves them (and that this is acceptable for the demo), or map those cells and add them to the seed plan.",
+      "task_id": "T3"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/workiva/demo_esg.go",
+      "line": 48,
+      "issue": "The package-level esgOverlays map is keyed by *DemoTransport and never cleaned up. Every transport that receives an ESG write stays in the map for the life of the process. This is acknowledged, and an L0 request for a DemoTransport field is filed in STATUS.",
+      "fix": "When L0 adds an ESG overlay field to DemoTransport, move the overlay there and delete the global map and its mutex.",
+      "task_id": "T2"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/workiva.go",
+      "line": 86,
+      "issue": "ListSections follows @nextLink with no page cap. If the server keeps returning the same link, the loop never ends. Only same-host links are followed, so this is a robustness problem, not a security one.",
+      "fix": "Stop after a fixed number of pages (for example 100), or when a link repeats, and return an error.",
+      "task_id": "T6"
+    },
+    {
+      "severity": "nit",
+      "file": "docs/demo/STATUS.md",
+      "line": 13,
+      "issue": "The L4 row's commit column says 'd7b4612 (T9 follows)' and its status says 'agent instructions and RB-03 pending', but T9 and T7 have both landed (the only pending item is the post-RB-03 update).",
+      "fix": "Set the commit to the branch head and say 'agent instructions done; post-RB-03 update pending'.",
+      "task_id": "T9"
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R1",
+      "satisfied": true,
+      "evidence": "configs/demo/company.md: 'Demo Harbour Components Ltd (fictional)', sector, NL/PL/PT, 3 sites, headcount 412/428 matching employees_total, years 2024 and 2025"
+    },
+    {
+      "requirement": "R2",
+      "satisfied": true,
+      "evidence": "configs/demo/data/esg-2025.csv and esg-2024.csv: header key,label,unit,value; 26 environmental and 16 social rows in template order; TestDataConsistency and TestRecipesMatchSchemaAndMappings pass"
+    },
+    {
+      "requirement": "R3",
+      "satisfied": true,
+      "evidence": "cmd/nl-demo-seed/data_test.go TestDataConsistency checks totals from totals.csv, shares within 0-100 and year-on-year change within the materiality limit apart from the planted findings; passes under -race"
+    },
+    {
+      "requirement": "R4",
+      "satisfied": true,
+      "evidence": "configs/demo/data/README.md lists exactly 4 plants (missing water_discharge_production, material_change ghg_scope3_business_travel +17.9%, material_change training_hours_female +15.9%, out_of_range electricity_renewable 490 < min 500); TestDataConsistency finds exactly these (acceptance scenario 1)"
+    },
+    {
+      "requirement": "R5",
+      "satisfied": true,
+      "evidence": "configs/demo/sections/esg-environmental.yaml and esg-social.yaml have materiality_pct: 10 and one verbatim block each (verbatim/env-policy.txt, social-policy.txt, invented, no heading); TestRecipesMatchSchemaAndMappings; demo-mode server smoke with -mappings configs/demo/mappings-demo.yaml logs 'loaded extra mappings' and 'demo pipeline enabled' (recipe loading itself is L2's stub)"
+    },
+    {
+      "requirement": "R6",
+      "satisfied": true,
+      "evidence": "configs/demo/mappings-demo.yaml maps all 42 fields x 3 (src/rpt_2025/rpt_2024) to demo-esg-* IDs; under the owner decision, the real configs/demo/mappings-sandbox.yaml is git-ignored (configs/demo/.gitignore:1) and generated by make_sandbox_mappings.py from the committed placeholder example"
+    },
+    {
+      "requirement": "R7",
+      "satisfied": true,
+      "evidence": "internal/workiva/demo_esg.go reads NL_DEMO_ESG_DATA (default configs/demo/data); TestDemoESG* (9 tests incl. KeepsVSMERoutes) and cmd/nl-demo-seed TestDemoReadReturnsCSVValue (acceptance scenario 3) pass; mutation that fills the CY target sheet is caught"
+    },
+    {
+      "requirement": "R8",
+      "satisfied": true,
+      "evidence": "cmd/nl-demo-seed plan.go/apply.go/workiva.go: 2025 values to src_ fields, 2024 to rpt_*_2024, --reset clears rpt_*_2025 and deletes sections titled like the recipes in the mapping's document only; my dry-run -reset against the example mapping printed 84 writes, 42 clears, 2 section deletes, no IDs (scenario 4); README records the live seed at 126 read-back ok, 0 mismatch. Acceptance scenario 5 is deferred to L2 by owner decision. The under-one-minute user scenario is not met (99.7 s): see finding"
+    },
+    {
+      "requirement": "R9",
+      "satisfied": true,
+      "evidence": "docs/demo/agent/INSTRUCTIONS.md and NARRATIVE_STYLE.md name only registered workiva_* tools (T7 acceptance script), document the result fields, and carry the post-RB-03 maintenance note; the RB-03 update itself (scenario 6) is deferred to Tom"
+    },
+    {
+      "requirement": "R10",
+      "satisfied": true,
+      "evidence": "docs/demo/agent/DEMO_PROMPTS.md has Act 1-5 matching docs/demo/DEMO.md, exact prompts and 'Correct answer contains' with CSV-consistent values (1978/2030 MWh, 428/412, 165/140, 490/520); one act-1 citation issue (see finding)"
+    },
+    {
+      "requirement": "R11",
+      "satisfied": true,
+      "evidence": "docs/demo/IT_BRIEF.md: 877 words, sections Data flow, Identity (delegated Entra), What is written and how, Audit trail and evidence export, Open risks; NL-LIVE-002 and no per-user Workiva permissions covered; every risk names a mitigation or 'Status: open'"
+    },
+    {
+      "requirement": "Constraints (public repo, no secrets, lane ownership, VSME routes)",
+      "satisfied": true,
+      "evidence": "Changed files are limited to L4-owned paths (configs/demo/, cmd/nl-demo-seed/, docs/demo/agent/, docs/demo/IT_BRIEF.md, internal/workiva/demo_esg.go and its test) plus the L4 STATUS row and requests and .pipeline. check_no_sandbox_ids.py on the RB-01 step-3/step-5 local JSON plus resources.local.md and mappings-sandbox.yaml reports no IDs in 637 files. A token scan of the whole run history (git log -p) against every 20+ character token in those local files found only field names and a template name. mappings-sandbox.yaml is git-ignored and untracked. Note: the checker finds 0 IDs when given only resources.local.md and mappings-sandbox.yaml, because it parses JSON-style keys only. TestDemoESGKeepsVSMERoutes passes"
+    },
+    {
+      "requirement": "Project commands",
+      "satisfied": true,
+      "evidence": "go test ./... -race -timeout 40m: exit 0 (internal/assurance 643.6 s, frozen, covered by the T6 waiver); gofmt -l empty, go vet clean, golangci-lint 0 issues; go build ./... exit 0; typecheck is 'none'"
+    }
+  ],
+  "new_tasks": []
+}

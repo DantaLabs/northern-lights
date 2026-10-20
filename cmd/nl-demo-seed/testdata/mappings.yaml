@@ -1,0 +1,24 @@
+region: eu
+document_id: "doc-fixture-0001"
+spreadsheets:
+  - id: "sp-src-0001"
+    name: "Fixture Source Book"
+    sheets:
+      - id: "sh-src-0001"
+        name: "Source Sheet"
+        fields:
+          - { name: src_env_alpha, range: "B2", field_type: number, description: "Alpha" }
+          - { name: src_soc_share, range: "B3", field_type: percent, description: "Share" }
+  - id: "sp-rpt-0001"
+    name: "Fixture Report Book"
+    sheets:
+      - id: "sh-cy-0001"
+        name: "CY Output"
+        fields:
+          - { name: rpt_env_alpha_2025, range: "D2", field_type: number, description: "Alpha 2025" }
+          - { name: rpt_soc_share_2025, range: "D3", field_type: percent, description: "Share 2025" }
+      - id: "sh-py-0001"
+        name: "PY Output"
+        fields:
+          - { name: rpt_env_alpha_2024, range: "D2", field_type: number, description: "Alpha 2024" }
+          - { name: rpt_soc_share_2024, range: "D3", field_type: percent, description: "Share 2024" }

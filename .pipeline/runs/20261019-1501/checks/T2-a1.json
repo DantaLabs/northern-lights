@@ -1,0 +1,45 @@
+{
+  "task_id": "T2",
+  "attempt": 1,
+  "implementation_commit": "458b478df9cb80683e5b3decdc9b88193b35b4fc",
+  "commands": [
+    {
+      "command": "go test ./internal/workiva/ -race -count=1",
+      "exit_code": 0
+    },
+    {
+      "command": "go vet ./internal/workiva/",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l internal/workiva)\"",
+      "exit_code": 0
+    },
+    {
+      "command": "golangci-lint run ./internal/workiva/...",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -q NL_DEMO_ESG_DATA internal/workiva/demo_esg.go",
+      "exit_code": 0
+    },
+    {
+      "command": "! grep -q 'demo ESG fixture not served yet' internal/workiva/demo_esg_test.go",
+      "exit_code": 0
+    },
+    {
+      "command": "for n in SheetsList SourceReadsCurrentYear PriorPeriodAndTarget WriteThenReadBack ValuesEndpoint UnknownIDs MissingDataDir DefaultDataDir KeepsVSMERoutes; do grep -q \"func TestDemoESG$n(\" internal/workiva/demo_esg_test.go || exit 1; done",
+      "exit_code": 0
+    },
+    {
+      "command": "! grep -q 'fmt.Sprint' internal/workiva/demo_esg_test.go && grep -q 'GetSheetDataTyped' internal/workiva/demo_esg_test.go",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    }
+  ],
+  "checkout_clean": true,
+  "created_at": "2026-10-19T15:49:03Z"
+}

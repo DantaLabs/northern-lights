@@ -1,0 +1,130 @@
+{
+  "task_id": "T4",
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "major",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 330,
+      "issue": "R6 says mappings-demo.yaml maps every field to demo-esg- spreadsheet IDs, but the test only checks spreadsheet and sheet for the three energy_total names (the 'demo layout' block). For every other field it checks only that the name exists and that its range is D<row>. If a src_ field were mapped to demo-esg-report-cy (empty values) or to a non-demo spreadsheet, every test would still pass. The demo read would then return empty and only scenario 3's single field would notice.",
+      "fix": "In the per-field loop, for mappings-demo.yaml, assert that the ref for Source is on demo-esg-source/demo-esg-source-2025, Target on demo-esg-report/demo-esg-report-cy and Prior on demo-esg-report/demo-esg-report-py (which implies the demo-esg- prefix). Then drop or keep the three-name block.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 104,
+      "issue": "R3 says every share is between 0 and 100%, but the percent-range check loops only over the 2025 rows. Shares in esg-2024.csv are never checked, even though the totals check covers both years.",
+      "fix": "Run the 0..100 check over both cur and prior.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data.go",
+      "line": 35,
+      "issue": "Three //nolint:gosec comments were added (lines 35, 120, 156). No other Go file in internal/ or cmd/ uses nolint. The owner's standing rule forbids adding ignore comments to get checks green. This is outside the spec axis, so it is noted here for the standards reviewer.",
+      "fix": "Remove the nolint comments and satisfy gosec another way (for example filepath.Clean on the path, or a repo-level gosec exclusion if the owner approves one). Otherwise record it as an open question.",
+      "axis": "spec"
+    },
+    {
+      "severity": "blocking",
+      "file": "cmd/nl-demo-seed/data.go",
+      "line": 35,
+      "issue": "The diff adds three linter ignore comments: `//nolint:gosec` on os.ReadFile at lines 35, 121 and 158. This repository has never used nolint (git grep finds none outside this diff), and other code calls os.ReadFile(path) without one (internal/bootstrap/bootstrap.go:105, internal/config/config.go:140, cmd/nl-assurance/main.go:115). The repo has no .golangci config, so golangci-lint v2.14.0 runs only its default linters (errcheck, govet, ineffassign, staticcheck, unused) and gosec is not one of them. The comments therefore silence nothing today. If CI ever enables gosec, they would hide G304 in advance. AGENTS.md rule 3, the user's global rules and the reviewer policy all forbid adding ignore comments.",
+      "fix": "Delete the three `//nolint:gosec ...` trailing comments. Lint stays green without them. If you want to record that the path is trusted, use a normal comment that does not suppress anything.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 330,
+      "issue": "Possible duplicated code. descriptionOf repeats the spreadsheet/sheet/field walk from Mappings.Field (data.go:173) only to get Description, which FieldRef leaves out.",
+      "fix": "Add Description to FieldRef, fill it in Mappings.Field, and remove descriptionOf. FieldRef is new in this task, so later tasks can use the extra field without breaking anything.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 160,
+      "issue": "Duplicated code. The year-on-year change calculation (subtract; for non-% units divide by the prior value and multiply by 100) appears twice in TestDataConsistency: once in the findings loop and again in the 'non-planted change below 10' loop. If one copy changes, the two checks can quietly disagree.",
+      "fix": "Extract a helper such as `changeOf(cur, prior *big.Rat, unit string) *big.Rat` and call it from both loops.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 133,
+      "issue": "`strings.TrimPrefix(rc, \"esg-\")[:3]` builds the section short name with a string-slicing trick. It only works because of how the two recipe ids are spelled, and TestRecipesMatchSchemaAndMappings already has an explicit table of {id, short} pairs.",
+      "fix": "Share one sections table (id, short name, minimum field count) between both tests and loop over it.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/data.go",
+      "line": 133,
+      "issue": "LoadRecipes checks the required keys by ranging over a map, so when several keys are missing, which one the error names changes from run to run.",
+      "fix": "Range over an ordered slice of name/value pairs.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [
+    "In the per-field loop, for mappings-demo.yaml, assert that the ref for Source is on demo-esg-source/demo-esg-source-2025, Target on demo-esg-report/demo-esg-report-cy and Prior on demo-esg-report/demo-esg-report-py (which implies the demo-esg- prefix). Then drop or keep the three-name block.",
+    "Delete the three `//nolint:gosec ...` trailing comments. Lint stays green without them. If you want to record that the path is trusted, use a normal comment that does not suppress anything."
+  ],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 104,
+      "issue": "R3 says every share is between 0 and 100%, but the percent-range check loops only over the 2025 rows. Shares in esg-2024.csv are never checked, even though the totals check covers both years.",
+      "fix": "Run the 0..100 check over both cur and prior.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data.go",
+      "line": 35,
+      "issue": "Three //nolint:gosec comments were added (lines 35, 120, 156). No other Go file in internal/ or cmd/ uses nolint. The owner's standing rule forbids adding ignore comments to get checks green. This is outside the spec axis, so it is noted here for the standards reviewer.",
+      "fix": "Remove the nolint comments and satisfy gosec another way (for example filepath.Clean on the path, or a repo-level gosec exclusion if the owner approves one). Otherwise record it as an open question.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 330,
+      "issue": "Possible duplicated code. descriptionOf repeats the spreadsheet/sheet/field walk from Mappings.Field (data.go:173) only to get Description, which FieldRef leaves out.",
+      "fix": "Add Description to FieldRef, fill it in Mappings.Field, and remove descriptionOf. FieldRef is new in this task, so later tasks can use the extra field without breaking anything.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 160,
+      "issue": "Duplicated code. The year-on-year change calculation (subtract; for non-% units divide by the prior value and multiply by 100) appears twice in TestDataConsistency: once in the findings loop and again in the 'non-planted change below 10' loop. If one copy changes, the two checks can quietly disagree.",
+      "fix": "Extract a helper such as `changeOf(cur, prior *big.Rat, unit string) *big.Rat` and call it from both loops.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 133,
+      "issue": "`strings.TrimPrefix(rc, \"esg-\")[:3]` builds the section short name with a string-slicing trick. It only works because of how the two recipe ids are spelled, and TestRecipesMatchSchemaAndMappings already has an explicit table of {id, short} pairs.",
+      "fix": "Share one sections table (id, short name, minimum field count) between both tests and loop over it.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/data.go",
+      "line": 133,
+      "issue": "LoadRecipes checks the required keys by ranging over a map, so when several keys are missing, which one the error names changes from run to run.",
+      "fix": "Range over an ordered slice of name/value pairs.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "revise",
+    "standards": "revise"
+  }
+}

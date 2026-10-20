@@ -1,0 +1,63 @@
+{
+  "task_id": "T7",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 106,
+      "issue": "Carried from a1 and a2, with no change expected in this attempt. Prompt 4.3 assumes an export subject exists, but workiva_export_evidence accepts only snapshot, validation_run, comparison or transfer (export_evidence.go:69), and Acts 1 to 4 do not guarantee any of these. The expected answer handles this: if no subject exists, the agent says so and does not invent an ID. This stays open for scenario 6 (RB-03), which the spec defers to Tom.",
+      "fix": "No change for T7. Resolve during RB-03 / scenario 6: either add a workiva_compare_periods step before 4.3 or extend the evidence subjects.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/NARRATIVE_STYLE.md",
+      "line": 12,
+      "issue": "Rules 2 and 3 are pasted into Copilot Studio, and they name the fact fields `Display` and `Material: true`, which are the Go struct names in internal/recipe/types.go. The tool output the agent actually sees uses `display` and `material` (internal/mcpserver/tools/prepare_section.go:45-46), and INSTRUCTIONS.md:23 already says `display`. The wording dates from the base commit, but this task owns the file and edited the Rules section. Mixed names in one prompt are a small Mysterious Name risk.",
+      "fix": "Change rule 2 to `display` and rule 3 to `material: true` so they match the JSON the agent receives.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "docs/demo/agent/NARRATIVE_STYLE.md",
+      "line": 30,
+      "issue": "The last convention ('Past tense for results of a reporting year, present tense for policies, targets and commitments') repeats rule 7 (line 17). Both are pasted, so the agent gets the same instruction twice (possible Duplicated Code).",
+      "fix": "Delete the convention bullet, or cut the tense clause from rule 7 and keep only one copy.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 106,
+      "issue": "Carried from a1 and a2, with no change expected in this attempt. Prompt 4.3 assumes an export subject exists, but workiva_export_evidence accepts only snapshot, validation_run, comparison or transfer (export_evidence.go:69), and Acts 1 to 4 do not guarantee any of these. The expected answer handles this: if no subject exists, the agent says so and does not invent an ID. This stays open for scenario 6 (RB-03), which the spec defers to Tom.",
+      "fix": "No change for T7. Resolve during RB-03 / scenario 6: either add a workiva_compare_periods step before 4.3 or extend the evidence subjects.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/NARRATIVE_STYLE.md",
+      "line": 12,
+      "issue": "Rules 2 and 3 are pasted into Copilot Studio, and they name the fact fields `Display` and `Material: true`, which are the Go struct names in internal/recipe/types.go. The tool output the agent actually sees uses `display` and `material` (internal/mcpserver/tools/prepare_section.go:45-46), and INSTRUCTIONS.md:23 already says `display`. The wording dates from the base commit, but this task owns the file and edited the Rules section. Mixed names in one prompt are a small Mysterious Name risk.",
+      "fix": "Change rule 2 to `display` and rule 3 to `material: true` so they match the JSON the agent receives.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "docs/demo/agent/NARRATIVE_STYLE.md",
+      "line": 30,
+      "issue": "The last convention ('Past tense for results of a reporting year, present tense for policies, targets and commitments') repeats rule 7 (line 17). Both are pasted, so the agent gets the same instruction twice (possible Duplicated Code).",
+      "fix": "Delete the convention bullet, or cut the tense clause from rule 7 and keep only one copy.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

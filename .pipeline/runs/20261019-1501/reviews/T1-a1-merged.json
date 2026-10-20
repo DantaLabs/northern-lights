@@ -1,0 +1,111 @@
+{
+  "task_id": "T1",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "configs/demo/mappings-sandbox.example.yaml",
+      "line": 15,
+      "issue": "energy_total (G5) is a literal input, but its mapped parts (electricity G12/J12, self-generated G13/J13) leave out fuels (row 14, a Fuel Converter formula that is not mapped). A totals check of energy_total against the mapped parts only holds if fuels are taken as zero.",
+      "fix": "No change needed in T1. T3 should either make energy_total equal the sum of the four mapped parts (fuels treated as 0) or not list it as a checked total. Record this in the T3 instructions.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/README.md",
+      "line": 23,
+      "issue": "The waste fields map only J/K of waste table rows 189/190. The 'Type of waste' (D) and 'Unit of measurement' (G) cells are not mapped, and the CSV unit 'kg' is the worker's choice because the template unit cell is a user input. The report says the seed task will fill them, but R8 has the seed write only mapped fields, so the sandbox could show waste values with no type and no unit.",
+      "fix": "Have the seed task either write the type and unit cells for these rows as fixed, documented extra writes inside the mapped spreadsheet, or note in the README that the type and unit stay blank in the sandbox.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/README.md",
+      "line": 86,
+      "issue": "Nobody has verified writes to the fallback rpt_ block (CY/PY Data Output I:L) or to the template input cells; the probe wrote only to the scratch sheet. The README states this. Also, columns I to K are 'reserved for key, label and unit' but not mapped, so no file in this task says who writes them.",
+      "fix": "The seed task's first live run should confirm one write and read-back on the L column and say whether it writes the I:K labels (outside the mapping) or leaves them blank.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/README.md",
+      "line": 28,
+      "issue": "Possible Duplicated Code: the 'Sandbox cells' table repeats every src_ sheet/range from mappings-sandbox.example.yaml (42 rows). They match today, but there are now two hand-maintained sources of truth for cell ranges, and later seed tasks may edit only one of them.",
+      "fix": "Keep the YAML as the only source of ranges. In the README, either point to it or keep only the reasoning (why each cell was chosen, merged-cell and waste-row notes), or add a small check that the two agree.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/check_no_sandbox_ids.py",
+      "line": 75,
+      "issue": "The leak guard fails open. A tracked or untracked file that cannot be read is skipped silently ('except OSError: continue'), so a permission or encoding problem shows up as 'ok'. The guard is also manual only: it is not wired into CI, and it is the only Python file in a Go repository whose standard checks are gofmt, go vet, golangci-lint and go test.",
+      "fix": "Skip only paths that no longer exist (os.path.exists false). Report any other OSError and exit 2. Later, think about a Go test or a CI step that runs the guard when the local ID files are present.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/check_no_sandbox_ids.py",
+      "line": 16,
+      "issue": "ID_RE / TEXT_RE only pick up tokens of 20 or more characters under keys ending in 'id'. All current real IDs meet that (verified: the checker collects every real resource ID in the RB-01 local evidence). A shorter ID format in the future would be missed without any warning.",
+      "fix": "Add a comment that states the assumption that IDs are at least 20 characters, or derive the minimum length from the IDs collected.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "configs/demo/mappings-sandbox.example.yaml",
+      "line": 15,
+      "issue": "energy_total (G5) is a literal input, but its mapped parts (electricity G12/J12, self-generated G13/J13) leave out fuels (row 14, a Fuel Converter formula that is not mapped). A totals check of energy_total against the mapped parts only holds if fuels are taken as zero.",
+      "fix": "No change needed in T1. T3 should either make energy_total equal the sum of the four mapped parts (fuels treated as 0) or not list it as a checked total. Record this in the T3 instructions.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/README.md",
+      "line": 23,
+      "issue": "The waste fields map only J/K of waste table rows 189/190. The 'Type of waste' (D) and 'Unit of measurement' (G) cells are not mapped, and the CSV unit 'kg' is the worker's choice because the template unit cell is a user input. The report says the seed task will fill them, but R8 has the seed write only mapped fields, so the sandbox could show waste values with no type and no unit.",
+      "fix": "Have the seed task either write the type and unit cells for these rows as fixed, documented extra writes inside the mapped spreadsheet, or note in the README that the type and unit stay blank in the sandbox.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/README.md",
+      "line": 86,
+      "issue": "Nobody has verified writes to the fallback rpt_ block (CY/PY Data Output I:L) or to the template input cells; the probe wrote only to the scratch sheet. The README states this. Also, columns I to K are 'reserved for key, label and unit' but not mapped, so no file in this task says who writes them.",
+      "fix": "The seed task's first live run should confirm one write and read-back on the L column and say whether it writes the I:K labels (outside the mapping) or leaves them blank.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/README.md",
+      "line": 28,
+      "issue": "Possible Duplicated Code: the 'Sandbox cells' table repeats every src_ sheet/range from mappings-sandbox.example.yaml (42 rows). They match today, but there are now two hand-maintained sources of truth for cell ranges, and later seed tasks may edit only one of them.",
+      "fix": "Keep the YAML as the only source of ranges. In the README, either point to it or keep only the reasoning (why each cell was chosen, merged-cell and waste-row notes), or add a small check that the two agree.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "configs/demo/check_no_sandbox_ids.py",
+      "line": 75,
+      "issue": "The leak guard fails open. A tracked or untracked file that cannot be read is skipped silently ('except OSError: continue'), so a permission or encoding problem shows up as 'ok'. The guard is also manual only: it is not wired into CI, and it is the only Python file in a Go repository whose standard checks are gofmt, go vet, golangci-lint and go test.",
+      "fix": "Skip only paths that no longer exist (os.path.exists false). Report any other OSError and exit 2. Later, think about a Go test or a CI step that runs the guard when the local ID files are present.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "configs/demo/check_no_sandbox_ids.py",
+      "line": 16,
+      "issue": "ID_RE / TEXT_RE only pick up tokens of 20 or more characters under keys ending in 'id'. All current real IDs meet that (verified: the checker collects every real resource ID in the RB-01 local evidence). A shorter ID format in the future would be missed without any warning.",
+      "fix": "Add a comment that states the assumption that IDs are at least 20 characters, or derive the minimum length from the IDs collected.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

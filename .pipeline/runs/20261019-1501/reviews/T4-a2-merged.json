@@ -1,0 +1,79 @@
+{
+  "task_id": "T4",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 330,
+      "issue": "Carried over from attempt 1, still present. Possible duplicated code: descriptionOf repeats the spreadsheet/sheet/field walk from Mappings.Field only to get Description, which FieldRef leaves out.",
+      "fix": "Add Description to FieldRef, fill it in Mappings.Field, and remove descriptionOf.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 160,
+      "issue": "Carried over from attempt 1, still present. Duplicated code: the year-on-year change calculation appears twice in TestDataConsistency (the findings loop and the 'non-planted change below 10' loop), so the two checks can drift apart.",
+      "fix": "Extract a helper such as changeOf(cur, prior *big.Rat, unit string) *big.Rat and call it from both loops.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 135,
+      "issue": "Carried over from attempt 1. strings.TrimPrefix(rc, \"esg-\")[:3] derives the section short name by slicing a string, while TestRecipesMatchSchemaAndMappings keeps an explicit {id, short} table.",
+      "fix": "Share one sections table between both tests.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/data.go",
+      "line": 133,
+      "issue": "Carried over from attempt 1. LoadRecipes checks required keys by ranging over a map, so which missing key the error names is not deterministic.",
+      "fix": "Range over an ordered slice of name/value pairs.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 330,
+      "issue": "Carried over from attempt 1, still present. Possible duplicated code: descriptionOf repeats the spreadsheet/sheet/field walk from Mappings.Field only to get Description, which FieldRef leaves out.",
+      "fix": "Add Description to FieldRef, fill it in Mappings.Field, and remove descriptionOf.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 160,
+      "issue": "Carried over from attempt 1, still present. Duplicated code: the year-on-year change calculation appears twice in TestDataConsistency (the findings loop and the 'non-planted change below 10' loop), so the two checks can drift apart.",
+      "fix": "Extract a helper such as changeOf(cur, prior *big.Rat, unit string) *big.Rat and call it from both loops.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/data_test.go",
+      "line": 135,
+      "issue": "Carried over from attempt 1. strings.TrimPrefix(rc, \"esg-\")[:3] derives the section short name by slicing a string, while TestRecipesMatchSchemaAndMappings keeps an explicit {id, short} table.",
+      "fix": "Share one sections table between both tests.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/data.go",
+      "line": 133,
+      "issue": "Carried over from attempt 1. LoadRecipes checks required keys by ranging over a map, so which missing key the error names is not deterministic.",
+      "fix": "Range over an ordered slice of name/value pairs.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

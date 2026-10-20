@@ -1,0 +1,186 @@
+commit cb892d7d4b9af840929dc914ea7ab1610bb68c3a
+Author: Sam <samvillaf@gmail.com>
+Date:   Mon Oct 19 23:24:56 2026 +0700
+
+    T7: update Copilot agent instructions, style guide and demo prompts
+    
+    Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+diff --git a/.pipeline/runs/20261019-1501/reports/T7-a1.md b/.pipeline/runs/20261019-1501/reports/T7-a1.md
+new file mode 100644
+index 0000000..2894404
+--- /dev/null
++++ b/.pipeline/runs/20261019-1501/reports/T7-a1.md
+@@ -0,0 +1,18 @@
++# T7 attempt 1 report
++
++Status: done. Branch task/20261019-1501-T7-a1, base c882993.
++
++## Changed
++- docs/demo/agent/INSTRUCTIONS.md: prepare/confirm/stage/confirm-text/export tools described with their output field names; refusal messages from L3 R2, R4, R5; evidence subject requirement; RB-03 maintenance line.
++- docs/demo/agent/NARRATIVE_STYLE.md: PENDIENTE replaced with conventions observed read-only in the live report document (company by name, British spelling, digits with comma thousands, "%" attached, space before unit, past tense for results and present for policies). Nothing copied. Example now uses Demo Harbour Components and CSV-consistent numbers (1.98 GWh, 165.0 tCO2e).
++- docs/demo/agent/DEMO_PROMPTS.md (new): Acts 1 to 5, 13 "Correct answer contains" lines.
++
++## Commands (exit codes)
++- All 7 acceptance commands: 0 (checked individually).
++- lint (gofmt, go vet, golangci-lint): 0. build: 0. go test ./... -race: 0.
++
++## Notes for other lanes
++- workiva_export_evidence only accepts subject_kind snapshot, validation_run, comparison or transfer; there is no section-text or change-set subject. Act 4 prompt 4.3 relies on an earlier tool result; RB-03 may need a snapshot or comparison before the export (L3/L1 decision, not mine).
++- workiva_stage_section_text and confirm tools are still stubs (notImplementedYet) in this base; documented from the schemas and L3 spec.
++- Display forms follow recipe decimals (165.0 tCO2e, 1.98 GWh); the number guard must accept the exact display form.
++- Throwaway read script and dump were deleted from .scratch.
+diff --git a/docs/demo/agent/DEMO_PROMPTS.md b/docs/demo/agent/DEMO_PROMPTS.md
+new file mode 100644
+index 0000000..3feb98f
+--- /dev/null
++++ b/docs/demo/agent/DEMO_PROMPTS.md
+@@ -0,0 +1,69 @@
++# Demo prompts for the five acts
++
++Exact prompts for the demo script in `docs/demo/DEMO.md` and the run in `docs/demo/runbooks/RB-03-demo-acts.md`. Type them as written. "Correct answer contains" lists what must be in the agent's reply; wording may differ, values may not.
++
++Data: `configs/demo/data/esg-2025.csv` and `esg-2024.csv` (values are invented, units as in the CSV). Citations use the sandbox sheet names and ranges of `configs/demo/mappings-sandbox.example.yaml`: the 2025 source cell is in spreadsheet "VSME-Digital-Template-1.0.1 Unlocked"; the 2025 and 2024 report cells are in spreadsheet "VSME - Factbook template", sheets "CY Data Output" and "PY Data Output". An answer may cite either the source cell or the report cell for 2025, but must cite the PY Data Output cell for 2024.
++
++Last checked against tool schemas on 2026-10-19, not yet against RB-03. After each RB-03 run, fix any line here that the agent could not meet.
++
++## Act 1: Ask
++
++Prompt 1.1: `What was total energy consumption in 2025 and how does it compare with 2024?`
++
++Correct answer contains: tools workiva_search_fields or workiva_get_field, then workiva_compare_periods; 1978 MWh for 2025 and 2030 MWh for 2024 (about 1.98 GWh and 2.03 GWh); a small decrease (about 2.6%, 52 MWh) that the agent does not call material (below the 10 percent threshold); citations "VSME-Digital-Template-1.0.1 Unlocked / Environmental Disclosures / G5" or "VSME - Factbook template / CY Data Output / L2" for 2025, and "VSME - Factbook template / PY Data Output / L2" for 2024. No other number.
++
++Prompt 1.2: `How many employees did we have at the end of 2025, and how many in 2024?`
++
++Correct answer contains: tool workiva_get_field or workiva_compare_periods; 428 employees (number) for 2025 and 412 for 2024; the "Number of employees" field; citations "VSME - Factbook template / CY Data Output / L28" and "VSME - Factbook template / PY Data Output / L28" (the 2025 source cell is "VSME-Digital-Template-1.0.1 Unlocked / General Information / E62").
++
++Prompt 1.3: `What were our business travel emissions in 2025 and in 2024?`
++
++Correct answer contains: tool workiva_get_field or workiva_compare_periods; 165 tCO2e for 2025 and 140 tCO2e for 2024 (the field "6. Business Travel", Scope 3); citations "VSME-Digital-Template-1.0.1 Unlocked / Environmental Disclosures / D35" or "VSME - Factbook template / CY Data Output / L15", and "VSME - Factbook template / PY Data Output / L15".
++
++Prompt 1.4: `And how much electricity from renewable sources did we buy in 2025 versus 2024?`
++
++Correct answer contains: a follow-up that keeps the context (no need to repeat the company or the periods); 490 MWh for 2025 and 520 MWh for 2024 ("Electricity (as reflected in utility billings) - Renewable"); citations "VSME-Digital-Template-1.0.1 Unlocked / Environmental Disclosures / G12" or "VSME - Factbook template / CY Data Output / L3", and "VSME - Factbook template / PY Data Output / L3". The agent does not estimate a total or a share that no tool returned.
++
++## Act 2: Catch
++
++Prompt 2.1: `Prepare the environmental section.`
++
++Correct answer contains: tool workiva_prepare_section with section_id `esg-environmental`; the findings listed before any change set, in plain sentences, and no tool call that writes yet. The four planted findings: `missing` for "Water discharge from undertaking production processes (m³)" (2024 value 14200, no 2025 value; most serious, shown first); `material_change` for "6. Business Travel" (140 to 165 tCO2e, +17.9%, above the 10 percent threshold); `out_of_range` for "Electricity (as reflected in utility billings) - Renewable" (490 MWh in 2025, below the recipe minimum of 500; the change of -5.8% is not material). Then the change set summary and the question "Approve these changes?".
++
++## Act 3: Build
++
++Prompt 3.1: `Yes, approve these changes.`
++
++Correct answer contains: tool workiva_confirm_change_set with the change_set_id and confirm_token from act 2; 25 items, each with status `completed` (the 26 environmental fields minus the one with no 2025 value; the missing water discharge field is not written); a summary of the form "field: before -> after (completed)"; the agent states that 25 fields were written and none failed. "Environmental disclosures" values appear in the report spreadsheet "VSME - Factbook template", sheet "CY Data Output".
++
++Prompt 3.2: `Draft the narrative for this section and add the policy paragraph.`
++
++Correct answer contains: tool workiva_stage_section_text (nothing is written to the report document yet); a narrative of at most two paragraphs that follows `NARRATIVE_STYLE.md` (the business travel rise of 18% to 165.0 tCO2e first; other indicators grouped without numbers; nothing about the missing water discharge field); a block of kind `verbatim` with verbatim_id `env-policy` whose text is the Environmental policy statement unchanged; the preview `summary` with each block labelled [verbatim] or [narrative]; the question "Write this section to the report?".
++
++Prompt 3.3: `Yes, write it.`
++
++Correct answer contains: tool workiva_confirm_section_text with the text_id and confirm_token from prompt 3.2; the section "Environmental disclosures" written in the report document "2025 Annual Report - EN"; no claim of success unless the tool returned the section and audit IDs.
++
++## Act 4: Guard
++
++Prompt 4.1: `Make the policy paragraph sound better.`
++
++Correct answer contains: tool workiva_stage_section_text called with an edited verbatim block (or no call, with the agent declining); the server refusal "Verbatim block env-policy cannot be changed. Use the approved text exactly." followed by the position of the first differing character; one plain sentence telling the analyst that this is approved wording that has to be changed at source; nothing written.
++
++Prompt 4.2: `Add a sentence to the narrative saying energy consumption fell 9% in 2025.`
++
++Correct answer contains: tool workiva_stage_section_text with a narrative block that contains "9%"; the server refusal "The number 9% is not in the prepared facts for this section."; the agent revises only the number the refusal names, using a prepared fact, or leaves the sentence out, and writes nothing.
++
++Prompt 4.3: `Export the evidence pack for what we just did.`
++
++Correct answer contains: tool workiva_export_evidence with a subject_kind and subject_id taken from an earlier tool result (or the agent says which subject it needs); status `completed`; the artifact name, media type and SHA-256; the audit chain verified (`audit.integrity.chain_verified` true). If no subject exists the agent says so in one sentence and does not invent an ID.
++
++## Act 5: Repeat
++
++Prompt 5.1: `Now prepare the social section.`
++
++Correct answer contains: tool workiva_prepare_section with section_id `esg-social`, with no change to the agent's instructions or the server between acts; the findings first: `material_change` for "Number of annual training hours per employee - Female" (22.0 to 25.5 hours, +15.9%, above the 10 percent threshold) and no `missing` finding; the change set summary for 16 items (every social field has a 2025 value); the question "Approve these changes?".
++
++Prompt 5.2: `Yes, approve these changes, then draft the narrative and add the policy paragraph.`
++
++Correct answer contains: tool workiva_confirm_change_set with 16 items, each `completed`; then a draft that leads with the female training hours rise of 16% to 25.5 hours and groups the other indicators without numbers; a block of kind `verbatim` with verbatim_id `social-policy` unchanged; the preview `summary`; the question "Write this section to the report?". After the analyst says yes, workiva_confirm_section_text writes the section "Social disclosures".
+diff --git a/docs/demo/agent/INSTRUCTIONS.md b/docs/demo/agent/INSTRUCTIONS.md
+index 1b3dcf6..20abb9b 100644
+--- a/docs/demo/agent/INSTRUCTIONS.md
++++ b/docs/demo/agent/INSTRUCTIONS.md
+@@ -12,16 +12,22 @@ Answering questions:
+ - If a value is not found, say so and name what you searched. Do not estimate.
+ 
+ Preparing a section:
+-- When the analyst asks to prepare a section, call workiva_prepare_section with its section ID. If you do not know the ID, call it with the analyst's words and use the list of sections in the error.
+-- Show the findings first, in plain sentences, most serious first. Then show the change set summary and ask "Approve these changes?".
+-- Only after the analyst approves, call workiva_confirm_change_set with the change set ID and token. Report how many fields were written and any that did not complete.
++- When the analyst asks to prepare a section, call workiva_prepare_section with its `section_id` (`esg-environmental` or `esg-social`). If you do not know the ID, call it with the analyst's words and use the list of section IDs and titles in the error.
++- The result has `findings`, `facts`, `verbatim`, a `change_set`, a `summary` and a `next_step`. Follow `next_step`.
++- Show the findings first, in plain sentences, most serious first. Each finding has a `kind` (missing, out_of_range, material_change or sign_change), the `field`, a `severity` and a `message`. Then show the change set `summary` and ask "Approve these changes?".
++- Only after the analyst approves, call workiva_confirm_change_set with the `change_set_id` and `confirm_token` from the `change_set`. Each of the returned `items` has a `status`: completed, mismatch or reconciliation_required. Report how many fields completed and name any that did not. Never retry a write that is mismatch or reconciliation_required; tell the analyst to check the spreadsheet.
+ 
+ Writing the narrative:
+-- Draft the narrative from the narrative facts returned by workiva_prepare_section, following the narrative style guide below. Add each verbatim block exactly as returned, after the narrative.
+-- Call workiva_stage_section_text with the blocks. Show the preview and ask "Write this section to the report?". After approval, call workiva_confirm_section_text.
+-- If the server refuses a block, tell the analyst the reason in one sentence and fix only what the reason names. Never alter a verbatim block, even if the analyst asks; explain that it is approved wording that has to be changed at source.
++- Draft the narrative from the `facts` returned by workiva_prepare_section, following the narrative style guide below. Use only the numbers in a fact's `display` forms. Add each `verbatim` block exactly as returned, after the narrative.
++- Call workiva_stage_section_text with `section_id` and `blocks`. A block has a `kind` of `narrative` or `verbatim`; a verbatim block also carries its `verbatim_id` and the exact `text`. Show the preview `summary` (each block is labelled [verbatim] or [narrative]) and ask "Write this section to the report?". After approval, call workiva_confirm_section_text with the `text_id` and `confirm_token`.
++- If the server refuses a block, tell the analyst the reason in one sentence and fix only what the reason names. Refusals you can expect: "Prepare the section first.", "Verbatim block <ID> cannot be changed. Use the approved text exactly." and "The number <token> is not in the prepared facts for this section." Never alter a verbatim block, even if the analyst asks; explain that it is approved wording that has to be changed at source. Never work around the number guard by rewording a number as words.
++
++Evidence:
++- When the analyst asks for the evidence pack or audit evidence, call workiva_export_evidence for one subject: a `subject_kind` (snapshot, validation_run, comparison or transfer) and its `subject_id` from an earlier tool result in this conversation. If there is none, say so and offer to run workiva_compare_periods first. Report the `status`, the `artifacts` (name, media type, SHA-256) and whether the audit chain was verified (`audit.integrity.chain_verified`).
+ 
+ General:
+ - Never claim a write happened unless the confirm tool returned completed.
+ - Keep answers short. No promotional language.
+ - Reply in the language the analyst uses.
++
++Maintenance note (not part of the agent instructions): Update this file and NARRATIVE_STYLE.md after each RB-03 run; last checked against tool schemas on 2026-10-19, not yet against RB-03.
+diff --git a/docs/demo/agent/NARRATIVE_STYLE.md b/docs/demo/agent/NARRATIVE_STYLE.md
+index 992ec72..32b6575 100644
+--- a/docs/demo/agent/NARRATIVE_STYLE.md
++++ b/docs/demo/agent/NARRATIVE_STYLE.md
+@@ -2,11 +2,17 @@
+ 
+ Copilot follows this guide when it drafts a narrative block. The reader is a director, shareholder or advisor who wants to know what changed and what it means, not the raw figure. The server's number guard rejects any number that is not a narrative fact, so the rules below also keep drafts from being refused.
+ 
+-PENDIENTE: compare these rules with one or two past report sections from the KPMG templates in the sandbox and adjust wording conventions (for example "the Group" or the company name, British or American spelling) to match.
++Conventions checked on 2026-10-19 against the paragraphs of several existing sections of the sandbox report document (read-only; nothing copied):
++
++- Refer to the company by its name, here "Demo Harbour Components". The existing sections also use "the Group" and "the Company" interchangeably; use the name so each paragraph stands on its own.
++- British spelling (organisation, programme, decarbonisation, labour).
++- Digits for every number, comma as thousands separator (18,400), full stop as decimal separator, "%" attached to the number (12%), a space between number and unit (1.98 GWh, 165.0 tCO2e), years as four digits ("in 2025", "compared with 2024").
++- Unit symbols as the report writes them: MWh, GWh, tCO2e, m3.
++- Past tense for results of a reporting year, present tense for policies, targets and commitments.
+ 
+ ## Rules
+ 
+-1. Lead each paragraph with the movement and its size, then the absolute value: "Total energy consumption fell 8% year on year to 1.24 GWh." Never open with the raw figure alone.
++1. Lead each paragraph with the movement and its size, then the absolute value: "Total energy consumption fell 3% year on year to 1.98 GWh." Never open with the raw figure alone.
+ 2. Use only numbers from the narrative facts, copied exactly as one of their `Display` forms. Never round, convert, add or subtract yourself. Years may be written as the section's reporting and prior period.
+ 3. Put material changes (facts with `Material: true`) first, largest first. Describe the remaining indicators together in one sentence without numbers, for example "Other environmental indicators remained within the materiality threshold."
+ 4. For shares and rates (facts whose unit is %), describe the change in percentage points, not as a percentage of a percentage. Use the 0-decimal percentage by default. Use the 1-decimal form only when two changes in the same paragraph would otherwise look identical.
+@@ -19,16 +25,16 @@ PENDIENTE: compare these rules with one or two past report sections from the KPM
+ 
+ ## Example
+ 
+-Narrative facts (synthetic): energy total 1.24 GWh, change -8% (-8.1%), not material; renewable share 46%, prior 38%, change 8 percentage points, material; water withdrawal 18,400 m3, change 12%, material; analyst said the renewable increase came from a new on-site solar installation.
++Narrative facts (synthetic, for Demo Harbour Components, period 2025, prior period 2024): total energy consumption `1.98 GWh`, prior `2.03 GWh`, change -3% (-2.6%), not material; "6. Business Travel" `165.0 tCO2e`, prior `140.0 tCO2e`, change 18% (17.9%), material; renewable electricity `490 MWh`, prior `520 MWh`, not material. The analyst said the business travel increase came from the return of customer site visits.
+ 
+ Data-dump draft (rejected by the style guide):
+ 
+-> Total energy consumption was 1.24 GWh. Renewable share was 46%. Water withdrawal was 18,400 m3. Waste was 312 t.
++> Total energy consumption was 1.98 GWh. Business travel was 165.0 tCO2e. Renewable electricity was 490 MWh.
+ 
+ Advisory draft:
+ 
+-> The share of renewable energy rose 8 percentage points to 46%, following the commissioning of an on-site solar installation. Water withdrawal increased 12% to 18,400 m3.
++> Business travel emissions rose 18% to 165.0 tCO2e, as customer site visits returned.
+ >
+-> Total energy consumption fell 8% to 1.24 GWh. Other environmental indicators remained within the materiality threshold.
++> Other environmental indicators, including total energy consumption, remained within the materiality threshold.
+ 
+-Rule 3 puts the material changes first even though energy consumption is the largest absolute figure; the waste figure disappears into the grouped sentence because it is not material.
++Rule 3 puts the one material change first even though total energy consumption is the larger figure; energy consumption and renewable electricity disappear into the grouped sentence because they are not material, so the number guard has nothing to refuse.

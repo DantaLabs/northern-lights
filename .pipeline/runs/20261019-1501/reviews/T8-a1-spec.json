@@ -1,0 +1,36 @@
+{
+  "task_id": "T8",
+  "axis": "spec",
+  "implementation_commit": "f82b2dbbcf547a43a08e34226845118abb27af22",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "docs/demo/IT_BRIEF.md",
+      "line": 30,
+      "issue": "Preview/approval/read-back and section-text behaviour (10-minute token expiry, workiva_stage_section_text / workiva_confirm_section_text, lines 29-37) is taken from the L1/L3 specs and written in the present tense, but those lanes are not merged yet. The task says 'Do not invent controls the code does not have; when unsure, mark the item open'. The worker's report admits this was not checked against code.",
+      "fix": "Before the demo, check these lines against the merged L1/L3 code, or add a short note that the change-set and section-text controls are as specified in lanes L1/L3 and still waiting on merge."
+    },
+    {
+      "severity": "nit",
+      "file": "docs/demo/IT_BRIEF.md",
+      "line": 53,
+      "issue": "There are two extra open risks beyond the four required (single-replica deployment, optional Azure paths). The 'at least' wording allows this and both are true to the repo, so this is in scope.",
+      "fix": "None needed."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R11",
+      "satisfied": true,
+      "evidence": "docs/demo/IT_BRIEF.md: 877 words (acceptance wc -w <= 900, exit 0). Required headings in order at lines 5, 20, 27, 39, 47 (grep -qx acceptance). Data flow and no model in the server at :7-18 (ADR 0001). Delegated Entra identity at :22-24. Single integration grant and no per-user Workiva permissions at :25 and :50. Preview, one approval with single-use token, write and read-back at :29-32. Number guard and verbatim blocks at :36-37. Hash-chained audit, one row per field written, and workiva_export_evidence at :41-45 (drawn from docs/compliance/AUDIT.md and TECHNICAL_DOCUMENTATION.md). NL-LIVE-002 at :49. Entra mapping for the four demo tools marked Status: open at :51, matching the docs/demo/STATUS.md:28 request. Copilot drafting quality mitigated at :52. Check log: all acceptance commands and the lint command passed (golangci-lint 0 issues)."
+    },
+    {
+      "requirement": "Acceptance scenario 7",
+      "satisfied": true,
+      "evidence": "877 words is about a 4-5 minute read, well under ten minutes. The awk acceptance check over '## Open risks' passed: all 6 bullets end with 'Mitigation:' or 'Status: open' (IT_BRIEF.md:49-54). The human reading step by Tom is still his to do."
+    }
+  ],
+  "new_tasks": []
+}

@@ -1,0 +1,224 @@
+{
+  "verdict": "revise",
+  "coverage": [
+    {
+      "requirement": "R1",
+      "tasks": [
+        "T4"
+      ],
+      "adequate": true,
+      "note": "T4 acceptance checks for 'Demo', both years, and that the 2025 headcount matches employees_total. Sector, countries and sites are not checked mechanically. That is acceptable for a markdown file."
+    },
+    {
+      "requirement": "R2",
+      "tasks": [
+        "T1",
+        "T4",
+        "T6"
+      ],
+      "adequate": true,
+      "note": "Counts (at least 20 env, at least 12 soc), the shared key/label/unit order across both CSVs and the example mapping, and label equality with the src_ descriptions are all asserted (T1 Python check, T6 TestRecipesMatchSchemaAndMappings). Only RB-01 discovery can check fidelity to the KPMG template labels. No command can."
+    },
+    {
+      "requirement": "R3",
+      "tasks": [
+        "T4",
+        "T6"
+      ],
+      "adequate": true,
+      "note": "Totals, the 0-100 range for % fields, the materiality band and sign checks use exact decimals in both T4 (Python) and T6 (Go). The T4 check does not test the plus or minus 30% bound for non-planted fields, but T6 does."
+    },
+    {
+      "requirement": "R4",
+      "tasks": [
+        "T4",
+        "T5",
+        "T6"
+      ],
+      "adequate": true,
+      "note": "T4 alone cannot verify the out_of_range finding because `min` lives in the recipe (T5). T6 TestDataConsistency computes all four findings the way L2 will and cross-checks them against the README. That test would fail without R4."
+    },
+    {
+      "requirement": "R5",
+      "tasks": [
+        "T5",
+        "T6"
+      ],
+      "adequate": true,
+      "note": "Adequate only as a mirror. T6 uses a KnownFields decoder that copies the unmerged L2 schema. The T5 server smoke cannot fail on recipe content, because the L0 recipe stub ignores NL_DEMO_SECTIONS_DIR (verified: the server starts and logs 'demo pipeline enabled' with an empty sections dir). Real proof of scenario 2 waits for L2."
+    },
+    {
+      "requirement": "R6",
+      "tasks": [
+        "T1",
+        "T5",
+        "T6",
+        "T12"
+      ],
+      "adequate": true,
+      "note": "Every recipe name is asserted to exist in both mappings-demo.yaml and the example. The real git-ignored sandbox file is generated and placeholder-free in T12, which matches the owner decision."
+    },
+    {
+      "requirement": "R7",
+      "tasks": [
+        "T2",
+        "T3",
+        "T6"
+      ],
+      "adequate": false,
+      "note": "The behaviour is well specified, but the planned numeric assertions conflict with the client: GetSheetData decodes to float64 and fmt.Sprint(1240000.5) prints 1.2400005e+06 (see the major finding). No test covers the default `configs/demo/data` directory when NL_DEMO_ESG_DATA is unset."
+    },
+    {
+      "requirement": "R8",
+      "tasks": [
+        "T7",
+        "T8",
+        "T9",
+        "T12"
+      ],
+      "adequate": false,
+      "note": "Plan, dry run (scenario 4), apply and section deletion are pinned by tests against a fake. Live semantics (clearing a cell with null, string values parsed as numbers, %-formatted cells, float read-back compared as exact decimals) are first exercised in T12, the last task, and T12 may not change apply.go. The under-one-minute target is recorded but never asserted. Scenario 5 is deferred by the owner and is not flagged."
+    },
+    {
+      "requirement": "R9",
+      "tasks": [
+        "T10"
+      ],
+      "adequate": true,
+      "note": "First version only: tool names are checked against the Name() constants. Matching the final outputs depends on L1-L3 merging and on RB-03 (scenario 6 is deferred by the owner)."
+    },
+    {
+      "requirement": "R10",
+      "tasks": [
+        "T10"
+      ],
+      "adequate": true,
+      "note": "Checks five Act headings, at least 8 'Correct answer contains:' lines and the exact 2025/2024 energy_total CSV values."
+    },
+    {
+      "requirement": "R11",
+      "tasks": [
+        "T11"
+      ],
+      "adequate": true,
+      "note": "Checks a 900-word cap, the five headings, NL-LIVE-002, per-user, Entra, and that every risk bullet ends with 'Mitigation:' or 'Status: open'."
+    }
+  ],
+  "findings": [
+    {
+      "severity": "major",
+      "task_ids": [
+        "T2",
+        "T3",
+        "T6",
+        "T7",
+        "T9"
+      ],
+      "claim": "Tests can compare cell values with the exact CSV decimal text (T2: 'compare with fmt.Sprint of the cell value ... 1240000.5 stays 1240000.5'; T6: read with workiva.NewDemoClient(...).GetSheetData and assert equality with the CSV value; T7/T9: Apply reads back with GetSheetData and 'numbers compare by exact decimal value').",
+      "doubt": "Client.GetSheetData (internal/workiva/sheets.go:71, preserveNumbers=false) decodes without UseNumber, so numbers arrive as float64. I checked that fmt.Sprint(float64(1240000.5)) == \"1.2400005e+06\". If the T2 author follows the plan's own example, T3 cannot pass without editing the tests or sheets.go, which T3 must not do. The same happens to T6 for any energy value of 1,000,000 or more. In T9's live read-back, big.Rat.SetFloat64 of 0.1 is not the decimal 0.1, so a naive comparison reports mismatches and T12's '0 mismatch' acceptance fails. The Workiva interface in T7 also exposes only GetSheetData.",
+      "fix": "Pin the read path in every affected task. Tests and Apply read with GetSheetDataTyped, which exists and preserves json.Number. Add it to the T7 Workiva interface in place of GetSheetData, or alongside it; *workiva.Client already has it. Compare via json.Number/string, or via strconv.FormatFloat(v,'f',-1,64) then big.Rat.SetString, and also accept a string cell value (live Workiva may return the entered text). Remove the fmt.Sprint example from T2."
+    },
+    {
+      "severity": "major",
+      "task_ids": [
+        "T1",
+        "T9",
+        "T12"
+      ],
+      "claim": "After the dry run passes, the live seed works, and T12 may fix only 'an obvious configuration mistake in the generated local file'.",
+      "doubt": "Nothing before T12 confirms the live write semantics that Apply depends on. Open questions: does Workiva accept editCells value null to clear a cell? Is a decimal string such as \"46\" stored as a number or as text by NewEditCellsUpdate? What happens on %-formatted template cells (Ones scale: 46 written to a % cell displays 4600%)? Do literal-looking cells in CY/PY Data Output really hold values rather than links? No code in the repo writes null to a live cell. If any of these differ, T12 fails on the last task with no owned file to fix (apply.go and workiva.go belong to T9), and the run stalls at the end.",
+      "fix": "Move the risk forward. In T1, do one live round trip on the scratch range that docs/demo/DEMO.md allows for any test (`Testing MCP` / `Sheet1`; the ESG source spreadsheet may be written 'only via the L4 seed command'): write a decimal string with WriteCells, read it back with GetSheetDataTyped, clear it with null, read again. Also read, without writing, the number format of every chosen sandbox cell (from the effective formats in sheetdata). Record both in configs/demo/README.md, and have T7 pin the clear value (null or \"\") and the % convention from that record. Also allow T12 a bounded fix in cmd/nl-demo-seed, or have it raise a corrective task, instead of stopping."
+    },
+    {
+      "severity": "major",
+      "task_ids": [
+        "T12"
+      ],
+      "claim": "The owner asked for seed evidence under docs/demo/evidence/2026-10-19-L4-seed/, even though L5 owns docs/demo/evidence/.",
+      "doubt": "Neither the spec's Approval section nor the owner context says this. The owner context limits scope to the L4-owned files in docs/demo/LANES.md, and LANES.md gives docs/demo/evidence/ to L5. The plan states an owner request that cannot be traced to any source. The committed sections-before.txt would also put the KPMG report document's section titles into the public repo, which the RB-02 evidence avoided apart from one example. AGENTS.md also says 'Tom drops evidence in docs/demo/evidence/' and 'Do not write new validation reports ... or acceptance narratives', and result.md is exactly such a narrative.",
+      "fix": "Keep raw seed outputs in .scratch/. Record the redacted summary (counts, 'read-back: N ok, 0 mismatch', elapsed time, deferred scenarios 5 and 6) in an L4-owned place: a 'Seed run 2026-10-19' section in configs/demo/README.md plus the L4 row of STATUS.md. Do not commit the list of sandbox section names, only whether any of them matches a recipe title. Rewrite the T12 acceptance commands to match."
+    },
+    {
+      "severity": "major",
+      "task_ids": [
+        "T12"
+      ],
+      "claim": "Copying the generated real mapping to $HOME/northern-lights-workspace/versions/nl-l4/configs/demo/mappings-sandbox.yaml is safe because 'that path is git-ignored once configs/demo/.gitignore is merged'.",
+      "doubt": "That path is the run checkout, outside the worker's worktree and outside the task's owns. Pipeline checkpoints and handoffs commit from that checkout. If its working tree does not yet contain configs/demo/.gitignore (it does not today: the branch head is 573b474), the file holding real IDs is an untracked, non-ignored file that a checkpoint can commit and push to a public repository. That is the one failure the owner ruled out.",
+      "fix": "Drop the copy. configs/demo/README.md already documents the generator command, and Tom runs it once. If the copy stays, guard it with `git -C <checkout> check-ignore -q configs/demo/mappings-sandbox.yaml || exit 1` and add that check to the acceptance commands."
+    },
+    {
+      "severity": "major",
+      "task_ids": [
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T7",
+        "T8",
+        "T12"
+      ],
+      "claim": "Twelve tasks with a dependency depth of 8 are the right size for this lane.",
+      "doubt": "The owner asked for small and merge-ready, and to flag over-planning. Several splits add review rounds and handoffs without reducing risk. T2/T3 is one roughly 200-line file and its test. T4/T5 are tightly coupled: T4 chooses the `min` and `required` values that only T5's recipe can express, so T4 cannot verify its own out_of_range plant. T7/T8 are test-then-implement for pure functions, with no I/O. T12 also waits on T10 and T11 for no technical reason.",
+      "fix": "Merge T2+T3 (the R7 transport, tests first inside the task), T4+T5 (data, recipes, verbatim and demo mapping, so all four planted findings are verified in one task) and T7+T8 (plan and dry run, tests first). Keep T9 (live adapter and apply) separate. Make T12 depend on T9 only. That gives 9 tasks, with the longest chain T1 -> T4/5 -> T6 -> T7/8 -> T9 -> T12 at depth 6."
+    },
+    {
+      "severity": "minor",
+      "task_ids": [
+        "T6"
+      ],
+      "claim": "`go build ./cmd/nl-demo-seed` is a harmless acceptance check.",
+      "doubt": "When it builds a single main package, go build writes the binary ./nl-demo-seed into the repo root. The root .gitignore lists workiva-mcp but not nl-demo-seed, so a worker's `git add -A` can commit a binary. The root .gitignore is not L4-owned.",
+      "fix": "Use `go build -o /dev/null ./cmd/nl-demo-seed` (or `go build ./...`) in T6. If the binary must be ignored, add an entry to configs/demo/.gitignore. That entry cannot cover the repo root, so prefer the -o form."
+    },
+    {
+      "severity": "minor",
+      "task_ids": [
+        "T3",
+        "T9",
+        "T12"
+      ],
+      "claim": "The Checkpoints section says 'After T9: full go test ./... -race, lint and build green'.",
+      "doubt": "No acceptance command runs the project lint (`gofmt -l .`, `go vet ./...`, `golangci-lint run`) or the full race test suite. T3 never runs golangci-lint on internal/workiva, and T9 lints only cmd/nl-demo-seed. CI runs the whole thing.",
+      "fix": "Add `golangci-lint run ./internal/workiva/...` to T3. Add the project lint and test commands from .pipeline/config.json to T9, or to the final task."
+    },
+    {
+      "severity": "minor",
+      "task_ids": [
+        "T5"
+      ],
+      "claim": "The T5 smoke start covers acceptance scenario 2.",
+      "doubt": "With the L0 recipe stub, the smoke passes for any content in NL_DEMO_SECTIONS_DIR, including none (I reproduced it with an empty directory). It shows only that the extra mapping file parses.",
+      "fix": "Keep the smoke as a mapping-file check and label it as such. Do not cite it as evidence for R5. Record scenario 2 as partially proven until L2 merges, as the assumptions already say."
+    },
+    {
+      "severity": "minor",
+      "task_ids": [
+        "T2",
+        "T3"
+      ],
+      "claim": "R7 is covered, including the default directory `configs/demo/data`.",
+      "doubt": "Every planned test sets NL_DEMO_ESG_DATA, so a wrong default would go unnoticed. TestDemoESGMissingDataDir, if written through the client, hits Client.Do's retry with backoff on 5xx GETs and slows or flakes the test.",
+      "fix": "Add one test that unsets NL_DEMO_ESG_DATA and uses t.Chdir to the repo root (Go 1.24+), then reads a demo-esg cell. Write the missing-directory test through NewDemoTransport().RoundTrip, not the client."
+    },
+    {
+      "severity": "minor",
+      "task_ids": [
+        "T7"
+      ],
+      "claim": "The T7 tests leave T8 and T9 'no design choice'.",
+      "doubt": "An empty 2025 CSV value is described as both 'a Write with Value \"\"' and 'Value \"\" means the cell is cleared', while Apply sends 'the decimal string for writes and nil for clears'. It is unclear whether an empty Write is sent as \"\" or as null, and how read-back judges it.",
+      "fix": "State it explicitly: any Write or Clear with Value \"\" is sent as null and matches an empty cell on read-back. Use whatever the T1 live probe confirms."
+    },
+    {
+      "severity": "minor",
+      "task_ids": [
+        "T3",
+        "T12"
+      ],
+      "claim": "A package-level overlay registry keyed by *DemoTransport is the right workaround for L0 owning the struct.",
+      "doubt": "The registry keeps every transport alive for the process lifetime, and ESG writes bypass DemoTransport.WrittenCells, which L0's planned end-to-end test may inspect.",
+      "fix": "Accept it for the demo, but have T12 add an L4 -> L0 request line asking for an overlay field (or a WrittenCells entry) on DemoTransport, so the registry can be removed later."
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "task_id": "T6",
+  "axis": "standards",
+  "implementation_commit": "d3e819ac48e7f414cd2e6fc9866724ea0e1411c8",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/apply.go",
+      "line": 56,
+      "issue": "Apply wraps errors with names, but it passes the inner error through with %w. The shared client's errors can carry IDs: on a transport failure Client.Do returns \"request <METHOD> <path>\", where the path holds the spreadsheet, sheet or document ID, and APIError.Body can echo IDs back. main.go prints these errors to stderr. If T7 pastes that output into committed evidence in this public repo, real sandbox IDs could leak. The task's rule is that errors name the field or title, never an ID, and that holds only for the outer layer.",
+      "fix": "Either redact known IDs from the wrapped text before returning (for example strings.ReplaceAll over the plan's spreadsheet, sheet and document IDs), or have the T7 runbook redact stderr before anything is committed."
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/apply_test.go",
+      "line": 186,
+      "issue": "TestApplyDeletesOnlyMatchingSections does not pin the exact-title rule. Its fixture titles are 'Environmental disclosures', '2. Environmental information' and 'Social disclosures'. If `s.Name != d.Title` became strings.Contains, HasPrefix or EqualFold, the test would still pass, even though this check is the only thing limiting deletes in the live report document.",
+      "fix": "Add near-miss sections to the fake document, such as 'Environmental disclosures (draft)' and 'environmental disclosures', and assert they are not deleted."
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/apply_test.go",
+      "line": 205,
+      "issue": "TestApplyStopsOnError covers a WriteCells failure and a ListSections failure. It does not cover a GetSheetDataTyped (read-back) failure or a DeleteSection failure. In particular, no test proves that Apply stops after the first failed delete instead of going on to delete further sections.",
+      "fix": "Add failRead and failDelete knobs to fakeWorkiva. Assert the error is wrapped with the field or title, that no further DeleteSection calls follow, and that the error contains no ID."
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/apply.go",
+      "line": 47,
+      "issue": "`r, _ := workiva.A1ToRange(...)` drops an error, relying on groupBySheet having validated the same range earlier. Also, `if v == \"\" { v = clearValue }` does nothing because clearValue is \"\"; the constant is only there to document the README decision.",
+      "fix": "Store the parsed range in sheetGroup (cells with Row/Col) so it is parsed once and no error is dropped. Optionally keep clearValue but drop the no-op branch, or note in a comment that it is intentional."
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/workiva_test.go",
+      "line": 139,
+      "issue": "The leak check `for _, e := range []error{err}` looks only at the last error (NL_REGION). The NL_WORKIVA_CLIENT_SECRET error, raised after the-id is set, is never checked for the-id. The one-element loop is also odd.",
+      "fix": "Collect all three errors and check each one for 'the-id' and 'the-secret-value'."
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/workiva_test.go",
+      "line": 37,
+      "issue": "Possible Duplicated Code (judgement call): the three httptest servers each repeat the same token handler (POST /iam/v1/oauth2/token -> {access_token:t}) and the same newLiveWorkivaAt setup.",
+      "fix": "Extract a helper such as newTestLive(t, handler) that serves the token endpoint and delegates every other path."
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/apply_test.go",
+      "line": 80,
+      "issue": "The fixture names 'Fixture Book ...' use 'book', a near-synonym of 'workbook', which CONTEXT.md says to avoid (the same point was raised for T5's fixtures).",
+      "fix": "Use 'Fixture Spreadsheet ...'."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "AGENTS.md rule 3: no weakened test, skipped check or ignore comment", "satisfied": true, "evidence": "No nolint, t.Skip or build-tag directives in reviews/T6-a1.diff. T5's TestRunErrors case was strengthened (3 fake-seam cases), not weakened. The percentToFraction tests gained error cases. Lint reports 0 issues (checks/T6-a1.log)."},
+    {"requirement": "Edits outside owns (plan.go, plan_test.go) are justified", "satisfied": true, "evidence": "Worker report T6-a1.md: the orchestrator asked for T5's review must-fix items. percentToFraction now returns (string, error) instead of a silent fallback (plan.go:106), and planWrite wraps the error with the field name. Covered by TestBuildPlanRejectsNonNumericPercent."},
+    {"requirement": "Security: writes and deletes are limited to plan resources from the mapping and recipes", "satisfied": true, "evidence": "apply.go only calls WriteCells for the groups built from p.Writes/p.Clears (refs resolved through Mappings.Field in plan.go). DeleteSection is called only for sections listed from SectionDelete.DocumentID whose Name equals the recipe title exactly. TestApplyDeletesOnlyMatchingSections checks that a plan with only deletes makes no writes."},
+    {"requirement": "Security: no unit test can reach the real client or network", "satisfied": true, "evidence": "workiva_test.go TestMain replaces newWorkiva with errRealClientInTest before any test runs, and TestNewWorkivaSeamIsFakedInTests asserts this. The credential test uses a fake getenv map. The live-adapter tests use httptest servers via newLiveWorkivaAt. Constructing clients with real region URLs makes no request (NewTokenProvider and NewLimiter are lazy). Scoped `go test ./cmd/nl-demo-seed/ -race -count=1` passes on d3e819a."},
+    {"requirement": "Security: no secrets printed; token not sent off-host", "satisfied": true, "evidence": "newLiveWorkivaFromEnv errors name only the variable. relativeLink refuses an @nextLink with a different scheme or host (TestLiveWorkivaRefusesForeignNextLink). Apply's output prints field names and titles only (TestApplyWritesOnePerSheetAndReadsBack checks there are no IDs). The inner-error caveat is in findings."},
+    {"requirement": "Exact-decimal read-back with GetSheetDataTyped / big.Rat, bodies closed, correct rate-limit categories", "satisfied": true, "evidence": "apply.go readCell/sameDecimal. workiva.go sectionsPage and DeleteSection close bodies with defer, using CategoryReads for GET and CategoryWrites for DELETE."},
+    {"requirement": "Check log: lint, build and package tests pass; the full-suite failure is outside this diff", "satisfied": true, "evidence": "checks/T6-a1.log: gofmt/vet/golangci-lint 0 issues and build ok. The only FAIL is internal/assurance timing out at 600s, and the diff does not touch internal/."}
+  ],
+  "new_tasks": []
+}

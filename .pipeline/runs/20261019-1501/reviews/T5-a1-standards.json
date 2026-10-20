@@ -1,0 +1,53 @@
+{
+  "task_id": "T5",
+  "axis": "standards",
+  "implementation_commit": "82343b973376a49300758bda5cdf7d86388d837c",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/plan_test.go",
+      "line": 211,
+      "issue": "TestRunErrors' last case saves newWorkiva but never replaces it. It depends on the current stub returning 'not implemented'. Once T6 adds the real client, this case will run the live constructor without -dry-run, and with Tom's local .env present it could build a real client and call Apply against the sandbox from a unit test.",
+      "fix": "In that case, set newWorkiva to a stub that returns a fixed error (or a fake Workiva), so the test never depends on the production constructor."
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/plan.go",
+      "line": 105,
+      "issue": "percentToFraction silently returns its input unchanged when the text does not parse as a decimal. If that path is ever hit, the percent cell gets the raw value written to it (46.5 instead of 0.465, which displays as 4650%). LoadCSV validates decimals today, so the path cannot currently be reached, but the fallback hides that invariant.",
+      "fix": "Return (string, error) and pass the error up through planWrite/BuildPlan, or panic with a comment stating that LoadCSV guarantees a decimal."
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/main.go",
+      "line": 40,
+      "issue": "Possible Duplicated Code (judgement call): run() repeats the same 'print error, return 2' block five times for LoadMappings, LoadRecipes, two LoadCSV calls and BuildPlan.",
+      "fix": "Extract a helper such as loadPlan(mappings, data, sections string, reset bool) (Plan, error) and handle its error once in run()."
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/plan.go",
+      "line": 30,
+      "issue": "Plan.Clears reuses the Write type, so Year and Value are always \"2025\" and \"\" there and carry no meaning.",
+      "fix": "Optional: give clears their own small type (Field plus Ref), or document that a clear is a Write with an empty Value."
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/plan.go",
+      "line": 14,
+      "issue": "percentCellsStoreFractions is a constant true, so the check in planWrite is always on. It is documented as mirroring the README decision, so it is acceptable, but it is a branch that can never be false.",
+      "fix": "Optional: keep it as documented, or remove the constant and leave the README reference in the comment."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "AGENTS.md rule 3 (no weakened tests/checks)", "satisfied": true, "evidence": "No nolint/skip/ignore directives in the diff; the lint issue was fixed with explicit `_, _ =` (report T5-a1.md); checks/T5-a1.json shows all commands exit 0"},
+    {"requirement": "AGENTS.md rule 6 (no model/LLM call in server)", "satisfied": true, "evidence": "The diff is limited to cmd/nl-demo-seed; no model calls"},
+    {"requirement": "AGENTS.md testing (gofmt, go vet, golangci-lint)", "satisfied": true, "evidence": "checks/T5-a1.log: gofmt empty, go vet ok, golangci-lint 0 issues"},
+    {"requirement": "Security: public repo, dry run prints no secrets or IDs", "satisfied": true, "evidence": "plan.go Print prints only names and ranges; TestPlanPrintHasNoIDs and TestRunDryRunSendsNothing assert that no IDs or placeholders appear; no credentials are read on the dry-run path (newWorkiva is never called)"},
+    {"requirement": "Security: writes only to resources in the mapping file", "satisfied": true, "evidence": "plan.go planWrite resolves every cell through Mappings.Field; reset requires the mapping's document_id; TestBuildPlanRejectsUnmappedField"},
+    {"requirement": "Security: real sandbox mapping is not committed", "satisfied": true, "evidence": "configs/demo/.gitignore:1 ignores mappings-sandbox.yaml; testdata uses fictional IDs"}
+  ],
+  "new_tasks": []
+}

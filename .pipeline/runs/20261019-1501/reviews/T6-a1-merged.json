@@ -1,0 +1,153 @@
+{
+  "task_id": "T6",
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "major",
+      "file": ".pipeline/runs/20261019-1501/checks/T6-a1.log",
+      "line": 0,
+      "issue": "The bound check log has a failing acceptance command: `go test ./... -race` exits 1. The cause is internal/assurance hitting the 600 s default timeout. That package is frozen and the diff does not touch it; the same timeout happens on the unchanged base on this machine. This is an evidence gap, not a defect in T6's code. The role rule says a failing check log is always revise, so this verdict cannot be pass.",
+      "fix": "No code change is needed in T6. Produce passing evidence for the same commit: rerun the full suite with a longer timeout (for example `go test ./... -race -timeout 30m`), or run it on GitHub CI, and record that as a new check for d3e819a. Otherwise, the orchestrator can record an explicit waiver for the internal/assurance timeout.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/apply.go",
+      "line": 77,
+      "issue": "`read-back: <ok> ok, <mismatch> mismatch` is printed only when the plan has writes or clears (`len(groups) > 0`). The spec says to print it unconditionally. Real seed plans always contain writes, so the output is the same in practice.",
+      "fix": "Optional: always print the read-back line, or leave it as is.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/apply.go",
+      "line": 56,
+      "issue": "Apply wraps errors with names, but it passes the inner error through with %w. The shared client's errors can carry IDs: on a transport failure Client.Do returns \"request <METHOD> <path>\", where the path holds the spreadsheet, sheet or document ID, and APIError.Body can echo IDs back. main.go prints these errors to stderr. If T7 pastes that output into committed evidence in this public repo, real sandbox IDs could leak. The task's rule is that errors name the field or title, never an ID, and that holds only for the outer layer.",
+      "fix": "Either redact known IDs from the wrapped text before returning (for example strings.ReplaceAll over the plan's spreadsheet, sheet and document IDs), or have the T7 runbook redact stderr before anything is committed.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/apply_test.go",
+      "line": 186,
+      "issue": "TestApplyDeletesOnlyMatchingSections does not pin the exact-title rule. Its fixture titles are 'Environmental disclosures', '2. Environmental information' and 'Social disclosures'. If `s.Name != d.Title` became strings.Contains, HasPrefix or EqualFold, the test would still pass, even though this check is the only thing limiting deletes in the live report document.",
+      "fix": "Add near-miss sections to the fake document, such as 'Environmental disclosures (draft)' and 'environmental disclosures', and assert they are not deleted.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/apply_test.go",
+      "line": 205,
+      "issue": "TestApplyStopsOnError covers a WriteCells failure and a ListSections failure. It does not cover a GetSheetDataTyped (read-back) failure or a DeleteSection failure. In particular, no test proves that Apply stops after the first failed delete instead of going on to delete further sections.",
+      "fix": "Add failRead and failDelete knobs to fakeWorkiva. Assert the error is wrapped with the field or title, that no further DeleteSection calls follow, and that the error contains no ID.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/apply.go",
+      "line": 47,
+      "issue": "`r, _ := workiva.A1ToRange(...)` drops an error, relying on groupBySheet having validated the same range earlier. Also, `if v == \"\" { v = clearValue }` does nothing because clearValue is \"\"; the constant is only there to document the README decision.",
+      "fix": "Store the parsed range in sheetGroup (cells with Row/Col) so it is parsed once and no error is dropped. Optionally keep clearValue but drop the no-op branch, or note in a comment that it is intentional.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/workiva_test.go",
+      "line": 139,
+      "issue": "The leak check `for _, e := range []error{err}` looks only at the last error (NL_REGION). The NL_WORKIVA_CLIENT_SECRET error, raised after the-id is set, is never checked for the-id. The one-element loop is also odd.",
+      "fix": "Collect all three errors and check each one for 'the-id' and 'the-secret-value'.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/workiva_test.go",
+      "line": 37,
+      "issue": "Possible Duplicated Code (judgement call): the three httptest servers each repeat the same token handler (POST /iam/v1/oauth2/token -> {access_token:t}) and the same newLiveWorkivaAt setup.",
+      "fix": "Extract a helper such as newTestLive(t, handler) that serves the token endpoint and delegates every other path.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/apply_test.go",
+      "line": 80,
+      "issue": "The fixture names 'Fixture Book ...' use 'book', a near-synonym of 'workbook', which CONTEXT.md says to avoid (the same point was raised for T5's fixtures).",
+      "fix": "Use 'Fixture Spreadsheet ...'.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [
+    "No code change is needed in T6. Produce passing evidence for the same commit: rerun the full suite with a longer timeout (for example `go test ./... -race -timeout 30m`), or run it on GitHub CI, and record that as a new check for d3e819a. Otherwise, the orchestrator can record an explicit waiver for the internal/assurance timeout."
+  ],
+  "minor": [
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/apply.go",
+      "line": 77,
+      "issue": "`read-back: <ok> ok, <mismatch> mismatch` is printed only when the plan has writes or clears (`len(groups) > 0`). The spec says to print it unconditionally. Real seed plans always contain writes, so the output is the same in practice.",
+      "fix": "Optional: always print the read-back line, or leave it as is.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/apply.go",
+      "line": 56,
+      "issue": "Apply wraps errors with names, but it passes the inner error through with %w. The shared client's errors can carry IDs: on a transport failure Client.Do returns \"request <METHOD> <path>\", where the path holds the spreadsheet, sheet or document ID, and APIError.Body can echo IDs back. main.go prints these errors to stderr. If T7 pastes that output into committed evidence in this public repo, real sandbox IDs could leak. The task's rule is that errors name the field or title, never an ID, and that holds only for the outer layer.",
+      "fix": "Either redact known IDs from the wrapped text before returning (for example strings.ReplaceAll over the plan's spreadsheet, sheet and document IDs), or have the T7 runbook redact stderr before anything is committed.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/apply_test.go",
+      "line": 186,
+      "issue": "TestApplyDeletesOnlyMatchingSections does not pin the exact-title rule. Its fixture titles are 'Environmental disclosures', '2. Environmental information' and 'Social disclosures'. If `s.Name != d.Title` became strings.Contains, HasPrefix or EqualFold, the test would still pass, even though this check is the only thing limiting deletes in the live report document.",
+      "fix": "Add near-miss sections to the fake document, such as 'Environmental disclosures (draft)' and 'environmental disclosures', and assert they are not deleted.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "cmd/nl-demo-seed/apply_test.go",
+      "line": 205,
+      "issue": "TestApplyStopsOnError covers a WriteCells failure and a ListSections failure. It does not cover a GetSheetDataTyped (read-back) failure or a DeleteSection failure. In particular, no test proves that Apply stops after the first failed delete instead of going on to delete further sections.",
+      "fix": "Add failRead and failDelete knobs to fakeWorkiva. Assert the error is wrapped with the field or title, that no further DeleteSection calls follow, and that the error contains no ID.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/apply.go",
+      "line": 47,
+      "issue": "`r, _ := workiva.A1ToRange(...)` drops an error, relying on groupBySheet having validated the same range earlier. Also, `if v == \"\" { v = clearValue }` does nothing because clearValue is \"\"; the constant is only there to document the README decision.",
+      "fix": "Store the parsed range in sheetGroup (cells with Row/Col) so it is parsed once and no error is dropped. Optionally keep clearValue but drop the no-op branch, or note in a comment that it is intentional.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/workiva_test.go",
+      "line": 139,
+      "issue": "The leak check `for _, e := range []error{err}` looks only at the last error (NL_REGION). The NL_WORKIVA_CLIENT_SECRET error, raised after the-id is set, is never checked for the-id. The one-element loop is also odd.",
+      "fix": "Collect all three errors and check each one for 'the-id' and 'the-secret-value'.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/workiva_test.go",
+      "line": 37,
+      "issue": "Possible Duplicated Code (judgement call): the three httptest servers each repeat the same token handler (POST /iam/v1/oauth2/token -> {access_token:t}) and the same newLiveWorkivaAt setup.",
+      "fix": "Extract a helper such as newTestLive(t, handler) that serves the token endpoint and delegates every other path.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/apply_test.go",
+      "line": 80,
+      "issue": "The fixture names 'Fixture Book ...' use 'book', a near-synonym of 'workbook', which CONTEXT.md says to avoid (the same point was raised for T5's fixtures).",
+      "fix": "Use 'Fixture Spreadsheet ...'.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "revise",
+    "standards": "pass"
+  }
+}

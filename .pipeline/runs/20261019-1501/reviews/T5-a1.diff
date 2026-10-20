@@ -1,0 +1,619 @@
+diff --git a/.pipeline/runs/20261019-1501/reports/T5-a1.md b/.pipeline/runs/20261019-1501/reports/T5-a1.md
+new file mode 100644
+index 0000000..e138946
+--- /dev/null
++++ b/.pipeline/runs/20261019-1501/reports/T5-a1.md
+@@ -0,0 +1,25 @@
++# T5 attempt 1 report
++
++Branch task/20261019-1501-T5-a1 (base f680f89). Commit SHA: see `git log -1` on the branch.
++
++## Changed
++- cmd/nl-demo-seed/plan.go: Write, SectionDelete, Plan, BuildPlan, Print, percentToFraction.
++- cmd/nl-demo-seed/apply.go: Section, Workiva interface, Apply stub ("apply is not implemented yet").
++- cmd/nl-demo-seed/main.go: run, flags, newWorkiva seam (stub error).
++- cmd/nl-demo-seed/plan_test.go and testdata/ (mapping, 2 recipes, 2024/2025 CSV with an empty value).
++
++## Decisions
++- README: `clear-value: empty-string` -> an empty CSV value stays "" in the plan (Apply in T6 sends ""); `percent-cells-store-fractions: yes` -> const percentCellsStoreFractions = true, percent fields carry value/100 as exact decimal (46.5 -> 0.465).
++- Errors from BuildPlan return an empty Plan. Load, flag and plan errors exit 2; newWorkiva/Apply errors exit 1.
++- Dry run prints names only; no IDs, no Workiva call.
++
++## Commands (exit codes)
++- Acceptance 1 (named tests incl. TestDataConsistency): 0
++- go vet ./cmd/nl-demo-seed/: 0; gofmt -l cmd internal: empty
++- golangci-lint run ./cmd/nl-demo-seed/...: 0 (first run flagged unchecked Fprintln; fixed with `_, _ =`, no suppression)
++- dry-run acceptance and reset acceptance: 0 / 0
++- go build ./..., go vet ./..., gofmt -l .: 0
++- go test ./... -race: all packages pass except internal/assurance, which hit the 10m go test timeout (sqlite migrations in TestWave2LegalHoldPlacementIsIdempotentPerManifest, slow under -race here). Not touched by T5; flagged for the dispatcher.
++
++## Notes
++None of the owned files needed changes elsewhere. No requests to other lanes.
+diff --git a/cmd/nl-demo-seed/apply.go b/cmd/nl-demo-seed/apply.go
+new file mode 100644
+index 0000000..728f74c
+--- /dev/null
++++ b/cmd/nl-demo-seed/apply.go
+@@ -0,0 +1,26 @@
++package main
++
++import (
++	"context"
++	"errors"
++	"io"
++
++	"github.com/dantalabs/northern-lights/internal/workiva"
++)
++
++// Section is a section of the report document.
++type Section struct{ ID, Name string }
++
++// Workiva is the part of the Workiva API the seed uses. *workiva.Client has
++// the first two methods.
++type Workiva interface {
++	WriteCells(ctx context.Context, spreadsheetID, sheetID string, edits []workiva.CellEdit) error
++	GetSheetDataTyped(ctx context.Context, spreadsheetID, sheetID, cellRange string, fields []string) (*workiva.SheetData, error)
++	ListSections(ctx context.Context, documentID string) ([]Section, error)
++	DeleteSection(ctx context.Context, documentID, sectionID string) error
++}
++
++// Apply carries out a plan. Not implemented yet.
++func Apply(ctx context.Context, p Plan, wk Workiva, out io.Writer) error {
++	return errors.New("apply is not implemented yet")
++}
+diff --git a/cmd/nl-demo-seed/main.go b/cmd/nl-demo-seed/main.go
+index 4287737..a7eed60 100644
+--- a/cmd/nl-demo-seed/main.go
++++ b/cmd/nl-demo-seed/main.go
+@@ -2,11 +2,81 @@
+ package main
+ 
+ import (
++	"context"
++	"errors"
++	"flag"
+ 	"fmt"
++	"io"
+ 	"os"
++	"path/filepath"
+ )
+ 
++// newWorkiva builds the live client. It is a seam: tests replace it, and a
++// dry run never calls it.
++var newWorkiva = func(ctx context.Context) (Workiva, error) {
++	return nil, errors.New("live Workiva client is not implemented yet")
++}
++
+ func main() {
+-	fmt.Fprintln(os.Stderr, "nl-demo-seed: not implemented yet")
+-	os.Exit(2)
++	os.Exit(run(context.Background(), os.Args[1:], os.Stdout, os.Stderr))
++}
++
++func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
++	fs := flag.NewFlagSet("nl-demo-seed", flag.ContinueOnError)
++	fs.SetOutput(stderr)
++	mappings := fs.String("mappings", "configs/demo/mappings-sandbox.yaml", "mapping file naming the spreadsheets and report document to write")
++	data := fs.String("data", "configs/demo/data", "directory with esg-2025.csv and esg-2024.csv")
++	sections := fs.String("sections", "configs/demo/sections", "directory with the section recipes")
++	dryRun := fs.Bool("dry-run", false, "print the plan and send nothing (no network, no credentials)")
++	reset := fs.Bool("reset", false, "also clear the target fields and delete the recipe sections from the report document")
++	fs.Usage = func() {
++		_, _ = fmt.Fprintln(stderr, "Usage: nl-demo-seed [flags]")
++		_, _ = fmt.Fprintln(stderr, "Writes only to the spreadsheets and report document named in the mapping file and the section recipes.")
++		fs.PrintDefaults()
++	}
++	if err := fs.Parse(args); err != nil {
++		return 2
++	}
++	m, err := LoadMappings(*mappings)
++	if err != nil {
++		_, _ = fmt.Fprintln(stderr, "error:", err)
++		return 2
++	}
++	recipes, err := LoadRecipes(*sections)
++	if err != nil {
++		_, _ = fmt.Fprintln(stderr, "error:", err)
++		return 2
++	}
++	cur, err := LoadCSV(filepath.Join(*data, "esg-2025.csv"))
++	if err != nil {
++		_, _ = fmt.Fprintln(stderr, "error:", err)
++		return 2
++	}
++	pri, err := LoadCSV(filepath.Join(*data, "esg-2024.csv"))
++	if err != nil {
++		_, _ = fmt.Fprintln(stderr, "error:", err)
++		return 2
++	}
++	plan, err := BuildPlan(m, recipes, cur, pri, *reset)
++	if err != nil {
++		_, _ = fmt.Fprintln(stderr, "error:", err)
++		return 2
++	}
++	if err := plan.Print(stdout); err != nil {
++		_, _ = fmt.Fprintln(stderr, "error:", err)
++		return 1
++	}
++	if *dryRun {
++		return 0
++	}
++	wk, err := newWorkiva(ctx)
++	if err != nil {
++		_, _ = fmt.Fprintln(stderr, "error:", err)
++		return 1
++	}
++	if err := Apply(ctx, plan, wk, stdout); err != nil {
++		_, _ = fmt.Fprintln(stderr, "error:", err)
++		return 1
++	}
++	return 0
+ }
+diff --git a/cmd/nl-demo-seed/plan.go b/cmd/nl-demo-seed/plan.go
+new file mode 100644
+index 0000000..69550f3
+--- /dev/null
++++ b/cmd/nl-demo-seed/plan.go
+@@ -0,0 +1,149 @@
++package main
++
++import (
++	"fmt"
++	"io"
++	"math/big"
++	"sort"
++	"strings"
++)
++
++// percentCellsStoreFractions mirrors the README line
++// "percent-cells-store-fractions: yes" in configs/demo/README.md (Live write
++// semantics): a cell with a percent number format holds 0.465 for 46.5%.
++const percentCellsStoreFractions = true
++
++// Write is one cell the seed writes. An empty Value clears the cell.
++type Write struct {
++	Year  string
++	Field string
++	Ref   FieldRef
++	Value string
++}
++
++// SectionDelete names a report document section that reset removes.
++type SectionDelete struct{ DocumentID, Title string }
++
++// Plan is everything one seed run will change.
++type Plan struct {
++	Writes         []Write
++	Clears         []Write
++	SectionDeletes []SectionDelete
++}
++
++// BuildPlan plans the 2025 and 2024 writes of every recipe field, and with
++// reset also the clear of every target and the delete of every recipe
++// section. Every cell comes from Mappings.Field, so nothing outside the
++// mapping file can be planned. On error the Plan is empty.
++func BuildPlan(m Mappings, recipes []Recipe, current, prior []Row, reset bool) (Plan, error) {
++	if reset && m.DocumentID == "" {
++		return Plan{}, fmt.Errorf("reset needs document_id in the mapping file")
++	}
++	recipes = append([]Recipe(nil), recipes...)
++	sort.Slice(recipes, func(i, j int) bool { return recipes[i].ID < recipes[j].ID })
++	cur, pri := rowIndex(current), rowIndex(prior)
++	var cw, pw []Write
++	var p Plan
++	for _, rc := range recipes {
++		for _, f := range rc.Fields {
++			c, ok := cur[f.Key]
++			if !ok {
++				return Plan{}, fmt.Errorf("recipe %s: key %s has no row in the 2025 CSV", rc.ID, f.Key)
++			}
++			pr, ok := pri[f.Key]
++			if !ok {
++				return Plan{}, fmt.Errorf("recipe %s: key %s has no row in the 2024 CSV", rc.ID, f.Key)
++			}
++			w, err := planWrite(m, "2025", f.Source, c.Value)
++			if err != nil {
++				return Plan{}, fmt.Errorf("recipe %s: %w", rc.ID, err)
++			}
++			cw = append(cw, w)
++			w, err = planWrite(m, "2024", f.Prior, pr.Value)
++			if err != nil {
++				return Plan{}, fmt.Errorf("recipe %s: %w", rc.ID, err)
++			}
++			pw = append(pw, w)
++			if reset {
++				t, err := planWrite(m, "2025", f.Target, "")
++				if err != nil {
++					return Plan{}, fmt.Errorf("recipe %s: %w", rc.ID, err)
++				}
++				p.Clears = append(p.Clears, t)
++			}
++		}
++		if reset {
++			p.SectionDeletes = append(p.SectionDeletes, SectionDelete{DocumentID: m.DocumentID, Title: rc.Title})
++		}
++	}
++	p.Writes = append(cw, pw...)
++	return p, nil
++}
++
++func rowIndex(rows []Row) map[string]Row {
++	idx := make(map[string]Row, len(rows))
++	for _, r := range rows {
++		idx[r.Key] = r
++	}
++	return idx
++}
++
++func planWrite(m Mappings, year, field, value string) (Write, error) {
++	ref, ok := m.Field(field)
++	if !ok {
++		return Write{}, fmt.Errorf("field %s is not in the mapping file", field)
++	}
++	if ref.FieldType == "percent" && percentCellsStoreFractions && value != "" {
++		value = percentToFraction(value)
++	}
++	return Write{Year: year, Field: field, Ref: ref, Value: value}, nil
++}
++
++// percentToFraction divides a plain decimal by 100 and returns the shortest
++// exact decimal text (46.5 -> 0.465).
++func percentToFraction(s string) string {
++	r, ok := new(big.Rat).SetString(s)
++	if !ok {
++		return s
++	}
++	r.Quo(r, big.NewRat(100, 1))
++	ten := big.NewRat(10, 1)
++	scaled := new(big.Rat).Set(r)
++	for n := 0; n < 64; n++ {
++		if scaled.IsInt() {
++			return r.FloatString(n)
++		}
++		scaled.Mul(scaled, ten)
++	}
++	return r.FloatString(64)
++}
++
++// Print writes one line per planned item and a summary. It prints spreadsheet
++// and sheet names, never IDs.
++func (p Plan) Print(w io.Writer) error {
++	for _, x := range p.Writes {
++		v := x.Value
++		if v == "" {
++			v = "(empty)"
++		}
++		if _, err := fmt.Fprintf(w, "write %s %s -> %s = %s\n", x.Year, x.Field, location(x.Ref), v); err != nil {
++			return err
++		}
++	}
++	for _, x := range p.Clears {
++		if _, err := fmt.Fprintf(w, "clear %s %s -> %s\n", x.Year, x.Field, location(x.Ref)); err != nil {
++			return err
++		}
++	}
++	for _, d := range p.SectionDeletes {
++		if _, err := fmt.Fprintf(w, "delete-section %q\n", d.Title); err != nil {
++			return err
++		}
++	}
++	_, err := fmt.Fprintf(w, "planned: %d writes, %d clears, %d section deletes\n", len(p.Writes), len(p.Clears), len(p.SectionDeletes))
++	return err
++}
++
++func location(r FieldRef) string {
++	return strings.Join([]string{r.SpreadsheetName, r.SheetName}, " / ") + " ! " + r.Range
++}
+diff --git a/cmd/nl-demo-seed/plan_test.go b/cmd/nl-demo-seed/plan_test.go
+new file mode 100644
+index 0000000..fc76325
+--- /dev/null
++++ b/cmd/nl-demo-seed/plan_test.go
+@@ -0,0 +1,217 @@
++package main
++
++import (
++	"bytes"
++	"context"
++	"path/filepath"
++	"strings"
++	"testing"
++)
++
++const (
++	fxMappings = "testdata/mappings.yaml"
++	fxSections = "testdata/sections"
++	fxData     = "testdata"
++)
++
++func fixtures(t *testing.T) (Mappings, []Recipe, []Row, []Row) {
++	t.Helper()
++	m, err := LoadMappings(fxMappings)
++	if err != nil {
++		t.Fatal(err)
++	}
++	rs, err := LoadRecipes(fxSections)
++	if err != nil {
++		t.Fatal(err)
++	}
++	cur, err := LoadCSV(filepath.Join(fxData, "esg-2025.csv"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	pri, err := LoadCSV(filepath.Join(fxData, "esg-2024.csv"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	return m, rs, cur, pri
++}
++
++func TestBuildPlanWritesBothYears(t *testing.T) {
++	m, rs, cur, pri := fixtures(t)
++	p, err := BuildPlan(m, rs, cur, pri, false)
++	if err != nil {
++		t.Fatal(err)
++	}
++	type w struct{ year, field, value string }
++	want := []w{
++		{"2025", "src_env_alpha", "1200.5"},
++		{"2025", "src_soc_share", "0.465"},
++		{"2024", "rpt_env_alpha_2024", ""},
++		{"2024", "rpt_soc_share_2024", "0.4"},
++	}
++	if len(p.Writes) != len(want) {
++		t.Fatalf("got %d writes, want %d: %+v", len(p.Writes), len(want), p.Writes)
++	}
++	for i, x := range want {
++		g := p.Writes[i]
++		if g.Year != x.year || g.Field != x.field || g.Value != x.value {
++			t.Errorf("write %d = %s %s %q, want %s %s %q", i, g.Year, g.Field, g.Value, x.year, x.field, x.value)
++		}
++	}
++	if g := p.Writes[0].Ref; g.SpreadsheetID != "sp-src-0001" || g.SheetID != "sh-src-0001" || g.Range != "B2" {
++		t.Errorf("write 0 ref = %+v", g)
++	}
++	if len(p.Clears) != 0 || len(p.SectionDeletes) != 0 {
++		t.Errorf("no reset: clears=%d deletes=%d", len(p.Clears), len(p.SectionDeletes))
++	}
++}
++
++// README line percent-cells-store-fractions: yes selects division by 100.
++func TestBuildPlanPercentConvention(t *testing.T) {
++	m, rs, cur, pri := fixtures(t)
++	p, err := BuildPlan(m, rs, cur, pri, false)
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, wr := range p.Writes {
++		switch wr.Field {
++		case "src_soc_share":
++			if wr.Value != "0.465" {
++				t.Errorf("46.5 percent = %q, want 0.465", wr.Value)
++			}
++		case "src_env_alpha":
++			if wr.Value != "1200.5" {
++				t.Errorf("number field changed: %q", wr.Value)
++			}
++		}
++	}
++	for in, want := range map[string]string{"46.5": "0.465", "100": "1", "0": "0", "-5": "-0.05", "12.345": "0.12345", "7": "0.07"} {
++		if got := percentToFraction(in); got != want {
++			t.Errorf("percentToFraction(%s) = %q, want %q", in, got, want)
++		}
++	}
++}
++
++func TestBuildPlanResetAddsClearsAndSectionDeletes(t *testing.T) {
++	m, rs, cur, pri := fixtures(t)
++	p, err := BuildPlan(m, rs, cur, pri, true)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(p.Clears) != 2 || p.Clears[0].Field != "rpt_env_alpha_2025" || p.Clears[1].Field != "rpt_soc_share_2025" {
++		t.Fatalf("clears = %+v", p.Clears)
++	}
++	for _, c := range p.Clears {
++		if c.Year != "2025" || c.Value != "" {
++			t.Errorf("clear = %+v", c)
++		}
++	}
++	if len(p.SectionDeletes) != 2 || p.SectionDeletes[0] != (SectionDelete{DocumentID: "doc-fixture-0001", Title: "Fixture environmental"}) ||
++		p.SectionDeletes[1].Title != "Fixture social" {
++		t.Fatalf("section deletes = %+v", p.SectionDeletes)
++	}
++	m.DocumentID = ""
++	if _, err := BuildPlan(m, rs, cur, pri, true); err == nil {
++		t.Error("reset without document_id must fail")
++	}
++}
++
++func TestBuildPlanRejectsUnmappedField(t *testing.T) {
++	m, rs, cur, pri := fixtures(t)
++	for _, tc := range []struct{ name, field string }{{"source", "src_env_alpha"}, {"prior", "rpt_env_alpha_2024"}, {"target", "rpt_env_alpha_2025"}} {
++		bad := append([]Recipe(nil), rs...)
++		bad[0].Fields = append([]RecipeField(nil), rs[0].Fields...)
++		switch tc.name {
++		case "source":
++			bad[0].Fields[0].Source = "src_env_missing"
++		case "prior":
++			bad[0].Fields[0].Prior = "rpt_env_missing_2024"
++		case "target":
++			bad[0].Fields[0].Target = "rpt_env_missing_2025"
++		}
++		p, err := BuildPlan(m, bad, cur, pri, true)
++		if err == nil || !strings.Contains(err.Error(), "_missing") {
++			t.Errorf("%s: err = %v, want error naming the field", tc.name, err)
++		}
++		if len(p.Writes)+len(p.Clears)+len(p.SectionDeletes) != 0 {
++			t.Errorf("%s: plan must be empty on error", tc.name)
++		}
++	}
++	if _, err := BuildPlan(m, rs, cur[1:], pri, false); err == nil || !strings.Contains(err.Error(), "alpha") {
++		t.Errorf("missing csv row: err = %v", err)
++	}
++}
++
++func TestPlanPrintHasNoIDs(t *testing.T) {
++	m, rs, cur, pri := fixtures(t)
++	p, err := BuildPlan(m, rs, cur, pri, true)
++	if err != nil {
++		t.Fatal(err)
++	}
++	var buf bytes.Buffer
++	if err := p.Print(&buf); err != nil {
++		t.Fatal(err)
++	}
++	out := buf.String()
++	for _, id := range []string{"sp-src-0001", "sh-src-0001", "sp-rpt-0001", "sh-cy-0001", "sh-py-0001", "doc-fixture-0001"} {
++		if strings.Contains(out, id) {
++			t.Errorf("output contains ID %s", id)
++		}
++	}
++	for _, line := range []string{
++		"write 2025 src_env_alpha -> Fixture Source Book / Source Sheet ! B2 = 1200.5",
++		"write 2024 rpt_env_alpha_2024 -> Fixture Report Book / PY Output ! D2 = (empty)",
++		"clear 2025 rpt_env_alpha_2025 -> Fixture Report Book / CY Output ! D2",
++		`delete-section "Fixture environmental"`,
++		"planned: 4 writes, 2 clears, 2 section deletes",
++	} {
++		if !strings.Contains(out, line+"\n") {
++			t.Errorf("missing line %q in:\n%s", line, out)
++		}
++	}
++}
++
++func TestRunDryRunSendsNothing(t *testing.T) {
++	old := newWorkiva
++	newWorkiva = func(context.Context) (Workiva, error) {
++		t.Error("newWorkiva called in dry run")
++		return nil, nil
++	}
++	t.Cleanup(func() { newWorkiva = old })
++	var out, errb bytes.Buffer
++	args := []string{"-dry-run", "-mappings", demoDir + "/mappings-sandbox.example.yaml", "-data", dataDir, "-sections", sectionsDir}
++	if code := run(context.Background(), args, &out, &errb); code != 0 {
++		t.Fatalf("exit %d, stderr: %s", code, errb.String())
++	}
++	fields := 0
++	for _, r := range mustRecipes(t) {
++		fields += len(r.Fields)
++	}
++	got := 0
++	for _, l := range strings.Split(out.String(), "\n") {
++		if strings.HasPrefix(l, "write ") {
++			got++
++		}
++	}
++	if got != 2*fields {
++		t.Errorf("write lines = %d, want %d", got, 2*fields)
++	}
++	if strings.Contains(out.String(), "<id-") || strings.Contains(out.String(), "<document-id>") {
++		t.Error("output contains ID placeholder")
++	}
++}
++
++func TestRunErrors(t *testing.T) {
++	var out, errb bytes.Buffer
++	if code := run(context.Background(), []string{"-nope"}, &out, &errb); code != 2 {
++		t.Errorf("bad flag exit %d", code)
++	}
++	if code := run(context.Background(), []string{"-dry-run", "-mappings", "testdata/absent.yaml"}, &out, &errb); code != 2 {
++		t.Errorf("load error exit %d", code)
++	}
++	old := newWorkiva
++	t.Cleanup(func() { newWorkiva = old })
++	args := []string{"-mappings", fxMappings, "-data", fxData, "-sections", fxSections}
++	if code := run(context.Background(), args, &out, &errb); code != 1 || !strings.Contains(errb.String(), "not implemented") {
++		t.Errorf("live stub exit %d stderr %q", code, errb.String())
++	}
++}
+diff --git a/cmd/nl-demo-seed/testdata/esg-2024.csv b/cmd/nl-demo-seed/testdata/esg-2024.csv
+new file mode 100644
+index 0000000..a18af36
+--- /dev/null
++++ b/cmd/nl-demo-seed/testdata/esg-2024.csv
+@@ -0,0 +1,3 @@
++key,label,unit,value
++alpha,Alpha,MWh,
++share,Share,%,40
+diff --git a/cmd/nl-demo-seed/testdata/esg-2025.csv b/cmd/nl-demo-seed/testdata/esg-2025.csv
+new file mode 100644
+index 0000000..e57f149
+--- /dev/null
++++ b/cmd/nl-demo-seed/testdata/esg-2025.csv
+@@ -0,0 +1,3 @@
++key,label,unit,value
++alpha,Alpha,MWh,1200.5
++share,Share,%,46.5
+diff --git a/cmd/nl-demo-seed/testdata/mappings.yaml b/cmd/nl-demo-seed/testdata/mappings.yaml
+new file mode 100644
+index 0000000..1c6211b
+--- /dev/null
++++ b/cmd/nl-demo-seed/testdata/mappings.yaml
+@@ -0,0 +1,24 @@
++region: eu
++document_id: "doc-fixture-0001"
++spreadsheets:
++  - id: "sp-src-0001"
++    name: "Fixture Source Book"
++    sheets:
++      - id: "sh-src-0001"
++        name: "Source Sheet"
++        fields:
++          - { name: src_env_alpha, range: "B2", field_type: number, description: "Alpha" }
++          - { name: src_soc_share, range: "B3", field_type: percent, description: "Share" }
++  - id: "sp-rpt-0001"
++    name: "Fixture Report Book"
++    sheets:
++      - id: "sh-cy-0001"
++        name: "CY Output"
++        fields:
++          - { name: rpt_env_alpha_2025, range: "D2", field_type: number, description: "Alpha 2025" }
++          - { name: rpt_soc_share_2025, range: "D3", field_type: percent, description: "Share 2025" }
++      - id: "sh-py-0001"
++        name: "PY Output"
++        fields:
++          - { name: rpt_env_alpha_2024, range: "D2", field_type: number, description: "Alpha 2024" }
++          - { name: rpt_soc_share_2024, range: "D3", field_type: percent, description: "Share 2024" }
+diff --git a/cmd/nl-demo-seed/testdata/sections/fx-env.yaml b/cmd/nl-demo-seed/testdata/sections/fx-env.yaml
+new file mode 100644
+index 0000000..afab4e4
+--- /dev/null
++++ b/cmd/nl-demo-seed/testdata/sections/fx-env.yaml
+@@ -0,0 +1,15 @@
++id: fx-env
++title: Fixture environmental
++period: "2025"
++prior_period: "2024"
++document_id: "doc-fixture-0001"
++materiality_pct: 10
++fields:
++  - key: alpha
++    label: "Alpha"
++    unit: MWh
++    decimals: 2
++    source: src_env_alpha
++    target: rpt_env_alpha_2025
++    prior: rpt_env_alpha_2024
++    required: true
+diff --git a/cmd/nl-demo-seed/testdata/sections/fx-soc.yaml b/cmd/nl-demo-seed/testdata/sections/fx-soc.yaml
+new file mode 100644
+index 0000000..67592ba
+--- /dev/null
++++ b/cmd/nl-demo-seed/testdata/sections/fx-soc.yaml
+@@ -0,0 +1,15 @@
++id: fx-soc
++title: Fixture social
++period: "2025"
++prior_period: "2024"
++document_id: "doc-fixture-0001"
++materiality_pct: 10
++fields:
++  - key: share
++    label: "Share"
++    unit: "%"
++    decimals: 1
++    source: src_soc_share
++    target: rpt_soc_share_2025
++    prior: rpt_soc_share_2024
++    required: false

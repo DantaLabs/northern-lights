@@ -1,0 +1,19 @@
+{
+  "task_id": "T4",
+  "axis": "spec",
+  "implementation_commit": "449a466971ff90f80a92e39895700c2fbaa933ef",
+  "attempt": 2,
+  "verdict": "pass",
+  "findings": [],
+  "requirements_checked": [
+    {"requirement": "R2", "satisfied": true, "evidence": "TestRecipesMatchSchemaAndMappings: the CSVs agree on key/label/unit/order; field counts are at least the spec minimums; recipe fields match the CSV rows; mapping descriptions match the CSV labels. Unchanged from a1, which passed this requirement"},
+    {"requirement": "R3", "satisfied": true, "evidence": "TestDataConsistency: the 0..100 share check now runs over both years (data_test.go:105-113, map {2025: cur, 2024: prior}). This resolves the a1 minor finding. Totals, |change| <= 30 and non-planted < 10 checks are unchanged"},
+    {"requirement": "R4", "satisfied": true, "evidence": "TestDataConsistency asserts exactly four planted findings on distinct fields, each named in data/README.md. Unchanged from a1"},
+    {"requirement": "R5", "satisfied": true, "evidence": "Recipe structs match the L2 schema; LoadRecipes decodes with KnownFields(true); the test checks materiality_pct == 10 and a single verbatim block. Unchanged from a1"},
+    {"requirement": "R6", "satisfied": true, "evidence": "TestRecipesMatchSchemaAndMappings now checks every field's Source, Target and Prior in mappings-demo.yaml. Each must sit on demo-esg-source/demo-esg-source-2025, demo-esg-report/demo-esg-report-cy or demo-esg-report/demo-esg-report-py as its role requires (data_test.go:269-289), so every ID has the demo-esg- prefix. Field names are also checked in the sandbox example mapping. This resolves the a1 major finding. The worker's mutation check (renaming src_soc_employees_total) made the test fail"},
+    {"requirement": "R7", "satisfied": true, "evidence": "TestDemoReadReturnsCSVValue calls NewDemoClient(...).GetSheetDataTyped and gets back the exact CSV text for src_env_energy_total (2025) and rpt_env_energy_total_2024. Unchanged from a1"},
+    {"requirement": "T4 interface (Row/LoadCSV, Recipe, Mappings/FieldRef/Field, DecimalText)", "satisfied": true, "evidence": "cmd/nl-demo-seed/data.go signatures are unchanged; TestDecimalText and TestLoadCSVRejectsBadInput still pass (checks/T4-a2.log)"},
+    {"requirement": "a1 standards blocking: no ignore comments", "satisfied": true, "evidence": "All three //nolint:gosec comments are removed from data.go:35,121,158; grep finds no nolint in cmd/ or internal/; golangci-lint reports 0 issues"}
+  ],
+  "new_tasks": []
+}

@@ -1,0 +1,497 @@
+commit 019d9a6b5ff0394ba53189dd2be7247be9d0b8c8
+Author: Sam <samvillaf@gmail.com>
+Date:   Mon Oct 19 22:57:23 2026 +0700
+
+    T1: discover sandbox layout, probe write semantics, commit ESG field list
+    
+    Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+diff --git a/.pipeline/runs/20261019-1501/reports/T1-a1.md b/.pipeline/runs/20261019-1501/reports/T1-a1.md
+new file mode 100644
+index 0000000..4beed90
+--- /dev/null
++++ b/.pipeline/runs/20261019-1501/reports/T1-a1.md
+@@ -0,0 +1,27 @@
++# T1 attempt 1 report
++
++Status: done. Branch task/20261019-1501-T1-a1 (base 51c6d58). Commit SHA: see `git log` of the branch (single commit "T1: ...").
++
++## What changed
++- configs/demo/.gitignore, mappings-sandbox.example.yaml (42 fields x 3 mapped names, placeholders only), data/esg-2025.csv and esg-2024.csv (26 environmental + 16 social rows, value column empty), README.md (90 lines), check_no_sandbox_ids.py.
++
++## Discovery
++- Environmental Disclosures and Social Disclosures (template) are input forms: label in column C, input cells D/G/J (merged ranges, top-left cell used), totals are formulas. Chosen src cells are empty literal NUMBER cells (2 dp).
++- employees_total: Social Disclosures total is a formula linked from B1, so the literal input is General Information E62 (template). Data Collection holds only unrelated test text.
++- CY/PY Data Output hold formulas for B1 rows only (A1:G19); per-disclosure sheets hold one year of filled values. Fallback used: empty block I:L of CY/PY Data Output, value cell L<n+1>. Reads of columns up to AZ succeed, but writing into this block is NOT verified (only the scratch sheet was written).
++- All percent cells in the template are formulas (plain ratios, so fractions); no chosen cell is percent; all field_type number.
++- Report document has no section named Environmental disclosures / Social disclosures (it has "2. Environmental information" and "3. Social information"; other names are not committed).
++
++## Live write probe (scratch spreadsheet Testing MCP / Sheet1, cell E20, empty before and after)
++- WriteCells "46.5" reads back as json.Number 46.5 (number, not text). Same for a json.Number write.
++- WriteCells nil: HTTP 400. "" clears the cell (reads back as ""). Empty cells read as "" with value present.
++- Result: clear-value: empty-string; percent-cells-store-fractions: yes (formula evidence only, display not observable).
++
++## Commands (exit codes)
++- 12 acceptance checks (script .scratch/acc.sh): all PASS, exit 0 (negative test of the ID checker: injected ID detected, exit 1, then removed).
++- gofmt -l: empty (0); go vet ./...: 0; golangci-lint run: 0 issues; go build ./...: 0; go test ./... -race: all ok (0).
++- Throwaway check that the example YAML (placeholders replaced by fake IDs) loads through bootstrap.LoadMappings: ok, fields resolvable.
++
++## Notes
++- Throwaway Go code in .scratch was renamed to .txt (git-ignored); raw dumps with IDs stay in .scratch only.
++- Needs from other lanes: none. Waste fields use waste table rows 1 and 2 (type and unit cells left to the seed task; template has no literal waste totals).
+diff --git a/configs/demo/.gitignore b/configs/demo/.gitignore
+new file mode 100644
+index 0000000..7b5e7a8
+--- /dev/null
++++ b/configs/demo/.gitignore
+@@ -0,0 +1 @@
++mappings-sandbox.yaml
+diff --git a/configs/demo/README.md b/configs/demo/README.md
+new file mode 100644
+index 0000000..c54e736
+--- /dev/null
++++ b/configs/demo/README.md
+@@ -0,0 +1,90 @@
++# Demo L4 configuration
++
++Data and mappings for the KPMG demo (lane L4). The spec is `docs/specs/demo-l4-data-and-agent.md`.
++
++## Files
++
++- `data/esg-2025.csv`, `data/esg-2024.csv`: the fields of the ESG data, header `key,label,unit,value`. The `value` column is filled by a later task.
++- `mappings-sandbox.example.yaml`: sandbox mapping with placeholder IDs (committed). `mappings-sandbox.yaml` is the real one and is git-ignored (`.gitignore`), because the repository is public.
++- `check_no_sandbox_ids.py`: `python3 -I configs/demo/check_no_sandbox_ids.py LOCAL_ID_FILE...` exits 1 and prints only file paths if a repository file contains a real sandbox ID.
++- Later tasks add `mappings-demo.yaml`, `company.md` and `sections/`.
++
++## Contract
++
++- Sections: environmental (`env`, section recipe `esg-environmental`, "Environmental disclosures") and social (`soc`, `esg-social`, "Social disclosures"). Reporting period 2025, prior period 2024.
++- Field keys are lowercase snake_case and unique across both sections; `energy_total` and `employees_total` are mandatory. CSV rows: environmental fields first, then social, in template order.
++- Mapped field names: `src_<env|soc>_<key>` (KPMG ESG template, 2025), `rpt_<env|soc>_<key>_2025` (current-year target) and `rpt_<env|soc>_<key>_2024` (prior period), both in the ESG report spreadsheet.
++- Read cells with `GetSheetDataTyped` (numbers stay `json.Number`), compare values as exact decimals, treat absent, nil and "" as empty.
++- Demo mode: spreadsheet `demo-esg-source` has sheet `demo-esg-source-2025` ("ESG data 2025"); `demo-esg-report` has `demo-esg-report-cy` ("CY Data Output") and `demo-esg-report-py` ("PY Data Output"). Row 1 is the header key, label, unit, value; row r is CSV data row r-1; a field range is `D<r>`. Document ID `demo-doc-annual-report`.
++
++## Sandbox cells
++
++`src_` cells are empty literal input cells (merged ranges are given by their top-left cell). The totals on the Social Disclosures sheet are formulas linked from General Information, so `employees_total` uses the input cell of that sheet. Other totals the template computes (fuels, scope totals, waste totals, `K` columns) are formulas and are not mapped.
++
++The ESG report spreadsheet has no free cells for these fields: CY Data Output and PY Data Output hold formulas that link only B1 rows (A1:G19), and each per-disclosure sheet holds one year of filled literal values. So every `rpt_` field uses an empty block to the right of that used range, columns I to L of CY Data Output (2025 and the current-year target) and PY Data Output (2024), format General. Field number n (1 is `energy_total`) has range `L<n+1>`. Columns I to K and row 1 are reserved for key, label and unit and are not mapped.
++
++Waste has no literal totals, so two waste types (rows 1 and 2 of the waste table) stand in. No chosen cell has a percent format, so every `field_type` is `number`.
++
++| key | template sheet | range | format |
++|---|---|---|---|
++| env_energy_total | Environmental Disclosures | G5 | number, 2 dp |
++| env_electricity_renewable | Environmental Disclosures | G12 | number, 2 dp |
++| env_electricity_non_renewable | Environmental Disclosures | J12 | number, 2 dp |
++| env_self_generated_electricity_renewable | Environmental Disclosures | G13 | number, 2 dp |
++| env_self_generated_electricity_non_renewable | Environmental Disclosures | J13 | number, 2 dp |
++| env_ghg_scope1 | Environmental Disclosures | D22 | number, 2 dp |
++| env_ghg_scope2_location | Environmental Disclosures | D23 | number, 2 dp |
++| env_ghg_scope2_market | Environmental Disclosures | D24 | number, 2 dp |
++| env_ghg_scope3_purchased_goods | Environmental Disclosures | D30 | number, 2 dp |
++| env_ghg_scope3_capital_goods | Environmental Disclosures | D31 | number, 2 dp |
++| env_ghg_scope3_fuel_energy | Environmental Disclosures | D32 | number, 2 dp |
++| env_ghg_scope3_upstream_transport | Environmental Disclosures | D33 | number, 2 dp |
++| env_ghg_scope3_waste | Environmental Disclosures | D34 | number, 2 dp |
++| env_ghg_scope3_business_travel | Environmental Disclosures | D35 | number, 2 dp |
++| env_ghg_scope3_commuting | Environmental Disclosures | D36 | number, 2 dp |
++| env_land_sealed_area | Environmental Disclosures | D161 | number, 2 dp |
++| env_land_nature_onsite | Environmental Disclosures | D162 | number, 2 dp |
++| env_land_nature_offsite | Environmental Disclosures | D163 | number, 2 dp |
++| env_land_use_total | Environmental Disclosures | D164 | number, 2 dp |
++| env_water_withdrawn_total | Environmental Disclosures | D169 | number, 2 dp |
++| env_water_withdrawn_high_stress | Environmental Disclosures | D170 | number, 2 dp |
++| env_water_discharge_production | Environmental Disclosures | D176 | number, 2 dp |
++| env_waste_recycled_type1 | Environmental Disclosures | J189 | number, 2 dp |
++| env_waste_disposed_type1 | Environmental Disclosures | K189 | number, 2 dp |
++| env_waste_recycled_type2 | Environmental Disclosures | J190 | number, 2 dp |
++| env_waste_disposed_type2 | Environmental Disclosures | K190 | number, 2 dp |
++| soc_employees_total | General Information | E62 | number, 2 dp |
++| soc_employees_permanent | Social Disclosures | D10 | number, 2 dp |
++| soc_employees_male | Social Disclosures | D18 | number, 2 dp |
++| soc_employees_female | Social Disclosures | D19 | number, 2 dp |
++| soc_employees_other | Social Disclosures | D20 | number, 2 dp |
++| soc_employees_not_reported | Social Disclosures | D21 | number, 2 dp |
++| soc_employees_left | Social Disclosures | D43 | number, 2 dp |
++| soc_employees_start | Social Disclosures | D44 | number, 2 dp |
++| soc_employees_end | Social Disclosures | D45 | number, 2 dp |
++| soc_accidents_recordable | Social Disclosures | D49 | number, 2 dp |
++| soc_fatalities_work_related | Social Disclosures | D53 | number, 2 dp |
++| soc_employees_collective_bargaining | Social Disclosures | D60 | number, 2 dp |
++| soc_training_hours_male | Social Disclosures | D66 | number, 2 dp |
++| soc_training_hours_female | Social Disclosures | D67 | number, 2 dp |
++| soc_managers_male | Social Disclosures | D74 | number, 2 dp |
++| soc_managers_female | Social Disclosures | D75 | number, 2 dp |
++
++The report document already has a section named `Environmental disclosures` or `Social disclosures`: no (it has "2. Environmental information" and "3. Social information").
++
++## Live write semantics
++
++Probed on the scratch spreadsheet `Testing MCP` with `WriteCells`, then cleared.
++
++- A decimal string `"46.5"` reads back as a number: `json.Number("46.5")`, not text.
++- Writing JSON null is rejected (HTTP 400); writing `""` clears the cell and it reads back as `""`.
++- Percent cells store fractions: the template percent formulas are plain ratios (for example turnover is left divided by the average headcount), so 46% is raw 0.46. No literal percent cell exists to confirm the display.
++
++clear-value: empty-string
++percent-cells-store-fractions: yes
++
++Not verified: writes into the empty block of the report sheets and into the template cells (only the scratch sheet was written).
++
++## Generate the real mapping file
++
++Copy `mappings-sandbox.example.yaml` to `mappings-sandbox.yaml` and replace the placeholders: `<id-NN>` from `resources.local.md` (or `step-3.local.json`) in the RB-01 evidence folder (`docs/demo/evidence/2026-10-19-RB-01/`) on Tom's machine, and `<document-id>` from `step-2.local.json` in the RB-02 folder. Then run the ID check against those two local files.
+diff --git a/configs/demo/check_no_sandbox_ids.py b/configs/demo/check_no_sandbox_ids.py
+new file mode 100644
+index 0000000..c11cc04
+--- /dev/null
++++ b/configs/demo/check_no_sandbox_ids.py
+@@ -0,0 +1,88 @@
++#!/usr/bin/env python3
++"""Fail if any non-ignored file in the repository contains a real sandbox ID.
++
++Usage (from the repository root):
++    python3 -I configs/demo/check_no_sandbox_ids.py LOCAL_ID_FILE...
++
++The IDs are collected from the given local files (JSON values of keys ending in
++"id", also when the JSON is escaped inside a string) and are never printed.
++Exit codes: 0 ok, 1 an ID was found in a repository file, 2 usage or wrong path.
++"""
++import json
++import re
++import subprocess
++import sys
++
++ID_RE = re.compile(r"^[0-9A-Za-z_-]{20,}$")
++# Text fallback: "...id": "<value>", also with backslash-escaped quotes.
++TEXT_RE = re.compile(r'\\*"[^"\\]*?[iI][dD]\\*"\s*:\s*\\*"([0-9A-Za-z_-]{20,})\\*"')
++MIN_IDS = 10
++
++
++def walk(node, found):
++    if isinstance(node, dict):
++        for key, value in node.items():
++            if isinstance(value, str) and str(key).lower().endswith("id") and ID_RE.match(value):
++                found.add(value)
++            walk(value, found)
++    elif isinstance(node, list):
++        for value in node:
++            walk(value, found)
++    elif isinstance(node, str) and node[:1] in "{[":
++        try:
++            walk(json.loads(node), found)
++        except ValueError:
++            pass
++
++
++def collect(path):
++    with open(path, encoding="utf-8", errors="replace") as fh:
++        text = fh.read()
++    found = set(TEXT_RE.findall(text))
++    try:
++        walk(json.loads(text), found)
++    except ValueError:
++        pass
++    return found
++
++
++def main(argv):
++    if not argv:
++        print("usage: check_no_sandbox_ids.py LOCAL_ID_FILE...", file=sys.stderr)
++        return 2
++    ids = set()
++    for path in argv:
++        try:
++            ids |= collect(path)
++        except OSError as exc:
++            print("cannot read %s: %s" % (path, exc.strerror), file=sys.stderr)
++            return 2
++    if len(ids) < MIN_IDS:
++        print("only %d ID-like tokens found, expected at least %d: wrong file?" % (len(ids), MIN_IDS), file=sys.stderr)
++        return 2
++    listing = subprocess.run(
++        ["git", "ls-files", "-co", "--exclude-standard", "-z"],
++        check=True, capture_output=True,
++    ).stdout.decode("utf-8", errors="replace")
++    needles = [i.encode() for i in ids]
++    files = [p for p in listing.split("\0") if p]
++    offenders = []
++    for path in files:
++        try:
++            with open(path, "rb") as fh:
++                data = fh.read()
++        except OSError:
++            continue  # deleted or unreadable entries cannot hold an ID
++        if any(n in data for n in needles):
++            offenders.append(path)
++    if offenders:
++        print("sandbox IDs found in:")
++        for path in offenders:
++            print("  " + path)
++        return 1
++    print("ok: no sandbox IDs in %d files" % len(files))
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main(sys.argv[1:]))
+diff --git a/configs/demo/data/esg-2024.csv b/configs/demo/data/esg-2024.csv
+new file mode 100644
+index 0000000..d03ca03
+--- /dev/null
++++ b/configs/demo/data/esg-2024.csv
+@@ -0,0 +1,43 @@
++key,label,unit,value
++energy_total,Total Energy Consumption,MWh,
++electricity_renewable,Electricity (as reflected in utility billings) - Renewable,MWh,
++electricity_non_renewable,Electricity (as reflected in utility billings) - Non-renewable,MWh,
++self_generated_electricity_renewable,Self-generated electricity - Renewable,MWh,
++self_generated_electricity_non_renewable,Self-generated electricity - Non-renewable,MWh,
++ghg_scope1,Gross Scope 1 GHG Emissions,tCO2e,
++ghg_scope2_location,Gross Scope 2 location-based GHG Emissions,tCO2e,
++ghg_scope2_market,Gross scope 2 market-based GHG Emissions - May (optional),tCO2e,
++ghg_scope3_purchased_goods,1. Purchased Goods and Services,tCO2e,
++ghg_scope3_capital_goods,2. Capital Goods,tCO2e,
++ghg_scope3_fuel_energy,3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2),tCO2e,
++ghg_scope3_upstream_transport,4. Upstream Transportation and Distribution,tCO2e,
++ghg_scope3_waste,5. Waste Generated in Operations,tCO2e,
++ghg_scope3_business_travel,6. Business Travel,tCO2e,
++ghg_scope3_commuting,7. Employee Commuting,tCO2e,
++land_sealed_area,Total sealed area,ha,
++land_nature_onsite,Total nature-oriented area on-site,ha,
++land_nature_offsite,Total nature-oriented area off-site,ha,
++land_use_total,Total use of land,ha,
++water_withdrawn_total,"Total amount of water withdrawn from all sites (cubic meters, m³)",m3,
++water_withdrawn_high_stress,Amount of water withdrawn at sites located in areas of high water-stress,m3,
++water_discharge_production,Water discharge from undertaking production processes (m³),m3,
++waste_recycled_type1,Waste diverted to recycle or reuse - waste type 1,kg,
++waste_disposed_type1,Waste directed to disposal - waste type 1,kg,
++waste_recycled_type2,Waste diverted to recycle or reuse - waste type 2,kg,
++waste_disposed_type2,Waste directed to disposal - waste type 2,kg,
++employees_total,Number of employees,number,
++employees_permanent,Number of employees - Permanent contract,number,
++employees_male,Number of employees - Male,number,
++employees_female,Number of employees - Female,number,
++employees_other,Number of employees - Other,number,
++employees_not_reported,Number of employees - Not reported,number,
++employees_left,Number of employees who left during the reporting period,number,
++employees_start,Number of employees at the beginning of the reporting period,number,
++employees_end,Number of employees at the end of the reporting period,number,
++accidents_recordable,Number of recordable work-related accidents in the reporting period,number,
++fatalities_work_related,Number of fatalities as a result of work-related injuries and work-related ill health,number,
++employees_collective_bargaining,Number of employees covered by collective bargaining agreements,number,
++training_hours_male,Number of annual training hours per employee - Male,hours,
++training_hours_female,Number of annual training hours per employee - Female,hours,
++managers_male,Number of male employees at management level,number,
++managers_female,Number of female employees at management level,number,
+diff --git a/configs/demo/data/esg-2025.csv b/configs/demo/data/esg-2025.csv
+new file mode 100644
+index 0000000..d03ca03
+--- /dev/null
++++ b/configs/demo/data/esg-2025.csv
+@@ -0,0 +1,43 @@
++key,label,unit,value
++energy_total,Total Energy Consumption,MWh,
++electricity_renewable,Electricity (as reflected in utility billings) - Renewable,MWh,
++electricity_non_renewable,Electricity (as reflected in utility billings) - Non-renewable,MWh,
++self_generated_electricity_renewable,Self-generated electricity - Renewable,MWh,
++self_generated_electricity_non_renewable,Self-generated electricity - Non-renewable,MWh,
++ghg_scope1,Gross Scope 1 GHG Emissions,tCO2e,
++ghg_scope2_location,Gross Scope 2 location-based GHG Emissions,tCO2e,
++ghg_scope2_market,Gross scope 2 market-based GHG Emissions - May (optional),tCO2e,
++ghg_scope3_purchased_goods,1. Purchased Goods and Services,tCO2e,
++ghg_scope3_capital_goods,2. Capital Goods,tCO2e,
++ghg_scope3_fuel_energy,3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2),tCO2e,
++ghg_scope3_upstream_transport,4. Upstream Transportation and Distribution,tCO2e,
++ghg_scope3_waste,5. Waste Generated in Operations,tCO2e,
++ghg_scope3_business_travel,6. Business Travel,tCO2e,
++ghg_scope3_commuting,7. Employee Commuting,tCO2e,
++land_sealed_area,Total sealed area,ha,
++land_nature_onsite,Total nature-oriented area on-site,ha,
++land_nature_offsite,Total nature-oriented area off-site,ha,
++land_use_total,Total use of land,ha,
++water_withdrawn_total,"Total amount of water withdrawn from all sites (cubic meters, m³)",m3,
++water_withdrawn_high_stress,Amount of water withdrawn at sites located in areas of high water-stress,m3,
++water_discharge_production,Water discharge from undertaking production processes (m³),m3,
++waste_recycled_type1,Waste diverted to recycle or reuse - waste type 1,kg,
++waste_disposed_type1,Waste directed to disposal - waste type 1,kg,
++waste_recycled_type2,Waste diverted to recycle or reuse - waste type 2,kg,
++waste_disposed_type2,Waste directed to disposal - waste type 2,kg,
++employees_total,Number of employees,number,
++employees_permanent,Number of employees - Permanent contract,number,
++employees_male,Number of employees - Male,number,
++employees_female,Number of employees - Female,number,
++employees_other,Number of employees - Other,number,
++employees_not_reported,Number of employees - Not reported,number,
++employees_left,Number of employees who left during the reporting period,number,
++employees_start,Number of employees at the beginning of the reporting period,number,
++employees_end,Number of employees at the end of the reporting period,number,
++accidents_recordable,Number of recordable work-related accidents in the reporting period,number,
++fatalities_work_related,Number of fatalities as a result of work-related injuries and work-related ill health,number,
++employees_collective_bargaining,Number of employees covered by collective bargaining agreements,number,
++training_hours_male,Number of annual training hours per employee - Male,hours,
++training_hours_female,Number of annual training hours per employee - Female,hours,
++managers_male,Number of male employees at management level,number,
++managers_female,Number of female employees at management level,number,
+diff --git a/configs/demo/mappings-sandbox.example.yaml b/configs/demo/mappings-sandbox.example.yaml
+new file mode 100644
+index 0000000..739b129
+--- /dev/null
++++ b/configs/demo/mappings-sandbox.example.yaml
+@@ -0,0 +1,155 @@
++# Sandbox mapping for the L4 demo data (placeholders only).
++# The real file is configs/demo/mappings-sandbox.yaml (git-ignored). Generate it from this one
++# by replacing every <id-NN> and <document-id> with the real ID (see configs/demo/README.md).
++# src_*  : input cell in the KPMG ESG template (2025 values).
++# rpt_*  : value cell in the ESG report spreadsheet, columns I to L of CY / PY Data Output.
++region: eu
++document_id: "<document-id>"
++spreadsheets:
++  - id: "<id-01>"
++    name: "VSME-Digital-Template-1.0.1 Unlocked"
++    sheets:
++      - id: "<id-10>"
++        name: "Environmental Disclosures"
++        fields:
++          - { name: src_env_energy_total, range: "G5", field_type: number, description: "Total Energy Consumption" }
++          - { name: src_env_electricity_renewable, range: "G12", field_type: number, description: "Electricity (as reflected in utility billings) - Renewable" }
++          - { name: src_env_electricity_non_renewable, range: "J12", field_type: number, description: "Electricity (as reflected in utility billings) - Non-renewable" }
++          - { name: src_env_self_generated_electricity_renewable, range: "G13", field_type: number, description: "Self-generated electricity - Renewable" }
++          - { name: src_env_self_generated_electricity_non_renewable, range: "J13", field_type: number, description: "Self-generated electricity - Non-renewable" }
++          - { name: src_env_ghg_scope1, range: "D22", field_type: number, description: "Gross Scope 1 GHG Emissions" }
++          - { name: src_env_ghg_scope2_location, range: "D23", field_type: number, description: "Gross Scope 2 location-based GHG Emissions" }
++          - { name: src_env_ghg_scope2_market, range: "D24", field_type: number, description: "Gross scope 2 market-based GHG Emissions - May (optional)" }
++          - { name: src_env_ghg_scope3_purchased_goods, range: "D30", field_type: number, description: "1. Purchased Goods and Services" }
++          - { name: src_env_ghg_scope3_capital_goods, range: "D31", field_type: number, description: "2. Capital Goods" }
++          - { name: src_env_ghg_scope3_fuel_energy, range: "D32", field_type: number, description: "3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2)" }
++          - { name: src_env_ghg_scope3_upstream_transport, range: "D33", field_type: number, description: "4. Upstream Transportation and Distribution" }
++          - { name: src_env_ghg_scope3_waste, range: "D34", field_type: number, description: "5. Waste Generated in Operations" }
++          - { name: src_env_ghg_scope3_business_travel, range: "D35", field_type: number, description: "6. Business Travel" }
++          - { name: src_env_ghg_scope3_commuting, range: "D36", field_type: number, description: "7. Employee Commuting" }
++          - { name: src_env_land_sealed_area, range: "D161", field_type: number, description: "Total sealed area" }
++          - { name: src_env_land_nature_onsite, range: "D162", field_type: number, description: "Total nature-oriented area on-site" }
++          - { name: src_env_land_nature_offsite, range: "D163", field_type: number, description: "Total nature-oriented area off-site" }
++          - { name: src_env_land_use_total, range: "D164", field_type: number, description: "Total use of land" }
++          - { name: src_env_water_withdrawn_total, range: "D169", field_type: number, description: "Total amount of water withdrawn from all sites (cubic meters, m³)" }
++          - { name: src_env_water_withdrawn_high_stress, range: "D170", field_type: number, description: "Amount of water withdrawn at sites located in areas of high water-stress" }
++          - { name: src_env_water_discharge_production, range: "D176", field_type: number, description: "Water discharge from undertaking production processes (m³)" }
++          - { name: src_env_waste_recycled_type1, range: "J189", field_type: number, description: "Waste diverted to recycle or reuse - waste type 1" }
++          - { name: src_env_waste_disposed_type1, range: "K189", field_type: number, description: "Waste directed to disposal - waste type 1" }
++          - { name: src_env_waste_recycled_type2, range: "J190", field_type: number, description: "Waste diverted to recycle or reuse - waste type 2" }
++          - { name: src_env_waste_disposed_type2, range: "K190", field_type: number, description: "Waste directed to disposal - waste type 2" }
++      - id: "<id-09>"
++        name: "General Information"
++        fields:
++          - { name: src_soc_employees_total, range: "E62", field_type: number, description: "Number of employees" }
++      - id: "<id-11>"
++        name: "Social Disclosures"
++        fields:
++          - { name: src_soc_employees_permanent, range: "D10", field_type: number, description: "Number of employees - Permanent contract" }
++          - { name: src_soc_employees_male, range: "D18", field_type: number, description: "Number of employees - Male" }
++          - { name: src_soc_employees_female, range: "D19", field_type: number, description: "Number of employees - Female" }
++          - { name: src_soc_employees_other, range: "D20", field_type: number, description: "Number of employees - Other" }
++          - { name: src_soc_employees_not_reported, range: "D21", field_type: number, description: "Number of employees - Not reported" }
++          - { name: src_soc_employees_left, range: "D43", field_type: number, description: "Number of employees who left during the reporting period" }
++          - { name: src_soc_employees_start, range: "D44", field_type: number, description: "Number of employees at the beginning of the reporting period" }
++          - { name: src_soc_employees_end, range: "D45", field_type: number, description: "Number of employees at the end of the reporting period" }
++          - { name: src_soc_accidents_recordable, range: "D49", field_type: number, description: "Number of recordable work-related accidents in the reporting period" }
++          - { name: src_soc_fatalities_work_related, range: "D53", field_type: number, description: "Number of fatalities as a result of work-related injuries and work-related ill health" }
++          - { name: src_soc_employees_collective_bargaining, range: "D60", field_type: number, description: "Number of employees covered by collective bargaining agreements" }
++          - { name: src_soc_training_hours_male, range: "D66", field_type: number, description: "Number of annual training hours per employee - Male" }
++          - { name: src_soc_training_hours_female, range: "D67", field_type: number, description: "Number of annual training hours per employee - Female" }
++          - { name: src_soc_managers_male, range: "D74", field_type: number, description: "Number of male employees at management level" }
++          - { name: src_soc_managers_female, range: "D75", field_type: number, description: "Number of female employees at management level" }
++  - id: "<id-19>"
++    name: "VSME - Factbook template"
++    sheets:
++      - id: "<id-26>"
++        name: "CY Data Output"
++        fields:
++          - { name: rpt_env_energy_total_2025, range: "L2", field_type: number, description: "Total Energy Consumption" }
++          - { name: rpt_env_electricity_renewable_2025, range: "L3", field_type: number, description: "Electricity (as reflected in utility billings) - Renewable" }
++          - { name: rpt_env_electricity_non_renewable_2025, range: "L4", field_type: number, description: "Electricity (as reflected in utility billings) - Non-renewable" }
++          - { name: rpt_env_self_generated_electricity_renewable_2025, range: "L5", field_type: number, description: "Self-generated electricity - Renewable" }
++          - { name: rpt_env_self_generated_electricity_non_renewable_2025, range: "L6", field_type: number, description: "Self-generated electricity - Non-renewable" }
++          - { name: rpt_env_ghg_scope1_2025, range: "L7", field_type: number, description: "Gross Scope 1 GHG Emissions" }
++          - { name: rpt_env_ghg_scope2_location_2025, range: "L8", field_type: number, description: "Gross Scope 2 location-based GHG Emissions" }
++          - { name: rpt_env_ghg_scope2_market_2025, range: "L9", field_type: number, description: "Gross scope 2 market-based GHG Emissions - May (optional)" }
++          - { name: rpt_env_ghg_scope3_purchased_goods_2025, range: "L10", field_type: number, description: "1. Purchased Goods and Services" }
++          - { name: rpt_env_ghg_scope3_capital_goods_2025, range: "L11", field_type: number, description: "2. Capital Goods" }
++          - { name: rpt_env_ghg_scope3_fuel_energy_2025, range: "L12", field_type: number, description: "3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2)" }
++          - { name: rpt_env_ghg_scope3_upstream_transport_2025, range: "L13", field_type: number, description: "4. Upstream Transportation and Distribution" }
++          - { name: rpt_env_ghg_scope3_waste_2025, range: "L14", field_type: number, description: "5. Waste Generated in Operations" }
++          - { name: rpt_env_ghg_scope3_business_travel_2025, range: "L15", field_type: number, description: "6. Business Travel" }
++          - { name: rpt_env_ghg_scope3_commuting_2025, range: "L16", field_type: number, description: "7. Employee Commuting" }
++          - { name: rpt_env_land_sealed_area_2025, range: "L17", field_type: number, description: "Total sealed area" }
++          - { name: rpt_env_land_nature_onsite_2025, range: "L18", field_type: number, description: "Total nature-oriented area on-site" }
++          - { name: rpt_env_land_nature_offsite_2025, range: "L19", field_type: number, description: "Total nature-oriented area off-site" }
++          - { name: rpt_env_land_use_total_2025, range: "L20", field_type: number, description: "Total use of land" }
++          - { name: rpt_env_water_withdrawn_total_2025, range: "L21", field_type: number, description: "Total amount of water withdrawn from all sites (cubic meters, m³)" }
++          - { name: rpt_env_water_withdrawn_high_stress_2025, range: "L22", field_type: number, description: "Amount of water withdrawn at sites located in areas of high water-stress" }
++          - { name: rpt_env_water_discharge_production_2025, range: "L23", field_type: number, description: "Water discharge from undertaking production processes (m³)" }
++          - { name: rpt_env_waste_recycled_type1_2025, range: "L24", field_type: number, description: "Waste diverted to recycle or reuse - waste type 1" }
++          - { name: rpt_env_waste_disposed_type1_2025, range: "L25", field_type: number, description: "Waste directed to disposal - waste type 1" }
++          - { name: rpt_env_waste_recycled_type2_2025, range: "L26", field_type: number, description: "Waste diverted to recycle or reuse - waste type 2" }
++          - { name: rpt_env_waste_disposed_type2_2025, range: "L27", field_type: number, description: "Waste directed to disposal - waste type 2" }
++          - { name: rpt_soc_employees_total_2025, range: "L28", field_type: number, description: "Number of employees" }
++          - { name: rpt_soc_employees_permanent_2025, range: "L29", field_type: number, description: "Number of employees - Permanent contract" }
++          - { name: rpt_soc_employees_male_2025, range: "L30", field_type: number, description: "Number of employees - Male" }
++          - { name: rpt_soc_employees_female_2025, range: "L31", field_type: number, description: "Number of employees - Female" }
++          - { name: rpt_soc_employees_other_2025, range: "L32", field_type: number, description: "Number of employees - Other" }
++          - { name: rpt_soc_employees_not_reported_2025, range: "L33", field_type: number, description: "Number of employees - Not reported" }
++          - { name: rpt_soc_employees_left_2025, range: "L34", field_type: number, description: "Number of employees who left during the reporting period" }
++          - { name: rpt_soc_employees_start_2025, range: "L35", field_type: number, description: "Number of employees at the beginning of the reporting period" }
++          - { name: rpt_soc_employees_end_2025, range: "L36", field_type: number, description: "Number of employees at the end of the reporting period" }
++          - { name: rpt_soc_accidents_recordable_2025, range: "L37", field_type: number, description: "Number of recordable work-related accidents in the reporting period" }
++          - { name: rpt_soc_fatalities_work_related_2025, range: "L38", field_type: number, description: "Number of fatalities as a result of work-related injuries and work-related ill health" }
++          - { name: rpt_soc_employees_collective_bargaining_2025, range: "L39", field_type: number, description: "Number of employees covered by collective bargaining agreements" }
++          - { name: rpt_soc_training_hours_male_2025, range: "L40", field_type: number, description: "Number of annual training hours per employee - Male" }
++          - { name: rpt_soc_training_hours_female_2025, range: "L41", field_type: number, description: "Number of annual training hours per employee - Female" }
++          - { name: rpt_soc_managers_male_2025, range: "L42", field_type: number, description: "Number of male employees at management level" }
++          - { name: rpt_soc_managers_female_2025, range: "L43", field_type: number, description: "Number of female employees at management level" }
++      - id: "<id-27>"
++        name: "PY Data Output"
++        fields:
++          - { name: rpt_env_energy_total_2024, range: "L2", field_type: number, description: "Total Energy Consumption" }
++          - { name: rpt_env_electricity_renewable_2024, range: "L3", field_type: number, description: "Electricity (as reflected in utility billings) - Renewable" }
++          - { name: rpt_env_electricity_non_renewable_2024, range: "L4", field_type: number, description: "Electricity (as reflected in utility billings) - Non-renewable" }
++          - { name: rpt_env_self_generated_electricity_renewable_2024, range: "L5", field_type: number, description: "Self-generated electricity - Renewable" }
++          - { name: rpt_env_self_generated_electricity_non_renewable_2024, range: "L6", field_type: number, description: "Self-generated electricity - Non-renewable" }
++          - { name: rpt_env_ghg_scope1_2024, range: "L7", field_type: number, description: "Gross Scope 1 GHG Emissions" }
++          - { name: rpt_env_ghg_scope2_location_2024, range: "L8", field_type: number, description: "Gross Scope 2 location-based GHG Emissions" }
++          - { name: rpt_env_ghg_scope2_market_2024, range: "L9", field_type: number, description: "Gross scope 2 market-based GHG Emissions - May (optional)" }
++          - { name: rpt_env_ghg_scope3_purchased_goods_2024, range: "L10", field_type: number, description: "1. Purchased Goods and Services" }
++          - { name: rpt_env_ghg_scope3_capital_goods_2024, range: "L11", field_type: number, description: "2. Capital Goods" }
++          - { name: rpt_env_ghg_scope3_fuel_energy_2024, range: "L12", field_type: number, description: "3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2)" }
++          - { name: rpt_env_ghg_scope3_upstream_transport_2024, range: "L13", field_type: number, description: "4. Upstream Transportation and Distribution" }
++          - { name: rpt_env_ghg_scope3_waste_2024, range: "L14", field_type: number, description: "5. Waste Generated in Operations" }
++          - { name: rpt_env_ghg_scope3_business_travel_2024, range: "L15", field_type: number, description: "6. Business Travel" }
++          - { name: rpt_env_ghg_scope3_commuting_2024, range: "L16", field_type: number, description: "7. Employee Commuting" }
++          - { name: rpt_env_land_sealed_area_2024, range: "L17", field_type: number, description: "Total sealed area" }
++          - { name: rpt_env_land_nature_onsite_2024, range: "L18", field_type: number, description: "Total nature-oriented area on-site" }
++          - { name: rpt_env_land_nature_offsite_2024, range: "L19", field_type: number, description: "Total nature-oriented area off-site" }
++          - { name: rpt_env_land_use_total_2024, range: "L20", field_type: number, description: "Total use of land" }
++          - { name: rpt_env_water_withdrawn_total_2024, range: "L21", field_type: number, description: "Total amount of water withdrawn from all sites (cubic meters, m³)" }
++          - { name: rpt_env_water_withdrawn_high_stress_2024, range: "L22", field_type: number, description: "Amount of water withdrawn at sites located in areas of high water-stress" }
++          - { name: rpt_env_water_discharge_production_2024, range: "L23", field_type: number, description: "Water discharge from undertaking production processes (m³)" }
++          - { name: rpt_env_waste_recycled_type1_2024, range: "L24", field_type: number, description: "Waste diverted to recycle or reuse - waste type 1" }
++          - { name: rpt_env_waste_disposed_type1_2024, range: "L25", field_type: number, description: "Waste directed to disposal - waste type 1" }
++          - { name: rpt_env_waste_recycled_type2_2024, range: "L26", field_type: number, description: "Waste diverted to recycle or reuse - waste type 2" }
++          - { name: rpt_env_waste_disposed_type2_2024, range: "L27", field_type: number, description: "Waste directed to disposal - waste type 2" }
++          - { name: rpt_soc_employees_total_2024, range: "L28", field_type: number, description: "Number of employees" }
++          - { name: rpt_soc_employees_permanent_2024, range: "L29", field_type: number, description: "Number of employees - Permanent contract" }
++          - { name: rpt_soc_employees_male_2024, range: "L30", field_type: number, description: "Number of employees - Male" }
++          - { name: rpt_soc_employees_female_2024, range: "L31", field_type: number, description: "Number of employees - Female" }
++          - { name: rpt_soc_employees_other_2024, range: "L32", field_type: number, description: "Number of employees - Other" }
++          - { name: rpt_soc_employees_not_reported_2024, range: "L33", field_type: number, description: "Number of employees - Not reported" }
++          - { name: rpt_soc_employees_left_2024, range: "L34", field_type: number, description: "Number of employees who left during the reporting period" }
++          - { name: rpt_soc_employees_start_2024, range: "L35", field_type: number, description: "Number of employees at the beginning of the reporting period" }
++          - { name: rpt_soc_employees_end_2024, range: "L36", field_type: number, description: "Number of employees at the end of the reporting period" }
++          - { name: rpt_soc_accidents_recordable_2024, range: "L37", field_type: number, description: "Number of recordable work-related accidents in the reporting period" }
++          - { name: rpt_soc_fatalities_work_related_2024, range: "L38", field_type: number, description: "Number of fatalities as a result of work-related injuries and work-related ill health" }
++          - { name: rpt_soc_employees_collective_bargaining_2024, range: "L39", field_type: number, description: "Number of employees covered by collective bargaining agreements" }
++          - { name: rpt_soc_training_hours_male_2024, range: "L40", field_type: number, description: "Number of annual training hours per employee - Male" }
++          - { name: rpt_soc_training_hours_female_2024, range: "L41", field_type: number, description: "Number of annual training hours per employee - Female" }
++          - { name: rpt_soc_managers_male_2024, range: "L42", field_type: number, description: "Number of male employees at management level" }
++          - { name: rpt_soc_managers_female_2024, range: "L43", field_type: number, description: "Number of female employees at management level" }

@@ -1,0 +1,37 @@
+{
+  "task_id": "T5",
+  "attempt": 1,
+  "implementation_commit": "82343b973376a49300758bda5cdf7d86388d837c",
+  "commands": [
+    {
+      "command": "mkdir -p .scratch && go test ./cmd/nl-demo-seed/ -race -count=1 -v > .scratch/t5.log 2>&1; for n in TestBuildPlanWritesBothYears TestBuildPlanPercentConvention TestBuildPlanResetAddsClearsAndSectionDeletes TestBuildPlanRejectsUnmappedField TestPlanPrintHasNoIDs TestRunDryRunSendsNothing TestDataConsistency; do grep -q -- \"--- PASS: $n\" .scratch/t5.log || exit 1; done",
+      "exit_code": 0
+    },
+    {
+      "command": "go vet ./cmd/nl-demo-seed/",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l cmd internal)\"",
+      "exit_code": 0
+    },
+    {
+      "command": "golangci-lint run ./cmd/nl-demo-seed/...",
+      "exit_code": 0
+    },
+    {
+      "command": "mkdir -p .scratch && env -u NL_WORKIVA_CLIENT_ID -u NL_WORKIVA_CLIENT_SECRET go run ./cmd/nl-demo-seed -dry-run -mappings configs/demo/mappings-sandbox.example.yaml > .scratch/t5-dry.txt && f=$(cat configs/demo/sections/esg-environmental.yaml configs/demo/sections/esg-social.yaml | grep -cE '^ *- key:') && test $(grep -c '^write ' .scratch/t5-dry.txt) -eq $((2*f)) && grep -q '^planned: ' .scratch/t5-dry.txt && ! grep -q '<id-' .scratch/t5-dry.txt",
+      "exit_code": 0
+    },
+    {
+      "command": "go run ./cmd/nl-demo-seed -dry-run -reset -mappings configs/demo/mappings-sandbox.example.yaml > .scratch/t5-reset.txt && grep -q '^delete-section \"' .scratch/t5-reset.txt && grep -q '^clear 2025 rpt_' .scratch/t5-reset.txt",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    }
+  ],
+  "checkout_clean": true,
+  "created_at": "2026-10-20T03:52:32Z"
+}

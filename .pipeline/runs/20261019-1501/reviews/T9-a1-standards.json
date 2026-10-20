@@ -1,0 +1,22 @@
+{
+  "task_id": "T9",
+  "axis": "standards",
+  "implementation_commit": "97f46561851ee53409ed0cd9aab62ee00429fdff",
+  "attempt": 1,
+  "verdict": "pass",
+  "findings": [
+    {"severity": "minor", "file": "docs/demo/STATUS.md", "line": 13, "issue": "The L4 row's last-commit cell reads 'd7b4612 (T9 follows)'. That is the base commit, not the lane's last commit, which AGENTS.md Reporting asks for. The README seed-run entry also names the ephemeral task branch 'task/20261019-1501-T9-a1', which will not exist after the merge.", "fix": "Record the lane commit that contains the run, or leave the cell for the orchestrator to fill after the merge. In the README, cite the commit and drop the task branch name."},
+    {"severity": "minor", "file": "docs/demo/STATUS.md", "line": 33, "issue": "The 'L4 -> L5' line states a fact (the seed took 99.7 s) but asks for nothing. The section's format rule is 'requesting lane, owning lane, file, what you need and why'.", "fix": "Phrase it as a request, for example asking L5 to allow two minutes of re-seeding before a recording in the runbook, or move the note to the L4 row."},
+    {"severity": "nit", "file": "configs/demo/make_sandbox_mappings.py", "line": 22, "issue": "The script uses two placeholder grammars: PLACEHOLDER_RE '<id-\\d{2}>' for pairing and ANY_PLACEHOLDER_RE '<id-\\d+>' for replacement. pair() also skips mismatched dict keys and truncates lists of different lengths without a word. The unknown-placeholder check catches the result, but it reports a count rather than the cause.", "fix": "Use one placeholder regex for both. Fail in pair() when list lengths differ or a placeholder-bearing key is missing from the real file."},
+    {"severity": "nit", "file": "configs/demo/make_sandbox_mappings.py", "line": 41, "issue": "Possible Mysterious Name: pair(ph, real, out) and the loop names a and b do not say what they hold.", "fix": "Rename them, for example collect_id_pairs(placeholder_node, real_node, mapping) and ph_item/real_item."},
+    {"severity": "nit", "file": "configs/demo/make_sandbox_mappings.py", "line": 67, "issue": "find_document returns the first document named '2025 Annual Report - EN', so a second document with the same name would be picked without warning. If git is missing, subprocess.run raises an uncaught FileNotFoundError with a traceback.", "fix": "Collect all matches and fail unless exactly one is found. Catch FileNotFoundError around the git check-ignore call and exit 1 with a message."}
+  ],
+  "requirements_checked": [
+    {"requirement": "Public repo: no real spreadsheet, sheet or document ID in the diff", "satisfied": true, "evidence": "fixed-string grep of commit 97f4656 and reviews/T9-a1.diff against tokens taken from resources.local.md, step-3.local.json and step-2.local.json: 0 hits"},
+    {"requirement": "No secrets, tokens or report section names committed", "satisfied": true, "evidence": "Diff has only env variable names and the recipe titles; the section list is reported as a count (16) with names kept in .scratch"},
+    {"requirement": "Generator prints only counts and refuses a non-ignored output", "satisfied": true, "evidence": "configs/demo/make_sandbox_mappings.py: git check-ignore gate before any read; every error message has no IDs; prints only the placeholder count"},
+    {"requirement": "No weakened tests, skipped checks or ignore comments", "satisfied": true, "evidence": "No Go or test files changed; checks/T9-a1.log shows the go test -race, gofmt, go vet and golangci-lint checks green (0 issues)"},
+    {"requirement": "Edits stay within the owns list and lane rules (AGENTS.md)", "satisfied": true, "evidence": "Changed: make_sandbox_mappings.py, configs/demo/README.md, docs/demo/STATUS.md (only the L4 row and appended request lines), and the run report; nothing written to docs/demo/evidence/"}
+  ],
+  "new_tasks": []
+}

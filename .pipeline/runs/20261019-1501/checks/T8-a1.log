@@ -1,0 +1,6 @@
+$ test $(wc -w < docs/demo/IT_BRIEF.md) -le 900
+$ for h in 'Data flow' 'Identity' 'What is written and how' 'Audit trail and evidence export' 'Open risks'; do grep -qx "## $h" docs/demo/IT_BRIEF.md || exit 1; done
+$ grep -q 'NL-LIVE-002' docs/demo/IT_BRIEF.md && grep -qi 'per-user' docs/demo/IT_BRIEF.md && grep -qi 'entra' docs/demo/IT_BRIEF.md
+$ awk '/^## Open risks/{f=1;next} /^## /{f=0} f && /^- /{n++; if ($0 !~ /Mitigation: / && $0 !~ /Status: open/) bad++} END{exit (n>=4 && bad==0)?0:1}' docs/demo/IT_BRIEF.md
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

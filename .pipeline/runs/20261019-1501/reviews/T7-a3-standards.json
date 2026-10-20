@@ -1,0 +1,32 @@
+{
+  "task_id": "T7",
+  "axis": "standards",
+  "implementation_commit": "1913ef0d55dcc1bdf8bd49022d2aeeb1aa6465c3",
+  "attempt": 3,
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/NARRATIVE_STYLE.md",
+      "line": 12,
+      "issue": "Rules 2 and 3 are pasted into Copilot Studio, and they name the fact fields `Display` and `Material: true`, which are the Go struct names in internal/recipe/types.go. The tool output the agent actually sees uses `display` and `material` (internal/mcpserver/tools/prepare_section.go:45-46), and INSTRUCTIONS.md:23 already says `display`. The wording dates from the base commit, but this task owns the file and edited the Rules section. Mixed names in one prompt are a small Mysterious Name risk.",
+      "fix": "Change rule 2 to `display` and rule 3 to `material: true` so they match the JSON the agent receives."
+    },
+    {
+      "severity": "nit",
+      "file": "docs/demo/agent/NARRATIVE_STYLE.md",
+      "line": 30,
+      "issue": "The last convention ('Past tense for results of a reporting year, present tense for policies, targets and commitments') repeats rule 7 (line 17). Both are pasted, so the agent gets the same instruction twice (possible Duplicated Code).",
+      "fix": "Delete the convention bullet, or cut the tense clause from rule 7 and keep only one copy."
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "a2 major: conventions sit outside the pasted Rules section", "satisfied": true, "evidence": "NARRATIVE_STYLE.md:22-30 '### Conventions' now sits under '## Rules' (line 9) and ends at '## Example' (line 32). The intro (lines 3-7) holds only purpose, provenance and the paste-scope note. INSTRUCTIONS.md:3 now says to append the whole Rules section, 'rules 1 to 10 and the \"Conventions\" list at its end; not the introduction or the example'."},
+    {"requirement": "Paste boundary checked end to end: INSTRUCTIONS.md", "satisfied": true, "evidence": "The paste note (line 3) and the maintenance note (line 5) both sit above '## Instructions' (line 7). The pasted text runs from line 9 to the end of the file (line 33, General), with no maintainer-only text inside. Line 23 ('narrative style guide below') matches the appended heading 'Narrative style guide'."},
+    {"requirement": "Paste boundary checked end to end: NARRATIVE_STYLE.md", "satisfied": true, "evidence": "The pasted span is lines 9-30: rules 1-10, then the Conventions lead-in and five bullets. It has no provenance or maintainer text. The intro at line 5 still points to 'conventions after rule 10', which is correct. The example (lines 32-46) is excluded, as both files state."},
+    {"requirement": "a2 minor: bullets split mechanically at semicolons", "satisfied": true, "evidence": "DEMO_PROMPTS.md now has one requirement per bullet. In 1.1-1.4 the citations are split per period and 'No other number' has its own bullet. Act 2 (lines 53-59) lists the three findings at one level, with 'Then the change set summary' and the question as separate bullets. 3.1 and 5.2 are split the same way. Diff 1e46b5b..1913ef0 changes layout only; no value, citation or count differs."},
+    {"requirement": "Public repo hygiene / security (risky)", "satisfied": true, "evidence": "Docs-only diff. No secrets, tokens or Workiva IDs. Spreadsheet names are the placeholders already in mappings-sandbox.example.yaml. checks/T7-a3.log: check_no_sandbox_ids ok over 568 files. Pasted instructions keep the approval gates and the number guard, never alter verbatim blocks, forbid retrying writes that come back mismatch or reconciliation_required, and forbid inventing evidence IDs."},
+    {"requirement": "No weakened checks", "satisfied": true, "evidence": "No test, lint config or ignore comment touched. checks/T7-a3.log: all 7 acceptance commands pass, gofmt/go vet clean, golangci-lint 0 issues."}
+  ],
+  "new_tasks": []
+}

@@ -1,0 +1,43 @@
+key,label,unit,value
+energy_total,Total Energy Consumption,MWh,1978
+electricity_renewable,Electricity (as reflected in utility billings) - Renewable,MWh,490
+electricity_non_renewable,Electricity (as reflected in utility billings) - Non-renewable,MWh,1280
+self_generated_electricity_renewable,Self-generated electricity - Renewable,MWh,150
+self_generated_electricity_non_renewable,Self-generated electricity - Non-renewable,MWh,58
+ghg_scope1,Gross Scope 1 GHG Emissions,tCO2e,812.5
+ghg_scope2_location,Gross Scope 2 location-based GHG Emissions,tCO2e,585.0
+ghg_scope2_market,Gross scope 2 market-based GHG Emissions - May (optional),tCO2e,520.0
+ghg_scope3_purchased_goods,1. Purchased Goods and Services,tCO2e,4050
+ghg_scope3_capital_goods,2. Capital Goods,tCO2e,820
+ghg_scope3_fuel_energy,3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2),tCO2e,298
+ghg_scope3_upstream_transport,4. Upstream Transportation and Distribution,tCO2e,545
+ghg_scope3_waste,5. Waste Generated in Operations,tCO2e,92
+ghg_scope3_business_travel,6. Business Travel,tCO2e,165
+ghg_scope3_commuting,7. Employee Commuting,tCO2e,224
+land_sealed_area,Total sealed area,ha,12.6
+land_nature_onsite,Total nature-oriented area on-site,ha,3.2
+land_nature_offsite,Total nature-oriented area off-site,ha,1.6
+land_use_total,Total use of land,ha,17.4
+water_withdrawn_total,"Total amount of water withdrawn from all sites (cubic meters, m³)",m3,18100
+water_withdrawn_high_stress,Amount of water withdrawn at sites located in areas of high water-stress,m3,2300
+water_discharge_production,Water discharge from undertaking production processes (m³),m3,
+waste_recycled_type1,Waste diverted to recycle or reuse - waste type 1,kg,5400
+waste_disposed_type1,Waste directed to disposal - waste type 1,kg,2000
+waste_recycled_type2,Waste diverted to recycle or reuse - waste type 2,kg,910
+waste_disposed_type2,Waste directed to disposal - waste type 2,kg,415
+employees_total,Number of employees,number,428
+employees_permanent,Number of employees - Permanent contract,number,402
+employees_male,Number of employees - Male,number,238
+employees_female,Number of employees - Female,number,183
+employees_other,Number of employees - Other,number,5
+employees_not_reported,Number of employees - Not reported,number,2
+employees_left,Number of employees who left during the reporting period,number,41
+employees_start,Number of employees at the beginning of the reporting period,number,412
+employees_end,Number of employees at the end of the reporting period,number,428
+accidents_recordable,Number of recordable work-related accidents in the reporting period,number,11
+fatalities_work_related,Number of fatalities as a result of work-related injuries and work-related ill health,number,0
+employees_collective_bargaining,Number of employees covered by collective bargaining agreements,number,281
+training_hours_male,Number of annual training hours per employee - Male,hours,19.0
+training_hours_female,Number of annual training hours per employee - Female,hours,25.5
+managers_male,Number of male employees at management level,number,32
+managers_female,Number of female employees at management level,number,15
