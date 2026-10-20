@@ -33,12 +33,16 @@ type confirmChangeSetItem struct {
 	ReadBack     string `json:"read_back,omitempty"`
 	AuditID      string `json:"audit_id,omitempty"`
 	OperationURL string `json:"operation_url,omitempty"`
+	Before       string `json:"before"`
+	After        string `json:"after"`
+	Message      string `json:"message,omitempty"`
 }
 
 type confirmChangeSetOutput struct {
 	// NLAuditID is filled by the server middleware.
 	NLAuditID   string                 `json:"nl_audit_id,omitempty"`
 	ChangeSetID string                 `json:"change_set_id"`
+	Status      string                 `json:"status"`
 	Items       []confirmChangeSetItem `json:"items"`
 	Summary     string                 `json:"summary"`
 }
@@ -52,6 +56,9 @@ func confirmChangeSetInputSchema() map[string]any {
 
 func confirmChangeSetOutputSchema() map[string]any {
 	item := objectSchema(map[string]any{
+		"before":        optionalString("value before approval", 4096),
+		"after":         optionalString("approved value", 4096),
+		"message":       optionalString("reconciliation detail", 4096),
 		"field_name":    boundedSchema("field name", 256),
 		"status":        boundedSchema("write status", 32),
 		"read_back":     optionalString("value read back after the write", 4096),
@@ -60,9 +67,10 @@ func confirmChangeSetOutputSchema() map[string]any {
 	}, []string{"field_name", "status"})
 	return objectSchema(mergeProperties(commonStructuredOutputProperties(), map[string]any{
 		"change_set_id": boundedSchema("change set ID", 128),
+		"status":        boundedSchema("change set status", 32),
 		"items":         map[string]any{"type": "array", "maxItems": 500, "items": item},
 		"summary":       optionalString("markdown summary of the writes", 262144),
-	}), []string{"change_set_id", "items", "summary"})
+	}), []string{"change_set_id", "status", "items", "summary"})
 }
 
 func (confirmChangeSetTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
@@ -71,10 +79,19 @@ func (confirmChangeSetTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		Description:  confirmChangeSetDescription,
 		InputSchema:  confirmChangeSetInputSchema(),
 		OutputSchema: confirmChangeSetOutputSchema(),
-	}, func(_ context.Context, _ *mcp.CallToolRequest, _ confirmChangeSetInput) (*mcp.CallToolResult, confirmChangeSetOutput, error) {
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in confirmChangeSetInput) (*mcp.CallToolResult, confirmChangeSetOutput, error) {
 		if err := requireDemoDep(deps.ChangeSets != nil, "ChangeSets"); err != nil {
 			return nil, confirmChangeSetOutput{}, err
 		}
-		return nil, confirmChangeSetOutput{}, notImplementedYet(confirmChangeSetName)
+		actor := mcpserver.ActorFromContextOrRequest(ctx, req, deps.ActorHeader)
+		result, err := deps.ChangeSets.Confirm(ctx, actor, in.ChangeSetID, in.ConfirmToken)
+		if err != nil {
+			return nil, confirmChangeSetOutput{}, failWithContext(ctx, err, "review the confirmation error; reconcile uncertain writes before staging again")
+		}
+		out := confirmChangeSetOutput{NLAuditID: mcpserver.AuditIDFromContext(ctx), ChangeSetID: result.ID, Status: result.Status, Summary: result.Summary, Items: make([]confirmChangeSetItem, 0, len(result.Items))}
+		for _, item := range result.Items {
+			out.Items = append(out.Items, confirmChangeSetItem{FieldName: item.FieldName, Status: item.Status, ReadBack: item.ReadBack, AuditID: item.AuditID, OperationURL: item.OperationURL, Before: item.Before, After: item.After, Message: item.Message})
+		}
+		return nil, out, nil
 	})
 }
