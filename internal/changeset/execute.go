@@ -137,7 +137,7 @@ func (s *service) execute(ctx context.Context, actor, id string, items []stagedI
 	}
 	var lines []string
 	for _, item := range result.Items {
-		lines = append(lines, fmt.Sprintf("%s: %s -> %s (%s)", item.FieldName, item.Before, item.After, item.Status))
+		lines = append(lines, summaryLine(item.FieldName, item.Before, item.After, item.Status))
 	}
 	result.Summary = strings.Join(lines, "\n")
 	return result, nil
@@ -166,4 +166,10 @@ func (s *service) audit(ctx context.Context, actor, id string, item stagedItem, 
 func (s *service) invalidate(ctx context.Context, group sheetGroup) error {
 	_, err := s.env.DB.ExecContext(ctx, `DELETE FROM snapshots WHERE tenant_id=? AND spreadsheet_id=? AND sheet_id=?`, identity.StorageTenant(ctx), group.spreadsheet, group.sheet)
 	return err
+}
+
+// Keep each field on one preview line even when its cell contains line breaks.
+func summaryLine(field, before, after, status string) string {
+	escape := strings.NewReplacer("\r", "\\r", "\n", "\\n")
+	return fmt.Sprintf("%s: %s -> %s (%s)", escape.Replace(field), escape.Replace(before), escape.Replace(after), status)
 }

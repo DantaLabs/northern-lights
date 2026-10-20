@@ -395,3 +395,20 @@ func TestChangeSet_MultiCellVerification(t *testing.T) {
 		t.Fatalf("cache len=%d err=%v", len(cells), err)
 	}
 }
+
+func TestChangeSet_MultilineValuesKeepOneSummaryLine(t *testing.T) {
+	s, f, items := fixture(t, 1)
+	f.values["spreadsheet/sheet-0/0/0"] = "old\ntext"
+	items[0].Value = "new\r\ntext"
+	p := stage(t, s, items)
+	if strings.ContainsAny(p.Summary, "\r\n") || !strings.Contains(p.Summary, `old\ntext -> new\r\ntext`) {
+		t.Fatalf("preview summary=%q", p.Summary)
+	}
+	result, err := s.Confirm(context.Background(), "analyst", p.ID, p.Token)
+	if err != nil || result.Status != "completed" {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+	if strings.ContainsAny(result.Summary, "\r\n") || !strings.Contains(result.Summary, `old\ntext -> new\r\ntext`) {
+		t.Fatalf("result summary=%q", result.Summary)
+	}
+}
