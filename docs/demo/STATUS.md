@@ -7,7 +7,7 @@ Plan day: 1 of 11 (Monday 19 October 2026).
 | Lane | Status | Branch | Last commit | Blocked on |
 |---|---|---|---|---|
 | L0 Scaffold | ready for review (R10 end-to-end test waits for L1-L4) | `claude/demo-l0-scaffold` | 19b03ea | Entra permission mapping for demo tools |
-| L1 Change set | waiting for L0 | `codex/demo-l1-change-set` | | L0 merge |
+| L1 Change set | draft PR [#19](https://github.com/DantaLabs/northern-lights/pull/19); R1–R13 done; S1–S10 pass (live restored); local race pass with 30m harness | `codex/demo-l1-change-set` | 652519c | L0 demo-tool Entra permission map (existing request); CI pending |
 | L2 Section recipe | waiting for L0 | `claude/demo-l2-section-recipe` | | L0 merge |
 | L3 Section text | RB-02 spike can start now | `codex/demo-l3-section-text` | | RB-02 result for the document writer |
 | L4 Data and agent | ready for review (draft PR); live seed done 2026-10-19 (42 fields, 126 cells read back, 0 mismatch, 99.7 s vs 1-minute target) | `claude/demo-l4-data-and-agent` | 7002483 | L2 `workiva_prepare_section` for scenario 5; Tom's RB-03 for scenario 6 |
