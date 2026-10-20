@@ -5,7 +5,12 @@
   "branch": "claude/demo-l4-data-and-agent",
   "status": "done",
   "round": 0,
-  "checkpoint": null,
+  "checkpoint": {
+    "commit": "7cb675a64a4bf1b73e77fa8e4825e101598b4d74",
+    "created_at": "2026-10-20T05:09:54Z",
+    "environment": "local",
+    "router": "laya"
+  },
   "active_tasks": [],
   "run_base_commit": "573b4748bf41c08b1f5aa3a681379f12db7fa78f"
 }
