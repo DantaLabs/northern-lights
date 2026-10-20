@@ -182,6 +182,9 @@ func TestChangeSet_S3_ThirtyFieldsDigestAndPreview(t *testing.T) {
 			t.Fatalf("before: %+v", item)
 		}
 	}
+	if len(strings.Split(p.Summary, "\n")) != 30 || !strings.Contains(p.Summary, "field-00: 0 -> 100 (awaiting_confirmation)") {
+		t.Fatalf("summary=%s", p.Summary)
+	}
 	var token, actor, permission, payload string
 	var expiry int64
 	if err := s.env.DB.QueryRow(`SELECT token_digest,actor,required_permission,expires_at,items_json FROM change_set_pending`).Scan(&token, &actor, &permission, &expiry, &payload); err != nil {

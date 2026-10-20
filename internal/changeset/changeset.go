@@ -15,6 +15,7 @@ type PreviewItem struct{ FieldName, SpreadsheetID, SheetID, Range, Before, After
 // Preview is a staged change set awaiting confirmation.
 type Preview struct {
 	ID, Token string
+	Summary   string
 	Items     []PreviewItem
 	ExpiresAt time.Time
 }
@@ -29,6 +30,7 @@ type ItemResult struct {
 // Status values: completed | partial | reconciliation_required.
 type Result struct {
 	ID, Status string
+	Summary    string
 	Items      []ItemResult
 }
 

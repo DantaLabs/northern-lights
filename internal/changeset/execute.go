@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
 	"github.com/dantalabs/northern-lights/internal/identity"
@@ -78,6 +79,9 @@ func (s *service) execute(ctx context.Context, actor, id string, items []stagedI
 				result.Items[i].Status = status
 				result.Items[i].OperationURL = op
 				result.Items[i].Message = submitErr.Error()
+				if err := s.audit(ctx, actor, id, items[i], &result.Items[i]); err != nil {
+					result.Items[i].Message += "; audit recovery required: " + err.Error()
+				}
 			}
 			// The snapshot may now be stale even though acceptance could not be
 			// proved. Invalidate it rather than guessing at the intended value.
@@ -91,7 +95,9 @@ func (s *service) execute(ctx context.Context, actor, id string, items []stagedI
 				result.Status = status
 				break
 			}
-			result.Status = "partial"
+			if result.Status == "completed" {
+				result.Status = "partial"
+			}
 			continue
 		}
 		for _, i := range group.indices {
@@ -129,6 +135,11 @@ func (s *service) execute(ctx context.Context, actor, id string, items []stagedI
 			}
 		}
 	}
+	var lines []string
+	for _, item := range result.Items {
+		lines = append(lines, fmt.Sprintf("%s: %s -> %s (%s)", item.FieldName, item.Before, item.After, item.Status))
+	}
+	result.Summary = strings.Join(lines, "\n")
 	return result, nil
 }
 

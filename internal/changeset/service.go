@@ -116,6 +116,11 @@ func (s *service) Stage(ctx context.Context, actor string, items []Item) (Previe
 	if err != nil {
 		return Preview{}, err
 	}
+	var lines []string
+	for _, item := range preview.Items {
+		lines = append(lines, fmt.Sprintf("%s: %s -> %s (awaiting_confirmation)", item.FieldName, item.Before, item.After))
+	}
+	preview.Summary = strings.Join(lines, "\n")
 	return preview, nil
 }
 
