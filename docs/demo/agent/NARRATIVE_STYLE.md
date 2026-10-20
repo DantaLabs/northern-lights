@@ -2,13 +2,9 @@
 
 Copilot follows this guide when it drafts a narrative block. The reader is a director, shareholder or advisor who wants to know what changed and what it means, not the raw figure. The server's number guard rejects any number that is not a narrative fact, so the rules below also keep drafts from being refused.
 
-Conventions checked on 2026-10-19 against the paragraphs of several existing sections of the sandbox report document (read-only; nothing copied):
+The conventions after rule 10 were checked on 2026-10-19 against the paragraphs of several existing sections of the sandbox report document (read-only; nothing copied).
 
-- Refer to the company by its name, here "Demo Harbour Components". The existing sections also use "the Group" and "the Company" interchangeably; use the name so each paragraph stands on its own.
-- British spelling (organisation, programme, decarbonisation, labour).
-- Digits for every number, comma as thousands separator (18,400), full stop as decimal separator, "%" attached to the number (12%), a space between number and unit (1.98 GWh, 165.0 tCO2e), years as four digits ("in 2025", "compared with 2024").
-- Unit symbols as the report writes them: MWh, GWh, tCO2e, m3.
-- Past tense for results of a reporting year, present tense for policies, targets and commitments.
+Only the "Rules" section below (rules 1 to 10 and the conventions) is pasted into Copilot Studio; this introduction, the provenance note and the example are not.
 
 ## Rules
 
@@ -22,6 +18,16 @@ Conventions checked on 2026-10-19 against the paragraphs of several existing sec
 8. Verbs: rose, fell, increased, decreased, was unchanged. Write "material" instead of "significant" (which implies a statistical test). No promotional or dramatic words (strong, impressive, remarkable, dramatic, robust), no speculation (likely, expected to, should).
 9. Structure: paragraph 1 is the headline movement; paragraph 2 covers other material movements and the grouped sentence from rule 3; then the verbatim block, unchanged. Two narrative paragraphs at most.
 10. Verbatim blocks are never edited, shortened, merged with narrative, translated or summarized. If the analyst asks to change one, say it is approved wording that cannot be changed here and that the owner of the policy text has to change it at source.
+
+### Conventions
+
+Follow these house conventions of the report document as well:
+
+- Refer to the company by its name, here "Demo Harbour Components". The existing sections also use "the Group" and "the Company" interchangeably; use the name so each paragraph stands on its own.
+- British spelling (organisation, programme, decarbonisation, labour).
+- Digits for every number, comma as thousands separator (18,400), full stop as decimal separator, "%" attached to the number (12%), a space between number and unit (1.98 GWh, 165.0 tCO2e), years as four digits ("in 2025", "compared with 2024").
+- Unit symbols as the report writes them: MWh, GWh, tCO2e, m3.
+- Past tense for results of a reporting year, present tense for policies, targets and commitments.
 
 ## Example
 

@@ -1,6 +1,6 @@
 # Copilot Studio agent instructions
 
-Paste the text under "Instructions" into the agent's instructions field in Copilot Studio, then append the "Rules" section of `docs/demo/agent/NARRATIVE_STYLE.md` under the heading "Narrative style guide". Keep both in sync with the tool names in `docs/demo/DEMO.md`.
+Paste the text under "Instructions" into the agent's instructions field in Copilot Studio, then append the whole "Rules" section of `docs/demo/agent/NARRATIVE_STYLE.md` (rules 1 to 10 and the "Conventions" list at its end; not the introduction or the example) under the heading "Narrative style guide". Keep both in sync with the tool names in `docs/demo/DEMO.md`.
 
 Maintenance note (not pasted into Copilot Studio): Update this file and NARRATIVE_STYLE.md after each RB-03 run; last checked against tool schemas on 2026-10-19, not yet against RB-03.
 
