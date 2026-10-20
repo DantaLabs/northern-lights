@@ -7,8 +7,7 @@
   "round": 0,
   "checkpoint": null,
   "active_tasks": [
-    "T2",
-    "T5"
+    "T2"
   ],
   "run_base_commit": "48269d9ee2ab52f64d4277931374fd7a4d7f3c76"
 }
