@@ -1,0 +1,16 @@
+$ go test -list '^TestScenario2PrepareReadsUncachedThroughRouter$' ./internal/recipe/ | grep -qx 'TestScenario2PrepareReadsUncachedThroughRouter'
+$ go test -list '^TestScenario5Findings$' ./internal/recipe/ | grep -qx 'TestScenario5Findings'
+$ go test -list '^TestScenario6StagesOneItemPerSourceValue$' ./internal/recipe/ | grep -qx 'TestScenario6StagesOneItemPerSourceValue'
+$ go test -list '^TestScenario7VerbatimByteForByteAndLatestFacts$' ./internal/recipe/ | grep -qx 'TestScenario7VerbatimByteForByteAndLatestFacts'
+$ go test -list '^TestPrepareUnknownSectionListsAvailable$' ./internal/recipe/ | grep -qx 'TestPrepareUnknownSectionListsAvailable'
+$ go test -list '^TestPrepareRejectsUnsupportedCellType$' ./internal/recipe/ | grep -qx 'TestPrepareRejectsUnsupportedCellType'
+$ go test -race -count=1 -run '^(TestScenario2PrepareReadsUncachedThroughRouter|TestScenario5Findings|TestScenario6StagesOneItemPerSourceValue|TestScenario7VerbatimByteForByteAndLatestFacts|TestPrepareUnknownSectionListsAvailable|TestPrepareRejectsUnsupportedCellType)$' ./internal/recipe/
+ok  	github.com/dantalabs/northern-lights/internal/recipe	5.849s
+$ go test -race -count=1 ./internal/recipe/
+ok  	github.com/dantalabs/northern-lights/internal/recipe	12.762s
+$ go vet ./internal/recipe/
+$ ! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'
+$ test -z "$(gofmt -l internal/recipe internal/mcpserver/tools)"
+$ git diff --quiet $(git merge-base HEAD origin/claude/demo-integration) -- internal/recipe/types.go
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

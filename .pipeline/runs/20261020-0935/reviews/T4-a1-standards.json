@@ -1,0 +1,72 @@
+{
+  "task_id": "T4",
+  "axis": "standards",
+  "attempt": 1,
+  "implementation_commit": "150e70b4d7c6f4ebd4222d6f17353f6839742061",
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "blocking",
+      "file": "internal/recipe/prepare.go",
+      "line": 103,
+      "issue": "The error is built as fmt.Errorf(\"%s client is not available\", providerName) with a package constant (line 22) only so staticcheck ST1005 cannot see the capitalised literal. The report says so: 'built it with fmt.Errorf(\"%s client ...\", providerName) instead of an ignore comment'. It is still a lint suppression, only hidden, and it was done to get green. AGENTS.md Rules 3 says 'Never weaken a test, lint rule or check to get a green result'; hiding the literal weakens ST1005 for this line just as an ignore comment would. Elsewhere the repo keeps capitalised 'Workiva client is not available' strings in the tool layer through failMsg (internal/mcpserver/tools/get_field.go:97, read_range.go:62, update_field.go:274), not in Go error values.",
+      "fix": "Remove the indirection. Either return a lowercase sentinel from recipe (for example errClientUnavailable = errors.New(\"workiva client is not available\")) and have the prepare_section tool turn it into failMsg(\"Workiva client is not available\", ...) as the other tools do, or record the conflict between the plan's message and ST1005 as an open_question. Do not hide the literal to keep ST1005 quiet."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare.go",
+      "line": 101,
+      "issue": "The check `reader, ok := s.client.(cellReader); if !ok || s.client == nil` is partly redundant: a type assertion on a nil interface already gives ok=false. It also misses the case that can actually happen: a typed-nil *workivaprovider.Router passes both checks and panics in ReadUncached.",
+      "fix": "Drop the redundant `|| s.client == nil`. If a typed-nil Router can reach New, reject it there with a clear error; otherwise leave a one-line note that callers never pass one."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare.go",
+      "line": 166,
+      "issue": "When replaceFacts fails after a successful Stage, the change set stays staged under the actor and no facts are stored. The error is returned, not swallowed, but the caller cannot tell this partial state apart from a plain failure.",
+      "fix": "Wrap the error with context (for example \"change set %s staged but facts not stored: %w\" using preview.ID), so the agent or operator knows a staged preview exists."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/prepare.go",
+      "line": 181,
+      "issue": "The min/max check loops over an anonymous struct slice holding comparison closures. For two fixed bounds this is harder to read than two straight if blocks. Some names are vague: `in`, `more`, `b`.",
+      "fix": "Write two explicit checks through a small helper, for example outOfRange(f, fact, limit, below bool), and give the variables clearer names (factIn, rangeFindings)."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/prepare.go",
+      "line": 217,
+      "issue": "The sign_change test compares decimal strings to the literal \"0\" and uses isNegative's prefix check. This only works because canonicalText always returns the canonical form, an invariant not stated at this call site.",
+      "fix": "Use assurance.CompareDecimal(x, \"0\") for the zero and sign tests, or add a comment pointing to the canonical-form guarantee of Fact.Current and Fact.Prior."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R4",
+      "satisfied": true,
+      "evidence": "prepare.go:76 reads through cellReader.ReadUncached with ConsistencyNone and never calls the mapping cache; TestScenario2PrepareReadsUncachedThroughRouter checks typed=2, plain=0 and an empty GetCachedCells for the mapped spreadsheet and sheet IDs"
+    },
+    {
+      "requirement": "R7",
+      "satisfied": true,
+      "evidence": "prepare.go:62 rejects unsupported types in a default: branch; all arithmetic goes through assurance decimal helpers; the float grep acceptance check exits 0"
+    },
+    {
+      "requirement": "R8",
+      "satisfied": true,
+      "evidence": "prepare.go:130 builds the items and :162 wraps the Stage error; TestScenario6StagesOneItemPerSourceValue"
+    },
+    {
+      "requirement": "R9",
+      "satisfied": true,
+      "evidence": "prepare.go:240 readVerbatim reads through os.Root (path containment) and checks UTF-8; TestScenario7VerbatimByteForByteAndLatestFacts"
+    },
+    {
+      "requirement": "R10",
+      "satisfied": true,
+      "evidence": "prepare.go:158-166 reads verbatim before Stage and calls replaceFacts only after Stage succeeds; storage is keyed by tenant (identity.StorageTenant(ctx)), actor and section; TestPrepareStageFailureStoresNothing; TestScenario7 checks that another actor gets nothing"
+    }
+  ],
+  "new_tasks": []
+}

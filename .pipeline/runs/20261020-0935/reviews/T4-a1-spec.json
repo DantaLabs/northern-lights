@@ -1,0 +1,68 @@
+{
+  "task_id": "T4",
+  "axis": "spec",
+  "attempt": 1,
+  "implementation_commit": "150e70b4d7c6f4ebd4222d6f17353f6839742061",
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "major",
+      "file": "internal/recipe/prepare_test.go",
+      "line": 193,
+      "issue": "The owner constraint says that for '%' fields, min and max are in percent while the cell stores a fraction. The code is correct: prepare.go:192 compares the x100-scaled fact.Current. But no test fails if that is lost. TestScenario5Findings only checks a raw 0.46 against min 50, and that gives exactly one out_of_range under every wrong reading too: raw 0.46 < 50, and 0.46 < 0.5 if the limit is scaled to a fraction. If someone regresses to comparing the stored fraction, every '%' field with min > 1 would be flagged out_of_range on real data, and no test would catch it.",
+      "fix": "Add a '%' field whose fraction is inside the percent range but would be out of range compared raw. For example raw 0.6 with min 50, or raw 0.75 with max 80. Assert it gets zero out_of_range findings. Also assert that the Renewable share message contains '46%', so the displayed value is the percent-scaled one."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare_test.go",
+      "line": 223,
+      "issue": "The task gives fixed severities: missing/out_of_range are 'high' and material_change/sign_change are 'medium'. The test only checks that Severity is non-empty, so swapping the severities would pass.",
+      "fix": "Assert Severity == 'high' for missing/out_of_range and 'medium' for material_change/sign_change."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare.go",
+      "line": 158,
+      "issue": "Verbatim files are read before Stage, not after it as step 6 of the task says. They are also read through the recipe's os.Root rather than os.ReadFile(filepath.Join(dir, file)). This is a harmless deviation and arguably stricter: a bad verbatim file fails before anything is staged, and path escape is refused. It is recorded for traceability only.",
+      "fix": "None required."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R4",
+      "satisfied": true,
+      "evidence": "prepare.go:76 calls cellReader.ReadUncached with ConsistencyNone, and the mapping cache is never touched. Proven by TestScenario2PrepareReadsUncachedThroughRouter (prepare_test.go:164): typedCalls==2, plainCalls==0, and store.GetCachedCells for prep-src is empty. The fact matches scenario 2 (-110000, -8.148148..., down, not material)."
+    },
+    {
+      "requirement": "R7",
+      "satisfied": true,
+      "evidence": "prepare.go:121-124 (missing) and fieldFindings at prepare.go:176-222 (out_of_range, material_change, sign_change). TestScenario5Findings (prepare_test.go:189) checks the exact count per label and kind (a fail-closed total), and that each message starts with the label and ends with '.'. Weakness: the percent-scaled min/max is not discriminated (major finding)."
+    },
+    {
+      "requirement": "R8",
+      "satisfied": true,
+      "evidence": "prepare.go:128 adds one Item per non-empty current value, with FieldName=target and Source=source field name. Stage is called once at prepare.go:162. TestScenario6StagesOneItemPerSourceValue (prepare_test.go:229): DeepEqual on five items, json.Number('585.0') becomes '585', the text cell keeps its raw string, and the preview is returned. TestPrepareStageFailureStoresNothing and TestPrepareNoSourceValuesIsAnError cover the error paths."
+    },
+    {
+      "requirement": "R9",
+      "satisfied": true,
+      "evidence": "prepare.go:240-256 reads each file through os.Root, checks UTF-8 and returns string(data). TestScenario7VerbatimByteForByteAndLatestFacts (prepare_test.go:273) writes a CRLF + non-ASCII file at test time, copies the recipe from testdata/prepare/verbatim.yaml (critique c2), and checks that Text equals the bytes exactly."
+    },
+    {
+      "requirement": "R10",
+      "satisfied": true,
+      "evidence": "service.go New wires newFactStore(env.DB) and returns it as the FactStore. prepare.go:166 calls replaceFacts after a successful Stage. TestScenario7VerbatimByteForByteAndLatestFacts: LatestFacts for analyst-a DeepEquals the prepared facts and blocks, and analyst-b gets nothing. TestPrepareStageFailureStoresNothing proves nothing is stored when Stage fails."
+    },
+    {
+      "requirement": "Scenario 8 (Prepare side) / unknown section",
+      "satisfied": true,
+      "evidence": "prepare.go:226-238 unknownSection. TestPrepareUnknownSectionListsAvailable (prepare_test.go:308) checks the exact sorted 'ID (Title)' list and the no-recipes message."
+    },
+    {
+      "requirement": "Owner constraints: decimal only, unsupported types rejected, fake changeset.Service",
+      "satisfied": true,
+      "evidence": "In the check log, the float grep exits 0. prepareNormalise has a default: branch (prepare.go:62), proven by TestPrepareRejectsUnsupportedCellType (a bool cell gives an error naming 'flag'). prepareTestChanges is the fake changeset.Service, and changeset.New is not used. checks/T4-a1.json shows all commands exit 0 and types.go is unchanged."
+    }
+  ],
+  "new_tasks": []
+}
