@@ -1,0 +1,10 @@
+$ go test -list '^TestScenario7LatestFactsPerActorAndSection$' ./internal/recipe/ | grep -qx 'TestScenario7LatestFactsPerActorAndSection'
+$ go test -list '^TestFactStoreReplacesPreviousSet$' ./internal/recipe/ | grep -qx 'TestFactStoreReplacesPreviousSet'
+$ go test -list '^TestFactStoreSQLiteSurvivesReopen$' ./internal/recipe/ | grep -qx 'TestFactStoreSQLiteSurvivesReopen'
+$ go test -race -count=1 -run '^(TestScenario7LatestFactsPerActorAndSection|TestFactStoreReplacesPreviousSet|TestFactStoreSQLiteSurvivesReopen)$' ./internal/recipe/
+ok  	github.com/dantalabs/northern-lights/internal/recipe	1.423s
+$ go vet ./internal/recipe/
+$ ! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'
+$ test -z "$(gofmt -l internal/recipe internal/mcpserver/tools)"
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.
