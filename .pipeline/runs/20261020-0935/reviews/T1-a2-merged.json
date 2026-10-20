@@ -1,0 +1,95 @@
+{
+  "task_id": "T1",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts_test.go",
+      "line": 193,
+      "issue": "The name TestDisplayFormsAreNotDuplicated and its comment 'each form appears once' do not match its own expected list. That list contains \"-10%\" twice, once as the change display and once as pct0. The test pins the plan's narrower rule: only the percentage-point form and the unsigned magnitudes are deduplicated. It does not show that no form is duplicated. This is the same reading as the a1 minor finding, which was optional. The behaviour is acceptable, but the name misleads.",
+      "fix": "Optional: rename the test, for example to TestUnsignedMagnitudesSkipDuplicates, and correct the comment so it says the change and pct0 forms may coincide.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts_test.go",
+      "line": 193,
+      "issue": "The name TestDisplayFormsAreNotDuplicated and its comment ('each form appears once') contradict the pinned result. The expected list contains \"-10%\" twice, once as the change form and once as the 0 dp percent form. The test therefore locks in a duplicate while its name says there are none. Whether the plan's 'skip any form that exactly duplicates an earlier entry' should cover the percent forms is for the spec axis. On standards, the name and comment are misleading.",
+      "fix": "Rename the test to say what it pins (for example TestPercentFieldUnsignedMagnitudesSkipDuplicates) and correct the comment. Alternatively, if duplicate skipping is meant to cover the percent forms, extend containsString to them and drop the second \"-10%\".",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 306,
+      "issue": "The containsString guard on the percentage-point form can never trigger, because no earlier form ends in 'percentage point(s)'. Replacing it with `if true` keeps the suite green, and the worker report says so too. This is a dead branch that suggests a case which cannot happen.",
+      "fix": "Append pp unconditionally, or keep the guard with a comment saying it is defensive.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 171,
+      "issue": "Carried over from attempt 1: computeFactValues is still about 150 lines. It mixes input normalisation, change/direction/materiality maths and display assembly (possible Divergent Change).",
+      "fix": "Split it into normaliseInputs, computeChange (Change, ChangePct, Direction, Material) and buildDisplay.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/facts.go",
+      "line": 214,
+      "issue": "Carried over: direction values 'new', 'flat', 'up' and 'down' are bare string literals, repeated in facts.go and the tests (possible Primitive Obsession).",
+      "fix": "Declare package constants next to the Fact type and use them in the code and tests.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts_test.go",
+      "line": 193,
+      "issue": "The name TestDisplayFormsAreNotDuplicated and its comment 'each form appears once' do not match its own expected list. That list contains \"-10%\" twice, once as the change display and once as pct0. The test pins the plan's narrower rule: only the percentage-point form and the unsigned magnitudes are deduplicated. It does not show that no form is duplicated. This is the same reading as the a1 minor finding, which was optional. The behaviour is acceptable, but the name misleads.",
+      "fix": "Optional: rename the test, for example to TestUnsignedMagnitudesSkipDuplicates, and correct the comment so it says the change and pct0 forms may coincide.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts_test.go",
+      "line": 193,
+      "issue": "The name TestDisplayFormsAreNotDuplicated and its comment ('each form appears once') contradict the pinned result. The expected list contains \"-10%\" twice, once as the change form and once as the 0 dp percent form. The test therefore locks in a duplicate while its name says there are none. Whether the plan's 'skip any form that exactly duplicates an earlier entry' should cover the percent forms is for the spec axis. On standards, the name and comment are misleading.",
+      "fix": "Rename the test to say what it pins (for example TestPercentFieldUnsignedMagnitudesSkipDuplicates) and correct the comment. Alternatively, if duplicate skipping is meant to cover the percent forms, extend containsString to them and drop the second \"-10%\".",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 306,
+      "issue": "The containsString guard on the percentage-point form can never trigger, because no earlier form ends in 'percentage point(s)'. Replacing it with `if true` keeps the suite green, and the worker report says so too. This is a dead branch that suggests a case which cannot happen.",
+      "fix": "Append pp unconditionally, or keep the guard with a comment saying it is defensive.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 171,
+      "issue": "Carried over from attempt 1: computeFactValues is still about 150 lines. It mixes input normalisation, change/direction/materiality maths and display assembly (possible Divergent Change).",
+      "fix": "Split it into normaliseInputs, computeChange (Change, ChangePct, Direction, Material) and buildDisplay.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/facts.go",
+      "line": 214,
+      "issue": "Carried over: direction values 'new', 'flat', 'up' and 'down' are bare string literals, repeated in facts.go and the tests (possible Primitive Obsession).",
+      "fix": "Declare package constants next to the Fact type and use them in the code and tests.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}
