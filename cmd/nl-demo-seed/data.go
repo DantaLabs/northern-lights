@@ -32,7 +32,7 @@ var (
 // empty (missing) or a plain decimal; duplicate keys are rejected. Errors
 // name the file and line.
 func LoadCSV(path string) ([]Row, error) {
-	data, err := os.ReadFile(path) //nolint:gosec // path is an operator-supplied data file
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
@@ -118,7 +118,7 @@ func LoadRecipes(dir string) ([]Recipe, error) {
 	}
 	var out []Recipe
 	for _, p := range paths {
-		data, err := os.ReadFile(p) //nolint:gosec // path comes from a directory listing of operator-supplied recipes
+		data, err := os.ReadFile(p)
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", p, err)
 		}
@@ -155,7 +155,7 @@ type FieldRef struct{ Name, FieldType, SpreadsheetID, SpreadsheetName, SheetID, 
 // LoadMappings reads a mappings file.
 func LoadMappings(path string) (Mappings, error) {
 	var m Mappings
-	data, err := os.ReadFile(path) //nolint:gosec // path is an operator-supplied mappings file
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return m, fmt.Errorf("read %s: %w", path, err)
 	}

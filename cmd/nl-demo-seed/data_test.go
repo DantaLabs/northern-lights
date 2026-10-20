@@ -102,10 +102,12 @@ func TestDataConsistency(t *testing.T) {
 	}
 
 	// Percent fields within 0..100.
-	for _, r := range cur {
-		if r.Unit == "%" && r.Value != "" {
-			if v := rat(t, r.Value); v.Sign() < 0 || v.Cmp(big.NewRat(100, 1)) > 0 {
-				t.Errorf("%s = %s outside 0..100", r.Key, r.Value)
+	for year, rows := range map[string][]Row{"2025": cur, "2024": prior} {
+		for _, r := range rows {
+			if r.Unit == "%" && r.Value != "" {
+				if v := rat(t, r.Value); v.Sign() < 0 || v.Cmp(big.NewRat(100, 1)) > 0 {
+					t.Errorf("%s: %s = %s outside 0..100", year, r.Key, r.Value)
+				}
 			}
 		}
 	}
@@ -264,7 +266,12 @@ func TestRecipesMatchSchemaAndMappings(t *testing.T) {
 				t.Errorf("%s/%s: mapped names %q %q %q do not follow the convention", sec.id, k, f.Source, f.Target, f.Prior)
 			}
 			for file, m := range maps {
-				for _, name := range []string{f.Source, f.Target, f.Prior} {
+				for _, role := range []struct{ name, sheet, spreadsheet string }{
+					{f.Source, "demo-esg-source-2025", "demo-esg-source"},
+					{f.Target, "demo-esg-report-cy", "demo-esg-report"},
+					{f.Prior, "demo-esg-report-py", "demo-esg-report"},
+				} {
+					name := role.name
 					ref, ok := m.Field(name)
 					if !ok {
 						t.Errorf("%s: %s not mapped", file, name)
@@ -276,6 +283,9 @@ func TestRecipesMatchSchemaAndMappings(t *testing.T) {
 					}
 					if file == "mappings-demo.yaml" && ref.Range != "D"+strconv.Itoa(rowOf[k]) {
 						t.Errorf("%s: %s range %s, want D%d", file, name, ref.Range, rowOf[k])
+					}
+					if file == "mappings-demo.yaml" && (ref.SpreadsheetID != role.spreadsheet || ref.SheetID != role.sheet) {
+						t.Errorf("%s: %s on %s/%s, want %s/%s", file, name, ref.SpreadsheetID, ref.SheetID, role.spreadsheet, role.sheet)
 					}
 				}
 			}
@@ -305,18 +315,6 @@ func TestRecipesMatchSchemaAndMappings(t *testing.T) {
 	for _, key := range []string{"energy_total", "employees_total"} {
 		if _, ok := byKey(cur)[key]; !ok {
 			t.Errorf("mandatory key %s missing", key)
-		}
-	}
-
-	// The demo layout of the sheets.
-	for name, want := range map[string][2]string{
-		"src_env_energy_total":      {"demo-esg-source", "demo-esg-source-2025"},
-		"rpt_env_energy_total_2025": {"demo-esg-report", "demo-esg-report-cy"},
-		"rpt_env_energy_total_2024": {"demo-esg-report", "demo-esg-report-py"},
-	} {
-		ref, _ := demo.Field(name)
-		if ref.SpreadsheetID != want[0] || ref.SheetID != want[1] {
-			t.Errorf("%s on %s/%s, want %s/%s", name, ref.SpreadsheetID, ref.SheetID, want[0], want[1])
 		}
 	}
 }
