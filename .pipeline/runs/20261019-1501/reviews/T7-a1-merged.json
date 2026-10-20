@@ -1,0 +1,79 @@
+{
+  "task_id": "T7",
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "medium",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 31,
+      "issue": "Act 2 'Correct answer contains' says 'The four planted findings:' but lists three, which is correct for the environmental section. The fourth planted finding (material_change training_hours_female) is social and belongs to Act 5, where line 63 already lists it. An RB-03 operator checking this line would expect a fourth environmental finding that workiva_prepare_section esg-environmental will never return. R10 requires the line to state what a correct answer contains, so this is a factual error in the deliverable.",
+      "fix": "Change the wording to 'The three planted environmental findings:' (optionally adding 'the fourth planted finding is social, see Act 5'). Leave the three listed findings as they are.",
+      "axis": "spec"
+    },
+    {
+      "severity": "low",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 59,
+      "issue": "Act 4.3 assumes workiva_export_evidence can export 'what we just did', but subject_kind accepts only snapshot, validation_run, comparison or transfer (export_evidence.go:69). Nothing in Acts 1 to 4 is guaranteed to produce one of those subjects. The worker reports this gap and the line hedges by saying the agent should name the subject it needs. This is acceptable for a first version against schemas; it is recorded so RB-03 resolves it.",
+      "fix": "No change needed for this attempt. Carry it as an open item for RB-03 (scenario 6) / L1-L3: either add a workiva_compare_periods step before 4.3 or extend the evidence subjects.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 29,
+      "issue": "Act 2 says 'The four planted findings' but lists three (missing water_discharge_production, material_change business travel, out_of_range electricity_renewable). The fourth planted finding in configs/demo/data/README.md (training_hours_female) belongs to the social section and appears under Act 5. The count misleads whoever checks the agent's reply during RB-03.",
+      "fix": "Write 'The three planted environmental findings' (or 'three of the four planted findings; the fourth is social, see Act 5').",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/INSTRUCTIONS.md",
+      "line": 33,
+      "issue": "The maintenance note sits inside the '## Instructions' section. The paste note at the top says to paste the text under 'Instructions' into Copilot Studio, so the note would be pasted into the agent prompt despite its '(not part of the agent instructions)' label.",
+      "fix": "Move the maintenance note above '## Instructions' (for example after the paste note) or under its own '## Maintenance' heading after the instructions.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 13,
+      "issue": "Prompt lines are long single paragraphs that pack tools, values, citations and negative checks together; hard to tick off during a live run.",
+      "fix": "Optional: split each 'Correct answer contains:' into a short bullet list (tools, values, citations, must-not).",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 29,
+      "issue": "Act 2 says 'The four planted findings' but lists three (missing water_discharge_production, material_change business travel, out_of_range electricity_renewable). The fourth planted finding in configs/demo/data/README.md (training_hours_female) belongs to the social section and appears under Act 5. The count misleads whoever checks the agent's reply during RB-03.",
+      "fix": "Write 'The three planted environmental findings' (or 'three of the four planted findings; the fourth is social, see Act 5').",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/agent/INSTRUCTIONS.md",
+      "line": 33,
+      "issue": "The maintenance note sits inside the '## Instructions' section. The paste note at the top says to paste the text under 'Instructions' into Copilot Studio, so the note would be pasted into the agent prompt despite its '(not part of the agent instructions)' label.",
+      "fix": "Move the maintenance note above '## Instructions' (for example after the paste note) or under its own '## Maintenance' heading after the instructions.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "docs/demo/agent/DEMO_PROMPTS.md",
+      "line": 13,
+      "issue": "Prompt lines are long single paragraphs that pack tools, values, citations and negative checks together; hard to tick off during a live run.",
+      "fix": "Optional: split each 'Correct answer contains:' into a short bullet list (tools, values, citations, must-not).",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "revise",
+    "standards": "pass"
+  }
+}
