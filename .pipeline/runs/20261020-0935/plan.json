@@ -363,9 +363,9 @@
         "test -z \"$(gofmt -l internal/recipe internal/mcpserver/tools)\"",
         "git diff --quiet $(git merge-base HEAD origin/claude/demo-integration) -- internal/recipe/types.go"
       ],
-      "status": "pending",
+      "status": "running",
       "attempts": 0,
-      "base_commit": null,
+      "base_commit": "d3bf6003716a9c6c7c7b389ee619782b926c7559",
       "route": {
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
@@ -378,6 +378,14 @@
         ],
         "environment": "local",
         "router": "planner-hint"
+      },
+      "active_attempt": 1,
+      "execution": {
+        "router": "planner-hint",
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "environment": "local"
       }
     },
     {
