@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestDemoDocumentsResponseNotFound(t *testing.T) {
+func TestDemoDocumentsUnknownResourceNotFound(t *testing.T) {
 	transport := NewDemoTransport()
 	cases := []struct {
 		method string
@@ -42,7 +42,7 @@ func TestDemoDocumentsResponseNotFound(t *testing.T) {
 		if !json.Valid(body) {
 			t.Errorf("%s %s body is not valid JSON: %s", tc.method, tc.path, body)
 		}
-		if !strings.Contains(string(body), "demo report documents not served yet") {
+		if !strings.Contains(string(body), "demo report document resource not found") {
 			t.Errorf("%s %s body = %s, want lane hook message", tc.method, tc.path, body)
 		}
 	}
