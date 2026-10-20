@@ -1,0 +1,15 @@
+id: fx-soc
+title: Fixture social
+period: "2025"
+prior_period: "2024"
+document_id: "doc-fixture-0001"
+materiality_pct: 10
+fields:
+  - key: share
+    label: "Share"
+    unit: "%"
+    decimals: 1
+    source: src_soc_share
+    target: rpt_soc_share_2025
+    prior: rpt_soc_share_2024
+    required: false

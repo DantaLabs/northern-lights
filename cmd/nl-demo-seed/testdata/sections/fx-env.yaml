@@ -1,0 +1,15 @@
+id: fx-env
+title: Fixture environmental
+period: "2025"
+prior_period: "2024"
+document_id: "doc-fixture-0001"
+materiality_pct: 10
+fields:
+  - key: alpha
+    label: "Alpha"
+    unit: MWh
+    decimals: 2
+    source: src_env_alpha
+    target: rpt_env_alpha_2025
+    prior: rpt_env_alpha_2024
+    required: true
