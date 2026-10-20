@@ -1,0 +1,11 @@
+# RB-02 Workiva API requests (base https://api.eu.wdesk.com, X-Version 2026-01-01).
+# Authorization headers are never recorded; IDs replaced with placeholders.
+step-2  GET    200  /documents?$maxpagesize=100
+step-3  POST   201  /documents/<document-id>/sections
+step-4  GET    200  /documents/<document-id>/sections/<document-id>_244
+step-4  POST   202  /content/richText/<rich-text-id-1>/edit
+step-4  GET    200  https://api.eu.wdesk.com/operations/<operation-id>
+step-4  GET    200  /operations/<operation-id>/richTextBatchEditResults
+step-5  GET    200  /content/richText/<rich-text-id-1>/paragraphs
+step-6  DELETE 204  /documents/<document-id>/sections/<document-id>_244
+step-6  GET    404  /documents/<document-id>/sections/<document-id>_244

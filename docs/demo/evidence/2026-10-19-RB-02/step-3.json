@@ -1,0 +1,17 @@
+{
+  "note": "create section",
+  "method": "POST",
+  "path": "/documents/<document-id>/sections",
+  "request_body": {
+    "name": "NL test 20261019T123119Z"
+  },
+  "status": 201,
+  "response": {
+    "children": [],
+    "id": "<document-id>_244",
+    "index": 0,
+    "name": "NL test 20261019T123119Z",
+    "nonPrinting": false,
+    "parent": null
+  }
+}

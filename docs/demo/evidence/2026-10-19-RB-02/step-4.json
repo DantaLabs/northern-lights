@@ -1,0 +1,150 @@
+{
+  "exchanges": [
+    {
+      "note": "get section (body.richText is the rich text id)",
+      "method": "GET",
+      "path": "/documents/<document-id>/sections/<document-id>_244",
+      "status": 200,
+      "response": {
+        "body": {
+          "revision": "2c6438ab45553e0f",
+          "richText": "<rich-text-id-1>"
+        },
+        "children": [],
+        "customFields": {},
+        "drawingBody": null,
+        "footers": {
+          "even": null,
+          "first": null,
+          "last": null,
+          "odd": {
+            "revision": "2c6438ab45553e0f",
+            "richText": "<rich-text-id-2>"
+          }
+        },
+        "headers": {
+          "even": null,
+          "first": null,
+          "last": null,
+          "odd": {
+            "revision": "2c6438ab45553e0f",
+            "richText": "<rich-text-id-3>"
+          }
+        },
+        "id": "<document-id>_244",
+        "index": 0,
+        "lock": null,
+        "name": "NL test 20261019T123119Z",
+        "nonPrinting": false,
+        "parent": null,
+        "properties": {
+          "background": null,
+          "edgarKeepTogether": false,
+          "exhibit": false,
+          "footer": {
+            "alternatingPage": false,
+            "differentFirstPage": false,
+            "differentLastPage": false,
+            "margin": null,
+            "matchSectionMargins": true,
+            "positionFromBottom": null,
+            "sameAsPrevious": false
+          },
+          "footnotes": {
+            "line": {
+              "color": null,
+              "enabled": null,
+              "length": null,
+              "style": null,
+              "weight": null
+            },
+            "prefix": null,
+            "restartsAt": null,
+            "sequenceStarts": null,
+            "style": null,
+            "suffix": null
+          },
+          "header": {
+            "alternatingPage": false,
+            "differentFirstPage": false,
+            "differentLastPage": false,
+            "margin": null,
+            "matchSectionMargins": true,
+            "positionFromTop": null,
+            "sameAsPrevious": false
+          },
+          "margins": {
+            "bottom": null,
+            "left": null,
+            "right": null,
+            "top": null
+          },
+          "pageBreakBefore": false,
+          "pageDimensions": null,
+          "pageNumber": {
+            "reset": false,
+            "startAt": 1
+          },
+          "restartFootnoteNumbering": false,
+          "trackChanges": false
+        },
+        "revision": "2c6438ab45553e0f"
+      }
+    },
+    {
+      "note": "rich text batch edit",
+      "method": "POST",
+      "path": "/content/richText/<rich-text-id-1>/edit",
+      "request_body": {
+        "data": [
+          {
+            "insertText": {
+              "insertAt": {
+                "offset": 0,
+                "paragraphIndex": 0
+              },
+              "text": "Energy consumption fell 8.1% to 1.24 GWh in 2025, compared with 2024.\nThis is the second NL test paragraph, written by the RB-02 documents API spike."
+            },
+            "type": "insertText"
+          }
+        ],
+        "isolateEdits": false,
+        "revision": "2c6438ab45553e0f"
+      },
+      "status": 202,
+      "headers": {
+        "Location": "https://api.eu.wdesk.com/operations/<operation-id>",
+        "Retry-After": "2"
+      },
+      "response": {
+        "operationLocation": "https://api.eu.wdesk.com/operations/<operation-id>"
+      }
+    },
+    {
+      "note": "poll operation #1",
+      "method": "GET",
+      "path": "https://api.eu.wdesk.com/operations/<operation-id>",
+      "status": 200,
+      "response": {
+        "id": "<operation-id>",
+        "resourceUrl": "https://api.eu.wdesk.com/operations/<operation-id>/richTextBatchEditResults",
+        "status": "completed"
+      }
+    },
+    {
+      "note": "rich text batch edit results",
+      "method": "GET",
+      "path": "/operations/<operation-id>/richTextBatchEditResults",
+      "status": 200,
+      "response": {
+        "data": [],
+        "revision": "2c6438ab45553e0c"
+      }
+    }
+  ],
+  "paragraphs_written": [
+    "Energy consumption fell 8.1% to 1.24 GWh in 2025, compared with 2024.",
+    "This is the second NL test paragraph, written by the RB-02 documents API spike."
+  ],
+  "terminal_status": "completed"
+}
