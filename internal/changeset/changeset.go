@@ -20,7 +20,10 @@ type Preview struct {
 }
 
 // ItemResult is the outcome of one field write.
-type ItemResult struct{ FieldName, Status, ReadBack, AuditID, OperationURL string }
+type ItemResult struct {
+	FieldName, Status, ReadBack, AuditID, OperationURL string
+	Before, After, Message                             string
+}
 
 // Result is the outcome of confirming a change set.
 // Status values: completed | partial | reconciliation_required.

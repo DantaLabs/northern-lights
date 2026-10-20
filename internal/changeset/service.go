@@ -144,5 +144,5 @@ func (s *service) Confirm(ctx context.Context, actor, id, token string) (Result,
 	if err := s.validateMappings(ctx, items); err != nil {
 		return Result{}, err
 	}
-	return Result{}, errors.New("change set submission is not implemented yet; token consumed")
+	return s.execute(ctx, actor, id, items)
 }

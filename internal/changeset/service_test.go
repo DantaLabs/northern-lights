@@ -283,3 +283,112 @@ func TestChangeSet_ConcurrentConsumptionAndRestart(t *testing.T) {
 		t.Fatalf("%d consumers", winners.Load())
 	}
 }
+
+func TestChangeSet_S6_TwoSheetsOneUpdateEach(t *testing.T) {
+	s, f, items := fixture(t, 30)
+	p := stage(t, s, items)
+	out, err := s.Confirm(context.Background(), "analyst", p.ID, p.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Status != "completed" || len(out.Items) != 30 || f.updates != 2 || f.polls != 2 || f.reads != 60 {
+		t.Fatalf("result=%+v updates=%d polls=%d reads=%d", out, f.updates, f.polls, f.reads)
+	}
+	for _, item := range out.Items {
+		if item.Status != "completed" || item.ReadBack != item.After || item.AuditID == "" || item.OperationURL == "" {
+			t.Fatalf("item=%+v", item)
+		}
+	}
+	rows, err := s.env.Audit.Recent(context.Background(), 100, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 30 {
+		t.Fatalf("%d audit rows", len(rows))
+	}
+	for _, row := range rows {
+		if row.Actor != "analyst" || !strings.Contains(row.AfterJSON, p.ID) || !strings.Contains(row.AfterJSON, "field-") || row.WorkivaOpURL == "" || row.BeforeJSON == "" {
+			t.Fatalf("audit=%+v", row)
+		}
+	}
+	if err := s.env.Audit.Verify(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for _, sh := range []string{"sheet-0", "sheet-1"} {
+		cells, err := s.env.Store.GetCachedCells(context.Background(), "spreadsheet", sh, time.Hour)
+		if err != nil || len(cells) != 15 {
+			t.Fatalf("cache len=%d err=%v", len(cells), err)
+		}
+		for _, cell := range cells {
+			if !strings.HasPrefix(cell.Value, "1") {
+				t.Fatal("cache not refreshed")
+			}
+		}
+	}
+}
+
+func TestChangeSet_S7_ReadBackMismatch(t *testing.T) {
+	s, f, items := fixture(t, 3)
+	p := stage(t, s, items)
+	f.mismatch = true
+	out, err := s.Confirm(context.Background(), "analyst", p.ID, p.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Status != "partial" || out.Items[0].Status != "mismatch" || out.Items[1].Status != "completed" || out.Items[2].Status != "completed" {
+		t.Fatalf("result=%+v", out)
+	}
+	cells, err := s.env.Store.GetCachedCells(context.Background(), "spreadsheet", "sheet-0", time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cells[0].Value != "different" {
+		t.Fatal("cache guessed intended value")
+	}
+}
+
+func TestChangeSet_S8_AcceptedUpdateTransportError(t *testing.T) {
+	for _, mode := range []string{"submit transport", "poll timeout"} {
+		t.Run(mode, func(t *testing.T) {
+			s, f, items := fixture(t, 3)
+			p := stage(t, s, items)
+			f.updateErr = mode == "submit transport"
+			f.pollErr = mode == "poll timeout"
+			out, err := s.Confirm(context.Background(), "analyst", p.ID, p.Token)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if out.Status != "reconciliation_required" || f.updates != 1 || out.Items[0].Status != "reconciliation_required" || out.Items[2].Status != "reconciliation_required" || out.Items[1].Status != "not_submitted" {
+				t.Fatalf("result=%+v updates=%d", out, f.updates)
+			}
+			if _, err := s.Confirm(context.Background(), "analyst", p.ID, p.Token); !errors.Is(err, ErrReusedToken) {
+				t.Fatal(err)
+			}
+			if f.updates != 1 {
+				t.Fatal("unknown write retried")
+			}
+		})
+	}
+}
+
+func TestChangeSet_MultiCellVerification(t *testing.T) {
+	s, f, items := fixture(t, 1)
+	field, err := s.env.Store.GetField(context.Background(), items[0].FieldName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	field.CellRange = "A1:B2"
+	if _, err := s.env.Store.UpsertField(context.Background(), *field); err != nil {
+		t.Fatal(err)
+	}
+	p := stage(t, s, items)
+	f.mismatch = true
+	out, err := s.Confirm(context.Background(), "analyst", p.ID, p.Token)
+	if err != nil || out.Items[0].Status != "mismatch" {
+		t.Fatalf("out=%+v err=%v", out, err)
+	}
+	cells, err := s.env.Store.GetCachedCells(context.Background(), "spreadsheet", "sheet-0", time.Hour)
+	if err != nil || len(cells) != 4 {
+		t.Fatalf("cache len=%d err=%v", len(cells), err)
+	}
+}
