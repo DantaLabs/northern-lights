@@ -1,0 +1,61 @@
+{
+  "task_id": "T5",
+  "axis": "spec",
+  "verdict": "pass",
+  "implementation_commit": "82343b973376a49300758bda5cdf7d86388d837c",
+  "attempt": 1,
+  "findings": [
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/plan_test.go",
+      "line": 38,
+      "issue": "The instructions require recipes sorted by ID in BuildPlan, but no test proves it. The fixtures reach BuildPlan already in ID order because LoadRecipes uses filepath.Glob, which returns sorted paths (fx-env, fx-soc). So deleting the sort.Slice in plan.go would not fail any test.",
+      "fix": "In TestBuildPlanWritesBothYears (or a new case), pass the recipes in reverse order and assert that the write order is unchanged."
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/testdata/mappings.yaml",
+      "line": 5,
+      "issue": "The fixture spreadsheet names 'Fixture Source Book' and 'Fixture Report Book' lean on 'book', a near-synonym of the term CONTEXT.md says to avoid for spreadsheet ('workbook').",
+      "fix": "Rename them to 'Fixture Source Spreadsheet' / 'Fixture Report Spreadsheet' and update the expected lines in TestPlanPrintHasNoIDs."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R8 (plan half): 2025 values go to the source spreadsheet (recipe source), 2024 values go to the prior-period fields (recipe prior), all 2025 writes first",
+      "satisfied": true,
+      "evidence": "cmd/nl-demo-seed/plan.go:39-84 BuildPlan; TestBuildPlanWritesBothYears checks order, fields, values and the resolved ref"
+    },
+    {
+      "requirement": "R8: uses configs/demo/mappings-sandbox.yaml by default; writes only to spreadsheets and documents named in the mapping file and recipes",
+      "satisfied": true,
+      "evidence": "main.go -mappings default configs/demo/mappings-sandbox.yaml; plan.go planWrite resolves every Write and Clear through Mappings.Field; TestBuildPlanRejectsUnmappedField (source/prior/target unmapped -> error naming the field, empty plan); the usage text states the restriction"
+    },
+    {
+      "requirement": "R8: --dry-run prints every planned write and sends nothing (scenario 4: one write per field per year against the sandbox mapping, no network, no credentials)",
+      "satisfied": true,
+      "evidence": "TestRunDryRunSendsNothing (2 x recipe fields write lines, no '<id-'/'<document-id>', newWorkiva never called); check log command 5 (real go run with the Workiva env unset, exit 0); TestPlanPrintHasNoIDs checks the exact line format"
+    },
+    {
+      "requirement": "R8: --reset also clears the 2025 target fields and deletes report document sections whose titles match the recipe titles",
+      "satisfied": true,
+      "evidence": "plan.go reset branch (Clears per target, SectionDelete per recipe title with m.DocumentID, error when document_id is empty); TestBuildPlanResetAddsClearsAndSectionDeletes; check log command 6 (delete-section and 'clear 2025 rpt_' lines). Live execution is T6's scope (Apply is a stub, as the instructions say)"
+    },
+    {
+      "requirement": "configs/demo/README.md live write conventions: clear-value: empty-string; percent-cells-store-fractions: yes",
+      "satisfied": true,
+      "evidence": "plan.go:13 const percentCellsStoreFractions = true, planWrite divides by 100 for percent fields; empty CSV value -> Value \"\" and Clears carry \"\"; TestBuildPlanPercentConvention (46.5 -> 0.465, number field unchanged, percentToFraction table); TestBuildPlanWritesBothYears (empty 2024 value -> \"\")"
+    },
+    {
+      "requirement": "Exact interface: apply.go Workiva/Section/Apply stub; main.go run, newWorkiva seam; exit codes 2 for flag/load/plan errors and 1 for client/Apply errors",
+      "satisfied": true,
+      "evidence": "apply.go, main.go match the specified signatures; TestRunErrors (bad flag 2, missing mapping 2, live stub 1 with 'not implemented')"
+    },
+    {
+      "requirement": "Acceptance commands in checks/T5-a1.json",
+      "satisfied": true,
+      "evidence": "All 7 commands exit 0, checkout_clean true, bound to 82343b9"
+    }
+  ],
+  "new_tasks": []
+}

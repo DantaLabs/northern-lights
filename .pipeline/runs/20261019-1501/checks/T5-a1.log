@@ -1,0 +1,9 @@
+$ mkdir -p .scratch && go test ./cmd/nl-demo-seed/ -race -count=1 -v > .scratch/t5.log 2>&1; for n in TestBuildPlanWritesBothYears TestBuildPlanPercentConvention TestBuildPlanResetAddsClearsAndSectionDeletes TestBuildPlanRejectsUnmappedField TestPlanPrintHasNoIDs TestRunDryRunSendsNothing TestDataConsistency; do grep -q -- "--- PASS: $n" .scratch/t5.log || exit 1; done
+$ go vet ./cmd/nl-demo-seed/
+$ test -z "$(gofmt -l cmd internal)"
+$ golangci-lint run ./cmd/nl-demo-seed/...
+0 issues.
+$ mkdir -p .scratch && env -u NL_WORKIVA_CLIENT_ID -u NL_WORKIVA_CLIENT_SECRET go run ./cmd/nl-demo-seed -dry-run -mappings configs/demo/mappings-sandbox.example.yaml > .scratch/t5-dry.txt && f=$(cat configs/demo/sections/esg-environmental.yaml configs/demo/sections/esg-social.yaml | grep -cE '^ *- key:') && test $(grep -c '^write ' .scratch/t5-dry.txt) -eq $((2*f)) && grep -q '^planned: ' .scratch/t5-dry.txt && ! grep -q '<id-' .scratch/t5-dry.txt
+$ go run ./cmd/nl-demo-seed -dry-run -reset -mappings configs/demo/mappings-sandbox.example.yaml > .scratch/t5-reset.txt && grep -q '^delete-section "' .scratch/t5-reset.txt && grep -q '^clear 2025 rpt_' .scratch/t5-reset.txt
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

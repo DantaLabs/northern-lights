@@ -434,8 +434,8 @@
         "mkdir -p .scratch && env -u NL_WORKIVA_CLIENT_ID -u NL_WORKIVA_CLIENT_SECRET go run ./cmd/nl-demo-seed -dry-run -mappings configs/demo/mappings-sandbox.example.yaml > .scratch/t5-dry.txt && f=$(cat configs/demo/sections/esg-environmental.yaml configs/demo/sections/esg-social.yaml | grep -cE '^ *- key:') && test $(grep -c '^write ' .scratch/t5-dry.txt) -eq $((2*f)) && grep -q '^planned: ' .scratch/t5-dry.txt && ! grep -q '<id-' .scratch/t5-dry.txt",
         "go run ./cmd/nl-demo-seed -dry-run -reset -mappings configs/demo/mappings-sandbox.example.yaml > .scratch/t5-reset.txt && grep -q '^delete-section \"' .scratch/t5-reset.txt && grep -q '^clear 2025 rpt_' .scratch/t5-reset.txt"
       ],
-      "status": "running",
-      "attempts": 0,
+      "status": "passed",
+      "attempts": 1,
       "base_commit": "201da5a8a92ef7c0f10a5ae75bce01b7d2a8bb04",
       "route": {
         "worker_model": "sonnet",
@@ -450,14 +450,37 @@
         "environment": "local",
         "router": "planner-hint"
       },
-      "active_attempt": 1,
       "execution": {
         "router": "planner-hint",
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
         "standards_reviewer_model": "opus",
         "environment": "local"
-      }
+      },
+      "branch": "task/20261019-1501-T5-a1",
+      "implementation_commit": "82343b973376a49300758bda5cdf7d86388d837c",
+      "history": [
+        {
+          "attempt": 1,
+          "evidence_attempt": 1,
+          "worker": "sonnet",
+          "spec_reviewer": "opus",
+          "standards_reviewer": "opus",
+          "verdict": "pass",
+          "axes": {
+            "spec": "pass",
+            "standards": "pass"
+          },
+          "blocking_major": 0,
+          "router": "planner-hint",
+          "worker_model": "sonnet",
+          "spec_reviewer_model": "opus",
+          "standards_reviewer_model": "opus",
+          "environment": "local",
+          "implementation_commit": "82343b973376a49300758bda5cdf7d86388d837c",
+          "decision_id": "1136b761271b"
+        }
+      ]
     },
     {
       "id": "T6",
@@ -493,9 +516,9 @@
         "go test ./... -race",
         "go build ./..."
       ],
-      "status": "pending",
+      "status": "running",
       "attempts": 0,
-      "base_commit": null,
+      "base_commit": "fbc0a605a7f594e5bb28dee65b49aa49c9b9a11e",
       "route": {
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
@@ -508,6 +531,14 @@
         ],
         "environment": "local",
         "router": "planner-hint"
+      },
+      "active_attempt": 1,
+      "execution": {
+        "router": "planner-hint",
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "environment": "local"
       }
     },
     {
