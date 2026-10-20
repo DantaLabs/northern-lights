@@ -559,9 +559,9 @@
         "git diff --name-only 48269d9ee2ab52f64d4277931374fd7a4d7f3c76 -- . ':!internal/recipe' ':!internal/mcpserver/tools/prepare_section.go' ':!internal/mcpserver/tools/prepare_section_test.go' ':!docs/demo/STATUS.md' ':!.pipeline' ':!PLAN.md' | (! grep -q .)",
         "git diff --quiet $(git merge-base HEAD origin/claude/demo-integration) -- internal/recipe/types.go"
       ],
-      "status": "pending",
+      "status": "running",
       "attempts": 0,
-      "base_commit": null,
+      "base_commit": "3d89acef3ae9111f8a839a7d57444950c20c0429",
       "route": {
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
@@ -574,6 +574,14 @@
         ],
         "environment": "local",
         "router": "planner-hint"
+      },
+      "active_attempt": 1,
+      "execution": {
+        "router": "planner-hint",
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "environment": "local"
       }
     }
   ]
