@@ -519,8 +519,8 @@
         "grep -q 'RB-03' docs/demo/agent/INSTRUCTIONS.md",
         "python3 -I configs/demo/check_no_sandbox_ids.py \"$HOME/northern-lights-workspace/versions/demo-l0/docs/demo/evidence/2026-10-19-RB-01/step-3.local.json\" \"$HOME/northern-lights-workspace/versions/nl-l3/docs/demo/evidence/2026-10-19-RB-02/step-2.local.json\""
       ],
-      "status": "running",
-      "attempts": 2,
+      "status": "passed",
+      "attempts": 3,
       "base_commit": "0e0041b6c38911d19fcbe67bfbc6063f1650becc",
       "route": {
         "worker_model": "sonnet",
@@ -542,7 +542,7 @@
         "standards_reviewer_model": "opus",
         "environment": "local"
       },
-      "branch": "task/20261019-1501-T7-a2",
+      "branch": "task/20261019-1501-T7-a3",
       "history": [
         {
           "attempt": 1,
@@ -583,9 +583,29 @@
           "environment": "local",
           "implementation_commit": "1e46b5b76236b1664288ff35c80f4701f2dff974",
           "decision_id": "573e66fbf0e2"
+        },
+        {
+          "attempt": 3,
+          "evidence_attempt": 3,
+          "worker": "sonnet",
+          "spec_reviewer": "opus",
+          "standards_reviewer": "opus",
+          "verdict": "pass",
+          "axes": {
+            "spec": "pass",
+            "standards": "pass"
+          },
+          "blocking_major": 0,
+          "router": "planner-hint",
+          "worker_model": "sonnet",
+          "spec_reviewer_model": "opus",
+          "standards_reviewer_model": "opus",
+          "environment": "local",
+          "implementation_commit": "1913ef0d55dcc1bdf8bd49022d2aeeb1aa6465c3",
+          "decision_id": "573e66fbf0e2"
         }
       ],
-      "active_attempt": 3
+      "implementation_commit": "1913ef0d55dcc1bdf8bd49022d2aeeb1aa6465c3"
     },
     {
       "id": "T8",
