@@ -1,0 +1,58 @@
+{
+  "task_id": "T4",
+  "axis": "standards",
+  "attempt": 2,
+  "implementation_commit": "6c4f14c25fbe604ae58ba3bafd11c243038a6af8",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "nit",
+      "file": "internal/recipe/prepare.go",
+      "line": 22,
+      "issue": "The a1 blocking ST1005 finding is fixed. errClientUnavailable is now a plain lowercase errors.New sentinel that Prepare returns directly (line 103). There is no providerName indirection, no nolint or lint:ignore comment, and golangci-lint reports 0 issues. The sentinel is unexported, though, so the T5 tool layer cannot use errors.Is on it to produce the capitalised failMsg(\"Workiva client is not available\", ...) that the other tools return (get_field.go:97, read_range.go:62). Through fail(err, ...) the agent will see the lowercase text.",
+      "fix": "This is optional. If T5 or a later task wants the tool-layer wording to match the other tools, export the sentinel (ErrClientUnavailable) and map it there. Otherwise leave it as the orchestrator decided."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/prepare.go",
+      "line": 187,
+      "issue": "This was carried over from a1. The min/max check still loops over an anonymous struct slice that holds comparison closures. For two fixed bounds this is harder to read than two plain checks. Some names are still vague: `in`, `more`, `b`.",
+      "fix": "Write two explicit checks through a small helper, and name the variables more clearly, for example factIn and rangeFindings."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/prepare.go",
+      "line": 223,
+      "issue": "This was carried over from a1. The sign_change check compares canonical decimal strings to \"0\" and uses a prefix check for sign. That is only correct because Fact.Current and Fact.Prior are always canonical, and this call site does not say so.",
+      "fix": "Use assurance.CompareDecimal against \"0\", or add a one-line comment that cites the canonical-form guarantee."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R4",
+      "satisfied": true,
+      "evidence": "prepare.go:82 reads via cellReader.ReadUncached with ConsistencyNone and never touches the mapping cache; TestScenario2PrepareReadsUncachedThroughRouter asserts typed=2, plain=0 and an empty GetCachedCells"
+    },
+    {
+      "requirement": "R7",
+      "satisfied": true,
+      "evidence": "prepare.go:68 rejects unsupported types in a default: branch; arithmetic goes through the assurance decimal helpers; the no-float grep check exits 0; TestPrepareRejectsUnsupportedCellType"
+    },
+    {
+      "requirement": "R8",
+      "satisfied": true,
+      "evidence": "prepare.go:136 builds one item per non-empty source and :168 wraps the Stage error; TestScenario6StagesOneItemPerSourceValue"
+    },
+    {
+      "requirement": "R9",
+      "satisfied": true,
+      "evidence": "prepare.go:246 readVerbatim reads through os.Root (path containment) and checks UTF-8; TestScenario7VerbatimByteForByteAndLatestFacts"
+    },
+    {
+      "requirement": "R10",
+      "satisfied": true,
+      "evidence": "prepare.go:164-174 reads verbatim before Stage and stores facts only after Stage succeeds; a storage failure names the staged change set ID; TestPrepareStageFailureStoresNothing; TestScenario7 checks that another actor gets nothing"
+    }
+  ],
+  "new_tasks": []
+}

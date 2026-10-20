@@ -363,8 +363,8 @@
         "test -z \"$(gofmt -l internal/recipe internal/mcpserver/tools)\"",
         "git diff --quiet $(git merge-base HEAD origin/claude/demo-integration) -- internal/recipe/types.go"
       ],
-      "status": "running",
-      "attempts": 1,
+      "status": "passed",
+      "attempts": 2,
       "base_commit": "486574e0cbdb736572f530a31621b45938150400",
       "route": {
         "worker_model": "sonnet",
@@ -386,7 +386,7 @@
         "standards_reviewer_model": "opus",
         "environment": "local"
       },
-      "branch": "task/20261020-0935-T4-a1",
+      "branch": "task/20261020-0935-T4-a2",
       "history": [
         {
           "attempt": 1,
@@ -407,9 +407,29 @@
           "environment": "local",
           "implementation_commit": "150e70b4d7c6f4ebd4222d6f17353f6839742061",
           "decision_id": "b3da09baabc2"
+        },
+        {
+          "attempt": 2,
+          "evidence_attempt": 2,
+          "worker": "sonnet",
+          "spec_reviewer": "opus",
+          "standards_reviewer": "opus",
+          "verdict": "pass",
+          "axes": {
+            "spec": "pass",
+            "standards": "pass"
+          },
+          "blocking_major": 0,
+          "router": "planner-hint",
+          "worker_model": "sonnet",
+          "spec_reviewer_model": "opus",
+          "standards_reviewer_model": "opus",
+          "environment": "local",
+          "implementation_commit": "6c4f14c25fbe604ae58ba3bafd11c243038a6af8",
+          "decision_id": "b3da09baabc2"
         }
       ],
-      "active_attempt": 2
+      "implementation_commit": "6c4f14c25fbe604ae58ba3bafd11c243038a6af8"
     },
     {
       "id": "T5",

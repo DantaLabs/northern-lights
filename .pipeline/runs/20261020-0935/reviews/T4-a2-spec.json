@@ -1,0 +1,64 @@
+{
+  "task_id": "T4",
+  "axis": "spec",
+  "attempt": 2,
+  "implementation_commit": "6c4f14c25fbe604ae58ba3bafd11c243038a6af8",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "nit",
+      "file": "internal/recipe/prepare.go",
+      "line": 22,
+      "issue": "As the orchestrator decided, errClientUnavailable is the lowercase sentinel \"workiva client is not available\", which replaces the plan's capitalised wording. Because it is unexported, the prepare_section tool in package tools (T5) cannot use errors.Is on it to turn it into a capitalised failMsg. The tool will show the lowercase text as it is. That is acceptable under the decision. It is recorded so T5 does not expect an exported sentinel.",
+      "fix": "None required for T4. If T5 needs to match the error, export the sentinel (ErrClientUnavailable) in that task's scope."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "Fix from attempt 1 (spec major): percent min/max discriminated",
+      "satisfied": true,
+      "evidence": "testdata/prepare/findings.yaml adds 'Recycled share' (%, min 50, max 80), and prepare_test.go:198 gives raw cell A8=0.6. TestScenario5Findings expects zero findings for it (want map, line 210, plus the fail-closed total). It also asserts that the Renewable share message contains '46%' (prepare_test.go:232). Mutation check on a copy outside the repo (scratchpad/t4mut): fieldFindings changed to call CompareDecimal on the raw cell text instead of fact.Current. The test FAILS with 'Recycled share out_of_range findings = 1, want 0' and 'findings = 7, want 6'. The unmodified copy passes go test ./internal/recipe/."
+    },
+    {
+      "requirement": "Fix from attempt 1 (standards blocking): no hidden ST1005 indirection",
+      "satisfied": true,
+      "evidence": "prepare.go:22: var errClientUnavailable = errors.New(\"workiva client is not available\"). The providerName const and the fmt.Errorf(\"%s ...\") indirection are removed, and prepare.go:101-103 returns the sentinel. TestPrepareNeedsClientAndChangeSetService uses errors.Is(err, errClientUnavailable). This matches the orchestrator decision."
+    },
+    {
+      "requirement": "Fix from attempt 1 (spec minor): severities asserted",
+      "satisfied": true,
+      "evidence": "prepare_test.go:224-230: the wantSeverity map requires 'high' for missing/out_of_range and 'medium' for material_change/sign_change."
+    },
+    {
+      "requirement": "R4",
+      "satisfied": true,
+      "evidence": "Unchanged since attempt 1. prepare.go reads through cellReader.ReadUncached with ConsistencyNone. TestScenario2PrepareReadsUncachedThroughRouter checks typed reads=2, plain reads=0, an empty GetCachedCells, and the scenario 2 fact."
+    },
+    {
+      "requirement": "R7 / scenario 5",
+      "satisfied": true,
+      "evidence": "prepare.go:121-127 (missing) and fieldFindings at prepare.go:175-220. TestScenario5Findings checks exact per-label/kind counts, a fail-closed total, label-prefixed one-sentence messages, exact severities, and the percent-scale min/max (proved by the mutation above)."
+    },
+    {
+      "requirement": "R8 / scenario 6",
+      "satisfied": true,
+      "evidence": "prepare.go:130 adds one changeset.Item per non-empty source (FieldName=target, Source=source name) and Stage is called once. TestScenario6StagesOneItemPerSourceValue: five items, and json.Number('585.0') becomes '585'. TestPrepareStageFailureStoresNothing and TestPrepareNoSourceValuesIsAnError are unchanged."
+    },
+    {
+      "requirement": "R9 / scenario 7",
+      "satisfied": true,
+      "evidence": "readVerbatim checks UTF-8 and returns the bytes unchanged. TestScenario7VerbatimByteForByteAndLatestFacts writes a CRLF + non-ASCII file at test time and asserts exact equality."
+    },
+    {
+      "requirement": "R10 / scenario 7",
+      "satisfied": true,
+      "evidence": "replaceFacts runs only after Stage succeeds (prepare.go:166). Its error is now wrapped with the staged change set ID, which is in scope for the attempt-1 standards minor. TestScenario7: LatestFacts for the same actor DeepEquals the facts and blocks, and another actor gets nothing. TestPrepareStageFailureStoresNothing still covers the failure path."
+    },
+    {
+      "requirement": "Scope / checks",
+      "satisfied": true,
+      "evidence": "Since attempt 1, the attempt-2 changes touch only prepare.go, prepare_test.go and testdata/prepare/findings.yaml. All are in the task's owns, and types.go is unchanged. checks/T4-a2.json: all 13 commands exit 0, including race tests, the no-float grep, gofmt and golangci-lint (0 issues)."
+    }
+  ],
+  "new_tasks": []
+}
