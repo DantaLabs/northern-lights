@@ -516,8 +516,8 @@
         "go test ./... -race",
         "go build ./..."
       ],
-      "status": "running",
-      "attempts": 0,
+      "status": "passed",
+      "attempts": 1,
       "base_commit": "fbc0a605a7f594e5bb28dee65b49aa49c9b9a11e",
       "route": {
         "worker_model": "sonnet",
@@ -539,7 +539,10 @@
         "spec_reviewer_model": "opus",
         "standards_reviewer_model": "opus",
         "environment": "local"
-      }
+      },
+      "branch": "task/20261019-1501-T6-a1",
+      "implementation_commit": "d3e819ac48e7f414cd2e6fc9866724ea0e1411c8",
+      "waiver": "checks/T6-a1-waiver.md"
     },
     {
       "id": "T7",
@@ -786,9 +789,9 @@
         "go test ./cmd/nl-demo-seed/ -race -count=1",
         "python3 -I configs/demo/check_no_sandbox_ids.py \"$HOME/northern-lights-workspace/versions/demo-l0/docs/demo/evidence/2026-10-19-RB-01/step-3.local.json\" \"$HOME/northern-lights-workspace/versions/nl-l3/docs/demo/evidence/2026-10-19-RB-02/step-2.local.json\""
       ],
-      "status": "pending",
+      "status": "running",
       "attempts": 0,
-      "base_commit": null,
+      "base_commit": "7ea581730f8d2602d7a2aad26071daaba0c01518",
       "route": {
         "worker_model": "sonnet",
         "spec_reviewer_model": "opus",
@@ -801,6 +804,14 @@
         ],
         "environment": "local",
         "router": "planner-hint"
+      },
+      "active_attempt": 1,
+      "execution": {
+        "router": "planner-hint",
+        "worker_model": "sonnet",
+        "spec_reviewer_model": "opus",
+        "standards_reviewer_model": "opus",
+        "environment": "local"
       }
     }
   ]

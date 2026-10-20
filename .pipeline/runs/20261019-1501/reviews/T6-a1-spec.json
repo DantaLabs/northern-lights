@@ -1,0 +1,81 @@
+{
+  "task_id": "T6",
+  "axis": "spec",
+  "implementation_commit": "d3e819ac48e7f414cd2e6fc9866724ea0e1411c8",
+  "attempt": 1,
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "major",
+      "file": ".pipeline/runs/20261019-1501/checks/T6-a1.log",
+      "line": 0,
+      "issue": "The bound check log has a failing acceptance command: `go test ./... -race` exits 1. The cause is internal/assurance hitting the 600 s default timeout. That package is frozen and the diff does not touch it; the same timeout happens on the unchanged base on this machine. This is an evidence gap, not a defect in T6's code. The role rule says a failing check log is always revise, so this verdict cannot be pass.",
+      "fix": "No code change is needed in T6. Produce passing evidence for the same commit: rerun the full suite with a longer timeout (for example `go test ./... -race -timeout 30m`), or run it on GitHub CI, and record that as a new check for d3e819a. Otherwise, the orchestrator can record an explicit waiver for the internal/assurance timeout."
+    },
+    {
+      "severity": "nit",
+      "file": "cmd/nl-demo-seed/apply.go",
+      "line": 77,
+      "issue": "`read-back: <ok> ok, <mismatch> mismatch` is printed only when the plan has writes or clears (`len(groups) > 0`). The spec says to print it unconditionally. Real seed plans always contain writes, so the output is the same in practice.",
+      "fix": "Optional: always print the read-back line, or leave it as is."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R8 apply: one WriteCells per sheet, row and column from A1ToRange, empty value sent as the README clear-value (empty-string)",
+      "satisfied": true,
+      "evidence": "cmd/nl-demo-seed/apply.go:25 (clearValue = \"\", matching configs/demo/README.md:83 `clear-value: empty-string`) and apply.go:39-55. TestApplyWritesOnePerSheetAndReadsBack checks 3 calls for 3 sheets, Row 1 Col 1 for B2, and JSON `\"value\":\"\"`."
+    },
+    {
+      "requirement": "R8 apply: read back every written cell with GetSheetDataTyped and compare exactly via DecimalText and big.Rat; json.Number and string both accepted",
+      "satisfied": true,
+      "evidence": "apply.go readCell and sameDecimal. TestApplyReadBackAcceptsStringsAndNumbers covers json.Number(\"46.50\"), \"46.5\", \" 46.5 \", and nil for an empty cell; it would fail with a text comparison."
+    },
+    {
+      "requirement": "R8 apply: print read-back summary and `mismatch <field>: wrote <v> read <v>` lines; mismatches do not stop Apply but make it return an error",
+      "satisfied": true,
+      "evidence": "TestApplyReportsMismatch checks `read-back: 2 ok, 2 mismatch`, both mismatch lines, all 3 writes still done, and a non-nil error."
+    },
+    {
+      "requirement": "R8 reset: delete only sections whose Name equals the recipe title exactly; print deleted-section line",
+      "satisfied": true,
+      "evidence": "apply.go section loop. TestApplyDeletesOnlyMatchingSections: exactly one DeleteSection, doc1/s1, and `deleted-section \"Environmental disclosures\" (1)`."
+    },
+    {
+      "requirement": "R8 apply: Workiva error stops Apply, wrapped with field or title and no ID; nothing outside the plan is written or deleted",
+      "satisfied": true,
+      "evidence": "TestApplyStopsOnError covers write and list errors (errors.Is boom, names src_a or the title, no sp1 or doc1, no read-back or done line). WriteCells and DeleteSection are driven only by Plan entries."
+    },
+    {
+      "requirement": "R8 apply: print `done: elapsed <seconds>s`",
+      "satisfied": true,
+      "evidence": "apply.go done line. Asserted in TestApplyWritesOnePerSheetAndReadsBack and TestApplyReportsMismatch."
+    },
+    {
+      "requirement": "Live adapter: ListSections via GET /documents/{id}/sections?$maxpagesize=100 following absolute @nextLink; DELETE expecting 204; Reads and Writes rate-limit categories; bodies closed",
+      "satisfied": true,
+      "evidence": "cmd/nl-demo-seed/workiva.go ListSections, sectionsPage, relativeLink and DeleteSection. TestLiveWorkivaSections uses a token endpoint, 2 pages with @nextLink, checks $maxpagesize=100, and records the DELETE. TestLiveWorkivaDeleteRejectsOtherStatus. The paths match RB-02 result.md lines 13 and 73. The base URL has no path prefix, so RequestURI resolves correctly."
+    },
+    {
+      "requirement": "newWorkiva constructor from NL_WORKIVA_CLIENT_ID, NL_WORKIVA_CLIENT_SECRET, NL_REGION (default eu, eu/us/apac URLs), naming the missing variable and never its value; built like buildServer (file:read file:write, NewLimiter, 60 s timeout)",
+      "satisfied": true,
+      "evidence": "workiva.go newLiveWorkivaFromEnv and newLiveWorkivaAt. TestNewWorkivaRequiresCredentials names each variable, checks for no secret or id leak, and checks the region map."
+    },
+    {
+      "requirement": "run behaviour from T5 kept; dry run never calls newWorkiva",
+      "satisfied": true,
+      "evidence": "main.go only moves the seam. TestRunDryRunSendsNothing passes. TestRunErrors covers client error (1), Apply error (1) and success (0) through fakeSeam."
+    },
+    {
+      "requirement": "T5 review carry-over (orchestrator-sanctioned edit to plan.go): percentToFraction errors instead of silent fallback",
+      "satisfied": true,
+      "evidence": "plan.go percentToFraction returns (string, error), and planWrite wraps it with the field name. TestBuildPlanPercentConvention covers error cases including 1/3. TestBuildPlanRejectsNonNumericPercent."
+    },
+    {
+      "requirement": "Acceptance commands",
+      "satisfied": false,
+      "evidence": "checks/T6-a1.json: package tests, greps, lint and build all exit 0. `go test ./... -race` exits 1 (internal/assurance timeout, outside the diff). Rerun here: `go test ./cmd/nl-demo-seed/ -race -count=1` passes at d3e819a."
+    }
+  ],
+  "new_tasks": []
+}

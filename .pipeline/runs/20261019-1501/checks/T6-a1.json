@@ -1,0 +1,33 @@
+{
+  "task_id": "T6",
+  "attempt": 1,
+  "implementation_commit": "d3e819ac48e7f414cd2e6fc9866724ea0e1411c8",
+  "commands": [
+    {
+      "command": "mkdir -p .scratch && go test ./cmd/nl-demo-seed/ -race -count=1 -v > .scratch/t6.log 2>&1; for n in TestApplyWritesOnePerSheetAndReadsBack TestApplyReadBackAcceptsStringsAndNumbers TestApplyReportsMismatch TestApplyDeletesOnlyMatchingSections TestApplyStopsOnError TestLiveWorkivaSections TestNewWorkivaRequiresCredentials TestRunDryRunSendsNothing; do grep -q -- \"--- PASS: $n\" .scratch/t6.log || exit 1; done",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -q '/sections' cmd/nl-demo-seed/workiva.go && grep -q 'MethodDelete' cmd/nl-demo-seed/workiva.go && grep -q GetSheetDataTyped cmd/nl-demo-seed/apply.go",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    },
+    {
+      "command": "go test ./... -race",
+      "exit_code": 1
+    },
+    {
+      "command": "go build ./...",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    }
+  ],
+  "checkout_clean": true,
+  "created_at": "2026-10-20T04:29:31Z"
+}
