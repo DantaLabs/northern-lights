@@ -83,8 +83,35 @@ Probed on the scratch spreadsheet `Testing MCP` with `WriteCells`, then cleared.
 clear-value: empty-string
 percent-cells-store-fractions: yes
 
-Not verified: writes into the empty block of the report sheets and into the template cells (only the scratch sheet was written).
+Verified in the live seed run of 2026-10-19 (see below): writes into the empty block of the report sheets and into the template cells, and clearing with an empty string, all read back as expected (126 cells, 0 mismatch). No percent cell is mapped, so `percent-cells-store-fractions` is still unconfirmed on a literal percent cell.
 
 ## Generate the real mapping file
 
-Copy `mappings-sandbox.example.yaml` to `mappings-sandbox.yaml` and replace the placeholders: `<id-NN>` from `resources.local.md` (or `step-3.local.json`) in the RB-01 evidence folder (`docs/demo/evidence/2026-10-19-RB-01/`) on Tom's machine, and `<document-id>` from `step-2.local.json` in the RB-02 folder. Then run the ID check against those two local files.
+`make_sandbox_mappings.py` maps each `<id-NN>` in the example to the real ID at the same position in `step-3.json` (placeholders, in the RB-01 evidence folder) and in `step-3.local.json` (real IDs, on Tom's machine), and takes `<document-id>` from the document list in `step-2.local.json` of the RB-02 folder. It refuses to write unless the output path is git-ignored and prints only counts.
+
+## Running the seed
+
+```
+python3 -I configs/demo/make_sandbox_mappings.py \
+  --example configs/demo/mappings-sandbox.example.yaml \
+  --placeholders docs/demo/evidence/2026-10-19-RB-01/step-3.json \
+  --real <RB-01 step-3.local.json> --document <RB-02 step-2.local.json> \
+  --out configs/demo/mappings-sandbox.yaml
+python3 -I configs/demo/check_no_sandbox_ids.py <RB-01 step-3.local.json> <RB-02 step-2.local.json>
+go run ./cmd/nl-demo-seed -dry-run -reset -mappings configs/demo/mappings-sandbox.yaml
+# live run, with NL_WORKIVA_CLIENT_ID, NL_WORKIVA_CLIENT_SECRET and NL_REGION loaded in a subshell:
+go run ./cmd/nl-demo-seed -reset -mappings configs/demo/mappings-sandbox.yaml
+```
+
+The dry run needs no network or credentials. A live run ends with `read-back: N ok, 0 mismatch` and `done: elapsed ...`.
+
+## Seed run 2026-10-19
+
+- Base commit d7b4612 (branch `task/20261019-1501-T9-a1`).
+- Commands: the four above; the dry run printed no IDs.
+- Planned and applied with `-reset`: 84 writes, 42 clears, 2 section deletes (the two deletes found nothing to delete).
+- Before the live run the report document's sections were listed read-only: does any match a recipe title? no.
+- `read-back: 126 ok, 0 mismatch`
+- `done: elapsed 99.7s` (above the one-minute target; the rate limiter paces the calls).
+- Bounded fixes to the seed code: none.
+- Deferred: acceptance scenario 5 (needs lane L2's `workiva_prepare_section`) and scenario 6 (Tom's RB-03).
