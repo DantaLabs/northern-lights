@@ -247,6 +247,10 @@ func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
 				return next(ctx, method, req)
 			}
 			if writeTools[params.Name] && actor == DefaultActor {
+				switch params.Name {
+				case "workiva_prepare_section", "workiva_stage_section_text", "workiva_confirm_change_set", "workiva_confirm_section_text":
+					return structuredCallToolError(auditID, "authorization_denied", fmt.Sprintf("%s requires an authenticated actor; refusing unattributed write", params.Name), false, false), nil
+				}
 				if !wave2AssuranceTool(params.Name) {
 					return nil, fmt.Errorf("%s requires the %s header identifying the calling user; refusing unattributed write", params.Name, ActorHeader)
 				}
