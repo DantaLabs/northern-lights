@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 const (
@@ -40,13 +39,6 @@ type esgSheet struct {
 
 // esgDecimal matches the plain decimals allowed in the CSV value column.
 var esgDecimal = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
-
-// esgOverlays holds in-memory field edits per transport, because DemoTransport
-// belongs to another lane. Keyed by transport, then "spreadsheet/sheet", then "row,column".
-var (
-	esgOverlayMu sync.Mutex
-	esgOverlays  = map[*DemoTransport]map[string]map[[2]int]any{}
-)
 
 // demoESGResponse serves demo-esg spreadsheet requests in demo mode: the ESG
 // field data read from the CSV files in NL_DEMO_ESG_DATA, plus in-memory writes.
@@ -123,9 +115,9 @@ func (t *DemoTransport) esgGrid(key string, sheet *esgSheet) (*SheetData, *http.
 		}
 		cells = append(cells, row)
 	}
-	esgOverlayMu.Lock()
-	defer esgOverlayMu.Unlock()
-	for pos, v := range esgOverlays[t][key] {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for pos, v := range t.esgOverlay[key] {
 		cells[pos[0]][pos[1]] = Cell{Value: v}
 	}
 	return &SheetData{Cells: cells}, nil
@@ -206,17 +198,17 @@ func (t *DemoTransport) esgUpdateResponse(req *http.Request, key string, sheet *
 			return esgError(http.StatusBadRequest, fmt.Sprintf("editCells.cells[%d].value must be a scalar", i))
 		}
 	}
-	esgOverlayMu.Lock()
-	if esgOverlays[t] == nil {
-		esgOverlays[t] = map[string]map[[2]int]any{}
+	t.mu.Lock()
+	if t.esgOverlay == nil {
+		t.esgOverlay = map[string]map[[2]int]any{}
 	}
-	if esgOverlays[t][key] == nil {
-		esgOverlays[t][key] = map[[2]int]any{}
+	if t.esgOverlay[key] == nil {
+		t.esgOverlay[key] = map[[2]int]any{}
 	}
 	for _, edit := range payload.EditCells.Cells {
-		esgOverlays[t][key][[2]int{edit.Row, edit.Column}] = edit.Value
+		t.esgOverlay[key][[2]int{edit.Row, edit.Column}] = edit.Value
 	}
-	esgOverlayMu.Unlock()
+	t.mu.Unlock()
 	resp := esgJSON(http.StatusAccepted, []byte(`{"operationLocation":"/operations/demo-op-1","id":"demo-op-1"}`))
 	resp.Request.Method = http.MethodPost
 	return resp

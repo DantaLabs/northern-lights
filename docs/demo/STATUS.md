@@ -6,7 +6,7 @@ Plan day: 1 of 11 (Monday 19 October 2026).
 
 | Lane | Status | Branch | Last commit | Blocked on |
 |---|---|---|---|---|
-| L0 Scaffold | ready for review (R10 end-to-end test waits for L1-L4) | `claude/demo-l0-scaffold` | 19b03ea | Entra permission mapping for demo tools |
+| L0 Scaffold | follow-up done; internal race suite, vet, gofmt and lint pass; discovery count test updated and passes; full suite/CI pending | `codex/demo-l0-followup` | 531f720 | R10 waits for L1-L4 merges |
 | L1 Change set | draft PR [#19](https://github.com/DantaLabs/northern-lights/pull/19); R1–R13 done; S1–S10 pass (live restored); local race pass with 30m harness | `codex/demo-l1-change-set` | 652519c | L0 demo-tool Entra permission map (existing request); CI pending |
 | L2 Section recipe | ready for review; merged with L1+L3 from `claude/demo-integration`; integration test runs Prepare on the real L1 change set and feeds L3's number guard through the FactStore from `recipe.New`; summary now L1's `Preview.Summary`; `NL_DEMO_DOCUMENT_ID` overrides the recipe document ID in sandbox mode only | `claude/demo-l2-section-recipe` | see PR #20 | nothing; deleted the unused `notImplementedYet` in L0's demo.go (no L0 session active, owner approved) |
 | L3 Section text | [draft PR #18](https://github.com/DantaLabs/northern-lights/pull/18): R2-R7/R9-R12 implemented; R8 skipped (document); live scenario 10 PASS 2026-10-20: exact read-back, existing-content deleteText + insertText in one batch, nesting under "2. Environmental information", NL test sections deleted; race suite PASS (-timeout=30m; default 10m timed out in frozen assurance/transfer), vet/gofmt/lint PASS; Sonnet review ready for L3 scope | `codex/demo-l3-section-text` | 70ba164 | L2 integration uses fake recipe.Service/FactStore in tests; Entra demo-tool permission mapping remains with L0 |
@@ -24,9 +24,3 @@ Plan day: 1 of 11 (Monday 19 October 2026).
 ## Requests to other lanes
 
 Write one line: requesting lane, owning lane, file, what you need and why.
-
-L0 -> owner (no lane owns it), internal/mcpserver/server.go: add requiredPermission entries for the four demo tools (prepare_section and stage_section_text -> workiva.write.preview; confirm_change_set and confirm_section_text -> workiva.write.confirm) and list them in writeTools, because under NL_AUTH_MODE=entra every demo tool call is denied today.
-
-
-L4 -> L0, internal/workiva/demo_client.go: `demoSpreadsheetsResponse` should list `demo-esg-source` and `demo-esg-report` so act 1 works offline.
-L4 -> L0, internal/workiva/demo_esg.go and DemoTransport: add an ESG overlay field (or WrittenCells entries) on DemoTransport so demo_esg.go can drop its package-level registry.

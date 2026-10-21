@@ -212,6 +212,10 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 // writeTools mutate state and must never execute when the audit log is
 // unavailable; an unaudited write is an EU AI Act Art. 12 violation.
 var writeTools = map[string]bool{
+	"workiva_prepare_section":        true,
+	"workiva_stage_section_text":     true,
+	"workiva_confirm_change_set":     true,
+	"workiva_confirm_section_text":   true,
 	"workiva_update_field":           true,
 	"workiva_sync_mapping":           true,
 	"workiva_snapshot_report":        true,
@@ -243,6 +247,10 @@ func auditMiddleware(log *audit.Log, actorHeader string) mcp.Middleware {
 				return next(ctx, method, req)
 			}
 			if writeTools[params.Name] && actor == DefaultActor {
+				switch params.Name {
+				case "workiva_prepare_section", "workiva_stage_section_text", "workiva_confirm_change_set", "workiva_confirm_section_text":
+					return structuredCallToolError(auditID, "authorization_denied", fmt.Sprintf("%s requires an authenticated actor; refusing unattributed write", params.Name), false, false), nil
+				}
 				if !wave2AssuranceTool(params.Name) {
 					return nil, fmt.Errorf("%s requires the %s header identifying the calling user; refusing unattributed write", params.Name, ActorHeader)
 				}
@@ -683,6 +691,10 @@ func confirmationRequired(deps Deps) bool {
 // it is a direct mutation and requires confirm permission.
 func requiredPermission(tool string, arguments json.RawMessage, requireConfirmation bool) (identity.Permission, error) {
 	switch tool {
+	case "workiva_prepare_section", "workiva_stage_section_text":
+		return identity.PermissionWorkivaWritePreview, nil
+	case "workiva_confirm_change_set", "workiva_confirm_section_text":
+		return identity.PermissionWorkivaWriteConfirm, nil
 	case "workiva_list_spreadsheets", "workiva_read_range", "workiva_search_fields", "workiva_get_field":
 		return identity.PermissionWorkivaRead, nil
 	case "workiva_update_field":
