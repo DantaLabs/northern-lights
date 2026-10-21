@@ -8,7 +8,6 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/dantalabs/northern-lights/internal/changeset"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 	"github.com/dantalabs/northern-lights/internal/recipe"
 )
@@ -203,7 +202,7 @@ func newPrepareSectionOutput(p recipe.Prepared) prepareSectionOutput {
 			ExpiresAt:    p.ChangeSet.ExpiresAt.UTC().Format(time.RFC3339),
 			Items:        make([]prepareChangeSetItem, 0, len(p.ChangeSet.Items)),
 		},
-		Summary:  changeSetSummary(p.ChangeSet),
+		Summary:  p.ChangeSet.Summary,
 		NextStep: prepareSectionNextStep,
 	}
 	for _, f := range p.Findings {
@@ -227,18 +226,4 @@ func newPrepareSectionOutput(p recipe.Prepared) prepareSectionOutput {
 		})
 	}
 	return out
-}
-
-// changeSetSummary mirrors L1's summaryLine format: one line per preview
-// item, "<field>: <before> -> <after> (awaiting_confirmation)", joined with
-// newlines, with carriage returns and line feeds inside values escaped.
-// Replace it with Preview.Summary when L1 merges.
-func changeSetSummary(p changeset.Preview) string {
-	escape := strings.NewReplacer("\r", "\\r", "\n", "\\n")
-	lines := make([]string, 0, len(p.Items))
-	for _, item := range p.Items {
-		lines = append(lines, fmt.Sprintf("%s: %s -> %s (awaiting_confirmation)",
-			escape.Replace(item.FieldName), escape.Replace(item.Before), escape.Replace(item.After)))
-	}
-	return strings.Join(lines, "\n")
 }

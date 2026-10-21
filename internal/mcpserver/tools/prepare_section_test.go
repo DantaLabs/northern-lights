@@ -98,6 +98,8 @@ func TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep(t *testing.T) {
 			Verbatim: []recipe.VerbatimBlock{{ID: "policy", Title: "Policy", Text: "Exact policy text."}},
 			ChangeSet: changeset.Preview{
 				ID: "cs-1", Token: "tok-1", ExpiresAt: expires,
+				Summary: "energy: 1.15 -> 1.24 (awaiting_confirmation)\n" +
+					`note: old -> line one\nline two\r (awaiting_confirmation)`,
 				Items: []changeset.PreviewItem{
 					{FieldName: "energy", SpreadsheetID: "sp-1", SheetID: "sh-1", Range: "B3", Before: "1.15", After: "1.24", Source: "meter"},
 					{FieldName: "note", SpreadsheetID: "sp-1", SheetID: "sh-1", Range: "B4", Before: "old", After: "line one\nline two\r"},
@@ -201,6 +203,7 @@ type stagingChanges struct{ store *mapping.Store }
 
 func (c stagingChanges) Stage(ctx context.Context, _ string, items []changeset.Item) (changeset.Preview, error) {
 	p := changeset.Preview{ID: "cs-demo", Token: "tok-demo", ExpiresAt: time.Now().Add(time.Hour)}
+	var lines []string
 	for _, it := range items {
 		f, err := c.store.GetField(ctx, it.FieldName)
 		if err != nil || f == nil {
@@ -210,7 +213,9 @@ func (c stagingChanges) Stage(ctx context.Context, _ string, items []changeset.I
 			FieldName: it.FieldName, SpreadsheetID: f.SpreadsheetID, SheetID: f.SheetID,
 			Range: f.CellRange, After: it.Value, Source: it.Source,
 		})
+		lines = append(lines, it.FieldName+": -> "+it.Value+" (awaiting_confirmation)")
 	}
+	p.Summary = strings.Join(lines, "\n")
 	return p, nil
 }
 
