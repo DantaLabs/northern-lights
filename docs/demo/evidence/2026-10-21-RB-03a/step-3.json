@@ -1,0 +1,37 @@
+{
+  "step": 3,
+  "label": "workiva_get_field",
+  "elapsed_seconds": 0.335,
+  "prompt": "What was total energy consumption in 2025 and how does it compare with 2024?",
+  "request": {
+    "name": "workiva_get_field",
+    "arguments": {
+      "name": "rpt_env_energy_total_2024"
+    }
+  },
+  "http_status": 200,
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 5,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"description\":\"Total Energy Consumption\",\"fetched_at\":\"2026-10-21T09:00:54.185290671Z\",\"field_type\":\"number\",\"name\":\"rpt_env_energy_total_2024\",\"nl_audit_id\":\"6249ec8b-979b-47c0-aa7e-a81ca188a5b1\",\"range\":\"L2\",\"sheet_id\":\"<sheet-2-2>\",\"source\":\"live\",\"spreadsheet_id\":\"<spreadsheet-2>\",\"value\":\"2030\"}"
+        }
+      ],
+      "structuredContent": {
+        "description": "Total Energy Consumption",
+        "fetched_at": "2026-10-21T09:00:54.185290671Z",
+        "field_type": "number",
+        "name": "rpt_env_energy_total_2024",
+        "nl_audit_id": "6249ec8b-979b-47c0-aa7e-a81ca188a5b1",
+        "range": "L2",
+        "sheet_id": "<sheet-2-2>",
+        "source": "live",
+        "spreadsheet_id": "<spreadsheet-2>",
+        "value": "2030"
+      }
+    }
+  }
+}

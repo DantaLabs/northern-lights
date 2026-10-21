@@ -1,0 +1,30 @@
+{
+  "step": 33,
+  "label": "Independent document read-back and audit row",
+  "elapsed_seconds": 2.851,
+  "section_id": "esg-social",
+  "readback": {
+    "cells": [],
+    "paragraphs": [
+      "Annual training hours per female employee rose 16% to 25.5 hours. Other workforce and safety indicators were broadly stable.",
+      "Demo Harbour Components treats every employee fairly, protects health and safety at all of its sites, and offers equal opportunities in hiring, training and promotion. We invest in the skills of our people and listen to their views through regular dialogue with employee representatives.",
+      ""
+    ],
+    "section_name": "Social disclosures"
+  },
+  "expected_paragraphs": [
+    "Annual training hours per female employee rose 16% to 25.5 hours. Other workforce and safety indicators were broadly stable.",
+    "Demo Harbour Components treats every employee fairly, protects health and safety at all of its sites, and offers equal opportunities in hiring, training and promotion. We invest in the skills of our people and listen to their views through regular dialogue with employee representatives.",
+    ""
+  ],
+  "audit_row": {
+    "actor": "demo-dryrun@example.com",
+    "tool": "workiva_confirm_section_text",
+    "action": "completed",
+    "target": "esg-social",
+    "before_json": "",
+    "after_json": "{\"section_id\":\"esg-social\",\"document_id\":\"<report-document-id>\",\"workiva_section_id\":\"<esg-social-workiva-section-id>\",\"text_sha256\":\"78cae8a69363280a51d41eaeb8473b8601367d0c73afc646fdad840c2902facb\",\"verbatim_ids\":[\"social-policy\"],\"status\":\"completed\"}",
+    "workiva_op_url": "https://api.eu.wdesk.com/operations/3bc0e292-f08c-4eeb-9cb6-3682099ecfa7",
+    "audit_id": "QBH27XN2YW3ZAVP3XXJVC5FEF7"
+  }
+}

@@ -1,0 +1,4500 @@
+{
+  "step": 18,
+  "label": "Setup: initialize and tool inventory",
+  "elapsed_seconds": 0.005,
+  "live_workiva": true,
+  "demo_pipeline": true,
+  "authentication": "api_key; local HTTP only",
+  "document_override": "NL_DEMO_DOCUMENT_ID (redacted)",
+  "initialize": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "capabilities": {
+        "logging": {},
+        "tools": {
+          "listChanged": true
+        }
+      },
+      "protocolVersion": "2025-03-26",
+      "serverInfo": {
+        "name": "northern-lights",
+        "version": "dev"
+      }
+    }
+  },
+  "tools": [
+    {
+      "description": "Returns recent entries of the hash-chained audit trail, newest first.\n\nUse this to answer \"who changed what and when\": every read, sync, and write through this server is one entry carrying the tool, the action, the target (spreadsheet/sheet/range), the before and after values for writes, the Workiva operation URL, and the timestamp. Filter by target to trace one cell, for example target \"ss-1/sh-1/B3\".\n\nThe full chain can be integrity-verified by the operator (workiva-mcp audit verify): every entry hashes the previous entry, so any tampering with a stored row breaks the chain at that sequence number. This tool exposes the entries; verification stays an operator-side command so clients cannot rewrite history through the MCP surface.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "target": {
+            "description": "exact audit target",
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "workiva_audit_trail",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "action": {
+                  "description": "audit action",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "actor": {
+                  "description": "audit actor",
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                "after_json": {
+                  "description": "redacted after payload",
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                "audit_id": {
+                  "description": "audit correlation ID",
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "before_json": {
+                  "description": "redacted before payload",
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                "hash": {
+                  "description": "audit hash",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "hash_version": {
+                  "maximum": 2,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "prev_hash": {
+                  "description": "previous audit hash",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "seq": {
+                  "maximum": 2147483647,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "target": {
+                  "description": "audit target",
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                "tenant_id": {
+                  "description": "tenant identifier",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "tool": {
+                  "description": "tool name",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "ts": {
+                  "description": "audit timestamp",
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "workiva_op_url": {
+                  "description": "Workiva operation reference",
+                  "maxLength": 1024,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "seq",
+                "ts",
+                "tenant_id",
+                "tool",
+                "action",
+                "prev_hash",
+                "hash",
+                "hash_version"
+              ],
+              "type": "object"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "count",
+          "entries"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Compares two immutable snapshots by stable server-owned field IDs using the selected server-owned materiality policy.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "current_snapshot_id": {
+            "description": "current immutable snapshot ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "field_ids": {
+            "items": {
+              "description": "approved stable field ID",
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "idempotency_key": {
+            "description": "single-use idempotency key",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "include_unchanged": {
+            "type": "boolean"
+          },
+          "materiality_policy_id": {
+            "description": "server-owned materiality policy ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "prior_snapshot_id": {
+            "description": "prior immutable snapshot ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "retention_class": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_snapshot_id",
+          "prior_snapshot_id",
+          "materiality_policy_id",
+          "idempotency_key"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_compare_periods",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "changes": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "absolute_delta": {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                "comparison_item_id": {
+                  "description": "comparison item ID",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "comparison_status": {
+                  "enum": [
+                    "unchanged",
+                    "changed",
+                    "added",
+                    "removed",
+                    "missing_in_current",
+                    "missing_in_prior",
+                    "not_comparable"
+                  ],
+                  "maxLength": 18,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "current": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "boolean": {
+                      "type": "boolean"
+                    },
+                    "date": {
+                      "maxLength": 10,
+                      "type": "string"
+                    },
+                    "datetime": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "formula": {
+                      "type": "boolean"
+                    },
+                    "kind": {
+                      "enum": [
+                        "blank",
+                        "text",
+                        "integer",
+                        "number",
+                        "boolean",
+                        "date",
+                        "datetime",
+                        "currency",
+                        "percent",
+                        "error"
+                      ],
+                      "maxLength": 8,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "number": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "scale": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "text": {
+                      "maxLength": 10000,
+                      "type": "string"
+                    },
+                    "unit": {
+                      "maxLength": 128,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "formula"
+                  ],
+                  "type": "object"
+                },
+                "evidence_observation_ids": {
+                  "items": {
+                    "description": "observation ID",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 1000,
+                  "type": "array"
+                },
+                "field_id": {
+                  "description": "stable field ID",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "materiality_status": {
+                  "enum": [
+                    "material",
+                    "immaterial",
+                    "unassessed",
+                    "not_comparable"
+                  ],
+                  "maxLength": 14,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "percentage_delta": {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                "prior": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "boolean": {
+                      "type": "boolean"
+                    },
+                    "date": {
+                      "maxLength": 10,
+                      "type": "string"
+                    },
+                    "datetime": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "formula": {
+                      "type": "boolean"
+                    },
+                    "kind": {
+                      "enum": [
+                        "blank",
+                        "text",
+                        "integer",
+                        "number",
+                        "boolean",
+                        "date",
+                        "datetime",
+                        "currency",
+                        "percent",
+                        "error"
+                      ],
+                      "maxLength": 8,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "number": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "scale": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "text": {
+                      "maxLength": 10000,
+                      "type": "string"
+                    },
+                    "unit": {
+                      "maxLength": 128,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "formula"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "comparison_item_id",
+                "field_id",
+                "comparison_status",
+                "materiality_status",
+                "evidence_observation_ids"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "comparison_basis": {
+            "enum": [
+              "definition_membership_union",
+              "explicit_field_ids"
+            ],
+            "maxLength": 27,
+            "minLength": 1,
+            "type": "string"
+          },
+          "comparison_id": {
+            "description": "comparison ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "completeness": {
+            "enum": [
+              "complete",
+              "incomplete",
+              "not_evaluable"
+            ],
+            "maxLength": 13,
+            "minLength": 1,
+            "type": "string"
+          },
+          "current_snapshot_id": {
+            "description": "current snapshot ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "material_count": {
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "materiality_policy_id": {
+            "description": "materiality policy ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "materiality_revision": {
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "prior_snapshot_id": {
+            "description": "prior snapshot ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "incompatible",
+              "error",
+              "idempotency_replay",
+              "denied",
+              "idempotency_in_progress",
+              "idempotency_conflict"
+            ],
+            "maxLength": 23,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "nl_audit_id",
+          "status"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Writes every field in a previewed change set after the person approved it, using the change set ID and confirmation token. Call it only after workiva_prepare_section returned a change set and the person explicitly approved the preview.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "change_set_id": {
+            "description": "change set ID from workiva_prepare_section",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "confirm_token": "<redacted>"
+        },
+        "required": [
+          "change_set_id",
+          "confirm_token"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_confirm_change_set",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "change_set_id": {
+            "description": "change set ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "after": {
+                  "description": "approved value",
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                "audit_id": {
+                  "description": "audit ID of the write",
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "before": {
+                  "description": "value before approval",
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                "field_name": {
+                  "description": "field name",
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "message": {
+                  "description": "reconciliation detail",
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                "operation_url": {
+                  "description": "Workiva operation URL",
+                  "maxLength": 2048,
+                  "type": "string"
+                },
+                "read_back": {
+                  "description": "value read back after the write",
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                "status": {
+                  "description": "write status",
+                  "maxLength": 32,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field_name",
+                "status"
+              ],
+              "type": "object"
+            },
+            "maxItems": 500,
+            "type": "array"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "description": "change set status",
+            "maxLength": 32,
+            "minLength": 1,
+            "type": "string"
+          },
+          "summary": {
+            "description": "markdown summary of the writes",
+            "maxLength": 262144,
+            "type": "string"
+          }
+        },
+        "required": [
+          "change_set_id",
+          "status",
+          "items",
+          "summary"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Writes previously staged section text into the report document after the person approved the preview. Call it only after workiva_stage_section_text returned a preview and the person explicitly approved it.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "confirm_token": "<redacted>",
+          "text_id": {
+            "description": "staged text ID from workiva_stage_section_text",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "text_id",
+          "confirm_token"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_confirm_section_text",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "audit_id": {
+            "description": "audit ID of the write",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "document_id": {
+            "description": "report document ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "section_id": {
+            "description": "section ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "mismatch",
+              "reconciliation_required"
+            ],
+            "maxLength": 23,
+            "minLength": 1,
+            "type": "string"
+          },
+          "workiva_section_id": {
+            "description": "Workiva section ID; empty if section creation is uncertain",
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "section_id",
+          "document_id",
+          "workiva_section_id",
+          "status"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Read-only discovery or bounded lineage over the tenant-scoped persisted relationship graph. Provider discovery/refresh is not enabled unless a verified exact-scope provider capability is configured.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "direction": {
+            "description": "Lineage vocabulary: upstream, downstream, or both. Default both. Ignored for discover.",
+            "maxLength": 16,
+            "minLength": 1,
+            "type": "string"
+          },
+          "idempotency_key": {
+            "description": "Required after authentication; scoped to trusted tenant, actor, tool, and operation.",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "include_documents": {
+            "description": "Default false; only an approved read-only document capability may honor true.",
+            "type": "boolean"
+          },
+          "max_depth": {
+            "description": "Lineage traversal depth. Default 3; absolute server cap 8.",
+            "maximum": 8,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "max_edges": {
+            "description": "Traversal/edge response bound. Default and absolute server cap 5000.",
+            "maximum": 5000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "max_nodes": {
+            "description": "Traversal/node response bound. Default and absolute server cap 1000.",
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "operation": {
+            "description": "Required server vocabulary: discover or lineage. Conditional rules are server-enforced.",
+            "maxLength": 16,
+            "minLength": 1,
+            "type": "string"
+          },
+          "refresh": {
+            "description": "Default false. False is explicitly read-only; true requests a complete exact-scope refresh and requires the refresh capability.",
+            "type": "boolean"
+          },
+          "resource_ids": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "type": "array"
+          },
+          "root": {
+            "additionalProperties": false,
+            "properties": {
+              "locator": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "resource_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "resource_id"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "operation",
+          "idempotency_key"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_discover_relationships",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "completeness": {
+            "description": "complete, incomplete, or not_created.",
+            "maxLength": 32,
+            "minLength": 1,
+            "type": "string"
+          },
+          "cycle_markers": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "path_digest": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "resource_id": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path_digest"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "discovery_run_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "edges": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "confidence": {
+                  "maxLength": 16,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "edge_id": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "evidence_reference_ids": {
+                  "items": {
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 100,
+                  "type": "array"
+                },
+                "first_seen": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "from_resource_id": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "last_seen": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "provenance": {
+                  "maxLength": 32,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "relation": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "to_resource_id": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "edge_id",
+                "from_resource_id",
+                "to_resource_id",
+                "relation",
+                "provenance",
+                "confidence"
+              ],
+              "type": "object"
+            },
+            "maxItems": 5000,
+            "type": "array"
+          },
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "field": {
+                "maxLength": 128,
+                "type": "string"
+              },
+              "message": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable"
+            ],
+            "type": "object"
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "field": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "message": {
+                  "maxLength": 2048,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "retryable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "code",
+                "message",
+                "retryable"
+              ],
+              "type": "object"
+            },
+            "maxItems": 32,
+            "type": "array"
+          },
+          "graph_version": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ignored_fields": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "type": "array"
+          },
+          "next_action": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "nl_audit_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "nodes": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "confidence": {
+                  "description": "high, medium, low, or unavailable.",
+                  "maxLength": 16,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "external_id": {
+                  "maxLength": 512,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "locator": {
+                  "maxLength": 512,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "name": {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                "provenance": {
+                  "description": "observed, provider_declared, operator, or inferred.",
+                  "maxLength": 32,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "provider": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "provider_revision": {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                "resource_id": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "resource_id",
+                "kind",
+                "external_id",
+                "provenance",
+                "confidence"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "omitted_branches": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "cap_reached": {
+                  "type": "boolean"
+                },
+                "reason": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "resource_id": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reason"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "operation": {
+            "description": "Echoes discover or lineage.",
+            "maxLength": 16,
+            "minLength": 1,
+            "type": "string"
+          },
+          "provider_end_of_scope": {
+            "type": "boolean"
+          },
+          "reconciliation_required": {
+            "type": "boolean"
+          },
+          "retry_after_ms": {
+            "maximum": 60000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "scope_digest": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "description": "completed, partial, unsupported, spike_required, denied, error, idempotency_in_progress, idempotency_replay, or idempotency_conflict.",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "nl_audit_id",
+          "operation",
+          "status",
+          "completeness",
+          "nodes",
+          "edges",
+          "omitted_branches",
+          "cycle_markers",
+          "ignored_fields",
+          "errors",
+          "reconciliation_required"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Exports exactly one authorized assurance subject as a manifest-v2 package with authoritative canonical JSON and an optional safe CSV derivative.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "enum": [
+              "json",
+              "csv"
+            ],
+            "maxLength": 4,
+            "minLength": 1,
+            "type": "string"
+          },
+          "idempotency_key": {
+            "description": "single-use idempotency key",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "include_audit_chain": {
+            "type": "boolean"
+          },
+          "redaction_profile": {
+            "enum": [
+              "standard",
+              "strict"
+            ],
+            "maxLength": 8,
+            "minLength": 1,
+            "type": "string"
+          },
+          "retention_class": {
+            "description": "server-owned retention class",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "subject_id": {
+            "description": "one tenant-owned subject ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "subject_kind": {
+            "enum": [
+              "snapshot",
+              "validation_run",
+              "comparison",
+              "transfer"
+            ],
+            "maxLength": 14,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject_kind",
+          "subject_id",
+          "format",
+          "redaction_profile",
+          "include_audit_chain",
+          "retention_class",
+          "idempotency_key"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_export_evidence",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "artifacts": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "artifact_id": {
+                  "description": "artifact ID",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "byte_count": {
+                  "maximum": 1073741824,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "media_type": {
+                  "description": "media type",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "name": {
+                  "description": "bounded artifact name",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sha256": {
+                  "description": "artifact SHA-256",
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "storage_ref": {
+                  "description": "opaque storage reference",
+                  "maxLength": 512,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "artifact_id",
+                "name",
+                "media_type",
+                "byte_count",
+                "sha256",
+                "storage_ref"
+              ],
+              "type": "object"
+            },
+            "maxItems": 3,
+            "type": "array"
+          },
+          "audit": {
+            "additionalProperties": false,
+            "properties": {
+              "caveats": {
+                "items": {
+                  "description": "audit caveat",
+                  "maxLength": 512,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 16,
+                "type": "array"
+              },
+              "checkpoint": {
+                "additionalProperties": false,
+                "properties": {
+                  "checkpoint_id": {
+                    "description": "checkpoint ID",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "external_anchor": {
+                    "description": "external checkpoint anchor",
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "hash": {
+                    "description": "checkpoint hash",
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sequence": {
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "status": {
+                    "enum": [
+                      "verified",
+                      "missing",
+                      "mismatch",
+                      "unverified",
+                      "not_requested"
+                    ],
+                    "maxLength": 13,
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "type": "object"
+              },
+              "completeness": {
+                "additionalProperties": false,
+                "properties": {
+                  "expected_count": {
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "expected_event_count": {
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "final_row_deletion_detectable": {
+                    "type": "boolean"
+                  },
+                  "included_count": {
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "included_event_count": {
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "omission_count": {
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "omissions_recorded": {
+                    "type": "boolean"
+                  },
+                  "omitted_count": {
+                    "maximum": 2147483647,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "status": {
+                    "enum": [
+                      "complete",
+                      "incomplete",
+                      "unknown"
+                    ],
+                    "maxLength": 10,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "terminal_anchor": {
+                    "description": "terminal anchor state",
+                    "maxLength": 32,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "terminal_anchor_verified": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "status",
+                  "expected_count",
+                  "included_count",
+                  "omitted_count",
+                  "omissions_recorded",
+                  "terminal_anchor",
+                  "terminal_anchor_verified",
+                  "final_row_deletion_detectable"
+                ],
+                "type": "object"
+              },
+              "first_hash": {
+                "description": "first audit hash",
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              "first_seq": {
+                "maximum": 2147483647,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "integrity": {
+                "additionalProperties": false,
+                "properties": {
+                  "chain_verified": {
+                    "type": "boolean"
+                  },
+                  "hash_version_coverage": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "first_seq": {
+                          "maximum": 2147483647,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "hash_version": {
+                          "maximum": 2,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "last_seq": {
+                          "maximum": 2147483647,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "tenant_identity_hashed": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "hash_version",
+                        "first_seq",
+                        "last_seq",
+                        "tenant_identity_hashed"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 4,
+                    "type": "array"
+                  },
+                  "scope": {
+                    "description": "audit scope",
+                    "maxLength": 32,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "tenant_identity_hashed": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "chain_verified",
+                  "hash_version_coverage",
+                  "tenant_identity_hashed"
+                ],
+                "type": "object"
+              },
+              "last_hash": {
+                "description": "last audit hash",
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              "last_seq": {
+                "maximum": 2147483647,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "integrity",
+              "checkpoint",
+              "completeness",
+              "caveats"
+            ],
+            "type": "object"
+          },
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "evidence_manifest_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "expires_at": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "manifest_version": {
+            "maximum": 2,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "package_hash": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "too_large",
+              "denied",
+              "error",
+              "idempotency_replay",
+              "idempotency_in_progress",
+              "idempotency_conflict"
+            ],
+            "maxLength": 23,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "nl_audit_id",
+          "status"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Returns the current value of one mapped field, identified by its exact field name.\n\nUse workiva_search_fields first when you only have a natural-language reference such as \"scope 2 energy\"; it resolves those to field names. When the cached read is still fresh the value comes from the local snapshot cache with no Workiva API call; otherwise the field's range is read live from the API and the cache is refreshed. The response includes the field's spreadsheet, sheet, range, type, description, the value, and when it was fetched (fetched_at, RFC 3339).",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "exact mapped field name",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_get_field",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "aliases": {
+            "description": "field aliases",
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "description": {
+            "description": "field description",
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "fetched_at": {
+            "description": "fetch time",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "field_type": {
+            "description": "mapped field type",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "name": {
+            "description": "mapped field name",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "range": {
+            "description": "A1 cell range",
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sheet_id": {
+            "description": "sheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "source": {
+            "description": "cache or live source",
+            "maxLength": 16,
+            "minLength": 1,
+            "type": "string"
+          },
+          "spreadsheet_id": {
+            "description": "spreadsheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "value": {
+            "description": "display value",
+            "maxLength": 4096,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "spreadsheet_id",
+          "sheet_id",
+          "range",
+          "field_type",
+          "value",
+          "fetched_at",
+          "source"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Discovers the Workiva spreadsheets and sheets currently available to the authenticated client.\n\nWhen a Workiva client is configured, this tool reads the live spreadsheet and sheet catalogs, including files that are not mapped locally. In demo or no-client mode it falls back to the local mapping store.\n\nUse this tool to discover which spreadsheet_id and sheet_id values to pass to workiva_read_range or workiva_sync_mapping. Live discovery only identifies files and sheets; local semantic mappings are still required by workiva_search_fields, workiva_get_field, and workiva_update_field.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "workiva_list_spreadsheets",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "spreadsheets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "description": "spreadsheet ID",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "name": {
+                  "description": "spreadsheet name",
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                "region": {
+                  "description": "Workiva region",
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                "sheets": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "description": "sheet ID",
+                        "maxLength": 128,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "sheet name",
+                        "maxLength": 512,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 1000,
+                  "type": "array"
+                },
+                "synced_at": {
+                  "description": "last local sync time",
+                  "maxLength": 64,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "sheets"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "status": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheets"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Prepares one report section from its section recipe, returning findings, narrative facts, verbatim blocks and a change set preview. Call it first when a consultant asks to update a section, before staging any section text.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "section_id": {
+            "description": "section ID of the section recipe to prepare",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "section_id"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_prepare_section",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "change_set": {
+            "additionalProperties": false,
+            "properties": {
+              "change_set_id": {
+                "description": "change set ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "confirm_token": "<redacted>",
+              "expires_at": {
+                "description": "expiry time, RFC 3339",
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              "items": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "after": {
+                      "description": "value after the write",
+                      "maxLength": 4096,
+                      "type": "string"
+                    },
+                    "before": {
+                      "description": "value before the write",
+                      "maxLength": 4096,
+                      "type": "string"
+                    },
+                    "field_name": {
+                      "description": "field name",
+                      "maxLength": 256,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "range": {
+                      "description": "cell range",
+                      "maxLength": 512,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "sheet_id": {
+                      "description": "sheet ID",
+                      "maxLength": 128,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "source": {
+                      "description": "where the new value comes from",
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "spreadsheet_id": {
+                      "description": "spreadsheet ID",
+                      "maxLength": 128,
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "field_name",
+                    "spreadsheet_id",
+                    "sheet_id",
+                    "range"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 500,
+                "type": "array"
+              }
+            },
+            "required": [
+              "change_set_id",
+              "confirm_token",
+              "expires_at",
+              "items"
+            ],
+            "type": "object"
+          },
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "facts": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "change": {
+                  "description": "absolute change, canonical decimal string",
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "change_pct": {
+                  "description": "percentage change, canonical decimal string",
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "current": {
+                  "description": "current value, canonical decimal string",
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "direction": {
+                  "enum": [
+                    "up",
+                    "down",
+                    "flat",
+                    "new"
+                  ],
+                  "maxLength": 4,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "display": {
+                  "items": {
+                    "description": "approved display form of the value, accepted by the number guard",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 16,
+                  "type": "array"
+                },
+                "key": {
+                  "description": "narrative fact key",
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "label": {
+                  "description": "narrative fact label",
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "material": {
+                  "type": "boolean"
+                },
+                "prior": {
+                  "description": "prior period value, canonical decimal string",
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "unit": {
+                  "description": "unit of the value",
+                  "maxLength": 32,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "current",
+                "direction",
+                "material",
+                "display"
+              ],
+              "type": "object"
+            },
+            "maxItems": 500,
+            "type": "array"
+          },
+          "findings": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "field": {
+                  "description": "field the finding concerns",
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "finding kind",
+                  "maxLength": 32,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "message": {
+                  "description": "finding message",
+                  "maxLength": 1024,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "severity": {
+                  "description": "finding severity",
+                  "maxLength": 32,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "field",
+                "severity",
+                "message"
+              ],
+              "type": "object"
+            },
+            "maxItems": 500,
+            "type": "array"
+          },
+          "next_step": {
+            "description": "what to do next",
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "section_id": {
+            "description": "section ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "summary": {
+            "description": "change set summary, one line per item",
+            "maxLength": 262144,
+            "type": "string"
+          },
+          "verbatim": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "description": "verbatim block ID",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "text": {
+                  "description": "verbatim block text, exact",
+                  "maxLength": 16000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "title": {
+                  "description": "verbatim block title",
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "text"
+              ],
+              "type": "object"
+            },
+            "maxItems": 50,
+            "type": "array"
+          }
+        },
+        "required": [
+          "section_id",
+          "findings",
+          "facts",
+          "verbatim",
+          "change_set",
+          "summary",
+          "next_step"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Reads a range of cells from a Workiva sheet and returns the values as a grid of rows.\n\nArgs:\n- spreadsheet_id: the spreadsheet ID, found via workiva_list_spreadsheets.\n- sheet_id: the sheet ID within that spreadsheet.\n- range: A1 notation such as \"B3\" or \"B3:D10\".\n\nEvery call fetches live data from the Workiva API and refreshes the read cache, so recent values are also available to workiva_get_field and workiva_search_fields. Formula cells return their calculated value. Values are returned in Ones scale, matching the Workiva API.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "range": {
+            "description": "A1 cell range",
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sheet_id": {
+            "description": "sheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "spreadsheet_id": {
+            "description": "spreadsheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "sheet_id",
+          "range"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_read_range",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "fetched_at": {
+            "description": "fetch time",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "range": {
+            "description": "A1 cell range",
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "items": {
+                "description": "cell value",
+                "maxLength": 4096,
+                "type": "string"
+              },
+              "maxItems": 1000,
+              "type": "array"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "sheet_id": {
+            "description": "sheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "spreadsheet_id": {
+            "description": "spreadsheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "sheet_id",
+          "range",
+          "rows",
+          "fetched_at"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Searches the semantic field mapping for fields matching a natural-language query.\n\nCall this tool FIRST whenever the user refers to a report value in plain language, such as \"scope 2 energy\", \"water consumption\", or \"turnover\". It resolves those references to mapped field names with their exact spreadsheet, sheet, and cell range, which you then pass to workiva_get_field for the value or to write tools.\n\nMatches come from field names and their aliases. Results include the field's range, description, and, when a fresh cached read exists, the current value. If nothing matches, try rephrasing or list connected spreadsheets with workiva_list_spreadsheets.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "description": "natural-language field query",
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_search_fields",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "fields": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "cached_at": {
+                  "description": "cache time",
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "cached_value": {
+                  "description": "cached display value",
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                "description": {
+                  "description": "field description",
+                  "maxLength": 2048,
+                  "type": "string"
+                },
+                "field_type": {
+                  "description": "mapped field type",
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "name": {
+                  "description": "mapped field name",
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "range": {
+                  "description": "A1 cell range",
+                  "maxLength": 512,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sheet_id": {
+                  "description": "sheet ID",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "spreadsheet_id": {
+                  "description": "spreadsheet ID",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "spreadsheet_id",
+                "sheet_id",
+                "range",
+                "field_type"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "fields"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Captures an immutable, typed snapshot of an approved server-owned report revision and named period.\n\nThe server resolves all approved fields and reads Workiva directly without using the read cache. Empty field_ids selects all required fields. allow_partial defaults to false. consistency defaults to best_effort; revision_pinned fails unless the active provider proves that capability. The request never supplies authoritative report values.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "allow_partial": {
+            "type": "boolean"
+          },
+          "consistency": {
+            "enum": [
+              "none",
+              "best_effort",
+              "revision_pinned"
+            ],
+            "maxLength": 15,
+            "minLength": 1,
+            "type": "string"
+          },
+          "field_ids": {
+            "items": {
+              "description": "approved stable field ID",
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "idempotency_key": {
+            "description": "single-use client idempotency key",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "include_relationships": {
+            "type": "boolean"
+          },
+          "period": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "description": "optional approved ISO date",
+                "maxLength": 10,
+                "type": "string"
+              },
+              "key": {
+                "description": "approved period key",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "label": {
+                "description": "optional approved label",
+                "maxLength": 256,
+                "type": "string"
+              },
+              "start": {
+                "description": "optional approved ISO date",
+                "maxLength": 10,
+                "type": "string"
+              }
+            },
+            "required": [
+              "key"
+            ],
+            "type": "object"
+          },
+          "report_id": {
+            "description": "approved server-owned report ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "retention_class": {
+            "description": "server-approved retention class",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "report_id",
+          "period",
+          "idempotency_key"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_snapshot_report",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "captured_at": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "completeness": {
+            "enum": [
+              "complete",
+              "incomplete",
+              "not_created"
+            ],
+            "maxLength": 11,
+            "minLength": 1,
+            "type": "string"
+          },
+          "content_hash": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "definition_revision": {
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "item_errors": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "enum": [
+                    "source_unavailable",
+                    "denied",
+                    "invalid",
+                    "ambiguous"
+                  ],
+                  "maxLength": 18,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "field_id": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "message": {
+                  "maxLength": 512,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field_id",
+                "code",
+                "message"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "nl_audit_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "observations": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "external_resource_id": {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                "field_id": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "locator": {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                "observation_id": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "observed_at": {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "provider_revision": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "strength": {
+                      "enum": [
+                        "verified",
+                        "best_effort",
+                        "unavailable"
+                      ],
+                      "maxLength": 11,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "value": {
+                      "maxLength": 512,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "strength"
+                  ],
+                  "type": "object"
+                },
+                "resource_id": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "source_fingerprint": {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "typed_value": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "boolean": {
+                      "type": "boolean"
+                    },
+                    "calculated": {
+                      "type": "boolean"
+                    },
+                    "calculated_source": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "date": {
+                      "maxLength": 10,
+                      "type": "string"
+                    },
+                    "datetime": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "error_code": {
+                      "maxLength": 128,
+                      "type": "string"
+                    },
+                    "formula": {
+                      "type": "boolean"
+                    },
+                    "formula_text": {
+                      "maxLength": 10000,
+                      "type": "string"
+                    },
+                    "kind": {
+                      "enum": [
+                        "blank",
+                        "text",
+                        "integer",
+                        "number",
+                        "boolean",
+                        "date",
+                        "datetime",
+                        "currency",
+                        "percent",
+                        "error"
+                      ],
+                      "maxLength": 8,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "number": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "percent_basis": {
+                      "maxLength": 16,
+                      "type": "string"
+                    },
+                    "precision": {
+                      "type": "integer"
+                    },
+                    "scale": {
+                      "maxLength": 32,
+                      "type": "string"
+                    },
+                    "text": {
+                      "maxLength": 10000,
+                      "type": "string"
+                    },
+                    "timezone": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "unit": {
+                      "maxLength": 64,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "formula"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "observation_id",
+                "field_id",
+                "resource_id",
+                "external_resource_id",
+                "locator",
+                "typed_value",
+                "provider_revision",
+                "source_fingerprint",
+                "observed_at"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "period": {
+            "additionalProperties": false,
+            "properties": {
+              "key": {
+                "maxLength": 128,
+                "type": "string"
+              },
+              "label": {
+                "maxLength": 256,
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "label"
+            ],
+            "type": "object"
+          },
+          "relationship_count": {
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "report_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "snapshot_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "partial",
+              "failed",
+              "idempotency_replay",
+              "error",
+              "denied",
+              "idempotency_in_progress",
+              "idempotency_conflict"
+            ],
+            "maxLength": 23,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "nl_audit_id",
+          "status"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Stages the narrative blocks and verbatim blocks for a section in the report document and returns a preview, after the number guard checks every number. Call it after workiva_prepare_section, once the narrative blocks are drafted from the narrative facts.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "blocks": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "narrative",
+                    "verbatim"
+                  ],
+                  "maxLength": 9,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "text": {
+                  "description": "block text",
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "verbatim_id": {
+                  "description": "verbatim block ID, required for verbatim blocks",
+                  "maxLength": 128,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "text"
+              ],
+              "type": "object"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+          },
+          "section_id": {
+            "description": "section ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "section_id",
+          "blocks"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_stage_section_text",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "blocks": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "narrative",
+                    "verbatim"
+                  ],
+                  "maxLength": 9,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "text": {
+                  "description": "block text",
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                "verbatim_id": {
+                  "description": "verbatim block ID, required for verbatim blocks",
+                  "maxLength": 128,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "text"
+              ],
+              "type": "object"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+          },
+          "confirm_token": "<redacted>",
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "expires_at": {
+            "description": "expiry time, RFC 3339",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "section_id": {
+            "description": "section ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "section_title": {
+            "description": "section title",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "summary": {
+            "description": "markdown preview of the staged text",
+            "maxLength": 90000,
+            "type": "string"
+          },
+          "text_id": {
+            "description": "staged text ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "text_id",
+          "confirm_token",
+          "section_id",
+          "section_title",
+          "blocks",
+          "expires_at",
+          "summary"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Discovers fields from a two-column \"mapper\" sheet and upserts them into the mapping store.\n\nReads the sheet live: the name column holds human-readable field labels, the value column holds the cells those labels refer to. Every row from start_row on becomes one field whose name is the label normalized to snake_case (for example \"Scope 2 Energy (kWh)\" becomes scope_2_energy_kwh) and whose range is the value column cell of that row. Rows with an empty name are skipped.\n\nUse this after the reporting team edits the mapper sheet, or to bootstrap a new spreadsheet. Afterwards workiva_search_fields and workiva_get_field resolve the synced names, and workiva_update_field can write them with confirmation. The sync itself is recorded in the audit trail.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "name_column": {
+            "description": "name column",
+            "maxLength": 16,
+            "type": "string"
+          },
+          "sheet_id": {
+            "description": "sheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "spreadsheet_id": {
+            "description": "spreadsheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "start_row": {
+            "maximum": 1000000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "value_column": {
+            "description": "value column",
+            "maxLength": 16,
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "sheet_id"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_sync_mapping",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "fields": {
+            "items": {
+              "description": "mapped field name",
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "fields_count": {
+            "maximum": 1000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "message": {
+            "description": "bounded sync message",
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sheet_id": {
+            "description": "sheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "spreadsheet_id": {
+            "description": "spreadsheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "spreadsheet_id",
+          "sheet_id",
+          "fields_count",
+          "fields"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Stages, confirms, acknowledges, or reconciles a typed value transfer. Bulk phases are disabled. Single-transfer phases require a configured transfer service backed by a verified durable fence.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "description": "inspect_operation, read_back, classify, or close.",
+            "maxLength": 32,
+            "minLength": 1,
+            "type": "string"
+          },
+          "classification": {
+            "description": "confirmed_applied, confirmed_not_applied, conflicting_value, still_unknown, or provider_evidence_inconsistent.",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "confirmation_token": "<redacted>",
+          "conversion_policy_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "eligible_row_ids": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "idempotency_key": {
+            "description": "Required after authentication; scoped to trusted tenant, actor, tool, and phase.",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "max_cells": {
+            "description": "Bulk-stage request bound; absolute server cap 100.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "max_rows": {
+            "description": "Bulk-stage request bound; absolute server cap 100.",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "note": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "observation": {
+            "description": "matches, mismatch, not_visible, or not_checked.",
+            "maxLength": 32,
+            "minLength": 1,
+            "type": "string"
+          },
+          "observed_value": {
+            "additionalProperties": false,
+            "properties": {
+              "boolean": {
+                "type": "boolean"
+              },
+              "error_code": {
+                "maxLength": 128,
+                "type": "string"
+              },
+              "formula": {
+                "type": "boolean"
+              },
+              "kind": {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              "number": {
+                "maxLength": 256,
+                "type": "string"
+              },
+              "precision": {
+                "maximum": 38,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "scale": {
+                "maxLength": 64,
+                "type": "string"
+              },
+              "text": {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              "unit": {
+                "maxLength": 128,
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "phase": {
+            "description": "Required server vocabulary: stage, confirm, acknowledge, reconcile, bulk_stage, or bulk_confirm.",
+            "maxLength": 32,
+            "minLength": 1,
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "refresh_override_reason": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "refreshed": {
+            "type": "boolean"
+          },
+          "selection": {
+            "additionalProperties": false,
+            "properties": {
+              "frozen_transfer_ids": {
+                "items": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              "report_field_ids": {
+                "items": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 1000,
+                "type": "array"
+              },
+              "selection_digest": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "source": {
+            "additionalProperties": false,
+            "properties": {
+              "locator": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "mapping_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "resource_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "target": {
+            "additionalProperties": false,
+            "properties": {
+              "locator": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "resource_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [],
+            "type": "object"
+          },
+          "target_template_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "transfer_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ui_location": {
+            "additionalProperties": false,
+            "properties": {
+              "locator": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "resource_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "resource_id",
+              "locator"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "phase",
+          "idempotency_key"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_transfer_value",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmation_token": "<redacted>",
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "field": {
+                "maxLength": 128,
+                "type": "string"
+              },
+              "message": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "maxLength": 128,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable"
+            ],
+            "type": "object"
+          },
+          "errors": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "code": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "field": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "message": {
+                  "maxLength": 2048,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "nl_audit_id": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "reconciliation_required": {
+                  "type": "boolean"
+                },
+                "retryable": {
+                  "type": "boolean"
+                },
+                "row_id": {
+                  "maxLength": 128,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "message",
+                "retryable"
+              ],
+              "type": "object"
+            },
+            "maxItems": 32,
+            "type": "array"
+          },
+          "expires_at": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "ignored_fields": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 32,
+            "type": "array"
+          },
+          "machine_outcome": {
+            "description": "api_verified, written, write_outcome_unknown, or not_applicable.",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "machine_outcome_provenance": {
+            "description": "provider_read_back, reconciliation, or not_applicable.",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "next_action": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "nl_audit_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "no_mutation_submitted": {
+            "type": "boolean"
+          },
+          "operation_reference": {
+            "maxLength": 1024,
+            "type": "string"
+          },
+          "phase": {
+            "maxLength": 32,
+            "minLength": 1,
+            "type": "string"
+          },
+          "readback_cache_bypassed": {
+            "type": "boolean"
+          },
+          "readback_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "reconciliation_classification": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "reconciliation_required": {
+            "type": "boolean"
+          },
+          "replay_requires_restage": {
+            "type": "boolean"
+          },
+          "retry_after_ms": {
+            "maximum": 60000,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "row_outcomes": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "error": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "maxLength": 128,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "field": {
+                      "maxLength": 128,
+                      "type": "string"
+                    },
+                    "message": {
+                      "maxLength": 2048,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "nl_audit_id": {
+                      "maxLength": 128,
+                      "type": "string"
+                    },
+                    "reconciliation_required": {
+                      "type": "boolean"
+                    },
+                    "retryable": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message",
+                    "retryable"
+                  ],
+                  "type": "object"
+                },
+                "no_mutation_submitted": {
+                  "type": "boolean"
+                },
+                "operation_reference": {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                "reconciliation_required": {
+                  "type": "boolean"
+                },
+                "row_id": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "status": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "transfer_id": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "row_id",
+                "status",
+                "no_mutation_submitted",
+                "reconciliation_required"
+              ],
+              "type": "object"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "source": {
+            "additionalProperties": false,
+            "properties": {
+              "locator": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "mapping_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "mapping_revision_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "observed_at": {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              "provider_revision": {
+                "maxLength": 256,
+                "type": "string"
+              },
+              "resource_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "source_fingerprint": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "value": {
+                "additionalProperties": false,
+                "properties": {
+                  "boolean": {
+                    "type": "boolean"
+                  },
+                  "error_code": {
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "formula": {
+                    "type": "boolean"
+                  },
+                  "kind": {
+                    "maxLength": 32,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "number": {
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "precision": {
+                    "maximum": 38,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "scale": {
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "text": {
+                    "maxLength": 4096,
+                    "type": "string"
+                  },
+                  "unit": {
+                    "maxLength": 128,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "resource_id",
+              "locator",
+              "value",
+              "source_fingerprint",
+              "observed_at"
+            ],
+            "type": "object"
+          },
+          "status": {
+            "description": "staged, machine_verified_visual_ack_pending, visually_acknowledged, ack_rejected, reconciliation_required, reconciled_not_applied, stale_source, stale_target, write_rejected, write_failed, write_outcome_unknown, partial_reconciliation_required, feature_disabled, unavailable, denied, idempotency_in_progress, idempotency_replay, idempotency_conflict, or error.",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "target": {
+            "additionalProperties": false,
+            "properties": {
+              "after": {
+                "additionalProperties": false,
+                "properties": {
+                  "boolean": {
+                    "type": "boolean"
+                  },
+                  "error_code": {
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "formula": {
+                    "type": "boolean"
+                  },
+                  "kind": {
+                    "maxLength": 32,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "number": {
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "precision": {
+                    "maximum": 38,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "scale": {
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "text": {
+                    "maxLength": 4096,
+                    "type": "string"
+                  },
+                  "unit": {
+                    "maxLength": 128,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "type": "object"
+              },
+              "before": {
+                "additionalProperties": false,
+                "properties": {
+                  "boolean": {
+                    "type": "boolean"
+                  },
+                  "error_code": {
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "formula": {
+                    "type": "boolean"
+                  },
+                  "kind": {
+                    "maxLength": 32,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "number": {
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "precision": {
+                    "maximum": 38,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "scale": {
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "text": {
+                    "maxLength": 4096,
+                    "type": "string"
+                  },
+                  "unit": {
+                    "maxLength": 128,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "type": "object"
+              },
+              "locator": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "read_back": {
+                "additionalProperties": false,
+                "properties": {
+                  "boolean": {
+                    "type": "boolean"
+                  },
+                  "error_code": {
+                    "maxLength": 128,
+                    "type": "string"
+                  },
+                  "formula": {
+                    "type": "boolean"
+                  },
+                  "kind": {
+                    "maxLength": 32,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "number": {
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "precision": {
+                    "maximum": 38,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "scale": {
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "text": {
+                    "maxLength": 4096,
+                    "type": "string"
+                  },
+                  "unit": {
+                    "maxLength": 128,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "type": "object"
+              },
+              "resource_id": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "resource_id",
+              "locator"
+            ],
+            "type": "object"
+          },
+          "terminal": {
+            "type": "boolean"
+          },
+          "token_recoverable": "<redacted>",
+          "transfer_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "visual_state": {
+            "description": "pending, visually_acknowledged, mismatch, not_visible, or not_checked.",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "nl_audit_id",
+          "phase",
+          "status",
+          "no_mutation_submitted",
+          "reconciliation_required",
+          "ignored_fields",
+          "errors"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Writes a new value to one mapped field, identified by its exact field name.\n\nThis tool is two-phase by default so a human approves every write before it reaches Workiva (EU AI Act Art. 14 human oversight):\n\n1. Call with just name and value. Nothing is written. The response carries the current value (before), a preview of the new value (after_preview), and a confirm_token that is valid for 5 minutes and single use.\n2. Show the before/after preview to the user. When they approve, call the tool again with the same name, value, and the confirm_token. Only then is the batched editCells write sent to Workiva, and the mutation is recorded in the audit trail with before and after values plus the Workiva operation URL.\n\nThe confirmation requirement can be disabled by the server operator (require_write_confirmation: false); when disabled a call without confirm_token writes immediately, still fully audited.\n\nValues are written in Ones scale regardless of the cell display format. After a successful write the snapshot cache is refreshed so subsequent reads return the new value.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "confirm_token": "<redacted>",
+          "name": {
+            "description": "exact mapped field name",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "value": {
+            "description": "new field value",
+            "maxLength": 4096,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_update_field",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "description": "written value",
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "after_preview": {
+            "description": "proposed value",
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "before": {
+            "description": "previous value",
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "confirm_token": "<redacted>",
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "field": {
+            "description": "mapped field name",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "message": {
+            "description": "bounded operator message",
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "range": {
+            "description": "A1 cell range",
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          },
+          "sheet_id": {
+            "description": "sheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "spreadsheet_id": {
+            "description": "spreadsheet ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "workiva_op_url": {
+            "description": "Workiva operation reference",
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "field",
+          "spreadsheet_id",
+          "sheet_id",
+          "range",
+          "before"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "description": "Deterministically validates one immutable server-owned report snapshot using its approved closed rule set. The provider is never called.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "fail_on_warning": {
+            "type": "boolean"
+          },
+          "idempotency_key": {
+            "description": "single-use idempotency key",
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "retention_class": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "rule_ids": {
+            "items": {
+              "description": "approved rule ID",
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "rule_set_id": {
+            "description": "server-owned rule set ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "snapshot_id": {
+            "description": "immutable snapshot ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "rule_set_id",
+          "idempotency_key"
+        ],
+        "type": "object"
+      },
+      "name": "workiva_validate_report",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "counts": {
+            "additionalProperties": false,
+            "properties": {
+              "error": {
+                "maximum": 1000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "fail": {
+                "maximum": 1000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "not_evaluable": {
+                "maximum": 1000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "pass": {
+                "maximum": 1000,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "warn": {
+                "maximum": 1000,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "pass",
+              "fail",
+              "warn",
+              "not_evaluable",
+              "error"
+            ],
+            "type": "object"
+          },
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "description": "stable error code",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "description": "safe error message",
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              "nl_audit_id": {
+                "description": "audit ID",
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reconciliation_required": {
+                "type": "boolean"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "retryable",
+              "reconciliation_required",
+              "nl_audit_id"
+            ],
+            "type": "object"
+          },
+          "nl_audit_id": {
+            "description": "audit ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "absolute_tolerance": {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                "actual": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "boolean": {
+                      "type": "boolean"
+                    },
+                    "date": {
+                      "maxLength": 10,
+                      "type": "string"
+                    },
+                    "datetime": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "formula": {
+                      "type": "boolean"
+                    },
+                    "kind": {
+                      "enum": [
+                        "blank",
+                        "text",
+                        "integer",
+                        "number",
+                        "boolean",
+                        "date",
+                        "datetime",
+                        "currency",
+                        "percent",
+                        "error"
+                      ],
+                      "maxLength": 8,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "number": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "scale": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "text": {
+                      "maxLength": 10000,
+                      "type": "string"
+                    },
+                    "unit": {
+                      "maxLength": 128,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "formula"
+                  ],
+                  "type": "object"
+                },
+                "code": {
+                  "enum": [
+                    "required",
+                    "type",
+                    "unit",
+                    "range",
+                    "allowed_values",
+                    "reconciliation",
+                    "variance",
+                    "completeness"
+                  ],
+                  "maxLength": 14,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "evidence_observation_ids": {
+                  "items": {
+                    "description": "observation ID",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 1000,
+                  "type": "array"
+                },
+                "expected": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "boolean": {
+                      "type": "boolean"
+                    },
+                    "date": {
+                      "maxLength": 10,
+                      "type": "string"
+                    },
+                    "datetime": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "formula": {
+                      "type": "boolean"
+                    },
+                    "kind": {
+                      "enum": [
+                        "blank",
+                        "text",
+                        "integer",
+                        "number",
+                        "boolean",
+                        "date",
+                        "datetime",
+                        "currency",
+                        "percent",
+                        "error"
+                      ],
+                      "maxLength": 8,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "number": {
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "scale": {
+                      "maxLength": 64,
+                      "type": "string"
+                    },
+                    "text": {
+                      "maxLength": 10000,
+                      "type": "string"
+                    },
+                    "unit": {
+                      "maxLength": 128,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "formula"
+                  ],
+                  "type": "object"
+                },
+                "field_ids": {
+                  "items": {
+                    "description": "field ID",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 1000,
+                  "type": "array"
+                },
+                "relative_tolerance": {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                "result_id": {
+                  "description": "result ID",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "rule_id": {
+                  "description": "rule ID",
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "rule_revision": {
+                  "maximum": 1000000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "status": {
+                  "enum": [
+                    "pass",
+                    "fail",
+                    "warn",
+                    "not_evaluable",
+                    "error"
+                  ],
+                  "maxLength": 13,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "result_id",
+                "rule_id",
+                "rule_revision",
+                "code",
+                "status",
+                "field_ids",
+                "evidence_observation_ids"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "rule_set_id": {
+            "description": "rule set ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "rule_set_revision": {
+            "maximum": 1000000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "snapshot_id": {
+            "description": "snapshot ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "error",
+              "not_evaluable",
+              "idempotency_replay",
+              "denied",
+              "idempotency_in_progress",
+              "idempotency_conflict"
+            ],
+            "maxLength": 23,
+            "minLength": 1,
+            "type": "string"
+          },
+          "validation_run_id": {
+            "description": "validation run ID",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "nl_audit_id",
+          "status"
+        ],
+        "type": "object"
+      }
+    }
+  ],
+  "http_status": 200
+}

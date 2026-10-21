@@ -1,0 +1,34 @@
+{
+  "step": 32,
+  "label": "workiva_confirm_section_text",
+  "elapsed_seconds": 8.825,
+  "prompt": "Yes, write it.",
+  "request": {
+    "name": "workiva_confirm_section_text",
+    "arguments": {
+      "text_id": "5GLNDHSKYEB2D7L7KO3IUTRNLV",
+      "confirm_token": "<redacted>"
+    }
+  },
+  "http_status": 200,
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 11,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"audit_id\":\"QBH27XN2YW3ZAVP3XXJVC5FEF7\",\"document_id\":\"<report-document-id>\",\"nl_audit_id\":\"45e24e36-d338-4067-87c1-2744fa76ec35\",\"section_id\":\"esg-social\",\"status\":\"completed\",\"workiva_section_id\":\"<report-document-id>_303\"}"
+        }
+      ],
+      "structuredContent": {
+        "audit_id": "QBH27XN2YW3ZAVP3XXJVC5FEF7",
+        "document_id": "<report-document-id>",
+        "nl_audit_id": "45e24e36-d338-4067-87c1-2744fa76ec35",
+        "section_id": "esg-social",
+        "status": "completed",
+        "workiva_section_id": "<report-document-id>_303"
+      }
+    }
+  }
+}

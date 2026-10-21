@@ -1,0 +1,34 @@
+{
+  "step": 21,
+  "label": "workiva_confirm_section_text",
+  "elapsed_seconds": 9.2,
+  "prompt": "Yes, write it.",
+  "request": {
+    "name": "workiva_confirm_section_text",
+    "arguments": {
+      "text_id": "CO3EZ4PECCOTG3GPKRVCON3BN4",
+      "confirm_token": "<redacted>"
+    }
+  },
+  "http_status": 200,
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 5,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"audit_id\":\"LLFWKMOOFYBR2SJKUTV3RHG4V7\",\"document_id\":\"<report-document-id>\",\"nl_audit_id\":\"694e0dbf-18ea-49f5-9ca2-433018ba7dc9\",\"section_id\":\"esg-environmental\",\"status\":\"completed\",\"workiva_section_id\":\"<report-document-id>_298\"}"
+        }
+      ],
+      "structuredContent": {
+        "audit_id": "LLFWKMOOFYBR2SJKUTV3RHG4V7",
+        "document_id": "<report-document-id>",
+        "nl_audit_id": "694e0dbf-18ea-49f5-9ca2-433018ba7dc9",
+        "section_id": "esg-environmental",
+        "status": "completed",
+        "workiva_section_id": "<report-document-id>_298"
+      }
+    }
+  }
+}

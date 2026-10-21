@@ -1,0 +1,20 @@
+{
+  "step": 14,
+  "label": "Act 1 independent source/prior read-back",
+  "elapsed_seconds": 1.741,
+  "prompt": "And how much electricity from renewable sources did we buy in 2025 versus 2024?",
+  "readback": {
+    "cells": [
+      {
+        "name": "src_env_electricity_renewable",
+        "range": "G12",
+        "value": "490"
+      },
+      {
+        "name": "rpt_env_electricity_renewable_2024",
+        "range": "L3",
+        "value": "520"
+      }
+    ]
+  }
+}

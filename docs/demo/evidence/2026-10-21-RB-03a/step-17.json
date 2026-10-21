@@ -1,0 +1,10 @@
+{
+  "step": 17,
+  "label": "Run interrupted",
+  "elapsed_seconds": 0,
+  "error": "'before'",
+  "issues": [
+    "Setup: seed --reset: 113.8s exceeds 60s",
+    "Act 1: workiva_compare_periods cannot compare mapped fields; immutable snapshots and materiality policy required; assurance disabled"
+  ]
+}

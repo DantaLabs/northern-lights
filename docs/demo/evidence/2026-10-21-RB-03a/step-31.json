@@ -1,0 +1,56 @@
+{
+  "step": 31,
+  "label": "workiva_stage_section_text",
+  "elapsed_seconds": 0.019,
+  "prompt": "Yes, approve these changes, then draft the narrative and add the policy paragraph.",
+  "request": {
+    "name": "workiva_stage_section_text",
+    "arguments": {
+      "section_id": "esg-social",
+      "blocks": [
+        {
+          "kind": "narrative",
+          "text": "Annual training hours per female employee rose 16% to 25.5 hours. Other workforce and safety indicators were broadly stable."
+        },
+        {
+          "kind": "verbatim",
+          "verbatim_id": "social-policy",
+          "text": "Demo Harbour Components treats every employee fairly, protects health and safety at all of its sites, and offers equal opportunities in hiring, training and promotion. We invest in the skills of our people and listen to their views through regular dialogue with employee representatives.\n"
+        }
+      ]
+    }
+  },
+  "http_status": 200,
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 10,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"blocks\":[{\"kind\":\"narrative\",\"text\":\"Annual training hours per female employee rose 16% to 25.5 hours. Other workforce and safety indicators were broadly stable.\"},{\"kind\":\"verbatim\",\"text\":\"Demo Harbour Components treats every employee fairly, protects health and safety at all of its sites, and offers equal opportunities in hiring, training and promotion. We invest in the skills of our people and listen to their views through regular dialogue with employee representatives.\\n\",\"verbatim_id\":\"social-policy\"}],\"confirm_token\":\"<redacted>\",\"expires_at\":\"2026-10-21T16:15:09+07:00\",\"nl_audit_id\":\"bb1f400c-fe69-4992-b51c-afd0e92c6e55\",\"section_id\":\"esg-social\",\"section_title\":\"Social disclosures\",\"summary\":\"[narrative]\\nAnnual training hours per female employee rose 16% to 25.5 hours. Other workforce and safety indicators were broadly stable.\\n\\n[verbatim]\\nDemo Harbour Components treats every employee fairly, protects health and safety at all of its sites, and offers equal opportunities in hiring, training and promotion. We invest in the skills of our people and listen to their views through regular dialogue with employee representatives.\\n\",\"text_id\":\"5GLNDHSKYEB2D7L7KO3IUTRNLV\"}"
+        }
+      ],
+      "structuredContent": {
+        "blocks": [
+          {
+            "kind": "narrative",
+            "text": "Annual training hours per female employee rose 16% to 25.5 hours. Other workforce and safety indicators were broadly stable."
+          },
+          {
+            "kind": "verbatim",
+            "text": "Demo Harbour Components treats every employee fairly, protects health and safety at all of its sites, and offers equal opportunities in hiring, training and promotion. We invest in the skills of our people and listen to their views through regular dialogue with employee representatives.\n",
+            "verbatim_id": "social-policy"
+          }
+        ],
+        "confirm_token": "<redacted>",
+        "expires_at": "2026-10-21T16:15:09+07:00",
+        "nl_audit_id": "bb1f400c-fe69-4992-b51c-afd0e92c6e55",
+        "section_id": "esg-social",
+        "section_title": "Social disclosures",
+        "summary": "[narrative]\nAnnual training hours per female employee rose 16% to 25.5 hours. Other workforce and safety indicators were broadly stable.\n\n[verbatim]\nDemo Harbour Components treats every employee fairly, protects health and safety at all of its sites, and offers equal opportunities in hiring, training and promotion. We invest in the skills of our people and listen to their views through regular dialogue with employee representatives.\n",
+        "text_id": "5GLNDHSKYEB2D7L7KO3IUTRNLV"
+      }
+    }
+  }
+}

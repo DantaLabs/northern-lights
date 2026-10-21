@@ -1,0 +1,48 @@
+{
+  "step": 23,
+  "label": "workiva_stage_section_text",
+  "elapsed_seconds": 0.012,
+  "prompt": "Make the policy paragraph sound better.",
+  "request": {
+    "name": "workiva_stage_section_text",
+    "arguments": {
+      "section_id": "esg-environmental",
+      "blocks": [
+        {
+          "kind": "narrative",
+          "text": "Business travel emissions rose 18% to 165.0 tCO2e. Energy consumption and the other reported environmental indicators were broadly stable."
+        },
+        {
+          "kind": "verbatim",
+          "verbatim_id": "env-policy",
+          "text": "Improved policy. Demo Harbour Components commits to reducing the environmental footprint of its plants and offices, to buying more of its electricity from renewable sources, and to managing waste and water with care. Each site reviews its environmental performance every year and reports it openly to its stakeholders.\n"
+        }
+      ]
+    }
+  },
+  "http_status": 200,
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 6,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"error\":{\"code\":\"internal_error\",\"message\":\"Verbatim block env-policy cannot be changed. Use the approved text exactly. First differing character position: 1.\",\"nl_audit_id\":\"63fbfb13-7018-4da9-890a-12f97944eba2\",\"reconciliation_required\":false,\"retryable\":false},\"nl_audit_id\":\"63fbfb13-7018-4da9-890a-12f97944eba2\",\"status\":\"error\"}"
+        }
+      ],
+      "structuredContent": {
+        "error": {
+          "code": "internal_error",
+          "message": "Verbatim block env-policy cannot be changed. Use the approved text exactly. First differing character position: 1.",
+          "nl_audit_id": "63fbfb13-7018-4da9-890a-12f97944eba2",
+          "reconciliation_required": false,
+          "retryable": false
+        },
+        "nl_audit_id": "63fbfb13-7018-4da9-890a-12f97944eba2",
+        "status": "error"
+      },
+      "isError": true
+    }
+  }
+}

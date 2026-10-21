@@ -1,0 +1,20 @@
+{
+  "step": 8,
+  "label": "Act 1 independent source/prior read-back",
+  "elapsed_seconds": 1.785,
+  "prompt": "How many employees did we have at the end of 2025, and how many in 2024?",
+  "readback": {
+    "cells": [
+      {
+        "name": "src_soc_employees_total",
+        "range": "E62",
+        "value": "428"
+      },
+      {
+        "name": "rpt_soc_employees_total_2024",
+        "range": "L28",
+        "value": "412"
+      }
+    ]
+  }
+}

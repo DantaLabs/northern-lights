@@ -1,0 +1,48 @@
+{
+  "step": 25,
+  "label": "workiva_stage_section_text",
+  "elapsed_seconds": 0.014,
+  "prompt": "Add a sentence to the narrative saying energy consumption fell 9% in 2025.",
+  "request": {
+    "name": "workiva_stage_section_text",
+    "arguments": {
+      "section_id": "esg-environmental",
+      "blocks": [
+        {
+          "kind": "narrative",
+          "text": "Business travel emissions rose 18% to 165.0 tCO2e. Energy consumption and the other reported environmental indicators were broadly stable. Energy consumption fell 9% in 2025."
+        },
+        {
+          "kind": "verbatim",
+          "verbatim_id": "env-policy",
+          "text": "Demo Harbour Components commits to reducing the environmental footprint of its plants and offices, to buying more of its electricity from renewable sources, and to managing waste and water with care. Each site reviews its environmental performance every year and reports it openly to its stakeholders.\n"
+        }
+      ]
+    }
+  },
+  "http_status": 200,
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 7,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"error\":{\"code\":\"internal_error\",\"message\":\"The number 9% is not in the prepared facts for this section.\",\"nl_audit_id\":\"ec84362b-94a0-4e8b-ba3c-2d54c03778b7\",\"reconciliation_required\":false,\"retryable\":false},\"nl_audit_id\":\"ec84362b-94a0-4e8b-ba3c-2d54c03778b7\",\"status\":\"error\"}"
+        }
+      ],
+      "structuredContent": {
+        "error": {
+          "code": "internal_error",
+          "message": "The number 9% is not in the prepared facts for this section.",
+          "nl_audit_id": "ec84362b-94a0-4e8b-ba3c-2d54c03778b7",
+          "reconciliation_required": false,
+          "retryable": false
+        },
+        "nl_audit_id": "ec84362b-94a0-4e8b-ba3c-2d54c03778b7",
+        "status": "error"
+      },
+      "isError": true
+    }
+  }
+}

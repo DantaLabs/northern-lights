@@ -1,0 +1,762 @@
+{
+  "step": 15,
+  "label": "workiva_prepare_section",
+  "elapsed_seconds": 43.682,
+  "prompt": "Prepare the environmental section.",
+  "request": {
+    "name": "workiva_prepare_section",
+    "arguments": {
+      "section_id": "esg-environmental"
+    }
+  },
+  "http_status": 200,
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 12,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"change_set\":{\"change_set_id\":\"kV_bX8Autt7raQ8hWlJhLNGvFgL1a5VeoftFTzUaWaY\",\"confirm_token\":\"<redacted>\",\"expires_at\":\"2026-10-21T09:11:36Z\",\"items\":[{\"after\":\"1978\",\"field_name\":\"rpt_env_energy_total_2025\",\"range\":\"L2\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_energy_total\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"490\",\"field_name\":\"rpt_env_electricity_renewable_2025\",\"range\":\"L3\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_electricity_renewable\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"1280\",\"field_name\":\"rpt_env_electricity_non_renewable_2025\",\"range\":\"L4\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_electricity_non_renewable\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"150\",\"field_name\":\"rpt_env_self_generated_electricity_renewable_2025\",\"range\":\"L5\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_self_generated_electricity_renewable\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"58\",\"field_name\":\"rpt_env_self_generated_electricity_non_renewable_2025\",\"range\":\"L6\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_self_generated_electricity_non_renewable\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"812.5\",\"field_name\":\"rpt_env_ghg_scope1_2025\",\"range\":\"L7\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_ghg_scope1\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"585\",\"field_name\":\"rpt_env_ghg_scope2_location_2025\",\"range\":\"L8\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_ghg_scope2_location\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"520\",\"field_name\":\"rpt_env_ghg_scope2_market_2025\",\"range\":\"L9\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_ghg_scope2_market\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"4050\",\"field_name\":\"rpt_env_ghg_scope3_purchased_goods_2025\",\"range\":\"L10\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_ghg_scope3_purchased_goods\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"820\",\"field_name\":\"rpt_env_ghg_scope3_capital_goods_2025\",\"range\":\"L11\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_ghg_scope3_capital_goods\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"298\",\"field_name\":\"rpt_env_ghg_scope3_fuel_energy_2025\",\"range\":\"L12\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_ghg_scope3_fuel_energy\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"545\",\"field_name\":\"rpt_env_ghg_scope3_upstream_transport_2025\",\"range\":\"L13\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_ghg_scope3_upstream_transport\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"92\",\"field_name\":\"rpt_env_ghg_scope3_waste_2025\",\"range\":\"L14\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_ghg_scope3_waste\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"165\",\"field_name\":\"rpt_env_ghg_scope3_business_travel_2025\",\"range\":\"L15\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_ghg_scope3_business_travel\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"224\",\"field_name\":\"rpt_env_ghg_scope3_commuting_2025\",\"range\":\"L16\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_ghg_scope3_commuting\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"12.6\",\"field_name\":\"rpt_env_land_sealed_area_2025\",\"range\":\"L17\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_land_sealed_area\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"3.2\",\"field_name\":\"rpt_env_land_nature_onsite_2025\",\"range\":\"L18\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_land_nature_onsite\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"1.6\",\"field_name\":\"rpt_env_land_nature_offsite_2025\",\"range\":\"L19\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_land_nature_offsite\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"17.4\",\"field_name\":\"rpt_env_land_use_total_2025\",\"range\":\"L20\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_land_use_total\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"18100\",\"field_name\":\"rpt_env_water_withdrawn_total_2025\",\"range\":\"L21\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_water_withdrawn_total\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"2300\",\"field_name\":\"rpt_env_water_withdrawn_high_stress_2025\",\"range\":\"L22\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_water_withdrawn_high_stress\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"5400\",\"field_name\":\"rpt_env_waste_recycled_type1_2025\",\"range\":\"L24\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_waste_recycled_type1\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"2000\",\"field_name\":\"rpt_env_waste_disposed_type1_2025\",\"range\":\"L25\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_waste_disposed_type1\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"910\",\"field_name\":\"rpt_env_waste_recycled_type2_2025\",\"range\":\"L26\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_waste_recycled_type2\",\"spreadsheet_id\":\"<spreadsheet-2>\"},{\"after\":\"415\",\"field_name\":\"rpt_env_waste_disposed_type2_2025\",\"range\":\"L27\",\"sheet_id\":\"<sheet-2-1>\",\"source\":\"src_env_waste_disposed_type2\",\"spreadsheet_id\":\"<spreadsheet-2>\"}]},\"facts\":[{\"change\":\"-52\",\"change_pct\":\"-2.56157635467980295566502463054187192118\",\"current\":\"1978\",\"direction\":\"down\",\"display\":[\"1.98 GWh\",\"2.03 GWh\",\"-0.05 GWh\",\"-3%\",\"-2.6%\",\"0.05 GWh\",\"3%\",\"2.6%\"],\"key\":\"energy_total\",\"label\":\"Total Energy Consumption\",\"material\":false,\"prior\":\"2030\",\"unit\":\"MWh\"},{\"change\":\"-30\",\"change_pct\":\"-5.76923076923076923076923076923076923077\",\"current\":\"490\",\"direction\":\"down\",\"display\":[\"490 MWh\",\"520 MWh\",\"-30 MWh\",\"-6%\",\"-5.8%\",\"30 MWh\",\"6%\",\"5.8%\"],\"key\":\"electricity_renewable\",\"label\":\"Electricity (as reflected in utility billings) - Renewable\",\"material\":false,\"prior\":\"520\",\"unit\":\"MWh\"},{\"change\":\"-30\",\"change_pct\":\"-2.29007633587786259541984732824427480916\",\"current\":\"1280\",\"direction\":\"down\",\"display\":[\"1,280 MWh\",\"1,310 MWh\",\"-30 MWh\",\"-2%\",\"-2.3%\",\"30 MWh\",\"2%\",\"2.3%\"],\"key\":\"electricity_non_renewable\",\"label\":\"Electricity (as reflected in utility billings) - Non-renewable\",\"material\":false,\"prior\":\"1310\",\"unit\":\"MWh\"},{\"change\":\"10\",\"change_pct\":\"7.14285714285714285714285714285714285714\",\"current\":\"150\",\"direction\":\"up\",\"display\":[\"150 MWh\",\"140 MWh\",\"10 MWh\",\"7%\",\"7.1%\"],\"key\":\"self_generated_electricity_renewable\",\"label\":\"Self-generated electricity - Renewable\",\"material\":false,\"prior\":\"140\",\"unit\":\"MWh\"},{\"change\":\"-2\",\"change_pct\":\"-3.33333333333333333333333333333333333333\",\"current\":\"58\",\"direction\":\"down\",\"display\":[\"58 MWh\",\"60 MWh\",\"-2 MWh\",\"-3%\",\"-3.3%\",\"2 MWh\",\"3%\",\"3.3%\"],\"key\":\"self_generated_electricity_non_renewable\",\"label\":\"Self-generated electricity - Non-renewable\",\"material\":false,\"prior\":\"60\",\"unit\":\"MWh\"},{\"change\":\"-32.5\",\"change_pct\":\"-3.84615384615384615384615384615384615385\",\"current\":\"812.5\",\"direction\":\"down\",\"display\":[\"812.5 tCO2e\",\"845.0 tCO2e\",\"-32.5 tCO2e\",\"-4%\",\"-3.8%\",\"32.5 tCO2e\",\"4%\",\"3.8%\"],\"key\":\"ghg_scope1\",\"label\":\"Gross Scope 1 GHG Emissions\",\"material\":false,\"prior\":\"845\",\"unit\":\"tCO2e\"},{\"change\":\"-25\",\"change_pct\":\"-4.09836065573770491803278688524590163934\",\"current\":\"585\",\"direction\":\"down\",\"display\":[\"585.0 tCO2e\",\"610.0 tCO2e\",\"-25.0 tCO2e\",\"-4%\",\"-4.1%\",\"25.0 tCO2e\",\"4%\",\"4.1%\"],\"key\":\"ghg_scope2_location\",\"label\":\"Gross Scope 2 location-based GHG Emissions\",\"material\":false,\"prior\":\"610\",\"unit\":\"tCO2e\"},{\"change\":\"-20\",\"change_pct\":\"-3.7037037037037037037037037037037037037\",\"current\":\"520\",\"direction\":\"down\",\"display\":[\"520.0 tCO2e\",\"540.0 tCO2e\",\"-20.0 tCO2e\",\"-4%\",\"-3.7%\",\"20.0 tCO2e\",\"4%\",\"3.7%\"],\"key\":\"ghg_scope2_market\",\"label\":\"Gross scope 2 market-based GHG Emissions - May (optional)\",\"material\":false,\"prior\":\"540\",\"unit\":\"tCO2e\"},{\"change\":\"-150\",\"change_pct\":\"-3.57142857142857142857142857142857142857\",\"current\":\"4050\",\"direction\":\"down\",\"display\":[\"4,050.0 tCO2e\",\"4,200.0 tCO2e\",\"-150.0 tCO2e\",\"-4%\",\"-3.6%\",\"150.0 tCO2e\",\"4%\",\"3.6%\"],\"key\":\"ghg_scope3_purchased_goods\",\"label\":\"1. Purchased Goods and Services\",\"material\":false,\"prior\":\"4200\",\"unit\":\"tCO2e\"},{\"change\":\"40\",\"change_pct\":\"5.12820512820512820512820512820512820513\",\"current\":\"820\",\"direction\":\"up\",\"display\":[\"820.0 tCO2e\",\"780.0 tCO2e\",\"40.0 tCO2e\",\"5%\",\"5.1%\"],\"key\":\"ghg_scope3_capital_goods\",\"label\":\"2. Capital Goods\",\"material\":false,\"prior\":\"780\",\"unit\":\"tCO2e\"},{\"change\":\"-12\",\"change_pct\":\"-3.87096774193548387096774193548387096774\",\"current\":\"298\",\"direction\":\"down\",\"display\":[\"298.0 tCO2e\",\"310.0 tCO2e\",\"-12.0 tCO2e\",\"-4%\",\"-3.9%\",\"12.0 tCO2e\",\"4%\",\"3.9%\"],\"key\":\"ghg_scope3_fuel_energy\",\"label\":\"3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2)\",\"material\":false,\"prior\":\"310\",\"unit\":\"tCO2e\"},{\"change\":\"25\",\"change_pct\":\"4.80769230769230769230769230769230769231\",\"current\":\"545\",\"direction\":\"up\",\"display\":[\"545.0 tCO2e\",\"520.0 tCO2e\",\"25.0 tCO2e\",\"5%\",\"4.8%\"],\"key\":\"ghg_scope3_upstream_transport\",\"label\":\"4. Upstream Transportation and Distribution\",\"material\":false,\"prior\":\"520\",\"unit\":\"tCO2e\"},{\"change\":\"-3\",\"change_pct\":\"-3.15789473684210526315789473684210526316\",\"current\":\"92\",\"direction\":\"down\",\"display\":[\"92.0 tCO2e\",\"95.0 tCO2e\",\"-3.0 tCO2e\",\"-3%\",\"-3.2%\",\"3.0 tCO2e\",\"3%\",\"3.2%\"],\"key\":\"ghg_scope3_waste\",\"label\":\"5. Waste Generated in Operations\",\"material\":false,\"prior\":\"95\",\"unit\":\"tCO2e\"},{\"change\":\"25\",\"change_pct\":\"17.85714285714285714285714285714285714286\",\"current\":\"165\",\"direction\":\"up\",\"display\":[\"165.0 tCO2e\",\"140.0 tCO2e\",\"25.0 tCO2e\",\"18%\",\"17.9%\"],\"key\":\"ghg_scope3_business_travel\",\"label\":\"6. Business Travel\",\"material\":true,\"prior\":\"140\",\"unit\":\"tCO2e\"},{\"change\":\"-6\",\"change_pct\":\"-2.6086956521739130434782608695652173913\",\"current\":\"224\",\"direction\":\"down\",\"display\":[\"224.0 tCO2e\",\"230.0 tCO2e\",\"-6.0 tCO2e\",\"-3%\",\"-2.6%\",\"6.0 tCO2e\",\"3%\",\"2.6%\"],\"key\":\"ghg_scope3_commuting\",\"label\":\"7. Employee Commuting\",\"material\":false,\"prior\":\"230\",\"unit\":\"tCO2e\"},{\"change\":\"0.2\",\"change_pct\":\"1.61290322580645161290322580645161290323\",\"current\":\"12.6\",\"direction\":\"up\",\"display\":[\"12.6 ha\",\"12.4 ha\",\"0.2 ha\",\"2%\",\"1.6%\"],\"key\":\"land_sealed_area\",\"label\":\"Total sealed area\",\"material\":false,\"prior\":\"12.4\",\"unit\":\"ha\"},{\"change\":\"0.1\",\"change_pct\":\"3.22580645161290322580645161290322580645\",\"current\":\"3.2\",\"direction\":\"up\",\"display\":[\"3.2 ha\",\"3.1 ha\",\"0.1 ha\",\"3%\",\"3.2%\"],\"key\":\"land_nature_onsite\",\"label\":\"Total nature-oriented area on-site\",\"material\":false,\"prior\":\"3.1\",\"unit\":\"ha\"},{\"change\":\"0.1\",\"change_pct\":\"6.66666666666666666666666666666666666667\",\"current\":\"1.6\",\"direction\":\"up\",\"display\":[\"1.6 ha\",\"1.5 ha\",\"0.1 ha\",\"7%\",\"6.7%\"],\"key\":\"land_nature_offsite\",\"label\":\"Total nature-oriented area off-site\",\"material\":false,\"prior\":\"1.5\",\"unit\":\"ha\"},{\"change\":\"0.4\",\"change_pct\":\"2.35294117647058823529411764705882352941\",\"current\":\"17.4\",\"direction\":\"up\",\"display\":[\"17.4 ha\",\"17.0 ha\",\"0.4 ha\",\"2%\",\"2.4%\"],\"key\":\"land_use_total\",\"label\":\"Total use of land\",\"material\":false,\"prior\":\"17\",\"unit\":\"ha\"},{\"change\":\"-400\",\"change_pct\":\"-2.16216216216216216216216216216216216216\",\"current\":\"18100\",\"direction\":\"down\",\"display\":[\"18,100 m3\",\"18,500 m3\",\"-400 m3\",\"-2%\",\"-2.2%\",\"400 m3\",\"2%\",\"2.2%\"],\"key\":\"water_withdrawn_total\",\"label\":\"Total amount of water withdrawn from all sites (cubic meters, m³)\",\"material\":false,\"prior\":\"18500\",\"unit\":\"m3\"},{\"change\":\"-100\",\"change_pct\":\"-4.16666666666666666666666666666666666667\",\"current\":\"2300\",\"direction\":\"down\",\"display\":[\"2,300 m3\",\"2,400 m3\",\"-100 m3\",\"-4%\",\"-4.2%\",\"100 m3\",\"4%\",\"4.2%\"],\"key\":\"water_withdrawn_high_stress\",\"label\":\"Amount of water withdrawn at sites located in areas of high water-stress\",\"material\":false,\"prior\":\"2400\",\"unit\":\"m3\"},{\"change\":\"200\",\"change_pct\":\"3.84615384615384615384615384615384615385\",\"current\":\"5400\",\"direction\":\"up\",\"display\":[\"5,400 kg\",\"5,200 kg\",\"200 kg\",\"4%\",\"3.8%\"],\"key\":\"waste_recycled_type1\",\"label\":\"Waste diverted to recycle or reuse - waste type 1\",\"material\":false,\"prior\":\"5200\",\"unit\":\"kg\"},{\"change\":\"-100\",\"change_pct\":\"-4.76190476190476190476190476190476190476\",\"current\":\"2000\",\"direction\":\"down\",\"display\":[\"2,000 kg\",\"2,100 kg\",\"-100 kg\",\"-5%\",\"-4.8%\",\"100 kg\",\"5%\",\"4.8%\"],\"key\":\"waste_disposed_type1\",\"label\":\"Waste directed to disposal - waste type 1\",\"material\":false,\"prior\":\"2100\",\"unit\":\"kg\"},{\"change\":\"30\",\"change_pct\":\"3.40909090909090909090909090909090909091\",\"current\":\"910\",\"direction\":\"up\",\"display\":[\"910 kg\",\"880 kg\",\"30 kg\",\"3%\",\"3.4%\"],\"key\":\"waste_recycled_type2\",\"label\":\"Waste diverted to recycle or reuse - waste type 2\",\"material\":false,\"prior\":\"880\",\"unit\":\"kg\"},{\"change\":\"-15\",\"change_pct\":\"-3.48837209302325581395348837209302325581\",\"current\":\"415\",\"direction\":\"down\",\"display\":[\"415 kg\",\"430 kg\",\"-15 kg\",\"-3%\",\"-3.5%\",\"15 kg\",\"3%\",\"3.5%\"],\"key\":\"waste_disposed_type2\",\"label\":\"Waste directed to disposal - waste type 2\",\"material\":false,\"prior\":\"430\",\"unit\":\"kg\"}],\"findings\":[{\"field\":\"Electricity (as reflected in utility billings) - Renewable\",\"kind\":\"out_of_range\",\"message\":\"Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500.\",\"severity\":\"high\"},{\"field\":\"6. Business Travel\",\"kind\":\"material_change\",\"message\":\"6. Business Travel changed by 17.9% from the prior period.\",\"severity\":\"medium\"},{\"field\":\"Water discharge from undertaking production processes (m³)\",\"kind\":\"missing\",\"message\":\"Water discharge from undertaking production processes (m³) is required but has no value.\",\"severity\":\"high\"}],\"next_step\":\"Show the analyst the findings first, then the change set summary. Ask for approval, and after the analyst approves call workiva_confirm_change_set with change_set_id and confirm_token.\",\"nl_audit_id\":\"ff883d2d-a42e-4820-89d2-3cbe0349f99a\",\"section_id\":\"esg-environmental\",\"summary\":\"rpt_env_energy_total_2025:  -> 1978 (awaiting_confirmation)\\nrpt_env_electricity_renewable_2025:  -> 490 (awaiting_confirmation)\\nrpt_env_electricity_non_renewable_2025:  -> 1280 (awaiting_confirmation)\\nrpt_env_self_generated_electricity_renewable_2025:  -> 150 (awaiting_confirmation)\\nrpt_env_self_generated_electricity_non_renewable_2025:  -> 58 (awaiting_confirmation)\\nrpt_env_ghg_scope1_2025:  -> 812.5 (awaiting_confirmation)\\nrpt_env_ghg_scope2_location_2025:  -> 585 (awaiting_confirmation)\\nrpt_env_ghg_scope2_market_2025:  -> 520 (awaiting_confirmation)\\nrpt_env_ghg_scope3_purchased_goods_2025:  -> 4050 (awaiting_confirmation)\\nrpt_env_ghg_scope3_capital_goods_2025:  -> 820 (awaiting_confirmation)\\nrpt_env_ghg_scope3_fuel_energy_2025:  -> 298 (awaiting_confirmation)\\nrpt_env_ghg_scope3_upstream_transport_2025:  -> 545 (awaiting_confirmation)\\nrpt_env_ghg_scope3_waste_2025:  -> 92 (awaiting_confirmation)\\nrpt_env_ghg_scope3_business_travel_2025:  -> 165 (awaiting_confirmation)\\nrpt_env_ghg_scope3_commuting_2025:  -> 224 (awaiting_confirmation)\\nrpt_env_land_sealed_area_2025:  -> 12.6 (awaiting_confirmation)\\nrpt_env_land_nature_onsite_2025:  -> 3.2 (awaiting_confirmation)\\nrpt_env_land_nature_offsite_2025:  -> 1.6 (awaiting_confirmation)\\nrpt_env_land_use_total_2025:  -> 17.4 (awaiting_confirmation)\\nrpt_env_water_withdrawn_total_2025:  -> 18100 (awaiting_confirmation)\\nrpt_env_water_withdrawn_high_stress_2025:  -> 2300 (awaiting_confirmation)\\nrpt_env_waste_recycled_type1_2025:  -> 5400 (awaiting_confirmation)\\nrpt_env_waste_disposed_type1_2025:  -> 2000 (awaiting_confirmation)\\nrpt_env_waste_recycled_type2_2025:  -> 910 (awaiting_confirmation)\\nrpt_env_waste_disposed_type2_2025:  -> 415 (awaiting_confirmation)\",\"verbatim\":[{\"id\":\"env-policy\",\"text\":\"Demo Harbour Components commits to reducing the environmental footprint of its plants and offices, to buying more of its electricity from renewable sources, and to managing waste and water with care. Each site reviews its environmental performance every year and reports it openly to its stakeholders.\\n\",\"title\":\"Environmental policy statement\"}]}"
+        }
+      ],
+      "structuredContent": {
+        "change_set": {
+          "change_set_id": "kV_bX8Autt7raQ8hWlJhLNGvFgL1a5VeoftFTzUaWaY",
+          "confirm_token": "<redacted>",
+          "expires_at": "2026-10-21T09:11:36Z",
+          "items": [
+            {
+              "after": "1978",
+              "field_name": "rpt_env_energy_total_2025",
+              "range": "L2",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_energy_total",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "490",
+              "field_name": "rpt_env_electricity_renewable_2025",
+              "range": "L3",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_electricity_renewable",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "1280",
+              "field_name": "rpt_env_electricity_non_renewable_2025",
+              "range": "L4",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_electricity_non_renewable",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "150",
+              "field_name": "rpt_env_self_generated_electricity_renewable_2025",
+              "range": "L5",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_self_generated_electricity_renewable",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "58",
+              "field_name": "rpt_env_self_generated_electricity_non_renewable_2025",
+              "range": "L6",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_self_generated_electricity_non_renewable",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "812.5",
+              "field_name": "rpt_env_ghg_scope1_2025",
+              "range": "L7",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_ghg_scope1",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "585",
+              "field_name": "rpt_env_ghg_scope2_location_2025",
+              "range": "L8",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_ghg_scope2_location",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "520",
+              "field_name": "rpt_env_ghg_scope2_market_2025",
+              "range": "L9",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_ghg_scope2_market",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "4050",
+              "field_name": "rpt_env_ghg_scope3_purchased_goods_2025",
+              "range": "L10",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_ghg_scope3_purchased_goods",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "820",
+              "field_name": "rpt_env_ghg_scope3_capital_goods_2025",
+              "range": "L11",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_ghg_scope3_capital_goods",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "298",
+              "field_name": "rpt_env_ghg_scope3_fuel_energy_2025",
+              "range": "L12",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_ghg_scope3_fuel_energy",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "545",
+              "field_name": "rpt_env_ghg_scope3_upstream_transport_2025",
+              "range": "L13",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_ghg_scope3_upstream_transport",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "92",
+              "field_name": "rpt_env_ghg_scope3_waste_2025",
+              "range": "L14",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_ghg_scope3_waste",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "165",
+              "field_name": "rpt_env_ghg_scope3_business_travel_2025",
+              "range": "L15",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_ghg_scope3_business_travel",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "224",
+              "field_name": "rpt_env_ghg_scope3_commuting_2025",
+              "range": "L16",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_ghg_scope3_commuting",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "12.6",
+              "field_name": "rpt_env_land_sealed_area_2025",
+              "range": "L17",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_land_sealed_area",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "3.2",
+              "field_name": "rpt_env_land_nature_onsite_2025",
+              "range": "L18",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_land_nature_onsite",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "1.6",
+              "field_name": "rpt_env_land_nature_offsite_2025",
+              "range": "L19",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_land_nature_offsite",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "17.4",
+              "field_name": "rpt_env_land_use_total_2025",
+              "range": "L20",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_land_use_total",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "18100",
+              "field_name": "rpt_env_water_withdrawn_total_2025",
+              "range": "L21",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_water_withdrawn_total",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "2300",
+              "field_name": "rpt_env_water_withdrawn_high_stress_2025",
+              "range": "L22",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_water_withdrawn_high_stress",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "5400",
+              "field_name": "rpt_env_waste_recycled_type1_2025",
+              "range": "L24",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_waste_recycled_type1",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "2000",
+              "field_name": "rpt_env_waste_disposed_type1_2025",
+              "range": "L25",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_waste_disposed_type1",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "910",
+              "field_name": "rpt_env_waste_recycled_type2_2025",
+              "range": "L26",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_waste_recycled_type2",
+              "spreadsheet_id": "<spreadsheet-2>"
+            },
+            {
+              "after": "415",
+              "field_name": "rpt_env_waste_disposed_type2_2025",
+              "range": "L27",
+              "sheet_id": "<sheet-2-1>",
+              "source": "src_env_waste_disposed_type2",
+              "spreadsheet_id": "<spreadsheet-2>"
+            }
+          ]
+        },
+        "facts": [
+          {
+            "change": "-52",
+            "change_pct": "-2.56157635467980295566502463054187192118",
+            "current": "1978",
+            "direction": "down",
+            "display": [
+              "1.98 GWh",
+              "2.03 GWh",
+              "-0.05 GWh",
+              "-3%",
+              "-2.6%",
+              "0.05 GWh",
+              "3%",
+              "2.6%"
+            ],
+            "key": "energy_total",
+            "label": "Total Energy Consumption",
+            "material": false,
+            "prior": "2030",
+            "unit": "MWh"
+          },
+          {
+            "change": "-30",
+            "change_pct": "-5.76923076923076923076923076923076923077",
+            "current": "490",
+            "direction": "down",
+            "display": [
+              "490 MWh",
+              "520 MWh",
+              "-30 MWh",
+              "-6%",
+              "-5.8%",
+              "30 MWh",
+              "6%",
+              "5.8%"
+            ],
+            "key": "electricity_renewable",
+            "label": "Electricity (as reflected in utility billings) - Renewable",
+            "material": false,
+            "prior": "520",
+            "unit": "MWh"
+          },
+          {
+            "change": "-30",
+            "change_pct": "-2.29007633587786259541984732824427480916",
+            "current": "1280",
+            "direction": "down",
+            "display": [
+              "1,280 MWh",
+              "1,310 MWh",
+              "-30 MWh",
+              "-2%",
+              "-2.3%",
+              "30 MWh",
+              "2%",
+              "2.3%"
+            ],
+            "key": "electricity_non_renewable",
+            "label": "Electricity (as reflected in utility billings) - Non-renewable",
+            "material": false,
+            "prior": "1310",
+            "unit": "MWh"
+          },
+          {
+            "change": "10",
+            "change_pct": "7.14285714285714285714285714285714285714",
+            "current": "150",
+            "direction": "up",
+            "display": [
+              "150 MWh",
+              "140 MWh",
+              "10 MWh",
+              "7%",
+              "7.1%"
+            ],
+            "key": "self_generated_electricity_renewable",
+            "label": "Self-generated electricity - Renewable",
+            "material": false,
+            "prior": "140",
+            "unit": "MWh"
+          },
+          {
+            "change": "-2",
+            "change_pct": "-3.33333333333333333333333333333333333333",
+            "current": "58",
+            "direction": "down",
+            "display": [
+              "58 MWh",
+              "60 MWh",
+              "-2 MWh",
+              "-3%",
+              "-3.3%",
+              "2 MWh",
+              "3%",
+              "3.3%"
+            ],
+            "key": "self_generated_electricity_non_renewable",
+            "label": "Self-generated electricity - Non-renewable",
+            "material": false,
+            "prior": "60",
+            "unit": "MWh"
+          },
+          {
+            "change": "-32.5",
+            "change_pct": "-3.84615384615384615384615384615384615385",
+            "current": "812.5",
+            "direction": "down",
+            "display": [
+              "812.5 tCO2e",
+              "845.0 tCO2e",
+              "-32.5 tCO2e",
+              "-4%",
+              "-3.8%",
+              "32.5 tCO2e",
+              "4%",
+              "3.8%"
+            ],
+            "key": "ghg_scope1",
+            "label": "Gross Scope 1 GHG Emissions",
+            "material": false,
+            "prior": "845",
+            "unit": "tCO2e"
+          },
+          {
+            "change": "-25",
+            "change_pct": "-4.09836065573770491803278688524590163934",
+            "current": "585",
+            "direction": "down",
+            "display": [
+              "585.0 tCO2e",
+              "610.0 tCO2e",
+              "-25.0 tCO2e",
+              "-4%",
+              "-4.1%",
+              "25.0 tCO2e",
+              "4%",
+              "4.1%"
+            ],
+            "key": "ghg_scope2_location",
+            "label": "Gross Scope 2 location-based GHG Emissions",
+            "material": false,
+            "prior": "610",
+            "unit": "tCO2e"
+          },
+          {
+            "change": "-20",
+            "change_pct": "-3.7037037037037037037037037037037037037",
+            "current": "520",
+            "direction": "down",
+            "display": [
+              "520.0 tCO2e",
+              "540.0 tCO2e",
+              "-20.0 tCO2e",
+              "-4%",
+              "-3.7%",
+              "20.0 tCO2e",
+              "4%",
+              "3.7%"
+            ],
+            "key": "ghg_scope2_market",
+            "label": "Gross scope 2 market-based GHG Emissions - May (optional)",
+            "material": false,
+            "prior": "540",
+            "unit": "tCO2e"
+          },
+          {
+            "change": "-150",
+            "change_pct": "-3.57142857142857142857142857142857142857",
+            "current": "4050",
+            "direction": "down",
+            "display": [
+              "4,050.0 tCO2e",
+              "4,200.0 tCO2e",
+              "-150.0 tCO2e",
+              "-4%",
+              "-3.6%",
+              "150.0 tCO2e",
+              "4%",
+              "3.6%"
+            ],
+            "key": "ghg_scope3_purchased_goods",
+            "label": "1. Purchased Goods and Services",
+            "material": false,
+            "prior": "4200",
+            "unit": "tCO2e"
+          },
+          {
+            "change": "40",
+            "change_pct": "5.12820512820512820512820512820512820513",
+            "current": "820",
+            "direction": "up",
+            "display": [
+              "820.0 tCO2e",
+              "780.0 tCO2e",
+              "40.0 tCO2e",
+              "5%",
+              "5.1%"
+            ],
+            "key": "ghg_scope3_capital_goods",
+            "label": "2. Capital Goods",
+            "material": false,
+            "prior": "780",
+            "unit": "tCO2e"
+          },
+          {
+            "change": "-12",
+            "change_pct": "-3.87096774193548387096774193548387096774",
+            "current": "298",
+            "direction": "down",
+            "display": [
+              "298.0 tCO2e",
+              "310.0 tCO2e",
+              "-12.0 tCO2e",
+              "-4%",
+              "-3.9%",
+              "12.0 tCO2e",
+              "4%",
+              "3.9%"
+            ],
+            "key": "ghg_scope3_fuel_energy",
+            "label": "3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2)",
+            "material": false,
+            "prior": "310",
+            "unit": "tCO2e"
+          },
+          {
+            "change": "25",
+            "change_pct": "4.80769230769230769230769230769230769231",
+            "current": "545",
+            "direction": "up",
+            "display": [
+              "545.0 tCO2e",
+              "520.0 tCO2e",
+              "25.0 tCO2e",
+              "5%",
+              "4.8%"
+            ],
+            "key": "ghg_scope3_upstream_transport",
+            "label": "4. Upstream Transportation and Distribution",
+            "material": false,
+            "prior": "520",
+            "unit": "tCO2e"
+          },
+          {
+            "change": "-3",
+            "change_pct": "-3.15789473684210526315789473684210526316",
+            "current": "92",
+            "direction": "down",
+            "display": [
+              "92.0 tCO2e",
+              "95.0 tCO2e",
+              "-3.0 tCO2e",
+              "-3%",
+              "-3.2%",
+              "3.0 tCO2e",
+              "3%",
+              "3.2%"
+            ],
+            "key": "ghg_scope3_waste",
+            "label": "5. Waste Generated in Operations",
+            "material": false,
+            "prior": "95",
+            "unit": "tCO2e"
+          },
+          {
+            "change": "25",
+            "change_pct": "17.85714285714285714285714285714285714286",
+            "current": "165",
+            "direction": "up",
+            "display": [
+              "165.0 tCO2e",
+              "140.0 tCO2e",
+              "25.0 tCO2e",
+              "18%",
+              "17.9%"
+            ],
+            "key": "ghg_scope3_business_travel",
+            "label": "6. Business Travel",
+            "material": true,
+            "prior": "140",
+            "unit": "tCO2e"
+          },
+          {
+            "change": "-6",
+            "change_pct": "-2.6086956521739130434782608695652173913",
+            "current": "224",
+            "direction": "down",
+            "display": [
+              "224.0 tCO2e",
+              "230.0 tCO2e",
+              "-6.0 tCO2e",
+              "-3%",
+              "-2.6%",
+              "6.0 tCO2e",
+              "3%",
+              "2.6%"
+            ],
+            "key": "ghg_scope3_commuting",
+            "label": "7. Employee Commuting",
+            "material": false,
+            "prior": "230",
+            "unit": "tCO2e"
+          },
+          {
+            "change": "0.2",
+            "change_pct": "1.61290322580645161290322580645161290323",
+            "current": "12.6",
+            "direction": "up",
+            "display": [
+              "12.6 ha",
+              "12.4 ha",
+              "0.2 ha",
+              "2%",
+              "1.6%"
+            ],
+            "key": "land_sealed_area",
+            "label": "Total sealed area",
+            "material": false,
+            "prior": "12.4",
+            "unit": "ha"
+          },
+          {
+            "change": "0.1",
+            "change_pct": "3.22580645161290322580645161290322580645",
+            "current": "3.2",
+            "direction": "up",
+            "display": [
+              "3.2 ha",
+              "3.1 ha",
+              "0.1 ha",
+              "3%",
+              "3.2%"
+            ],
+            "key": "land_nature_onsite",
+            "label": "Total nature-oriented area on-site",
+            "material": false,
+            "prior": "3.1",
+            "unit": "ha"
+          },
+          {
+            "change": "0.1",
+            "change_pct": "6.66666666666666666666666666666666666667",
+            "current": "1.6",
+            "direction": "up",
+            "display": [
+              "1.6 ha",
+              "1.5 ha",
+              "0.1 ha",
+              "7%",
+              "6.7%"
+            ],
+            "key": "land_nature_offsite",
+            "label": "Total nature-oriented area off-site",
+            "material": false,
+            "prior": "1.5",
+            "unit": "ha"
+          },
+          {
+            "change": "0.4",
+            "change_pct": "2.35294117647058823529411764705882352941",
+            "current": "17.4",
+            "direction": "up",
+            "display": [
+              "17.4 ha",
+              "17.0 ha",
+              "0.4 ha",
+              "2%",
+              "2.4%"
+            ],
+            "key": "land_use_total",
+            "label": "Total use of land",
+            "material": false,
+            "prior": "17",
+            "unit": "ha"
+          },
+          {
+            "change": "-400",
+            "change_pct": "-2.16216216216216216216216216216216216216",
+            "current": "18100",
+            "direction": "down",
+            "display": [
+              "18,100 m3",
+              "18,500 m3",
+              "-400 m3",
+              "-2%",
+              "-2.2%",
+              "400 m3",
+              "2%",
+              "2.2%"
+            ],
+            "key": "water_withdrawn_total",
+            "label": "Total amount of water withdrawn from all sites (cubic meters, m³)",
+            "material": false,
+            "prior": "18500",
+            "unit": "m3"
+          },
+          {
+            "change": "-100",
+            "change_pct": "-4.16666666666666666666666666666666666667",
+            "current": "2300",
+            "direction": "down",
+            "display": [
+              "2,300 m3",
+              "2,400 m3",
+              "-100 m3",
+              "-4%",
+              "-4.2%",
+              "100 m3",
+              "4%",
+              "4.2%"
+            ],
+            "key": "water_withdrawn_high_stress",
+            "label": "Amount of water withdrawn at sites located in areas of high water-stress",
+            "material": false,
+            "prior": "2400",
+            "unit": "m3"
+          },
+          {
+            "change": "200",
+            "change_pct": "3.84615384615384615384615384615384615385",
+            "current": "5400",
+            "direction": "up",
+            "display": [
+              "5,400 kg",
+              "5,200 kg",
+              "200 kg",
+              "4%",
+              "3.8%"
+            ],
+            "key": "waste_recycled_type1",
+            "label": "Waste diverted to recycle or reuse - waste type 1",
+            "material": false,
+            "prior": "5200",
+            "unit": "kg"
+          },
+          {
+            "change": "-100",
+            "change_pct": "-4.76190476190476190476190476190476190476",
+            "current": "2000",
+            "direction": "down",
+            "display": [
+              "2,000 kg",
+              "2,100 kg",
+              "-100 kg",
+              "-5%",
+              "-4.8%",
+              "100 kg",
+              "5%",
+              "4.8%"
+            ],
+            "key": "waste_disposed_type1",
+            "label": "Waste directed to disposal - waste type 1",
+            "material": false,
+            "prior": "2100",
+            "unit": "kg"
+          },
+          {
+            "change": "30",
+            "change_pct": "3.40909090909090909090909090909090909091",
+            "current": "910",
+            "direction": "up",
+            "display": [
+              "910 kg",
+              "880 kg",
+              "30 kg",
+              "3%",
+              "3.4%"
+            ],
+            "key": "waste_recycled_type2",
+            "label": "Waste diverted to recycle or reuse - waste type 2",
+            "material": false,
+            "prior": "880",
+            "unit": "kg"
+          },
+          {
+            "change": "-15",
+            "change_pct": "-3.48837209302325581395348837209302325581",
+            "current": "415",
+            "direction": "down",
+            "display": [
+              "415 kg",
+              "430 kg",
+              "-15 kg",
+              "-3%",
+              "-3.5%",
+              "15 kg",
+              "3%",
+              "3.5%"
+            ],
+            "key": "waste_disposed_type2",
+            "label": "Waste directed to disposal - waste type 2",
+            "material": false,
+            "prior": "430",
+            "unit": "kg"
+          }
+        ],
+        "findings": [
+          {
+            "field": "Electricity (as reflected in utility billings) - Renewable",
+            "kind": "out_of_range",
+            "message": "Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500.",
+            "severity": "high"
+          },
+          {
+            "field": "6. Business Travel",
+            "kind": "material_change",
+            "message": "6. Business Travel changed by 17.9% from the prior period.",
+            "severity": "medium"
+          },
+          {
+            "field": "Water discharge from undertaking production processes (m³)",
+            "kind": "missing",
+            "message": "Water discharge from undertaking production processes (m³) is required but has no value.",
+            "severity": "high"
+          }
+        ],
+        "next_step": "Show the analyst the findings first, then the change set summary. Ask for approval, and after the analyst approves call workiva_confirm_change_set with change_set_id and confirm_token.",
+        "nl_audit_id": "ff883d2d-a42e-4820-89d2-3cbe0349f99a",
+        "section_id": "esg-environmental",
+        "summary": "rpt_env_energy_total_2025:  -> 1978 (awaiting_confirmation)\nrpt_env_electricity_renewable_2025:  -> 490 (awaiting_confirmation)\nrpt_env_electricity_non_renewable_2025:  -> 1280 (awaiting_confirmation)\nrpt_env_self_generated_electricity_renewable_2025:  -> 150 (awaiting_confirmation)\nrpt_env_self_generated_electricity_non_renewable_2025:  -> 58 (awaiting_confirmation)\nrpt_env_ghg_scope1_2025:  -> 812.5 (awaiting_confirmation)\nrpt_env_ghg_scope2_location_2025:  -> 585 (awaiting_confirmation)\nrpt_env_ghg_scope2_market_2025:  -> 520 (awaiting_confirmation)\nrpt_env_ghg_scope3_purchased_goods_2025:  -> 4050 (awaiting_confirmation)\nrpt_env_ghg_scope3_capital_goods_2025:  -> 820 (awaiting_confirmation)\nrpt_env_ghg_scope3_fuel_energy_2025:  -> 298 (awaiting_confirmation)\nrpt_env_ghg_scope3_upstream_transport_2025:  -> 545 (awaiting_confirmation)\nrpt_env_ghg_scope3_waste_2025:  -> 92 (awaiting_confirmation)\nrpt_env_ghg_scope3_business_travel_2025:  -> 165 (awaiting_confirmation)\nrpt_env_ghg_scope3_commuting_2025:  -> 224 (awaiting_confirmation)\nrpt_env_land_sealed_area_2025:  -> 12.6 (awaiting_confirmation)\nrpt_env_land_nature_onsite_2025:  -> 3.2 (awaiting_confirmation)\nrpt_env_land_nature_offsite_2025:  -> 1.6 (awaiting_confirmation)\nrpt_env_land_use_total_2025:  -> 17.4 (awaiting_confirmation)\nrpt_env_water_withdrawn_total_2025:  -> 18100 (awaiting_confirmation)\nrpt_env_water_withdrawn_high_stress_2025:  -> 2300 (awaiting_confirmation)\nrpt_env_waste_recycled_type1_2025:  -> 5400 (awaiting_confirmation)\nrpt_env_waste_disposed_type1_2025:  -> 2000 (awaiting_confirmation)\nrpt_env_waste_recycled_type2_2025:  -> 910 (awaiting_confirmation)\nrpt_env_waste_disposed_type2_2025:  -> 415 (awaiting_confirmation)",
+        "verbatim": [
+          {
+            "id": "env-policy",
+            "text": "Demo Harbour Components commits to reducing the environmental footprint of its plants and offices, to buying more of its electricity from renewable sources, and to managing waste and water with care. Each site reviews its environmental performance every year and reports it openly to its stakeholders.\n",
+            "title": "Environmental policy statement"
+          }
+        ]
+      }
+    }
+  }
+}
