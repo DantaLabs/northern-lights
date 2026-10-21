@@ -1,0 +1,53 @@
+{
+  "task_id": "T2",
+  "attempt": 2,
+  "implementation_commit": "cfd726259e3d3fe2d1cd5065c28a32671f4e7f06",
+  "commands": [
+    {
+      "command": "go test -list '^TestScenario1InvalidRecipeStopsStartup$' ./internal/recipe/ | grep -qx 'TestScenario1InvalidRecipeStopsStartup'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -list '^TestScenario1ValidRecipeLoads$' ./internal/recipe/ | grep -qx 'TestScenario1ValidRecipeLoads'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -list '^TestScenario8SectionsSortedByID$' ./internal/recipe/ | grep -qx 'TestScenario8SectionsSortedByID'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -list '^TestDocumentIDOverrideFromEnvironment$' ./internal/recipe/ | grep -qx 'TestDocumentIDOverrideFromEnvironment'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -list '^TestNewSucceedsWithoutRecipes$' ./internal/recipe/ | grep -qx 'TestNewSucceedsWithoutRecipes'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -race -count=1 -run '^(TestScenario1InvalidRecipeStopsStartup|TestScenario1ValidRecipeLoads|TestScenario8SectionsSortedByID|TestDocumentIDOverrideFromEnvironment|TestNewSucceedsWithoutRecipes)$' ./internal/recipe/",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -race -count=1 -run '^TestDemoPipeline' ./cmd/workiva-mcp/",
+      "exit_code": 0
+    },
+    {
+      "command": "go vet ./internal/recipe/",
+      "exit_code": 0
+    },
+    {
+      "command": "! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l internal/recipe internal/mcpserver/tools)\"",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    }
+  ],
+  "checkout_clean": true,
+  "created_at": "2026-10-20T10:23:52Z"
+}

@@ -2,10 +2,14 @@ package tools
 
 import (
 	"context"
+	"fmt"
+	"strings"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
+	"github.com/dantalabs/northern-lights/internal/recipe"
 )
 
 // prepareSectionTool implements workiva_prepare_section.
@@ -98,14 +102,14 @@ func prepareSectionOutputSchema() map[string]any {
 		"key":        boundedSchema("narrative fact key", 256),
 		"label":      boundedSchema("narrative fact label", 256),
 		"unit":       optionalString("unit of the value", 32),
-		"current":    boundedSchema("current value display string", 64),
-		"prior":      optionalString("prior period value display string", 64),
-		"change":     optionalString("absolute change display string", 64),
-		"change_pct": optionalString("percentage change display string", 64),
+		"current":    boundedSchema("current value, canonical decimal string", 64),
+		"prior":      optionalString("prior period value, canonical decimal string", 64),
+		"change":     optionalString("absolute change, canonical decimal string", 64),
+		"change_pct": optionalString("percentage change, canonical decimal string", 64),
 		"direction":  boundedEnum("up", "down", "flat", "new"),
 		"material":   map[string]any{"type": "boolean"},
 		"display": map[string]any{"type": "array", "maxItems": 16,
-			"items": boundedSchema("display string the number guard accepts", 128)},
+			"items": boundedSchema("approved display form of the value, accepted by the number guard", 128)},
 	}, []string{"key", "label", "current", "direction", "material", "display"})
 	verbatim := objectSchema(map[string]any{
 		"id":    boundedSchema("verbatim block ID", 128),
@@ -133,10 +137,12 @@ func prepareSectionOutputSchema() map[string]any {
 		"facts":      map[string]any{"type": "array", "maxItems": 500, "items": fact},
 		"verbatim":   map[string]any{"type": "array", "maxItems": 50, "items": verbatim},
 		"change_set": changeSet,
-		"summary":    optionalString("markdown summary of the preparation", 262144),
+		"summary":    optionalString("change set summary, one line per item", 262144),
 		"next_step":  boundedSchema("what to do next", 1024),
 	}), []string{"section_id", "findings", "facts", "verbatim", "change_set", "summary", "next_step"})
 }
+
+const prepareSectionNextStep = "Show the analyst the findings first, then the change set summary. Ask for approval, and after the analyst approves call workiva_confirm_change_set with change_set_id and confirm_token."
 
 func (prepareSectionTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(s, &mcp.Tool{
@@ -144,10 +150,80 @@ func (prepareSectionTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		Description:  prepareSectionDescription,
 		InputSchema:  prepareSectionInputSchema(),
 		OutputSchema: prepareSectionOutputSchema(),
-	}, func(_ context.Context, _ *mcp.CallToolRequest, _ prepareSectionInput) (*mcp.CallToolResult, prepareSectionOutput, error) {
+	}, func(ctx context.Context, req *mcp.CallToolRequest, in prepareSectionInput) (*mcp.CallToolResult, prepareSectionOutput, error) {
 		if err := requireDemoDep(deps.Recipes != nil, "Recipes"); err != nil {
 			return nil, prepareSectionOutput{}, err
 		}
-		return nil, prepareSectionOutput{}, notImplementedYet(prepareSectionName)
+		actor := mcpserver.ActorFromContextOrRequest(ctx, req, deps.ActorHeader)
+
+		sections := deps.Recipes.Sections()
+		known := false
+		for _, section := range sections {
+			if section.ID == in.SectionID {
+				known = true
+				break
+			}
+		}
+		if !known {
+			return nil, prepareSectionOutput{}, unknownSectionError(in.SectionID, sections)
+		}
+
+		prepared, err := deps.Recipes.Prepare(ctx, actor, in.SectionID)
+		if err != nil {
+			return nil, prepareSectionOutput{}, fail(err, "fix the reported problem and call workiva_prepare_section again")
+		}
+		return nil, newPrepareSectionOutput(prepared), nil
 	})
+}
+
+func unknownSectionError(sectionID string, sections []recipe.SectionInfo) error {
+	msg := fmt.Sprintf("unknown section ID %q", sectionID)
+	if len(sections) == 0 {
+		return failMsg(msg, "no section recipes are loaded; check NL_DEMO_SECTIONS_DIR")
+	}
+	parts := make([]string, 0, len(sections))
+	for _, section := range sections {
+		parts = append(parts, fmt.Sprintf("%s (%s)", section.ID, section.Title))
+	}
+	return failMsg(msg, "available sections: "+strings.Join(parts, ", "))
+}
+
+// newPrepareSectionOutput maps a prepared section to the tool output. Every
+// array is non-nil because the output schema requires arrays.
+func newPrepareSectionOutput(p recipe.Prepared) prepareSectionOutput {
+	out := prepareSectionOutput{
+		SectionID: p.SectionID,
+		Findings:  make([]prepareFinding, 0, len(p.Findings)),
+		Facts:     make([]prepareFact, 0, len(p.Facts)),
+		Verbatim:  make([]prepareVerbatim, 0, len(p.Verbatim)),
+		ChangeSet: prepareChangeSet{
+			ChangeSetID:  p.ChangeSet.ID,
+			ConfirmToken: p.ChangeSet.Token,
+			ExpiresAt:    p.ChangeSet.ExpiresAt.UTC().Format(time.RFC3339),
+			Items:        make([]prepareChangeSetItem, 0, len(p.ChangeSet.Items)),
+		},
+		Summary:  p.ChangeSet.Summary,
+		NextStep: prepareSectionNextStep,
+	}
+	for _, f := range p.Findings {
+		out.Findings = append(out.Findings, prepareFinding{Kind: f.Kind, Field: f.Field, Severity: f.Severity, Message: f.Message})
+	}
+	for _, f := range p.Facts {
+		display := make([]string, 0, len(f.Display))
+		display = append(display, f.Display...)
+		out.Facts = append(out.Facts, prepareFact{
+			Key: f.Key, Label: f.Label, Unit: f.Unit, Current: f.Current, Prior: f.Prior,
+			Change: f.Change, ChangePct: f.ChangePct, Direction: f.Direction, Material: f.Material, Display: display,
+		})
+	}
+	for _, v := range p.Verbatim {
+		out.Verbatim = append(out.Verbatim, prepareVerbatim{ID: v.ID, Title: v.Title, Text: v.Text})
+	}
+	for _, item := range p.ChangeSet.Items {
+		out.ChangeSet.Items = append(out.ChangeSet.Items, prepareChangeSetItem{
+			FieldName: item.FieldName, SpreadsheetID: item.SpreadsheetID, SheetID: item.SheetID,
+			Range: item.Range, Before: item.Before, After: item.After, Source: item.Source,
+		})
+	}
+	return out
 }

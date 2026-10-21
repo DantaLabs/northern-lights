@@ -1,0 +1,38 @@
+{
+  "task_id": "T3",
+  "axis": "standards",
+  "attempt": 1,
+  "implementation_commit": "13c8bb520ea8f0ac7def90308579ab455c771fec",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/factstore.go",
+      "line": 109,
+      "issue": "The two adapters treat empty slices differently. factStoreCloneBlocks (and the Display clone at line 100) use append(nil, in...), which turns an empty non-nil slice into nil. The SQLite adapter round-trips [] as an empty non-nil slice. So the memory adapter hands back nil blocks for a stored empty set, while factStoreCloneFacts (make) keeps them non-nil. TestFactStoreReplacesPreviousSet works around this with len(b) != 0 instead of DeepEqual. That makes 'nothing stored' (nil, nil, nil) look the same as 'stored an empty set' in memory but not in SQLite.",
+      "fix": "Clone with make+copy (or slices.Clone) in both helpers so nil stays nil and empty stays empty. Then add a both-adapter subtest that stores empty facts and blocks and compares the result with reflect.DeepEqual."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/factstore_test.go",
+      "line": 101,
+      "issue": "TestFactStoreMemoryReturnsCopies throws away the errors from newFactStore and both LatestFacts calls (s, _ := ...; got, _, _ := ...). If either call failed, the test would panic on got[0] instead of reporting a clear failure. The other tests in the file do check every error.",
+      "fix": "Check each error with t.Fatalf, as the sibling tests do."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/factstore.go",
+      "line": 87,
+      "issue": "Possible Primitive Obsession: the memory key is a bare [3]string built in two places, so the reader has to remember the order tenant/actor/section.",
+      "fix": "Use a small struct key { tenant, actor, sectionID string } built by one helper that calls identity.StorageTenant."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R10",
+      "satisfied": true,
+      "evidence": "internal/recipe/factstore.go replaceFacts upsert ON CONFLICT (tenant_id, actor, section_id) and LatestFacts; TestScenario7LatestFactsPerActorAndSection, TestFactStoreReplacesPreviousSet and TestFactStoreSQLiteSurvivesReopen pass under -race (checks/T3-a1.json). Security: all SQL is parameterized; the tenant comes from identity.StorageTenant on both read and write, and Scenario7 checks cross-tenant isolation; no secrets or logging; the memory adapter is mutex-guarded and returns copies. No weakened tests, skipped checks or ignore comments in the diff."
+    }
+  ],
+  "new_tasks": []
+}

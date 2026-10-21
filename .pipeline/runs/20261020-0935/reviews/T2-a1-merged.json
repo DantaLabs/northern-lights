@@ -1,0 +1,153 @@
+{
+  "task_id": "T2",
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 48,
+      "issue": "R1 sets the default directory to configs/demo/sections, and service.go:19/48-51 implements it. No test proves the default: every test sets NL_DEMO_SECTIONS_DIR. I checked outside the repo that the real configs/demo/sections recipes (esg-environmental, esg-social) load against configs/demo/mappings-demo.yaml with this commit, so the default path works today. No test protects it, though.",
+      "fix": "Optional: add a test that unsets NL_DEMO_SECTIONS_DIR, or that points it at ../../configs/demo/sections with the demo mappings, and asserts that both real sections load. T4 scenario 9 may cover this.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 69,
+      "issue": "The owner rule 'nil Cfg keeps the YAML document_id' is implemented (env.Cfg != nil guard), but TestDocumentIDOverrideFromEnvironment only covers Cfg with DemoMode true or false. The Entra storage context (service.go:53-55) is also untested. Neither is a covered spec requirement; both come from the task instructions.",
+      "fix": "Optional: add a nil_cfg_keeps_yaml subtest with NL_DEMO_DOCUMENT_ID set.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/service_test.go",
+      "line": 105,
+      "issue": "For R3, unknown_mapped_field only exercises the source key. The target and prior lookups run through the same loop (recipe.go:233-244), so the risk is low.",
+      "fix": "Optional: add cases for the target and prior keys.",
+      "axis": "spec"
+    },
+    {
+      "severity": "major",
+      "file": "internal/recipe/recipe.go",
+      "line": 254,
+      "issue": "Security (path containment): verbatimDef.validate checks only the lexical path with filepath.IsLocal and then calls os.Stat, which follows symlinks. A verbatim entry such as file: verbatim/policy.txt where policy.txt (or the verbatim/ directory) is a symlink to /etc/passwd or a secret file outside the sections directory passes as a regular, non-empty file. T4 will then return its bytes verbatim through the MCP tool, so this is information disclosure. The check also runs only at load, while the read happens later in Prepare (check/use gap). The repo already resolves symlinks for config paths (cmd/workiva-mcp/backup_config.go uses EvalSymlinks/Lstat), so this falls short of the repo's own convention and of the task's 'no escape outside the sections dir' requirement.",
+      "fix": "Open the sections directory with os.OpenRoot (Go 1.27 in go.mod) and stat/read verbatim files through the *os.Root, which refuses symlink and '..' escapes. Keep the Root (or the validated content) on the service for T4 to read from. If that is not possible, use filepath.EvalSymlinks on both dir and the joined path, require filepath.Rel to stay local, and Lstat to reject symlinks. Add a test where a symlink inside the sections directory points to an existing file outside it and expect an error.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service_test.go",
+      "line": 146,
+      "issue": "The escaping-verbatim case uses ../policy.txt, which does not exist, and asserts only that the error names esc.yaml. If the filepath.IsLocal check were removed, os.Stat would still fail and the test would stay green, so the containment control has no test that would catch a regression. An absolute path is not tested either.",
+      "fix": "Create a real file outside the sections directory, point the recipe at it with ../ and with an absolute path, and assert that the error contains the containment reason, not only the file name.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 63,
+      "issue": "The special case errors.Is(err, errNoStore) -> return errNoStore removes the 'section recipe <file>' context that every other load error carries. It exists only to match an exact-string test. This conditional is bolted onto the error path, and the noStore sentinel type exists only to support it.",
+      "fix": "Before calling loadRecipes, check 'env.Store == nil' together with the presence of recipes (or have loadRecipes report the count), and return 'mapping store is not available' directly. Alternatively keep the wrapped error and have the test use errors.Is.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 71,
+      "issue": "Blankness of NL_DEMO_DOCUMENT_ID is tested with strings.TrimSpace, but the untrimmed value is assigned as the override. A value with stray whitespace (common in .env files) becomes a document ID that Workiva will not resolve.",
+      "fix": "Assign strings.TrimSpace(v).",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/recipe.go",
+      "line": 138,
+      "issue": "Only the first YAML document in each file is decoded. A recipe file that contains '---' followed by a second document has the rest silently ignored, which weakens the 'invalid recipe stops startup' guarantee.",
+      "fix": "After the first Decode, call Decode again and require io.EOF; otherwise return 'multiple YAML documents are not allowed'.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/recipe.go",
+      "line": 126,
+      "issue": "sort.SliceStable by file is redundant: os.ReadDir already returns entries sorted by name, as the comment on line 112 says.",
+      "fix": "Remove the sort, or remove the comment and keep one source of ordering.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [
+    "Open the sections directory with os.OpenRoot (Go 1.27 in go.mod) and stat/read verbatim files through the *os.Root, which refuses symlink and '..' escapes. Keep the Root (or the validated content) on the service for T4 to read from. If that is not possible, use filepath.EvalSymlinks on both dir and the joined path, require filepath.Rel to stay local, and Lstat to reject symlinks. Add a test where a symlink inside the sections directory points to an existing file outside it and expect an error."
+  ],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 48,
+      "issue": "R1 sets the default directory to configs/demo/sections, and service.go:19/48-51 implements it. No test proves the default: every test sets NL_DEMO_SECTIONS_DIR. I checked outside the repo that the real configs/demo/sections recipes (esg-environmental, esg-social) load against configs/demo/mappings-demo.yaml with this commit, so the default path works today. No test protects it, though.",
+      "fix": "Optional: add a test that unsets NL_DEMO_SECTIONS_DIR, or that points it at ../../configs/demo/sections with the demo mappings, and asserts that both real sections load. T4 scenario 9 may cover this.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 69,
+      "issue": "The owner rule 'nil Cfg keeps the YAML document_id' is implemented (env.Cfg != nil guard), but TestDocumentIDOverrideFromEnvironment only covers Cfg with DemoMode true or false. The Entra storage context (service.go:53-55) is also untested. Neither is a covered spec requirement; both come from the task instructions.",
+      "fix": "Optional: add a nil_cfg_keeps_yaml subtest with NL_DEMO_DOCUMENT_ID set.",
+      "axis": "spec"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/service_test.go",
+      "line": 105,
+      "issue": "For R3, unknown_mapped_field only exercises the source key. The target and prior lookups run through the same loop (recipe.go:233-244), so the risk is low.",
+      "fix": "Optional: add cases for the target and prior keys.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service_test.go",
+      "line": 146,
+      "issue": "The escaping-verbatim case uses ../policy.txt, which does not exist, and asserts only that the error names esc.yaml. If the filepath.IsLocal check were removed, os.Stat would still fail and the test would stay green, so the containment control has no test that would catch a regression. An absolute path is not tested either.",
+      "fix": "Create a real file outside the sections directory, point the recipe at it with ../ and with an absolute path, and assert that the error contains the containment reason, not only the file name.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 63,
+      "issue": "The special case errors.Is(err, errNoStore) -> return errNoStore removes the 'section recipe <file>' context that every other load error carries. It exists only to match an exact-string test. This conditional is bolted onto the error path, and the noStore sentinel type exists only to support it.",
+      "fix": "Before calling loadRecipes, check 'env.Store == nil' together with the presence of recipes (or have loadRecipes report the count), and return 'mapping store is not available' directly. Alternatively keep the wrapped error and have the test use errors.Is.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 71,
+      "issue": "Blankness of NL_DEMO_DOCUMENT_ID is tested with strings.TrimSpace, but the untrimmed value is assigned as the override. A value with stray whitespace (common in .env files) becomes a document ID that Workiva will not resolve.",
+      "fix": "Assign strings.TrimSpace(v).",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/recipe.go",
+      "line": 138,
+      "issue": "Only the first YAML document in each file is decoded. A recipe file that contains '---' followed by a second document has the rest silently ignored, which weakens the 'invalid recipe stops startup' guarantee.",
+      "fix": "After the first Decode, call Decode again and require io.EOF; otherwise return 'multiple YAML documents are not allowed'.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/recipe.go",
+      "line": 126,
+      "issue": "sort.SliceStable by file is redundant: os.ReadDir already returns entries sorted by name, as the comment on line 112 says.",
+      "fix": "Remove the sort, or remove the comment and keep one source of ordering.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "revise"
+  }
+}

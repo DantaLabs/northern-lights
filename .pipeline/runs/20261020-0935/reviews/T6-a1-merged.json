@@ -1,0 +1,159 @@
+{
+  "task_id": "T6",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 11,
+      "issue": "The L2 row does not match the task text. Last commit says 'see PR' where the task asked for a short SHA (the parent 55ad776 would do). Blocked on says 'L1 merge: switch summary to Preview.Summary' and leaves out the requested 'L1 changeset.Service (tests use a fake)' part.",
+      "fix": "Put 55ad776 (or the final short SHA) in Last commit. Set Blocked on to 'L1 changeset.Service (tests use a fake); switch summary to Preview.Summary when L1 merges'.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 30,
+      "issue": "Removing the handled L4 -> L2 request line also removed L4's separate, still-unconfirmed note that sandbox percent fields hold fractions if percent-cells-store-fractions is yes. L2 did not handle that note, and nothing else in the file keeps it.",
+      "fix": "Keep the percent-fraction sentence as a short L4 -> L2 note, or move it to the L2 row's Blocked on cell. Remove only the document-ID request that was handled.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/demo_scenario_test.go",
+      "line": 93,
+      "issue": "The findings check compares the length and then checks that each finding's kind matches the expected label. A duplicated planted finding that replaces a missing one, such as water/missing twice with no electricity/out_of_range, would still pass. So the test does not fully prove 'exactly the three planted findings'.",
+      "fix": "Collect the findings into a map from Field to Kind (or a set of pairs) and compare it for equality with wantFindings.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 271,
+      "issue": "Unchecked type assertions (out[\"findings\"].([]any), out[\"change_set\"].(map[string]any)[\"items\"].([]any), out[\"summary\"].(string)) panic instead of failing with a message if the structured output shape regresses. The package mixes both styles, but the comma-ok form (discover_relationships_test.go) reports better.",
+      "fix": "Use the comma-ok form and t.Fatalf with the raw output when a key is missing or has the wrong type.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/demo_scenario_test.go",
+      "line": 92,
+      "issue": "The findings check only verifies the count and that each returned (Field, Kind) is in the expected map. A duplicate expected finding that replaced a missing one (for example two 'missing' findings for water discharge and no out_of_range) would still pass.",
+      "fix": "Track which expected fields were seen (delete from a copy of wantFindings as they match) and fail on any field left over.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 11,
+      "issue": "The L2 row's Last commit cell holds 'see PR' while every other populated row holds a short SHA. The Blocked-on cell also drops the planned '(tests use a fake)' qualifier on the L1 dependency. Edits are correctly limited to the L2 row and the handled L4 -> L2 request line, and the percent-cell note removed with that line is still recorded in configs/demo/README.md:84-86, so nothing is lost.",
+      "fix": "Put the short SHA (for example 55ad776, the parent) in Last commit and use the planned Blocked-on wording.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 202,
+      "issue": "Possible Duplicated Code: stagingChanges.Stage repeats prepareTestChanges.Stage (internal/recipe/prepare_test.go:72-89) line for line, and the env setup repeats demoScenarioEnv. Test helpers cannot be shared across packages without a testutil package, so this is acceptable for now.",
+      "fix": "Optional: once a third copy appears, move the mapping-resolving fake changeset.Service and the demo env builder into a shared internal test-helper package.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/demo_scenario_test.go",
+      "line": 118,
+      "issue": "Hard-coded CSV column indexes row[0] and row[3] depend silently on the header order 'key,label,unit,value'.",
+      "fix": "Resolve the column indexes from rows[0] by header name, or name them as constants.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/demo_scenario_test.go",
+      "line": 104,
+      "issue": "svc.(*service).recipes reaches into unexported service state to derive the field keys, which couples the scenario test to the implementation.",
+      "fix": "Acceptable in an in-package test. Alternatively, read the field keys from the committed esg-environmental recipe file.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 11,
+      "issue": "The L2 row does not match the task text. Last commit says 'see PR' where the task asked for a short SHA (the parent 55ad776 would do). Blocked on says 'L1 merge: switch summary to Preview.Summary' and leaves out the requested 'L1 changeset.Service (tests use a fake)' part.",
+      "fix": "Put 55ad776 (or the final short SHA) in Last commit. Set Blocked on to 'L1 changeset.Service (tests use a fake); switch summary to Preview.Summary when L1 merges'.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 30,
+      "issue": "Removing the handled L4 -> L2 request line also removed L4's separate, still-unconfirmed note that sandbox percent fields hold fractions if percent-cells-store-fractions is yes. L2 did not handle that note, and nothing else in the file keeps it.",
+      "fix": "Keep the percent-fraction sentence as a short L4 -> L2 note, or move it to the L2 row's Blocked on cell. Remove only the document-ID request that was handled.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/demo_scenario_test.go",
+      "line": 93,
+      "issue": "The findings check compares the length and then checks that each finding's kind matches the expected label. A duplicated planted finding that replaces a missing one, such as water/missing twice with no electricity/out_of_range, would still pass. So the test does not fully prove 'exactly the three planted findings'.",
+      "fix": "Collect the findings into a map from Field to Kind (or a set of pairs) and compare it for equality with wantFindings.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 271,
+      "issue": "Unchecked type assertions (out[\"findings\"].([]any), out[\"change_set\"].(map[string]any)[\"items\"].([]any), out[\"summary\"].(string)) panic instead of failing with a message if the structured output shape regresses. The package mixes both styles, but the comma-ok form (discover_relationships_test.go) reports better.",
+      "fix": "Use the comma-ok form and t.Fatalf with the raw output when a key is missing or has the wrong type.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/demo_scenario_test.go",
+      "line": 92,
+      "issue": "The findings check only verifies the count and that each returned (Field, Kind) is in the expected map. A duplicate expected finding that replaced a missing one (for example two 'missing' findings for water discharge and no out_of_range) would still pass.",
+      "fix": "Track which expected fields were seen (delete from a copy of wantFindings as they match) and fail on any field left over.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 11,
+      "issue": "The L2 row's Last commit cell holds 'see PR' while every other populated row holds a short SHA. The Blocked-on cell also drops the planned '(tests use a fake)' qualifier on the L1 dependency. Edits are correctly limited to the L2 row and the handled L4 -> L2 request line, and the percent-cell note removed with that line is still recorded in configs/demo/README.md:84-86, so nothing is lost.",
+      "fix": "Put the short SHA (for example 55ad776, the parent) in Last commit and use the planned Blocked-on wording.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 202,
+      "issue": "Possible Duplicated Code: stagingChanges.Stage repeats prepareTestChanges.Stage (internal/recipe/prepare_test.go:72-89) line for line, and the env setup repeats demoScenarioEnv. Test helpers cannot be shared across packages without a testutil package, so this is acceptable for now.",
+      "fix": "Optional: once a third copy appears, move the mapping-resolving fake changeset.Service and the demo env builder into a shared internal test-helper package.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/demo_scenario_test.go",
+      "line": 118,
+      "issue": "Hard-coded CSV column indexes row[0] and row[3] depend silently on the header order 'key,label,unit,value'.",
+      "fix": "Resolve the column indexes from rows[0] by header name, or name them as constants.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/demo_scenario_test.go",
+      "line": 104,
+      "issue": "svc.(*service).recipes reaches into unexported service state to derive the field keys, which couples the scenario test to the implementation.",
+      "fix": "Acceptable in an in-package test. Alternatively, read the field keys from the committed esg-environmental recipe file.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

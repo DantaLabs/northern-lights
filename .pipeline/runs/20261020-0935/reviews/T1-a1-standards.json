@@ -1,0 +1,18 @@
+{
+  "task_id": "T1",
+  "axis": "standards",
+  "verdict": "revise",
+  "implementation_commit": "0ccd01a60666441af3f42a1abfd0ee5141aa587c",
+  "attempt": 1,
+  "findings": [
+    {"severity": "major", "file": "internal/recipe/facts_test.go", "line": 29, "issue": "The R5 boundary 'at or above materiality_pct' is not tested. Mutating `fact.Material = cmp >= 0` to `cmp > 0` in facts.go leaves go test ./internal/recipe/ green. Both the non-percent and percentage-point paths lack an equality case.", "fix": "Add cases where abs(ChangePct) == MaterialityPct (e.g. current 110, prior 100, materiality 10 -> Material true) and the same for a % field (0.48 vs 0.38 at 10 -> Material true)."},
+    {"severity": "minor", "file": "internal/recipe/facts.go", "line": 171, "issue": "computeFactValues is about 150 lines and mixes input normalisation, change/direction/materiality maths and display assembly. The reader holds many concepts at once (possible Divergent Change).", "fix": "Split into normalise inputs, computeChange (Change, ChangePct, Direction, Material) and buildDisplay helpers."},
+    {"severity": "minor", "file": "internal/recipe/facts.go", "line": 214, "issue": "Direction values 'up', 'down', 'flat' and 'new' are bare string literals (possible Primitive Obsession). The type is pre-existing in types.go, but this is the first code that assigns them.", "fix": "Declare package constants (DirectionUp and so on) and use them here and in the tests."},
+    {"severity": "minor", "file": "internal/recipe/facts.go", "line": 336, "issue": "The singular 'percentage point' check compares the rounded magnitude to the literal \"1\". At decimals>0 a value of 1.0 renders as '1.0 percentage points', so the singular and the dedupe against display are inconsistent. The dedupe of the percentage-point form is untested.", "fix": "Decide the singular rule explicitly (compare numerically via CompareDecimal), and add a test for it and for the dedupe branch."}
+  ],
+  "requirements_checked": [
+    {"requirement": "R5", "satisfied": true, "evidence": "TestScenario2FactArithmetic, TestScenario3NewDirectionWhenPriorZeroOrMissing. Uses assurance decimal helpers and math/big, no float64 (grep check exit 0). The >= boundary is untested."},
+    {"requirement": "R6", "satisfied": true, "evidence": "TestScenario4DisplayForms, TestPercentFieldsUsePercentAndPercentagePoints"}
+  ],
+  "new_tasks": []
+}

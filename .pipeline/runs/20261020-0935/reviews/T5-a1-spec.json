@@ -1,0 +1,51 @@
+{
+  "task_id": "T5",
+  "axis": "spec",
+  "attempt": 1,
+  "implementation_commit": "29becb1bdc48e5b75bbb188c321102e499c88b11",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 49,
+      "issue": "The task requires the unknown-section error to list sections in Sections() order. The handler does this (prepare_section.go:180-190 iterates the slice it was given), but TestScenario8UnknownSectionListsSections only checks that each entry is present, so a change that reorders the list would still pass. Sorting by ID is Sections()' job under R13 and is tested elsewhere, so this does not block.",
+      "fix": "Optional: assert that the hint contains the exact text 'available sections: environmental (Environmental Disclosures), governance (Governance Disclosures)'."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/mcpserver/tools/prepare_section_test.go",
+      "line": 76,
+      "issue": "The R12 mapping test does not check every field of Prepared. These are never asserted: finding kind/field/severity, fact key/label/unit, verbatim title, and item field_name/spreadsheet_id/sheet_id/before/after. The summary check covers field_name/before/after only indirectly, through Preview. Getting one of the unchecked fields wrong in newPrepareSectionOutput would not fail any test.",
+      "fix": "Optional: compare the whole structured output against an expected map with reflect.DeepEqual, or add asserts for the remaining fields."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R11",
+      "satisfied": true,
+      "evidence": "prepare_section.go:160-171 checks section_id against deps.Recipes.Sections() before calling Prepare. unknownSectionError (prepare_section.go:180) returns failMsg with 'unknown section ID \"<id>\"' and 'available sections: <id> (<title>), ...', or the NL_DEMO_SECTIONS_DIR hint when no sections are loaded. Proven by TestScenario8UnknownSectionListsSections (prepare_section_test.go:49), which asserts IsError, every ID and title, and Prepare calls == 0. TestScenario8UnknownSectionWithNoRecipes (:69) covers the empty case. Without the check, the fake returns a successful Prepared and the test fails."
+    },
+    {
+      "requirement": "R12",
+      "satisfied": true,
+      "evidence": "newPrepareSectionOutput maps findings, facts (with display), verbatim and change_set (id, token, RFC3339 UTC expiry, items). changeSetSummary (prepare_section.go:236) matches L1's format byte for byte: nl-l1 internal/changeset/execute.go:172 summaryLine, with the same NewReplacer escaping and lines joined by '\\n'. prepareSectionNextStep (prepare_section.go:146) is the exact string from the plan. Proven by TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep (prepare_section_test.go:76), which checks the exact summary including the escaped '\\n' and '\\r' in After, the order findings -> summary -> approval -> workiva_confirm_change_set in next_step, and the actor and section passed to Prepare. TestScenario8EmptyPreparedUsesEmptyArrays (:155) proves arrays are non-null."
+    },
+    {
+      "requirement": "R13 (tool side: listing uses Sections())",
+      "satisfied": true,
+      "evidence": "The handler builds the list only from deps.Recipes.Sections() (prepare_section.go:160) and keeps its order (unknownSectionError, prepare_section.go:180). TestScenario8UnknownSectionListsSections feeds canned Sections() and finds them in the error. Order is not asserted (see minor finding). The recipe-side sorting and fields of R13 are outside T5."
+    },
+    {
+      "requirement": "Acceptance scenario 8",
+      "satisfied": true,
+      "evidence": "TestScenario8UnknownSectionListsSections and TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep are listed and pass under -race. TestPrepareSectionRequiresRecipes passes. The stub test was removed. checks/T5-a1.json shows all 10 commands exit 0, including the full gofmt, go vet and golangci-lint run (0 issues)."
+    },
+    {
+      "requirement": "Scope and naming",
+      "satisfied": true,
+      "evidence": "The diff touches only the two files T5 owns. The output-schema description edits were explicitly allowed by the plan. The extra tests (no recipes loaded, empty arrays) are within the task. Names match CONTEXT.md vocabulary: section, section recipe, change set, finding, narrative fact, verbatim block."
+    }
+  ],
+  "new_tasks": []
+}

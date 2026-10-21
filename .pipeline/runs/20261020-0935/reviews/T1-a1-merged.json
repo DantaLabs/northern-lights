@@ -1,0 +1,98 @@
+{
+  "task_id": "T1",
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "major",
+      "file": "internal/recipe/facts_test.go",
+      "line": 44,
+      "issue": "R5 says Material is true when the absolute ChangePct is 'at or above materiality_pct', and the plan says '|ChangePct| >= MaterialityPct'. No test checks the equality case. Every Material assertion is strictly above or below the threshold: 8.148 vs 10, 8.148 vs 8, 8 pp vs 10 and 12 pp vs 10. I changed facts.go:243 from `cmp >= 0` to `cmp > 0` in a scratch copy and the whole ./internal/recipe suite still passed. So the 'at or above' part of R5 has no test that would fail if it were wrong. L2's material_change findings (R7) depend on it.",
+      "fix": "Add assertions where the value equals the threshold. Relative case: Current \"110\", Prior \"100\", MaterialityPct \"10\" gives Material true. Percent-point case: Unit \"%\", Current \"0.48\", Prior \"0.38\", MaterialityPct \"10\" gives exactly 10 pp, so Material is true. Put them in TestScenario2FactArithmetic and TestPercentFieldsUsePercentAndPercentagePoints, or in a new test.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 301,
+      "issue": "For '%' fields the plan says to 'skip any form that exactly duplicates an earlier entry'. The code only removes duplicates of the percentage-point form and of the unsigned extras. The pct0 and pct1 forms are always added. For example, Prior 1.00 and Current 1.08 gives change \"8%\" and pct0 \"8%\", so the same string appears twice. This is harmless for L3's guard, which builds a set, but the plan's wording could also be read as covering these forms.",
+      "fix": "Optional: apply the containsString check to the percent forms for '%' fields too, or confirm that the rule only covers the percentage-point form, which the flat case's kept '100 m3' duplicate suggests.",
+      "axis": "spec"
+    },
+    {
+      "severity": "major",
+      "file": "internal/recipe/facts_test.go",
+      "line": 29,
+      "issue": "The R5 boundary 'at or above materiality_pct' is not tested. Mutating `fact.Material = cmp >= 0` to `cmp > 0` in facts.go leaves go test ./internal/recipe/ green. Both the non-percent and percentage-point paths lack an equality case.",
+      "fix": "Add cases where abs(ChangePct) == MaterialityPct (e.g. current 110, prior 100, materiality 10 -> Material true) and the same for a % field (0.48 vs 0.38 at 10 -> Material true).",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 171,
+      "issue": "computeFactValues is about 150 lines and mixes input normalisation, change/direction/materiality maths and display assembly. The reader holds many concepts at once (possible Divergent Change).",
+      "fix": "Split into normalise inputs, computeChange (Change, ChangePct, Direction, Material) and buildDisplay helpers.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 214,
+      "issue": "Direction values 'up', 'down', 'flat' and 'new' are bare string literals (possible Primitive Obsession). The type is pre-existing in types.go, but this is the first code that assigns them.",
+      "fix": "Declare package constants (DirectionUp and so on) and use them here and in the tests.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 336,
+      "issue": "The singular 'percentage point' check compares the rounded magnitude to the literal \"1\". At decimals>0 a value of 1.0 renders as '1.0 percentage points', so the singular and the dedupe against display are inconsistent. The dedupe of the percentage-point form is untested.",
+      "fix": "Decide the singular rule explicitly (compare numerically via CompareDecimal), and add a test for it and for the dedupe branch.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [
+    "Add assertions where the value equals the threshold. Relative case: Current \"110\", Prior \"100\", MaterialityPct \"10\" gives Material true. Percent-point case: Unit \"%\", Current \"0.48\", Prior \"0.38\", MaterialityPct \"10\" gives exactly 10 pp, so Material is true. Put them in TestScenario2FactArithmetic and TestPercentFieldsUsePercentAndPercentagePoints, or in a new test.",
+    "Add cases where abs(ChangePct) == MaterialityPct (e.g. current 110, prior 100, materiality 10 -> Material true) and the same for a % field (0.48 vs 0.38 at 10 -> Material true)."
+  ],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 301,
+      "issue": "For '%' fields the plan says to 'skip any form that exactly duplicates an earlier entry'. The code only removes duplicates of the percentage-point form and of the unsigned extras. The pct0 and pct1 forms are always added. For example, Prior 1.00 and Current 1.08 gives change \"8%\" and pct0 \"8%\", so the same string appears twice. This is harmless for L3's guard, which builds a set, but the plan's wording could also be read as covering these forms.",
+      "fix": "Optional: apply the containsString check to the percent forms for '%' fields too, or confirm that the rule only covers the percentage-point form, which the flat case's kept '100 m3' duplicate suggests.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 171,
+      "issue": "computeFactValues is about 150 lines and mixes input normalisation, change/direction/materiality maths and display assembly. The reader holds many concepts at once (possible Divergent Change).",
+      "fix": "Split into normalise inputs, computeChange (Change, ChangePct, Direction, Material) and buildDisplay helpers.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 214,
+      "issue": "Direction values 'up', 'down', 'flat' and 'new' are bare string literals (possible Primitive Obsession). The type is pre-existing in types.go, but this is the first code that assigns them.",
+      "fix": "Declare package constants (DirectionUp and so on) and use them here and in the tests.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 336,
+      "issue": "The singular 'percentage point' check compares the rounded magnitude to the literal \"1\". At decimals>0 a value of 1.0 renders as '1.0 percentage points', so the singular and the dedupe against display are inconsistent. The dedupe of the percentage-point form is untested.",
+      "fix": "Decide the singular rule explicitly (compare numerically via CompareDecimal), and add a test for it and for the dedupe branch.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "revise",
+    "standards": "revise"
+  }
+}

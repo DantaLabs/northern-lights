@@ -1,0 +1,130 @@
+{
+  "task_id": "T4",
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "major",
+      "file": "internal/recipe/prepare_test.go",
+      "line": 193,
+      "issue": "The owner constraint says that for '%' fields, min and max are in percent while the cell stores a fraction. The code is correct: prepare.go:192 compares the x100-scaled fact.Current. But no test fails if that is lost. TestScenario5Findings only checks a raw 0.46 against min 50, and that gives exactly one out_of_range under every wrong reading too: raw 0.46 < 50, and 0.46 < 0.5 if the limit is scaled to a fraction. If someone regresses to comparing the stored fraction, every '%' field with min > 1 would be flagged out_of_range on real data, and no test would catch it.",
+      "fix": "Add a '%' field whose fraction is inside the percent range but would be out of range compared raw. For example raw 0.6 with min 50, or raw 0.75 with max 80. Assert it gets zero out_of_range findings. Also assert that the Renewable share message contains '46%', so the displayed value is the percent-scaled one.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare_test.go",
+      "line": 223,
+      "issue": "The task gives fixed severities: missing/out_of_range are 'high' and material_change/sign_change are 'medium'. The test only checks that Severity is non-empty, so swapping the severities would pass.",
+      "fix": "Assert Severity == 'high' for missing/out_of_range and 'medium' for material_change/sign_change.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare.go",
+      "line": 158,
+      "issue": "Verbatim files are read before Stage, not after it as step 6 of the task says. They are also read through the recipe's os.Root rather than os.ReadFile(filepath.Join(dir, file)). This is a harmless deviation and arguably stricter: a bad verbatim file fails before anything is staged, and path escape is refused. It is recorded for traceability only.",
+      "fix": "None required.",
+      "axis": "spec"
+    },
+    {
+      "severity": "blocking",
+      "file": "internal/recipe/prepare.go",
+      "line": 103,
+      "issue": "The error is built as fmt.Errorf(\"%s client is not available\", providerName) with a package constant (line 22) only so staticcheck ST1005 cannot see the capitalised literal. The report says so: 'built it with fmt.Errorf(\"%s client ...\", providerName) instead of an ignore comment'. It is still a lint suppression, only hidden, and it was done to get green. AGENTS.md Rules 3 says 'Never weaken a test, lint rule or check to get a green result'; hiding the literal weakens ST1005 for this line just as an ignore comment would. Elsewhere the repo keeps capitalised 'Workiva client is not available' strings in the tool layer through failMsg (internal/mcpserver/tools/get_field.go:97, read_range.go:62, update_field.go:274), not in Go error values.",
+      "fix": "Remove the indirection. Either return a lowercase sentinel from recipe (for example errClientUnavailable = errors.New(\"workiva client is not available\")) and have the prepare_section tool turn it into failMsg(\"Workiva client is not available\", ...) as the other tools do, or record the conflict between the plan's message and ST1005 as an open_question. Do not hide the literal to keep ST1005 quiet.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare.go",
+      "line": 101,
+      "issue": "The check `reader, ok := s.client.(cellReader); if !ok || s.client == nil` is partly redundant: a type assertion on a nil interface already gives ok=false. It also misses the case that can actually happen: a typed-nil *workivaprovider.Router passes both checks and panics in ReadUncached.",
+      "fix": "Drop the redundant `|| s.client == nil`. If a typed-nil Router can reach New, reject it there with a clear error; otherwise leave a one-line note that callers never pass one.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare.go",
+      "line": 166,
+      "issue": "When replaceFacts fails after a successful Stage, the change set stays staged under the actor and no facts are stored. The error is returned, not swallowed, but the caller cannot tell this partial state apart from a plain failure.",
+      "fix": "Wrap the error with context (for example \"change set %s staged but facts not stored: %w\" using preview.ID), so the agent or operator knows a staged preview exists.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/prepare.go",
+      "line": 181,
+      "issue": "The min/max check loops over an anonymous struct slice holding comparison closures. For two fixed bounds this is harder to read than two straight if blocks. Some names are vague: `in`, `more`, `b`.",
+      "fix": "Write two explicit checks through a small helper, for example outOfRange(f, fact, limit, below bool), and give the variables clearer names (factIn, rangeFindings).",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/prepare.go",
+      "line": 217,
+      "issue": "The sign_change test compares decimal strings to the literal \"0\" and uses isNegative's prefix check. This only works because canonicalText always returns the canonical form, an invariant not stated at this call site.",
+      "fix": "Use assurance.CompareDecimal(x, \"0\") for the zero and sign tests, or add a comment pointing to the canonical-form guarantee of Fact.Current and Fact.Prior.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [
+    "Add a '%' field whose fraction is inside the percent range but would be out of range compared raw. For example raw 0.6 with min 50, or raw 0.75 with max 80. Assert it gets zero out_of_range findings. Also assert that the Renewable share message contains '46%', so the displayed value is the percent-scaled one.",
+    "Remove the indirection. Either return a lowercase sentinel from recipe (for example errClientUnavailable = errors.New(\"workiva client is not available\")) and have the prepare_section tool turn it into failMsg(\"Workiva client is not available\", ...) as the other tools do, or record the conflict between the plan's message and ST1005 as an open_question. Do not hide the literal to keep ST1005 quiet."
+  ],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare_test.go",
+      "line": 223,
+      "issue": "The task gives fixed severities: missing/out_of_range are 'high' and material_change/sign_change are 'medium'. The test only checks that Severity is non-empty, so swapping the severities would pass.",
+      "fix": "Assert Severity == 'high' for missing/out_of_range and 'medium' for material_change/sign_change.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare.go",
+      "line": 158,
+      "issue": "Verbatim files are read before Stage, not after it as step 6 of the task says. They are also read through the recipe's os.Root rather than os.ReadFile(filepath.Join(dir, file)). This is a harmless deviation and arguably stricter: a bad verbatim file fails before anything is staged, and path escape is refused. It is recorded for traceability only.",
+      "fix": "None required.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare.go",
+      "line": 101,
+      "issue": "The check `reader, ok := s.client.(cellReader); if !ok || s.client == nil` is partly redundant: a type assertion on a nil interface already gives ok=false. It also misses the case that can actually happen: a typed-nil *workivaprovider.Router passes both checks and panics in ReadUncached.",
+      "fix": "Drop the redundant `|| s.client == nil`. If a typed-nil Router can reach New, reject it there with a clear error; otherwise leave a one-line note that callers never pass one.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare.go",
+      "line": 166,
+      "issue": "When replaceFacts fails after a successful Stage, the change set stays staged under the actor and no facts are stored. The error is returned, not swallowed, but the caller cannot tell this partial state apart from a plain failure.",
+      "fix": "Wrap the error with context (for example \"change set %s staged but facts not stored: %w\" using preview.ID), so the agent or operator knows a staged preview exists.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/prepare.go",
+      "line": 181,
+      "issue": "The min/max check loops over an anonymous struct slice holding comparison closures. For two fixed bounds this is harder to read than two straight if blocks. Some names are vague: `in`, `more`, `b`.",
+      "fix": "Write two explicit checks through a small helper, for example outOfRange(f, fact, limit, below bool), and give the variables clearer names (factIn, rangeFindings).",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/prepare.go",
+      "line": 217,
+      "issue": "The sign_change test compares decimal strings to the literal \"0\" and uses isNegative's prefix check. This only works because canonicalText always returns the canonical form, an invariant not stated at this call site.",
+      "fix": "Use assurance.CompareDecimal(x, \"0\") for the zero and sign tests, or add a comment pointing to the canonical-form guarantee of Fact.Current and Fact.Prior.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "revise",
+    "standards": "revise"
+  }
+}

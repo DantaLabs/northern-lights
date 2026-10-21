@@ -1,0 +1,19 @@
+id: load-valid
+title: Valid section
+period: "2025"
+prior_period: "2024"
+document_id: "doc-yaml"
+materiality_pct: 10
+fields:
+  - key: energy
+    label: Energy
+    unit: MWh
+    display_unit: GWh
+    decimals: 2
+    source: load_src_energy
+    target: load_tgt_energy_2025
+    prior: load_tgt_energy_2024
+    required: true
+    min: 0
+verbatim:
+  - { id: policy, title: Policy, file: verbatim/policy.txt }

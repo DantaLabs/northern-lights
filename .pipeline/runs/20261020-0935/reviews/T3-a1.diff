@@ -1,0 +1,281 @@
+diff --git a/internal/recipe/factstore.go b/internal/recipe/factstore.go
+new file mode 100644
+index 0000000..daeb421
+--- /dev/null
++++ b/internal/recipe/factstore.go
+@@ -0,0 +1,130 @@
++package recipe
++
++import (
++	"context"
++	"database/sql"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"sync"
++	"time"
++
++	"github.com/dantalabs/northern-lights/internal/identity"
++)
++
++// factRecorder is the FactStore plus the write side Prepare uses.
++type factRecorder interface {
++	FactStore
++	replaceFacts(ctx context.Context, actor, sectionID string, facts []Fact, blocks []VerbatimBlock) error
++}
++
++// newFactStore returns a SQLite-backed store when db is non-nil and an
++// in-memory store when db is nil.
++func newFactStore(db *sql.DB) (factRecorder, error) {
++	if db == nil {
++		return &factStoreMemory{sets: map[[3]string]factStoreMemorySet{}}, nil
++	}
++	const ddl = `CREATE TABLE IF NOT EXISTS recipe_prepared (
++tenant_id TEXT NOT NULL, actor TEXT NOT NULL, section_id TEXT NOT NULL,
++facts_json TEXT NOT NULL, verbatim_json TEXT NOT NULL, prepared_at TEXT NOT NULL,
++PRIMARY KEY (tenant_id, actor, section_id))`
++	if _, err := db.Exec(ddl); err != nil {
++		return nil, fmt.Errorf("create recipe_prepared: %w", err)
++	}
++	return &factStoreSQLite{db: db}, nil
++}
++
++type factStoreSQLite struct{ db *sql.DB }
++
++func (s *factStoreSQLite) replaceFacts(ctx context.Context, actor, sectionID string, facts []Fact, blocks []VerbatimBlock) error {
++	factsJSON, err := json.Marshal(facts)
++	if err != nil {
++		return fmt.Errorf("encode facts: %w", err)
++	}
++	blocksJSON, err := json.Marshal(blocks)
++	if err != nil {
++		return fmt.Errorf("encode verbatim blocks: %w", err)
++	}
++	_, err = s.db.ExecContext(ctx, `INSERT INTO recipe_prepared
++(tenant_id, actor, section_id, facts_json, verbatim_json, prepared_at) VALUES (?, ?, ?, ?, ?, ?)
++ON CONFLICT (tenant_id, actor, section_id) DO UPDATE SET
++facts_json = excluded.facts_json, verbatim_json = excluded.verbatim_json, prepared_at = excluded.prepared_at`,
++		identity.StorageTenant(ctx), actor, sectionID, string(factsJSON), string(blocksJSON),
++		time.Now().UTC().Format(time.RFC3339Nano))
++	if err != nil {
++		return fmt.Errorf("store prepared facts: %w", err)
++	}
++	return nil
++}
++
++func (s *factStoreSQLite) LatestFacts(ctx context.Context, actor, sectionID string) ([]Fact, []VerbatimBlock, error) {
++	var factsJSON, blocksJSON string
++	err := s.db.QueryRowContext(ctx, `SELECT facts_json, verbatim_json FROM recipe_prepared
++WHERE tenant_id = ? AND actor = ? AND section_id = ?`,
++		identity.StorageTenant(ctx), actor, sectionID).Scan(&factsJSON, &blocksJSON)
++	if errors.Is(err, sql.ErrNoRows) {
++		return nil, nil, nil
++	}
++	if err != nil {
++		return nil, nil, fmt.Errorf("read prepared facts: %w", err)
++	}
++	var facts []Fact
++	if err := json.Unmarshal([]byte(factsJSON), &facts); err != nil {
++		return nil, nil, fmt.Errorf("decode facts: %w", err)
++	}
++	var blocks []VerbatimBlock
++	if err := json.Unmarshal([]byte(blocksJSON), &blocks); err != nil {
++		return nil, nil, fmt.Errorf("decode verbatim blocks: %w", err)
++	}
++	return facts, blocks, nil
++}
++
++type factStoreMemorySet struct {
++	facts  []Fact
++	blocks []VerbatimBlock
++}
++
++type factStoreMemory struct {
++	mu   sync.Mutex
++	sets map[[3]string]factStoreMemorySet
++}
++
++func factStoreCloneFacts(in []Fact) []Fact {
++	if in == nil {
++		return nil
++	}
++	out := make([]Fact, len(in))
++	for i, f := range in {
++		out[i] = f
++		if f.Display != nil {
++			out[i].Display = append([]string(nil), f.Display...)
++		}
++	}
++	return out
++}
++
++func factStoreCloneBlocks(in []VerbatimBlock) []VerbatimBlock {
++	if in == nil {
++		return nil
++	}
++	return append([]VerbatimBlock(nil), in...)
++}
++
++func (m *factStoreMemory) replaceFacts(ctx context.Context, actor, sectionID string, facts []Fact, blocks []VerbatimBlock) error {
++	key := [3]string{identity.StorageTenant(ctx), actor, sectionID}
++	m.mu.Lock()
++	defer m.mu.Unlock()
++	m.sets[key] = factStoreMemorySet{facts: factStoreCloneFacts(facts), blocks: factStoreCloneBlocks(blocks)}
++	return nil
++}
++
++func (m *factStoreMemory) LatestFacts(ctx context.Context, actor, sectionID string) ([]Fact, []VerbatimBlock, error) {
++	key := [3]string{identity.StorageTenant(ctx), actor, sectionID}
++	m.mu.Lock()
++	defer m.mu.Unlock()
++	set, ok := m.sets[key]
++	if !ok {
++		return nil, nil, nil
++	}
++	return factStoreCloneFacts(set.facts), factStoreCloneBlocks(set.blocks), nil
++}
+diff --git a/internal/recipe/factstore_test.go b/internal/recipe/factstore_test.go
+new file mode 100644
+index 0000000..03ead8b
+--- /dev/null
++++ b/internal/recipe/factstore_test.go
+@@ -0,0 +1,139 @@
++package recipe
++
++import (
++	"context"
++	"database/sql"
++	"path/filepath"
++	"reflect"
++	"testing"
++
++	"github.com/dantalabs/northern-lights/internal/identity"
++	"github.com/dantalabs/northern-lights/internal/sqlitedb"
++)
++
++func factStoreTestDB(t *testing.T) *sql.DB {
++	t.Helper()
++	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "facts.db"))
++	if err != nil {
++		t.Fatalf("open db: %v", err)
++	}
++	t.Cleanup(func() { _ = db.Close() })
++	return db
++}
++
++// factStoreTestAdapters runs fn against the sqlite and memory adapters.
++func factStoreTestAdapters(t *testing.T, fn func(t *testing.T, s factRecorder)) {
++	t.Helper()
++	t.Run("sqlite", func(t *testing.T) {
++		s, err := newFactStore(factStoreTestDB(t))
++		if err != nil {
++			t.Fatalf("newFactStore: %v", err)
++		}
++		fn(t, s)
++	})
++	t.Run("memory", func(t *testing.T) {
++		s, err := newFactStore(nil)
++		if err != nil {
++			t.Fatalf("newFactStore: %v", err)
++		}
++		fn(t, s)
++	})
++}
++
++func factStoreTestFact(key string) Fact {
++	return Fact{Key: key, Label: "Émissions", Unit: "m³", Current: "18400", Prior: "17000",
++		Change: "1400", ChangePct: "8.2", Direction: "up", Material: true,
++		Display: []string{"18 400 m³", "8%", "8.2%"}}
++}
++
++func TestScenario7LatestFactsPerActorAndSection(t *testing.T) {
++	factStoreTestAdapters(t, func(t *testing.T, s factRecorder) {
++		ctx := context.Background()
++		facts := []Fact{factStoreTestFact("water")}
++		blocks := []VerbatimBlock{{ID: "b1", Title: "Intro", Text: "Line one\r\nLigne deux: émissions — 18 400 m³\n"}}
++		if err := s.replaceFacts(ctx, "analyst-a", "esg-environmental", facts, blocks); err != nil {
++			t.Fatalf("replaceFacts: %v", err)
++		}
++		gotF, gotB, err := s.LatestFacts(ctx, "analyst-a", "esg-environmental")
++		if err != nil {
++			t.Fatalf("LatestFacts: %v", err)
++		}
++		if !reflect.DeepEqual(gotF, facts) || !reflect.DeepEqual(gotB, blocks) {
++			t.Fatalf("round trip mismatch: %#v %#v", gotF, gotB)
++		}
++		if gotB[0].Text != blocks[0].Text {
++			t.Fatalf("text not byte-equal: %q", gotB[0].Text)
++		}
++		for _, k := range [][2]string{{"analyst-b", "esg-environmental"}, {"analyst-a", "esg-social"}} {
++			f, b, err := s.LatestFacts(ctx, k[0], k[1])
++			if err != nil || f != nil || b != nil {
++				t.Fatalf("%v: want nil,nil,nil got %#v %#v %v", k, f, b, err)
++			}
++		}
++		other := identity.ContextWithPrincipal(ctx, identity.Principal{TenantID: "tenant-two"})
++		f, b, err := s.LatestFacts(other, "analyst-a", "esg-environmental")
++		if err != nil || f != nil || b != nil {
++			t.Fatalf("other tenant saw facts: %#v %#v %v", f, b, err)
++		}
++	})
++}
++
++func TestFactStoreReplacesPreviousSet(t *testing.T) {
++	factStoreTestAdapters(t, func(t *testing.T, s factRecorder) {
++		ctx := context.Background()
++		first := []Fact{factStoreTestFact("a"), factStoreTestFact("b")}
++		second := []Fact{factStoreTestFact("c")}
++		if err := s.replaceFacts(ctx, "x", "sec", first, []VerbatimBlock{{ID: "1"}}); err != nil {
++			t.Fatal(err)
++		}
++		if err := s.replaceFacts(ctx, "x", "sec", second, nil); err != nil {
++			t.Fatal(err)
++		}
++		f, b, err := s.LatestFacts(ctx, "x", "sec")
++		if err != nil {
++			t.Fatal(err)
++		}
++		if !reflect.DeepEqual(f, second) || len(b) != 0 {
++			t.Fatalf("not replaced: %#v %#v", f, b)
++		}
++	})
++}
++
++func TestFactStoreMemoryReturnsCopies(t *testing.T) {
++	s, _ := newFactStore(nil)
++	ctx := context.Background()
++	facts := []Fact{factStoreTestFact("a")}
++	if err := s.replaceFacts(ctx, "x", "sec", facts, nil); err != nil {
++		t.Fatal(err)
++	}
++	facts[0].Key = "mutated"
++	facts[0].Display[0] = "mutated"
++	got, _, _ := s.LatestFacts(ctx, "x", "sec")
++	got[0].Display[1] = "mutated"
++	again, _, _ := s.LatestFacts(ctx, "x", "sec")
++	if !reflect.DeepEqual(again, []Fact{factStoreTestFact("a")}) {
++		t.Fatalf("stored set mutated: %#v", again)
++	}
++}
++
++func TestFactStoreSQLiteSurvivesReopen(t *testing.T) {
++	db := factStoreTestDB(t)
++	first, err := newFactStore(db)
++	if err != nil {
++		t.Fatal(err)
++	}
++	ctx := context.Background()
++	facts := []Fact{factStoreTestFact("a")}
++	blocks := []VerbatimBlock{{ID: "b", Title: "T", Text: "é"}}
++	if err := first.replaceFacts(ctx, "x", "sec", facts, blocks); err != nil {
++		t.Fatal(err)
++	}
++	second, err := newFactStore(db)
++	if err != nil {
++		t.Fatalf("second newFactStore: %v", err)
++	}
++	f, b, err := second.LatestFacts(ctx, "x", "sec")
++	if err != nil || !reflect.DeepEqual(f, facts) || !reflect.DeepEqual(b, blocks) {
++		t.Fatalf("reopen mismatch: %#v %#v %v", f, b, err)
++	}
++}

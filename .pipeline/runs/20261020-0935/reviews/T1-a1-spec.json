@@ -1,0 +1,56 @@
+{
+  "task_id": "T1",
+  "axis": "spec",
+  "attempt": 1,
+  "implementation_commit": "0ccd01a60666441af3f42a1abfd0ee5141aa587c",
+  "verdict": "revise",
+  "findings": [
+    {
+      "severity": "major",
+      "file": "internal/recipe/facts_test.go",
+      "line": 44,
+      "issue": "R5 says Material is true when the absolute ChangePct is 'at or above materiality_pct', and the plan says '|ChangePct| >= MaterialityPct'. No test checks the equality case. Every Material assertion is strictly above or below the threshold: 8.148 vs 10, 8.148 vs 8, 8 pp vs 10 and 12 pp vs 10. I changed facts.go:243 from `cmp >= 0` to `cmp > 0` in a scratch copy and the whole ./internal/recipe suite still passed. So the 'at or above' part of R5 has no test that would fail if it were wrong. L2's material_change findings (R7) depend on it.",
+      "fix": "Add assertions where the value equals the threshold. Relative case: Current \"110\", Prior \"100\", MaterialityPct \"10\" gives Material true. Percent-point case: Unit \"%\", Current \"0.48\", Prior \"0.38\", MaterialityPct \"10\" gives exactly 10 pp, so Material is true. Put them in TestScenario2FactArithmetic and TestPercentFieldsUsePercentAndPercentagePoints, or in a new test."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts.go",
+      "line": 301,
+      "issue": "For '%' fields the plan says to 'skip any form that exactly duplicates an earlier entry'. The code only removes duplicates of the percentage-point form and of the unsigned extras. The pct0 and pct1 forms are always added. For example, Prior 1.00 and Current 1.08 gives change \"8%\" and pct0 \"8%\", so the same string appears twice. This is harmless for L3's guard, which builds a set, but the plan's wording could also be read as covering these forms.",
+      "fix": "Optional: apply the containsString check to the percent forms for '%' fields too, or confirm that the rule only covers the percentage-point form, which the flat case's kept '100 m3' duplicate suggests."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R5",
+      "satisfied": false,
+      "evidence": "Change, ChangePct, Direction and the exact decimal arithmetic are implemented and proven. facts.go:207-243 uses SubtractDecimal and DivideDecimal(RoundHalfUp) over |Prior|. TestScenario2FactArithmetic checks Change -110000, the ChangePct prefix -8.148148, down, values kept in the stored unit and canonical form. TestScenario3NewDirectionWhenPriorZeroOrMissing checks the new direction for prior \"\" and \"0\" with empty Change/ChangePct and Material false. The flat and up directions are covered in TestScenario4DisplayForms. The float grep passes. The equality case of 'at or above materiality_pct' is not tested (see the major finding)."
+    },
+    {
+      "requirement": "R6",
+      "satisfied": true,
+      "evidence": "facts.go:250-317. TestScenario4DisplayForms pins the 5 forms from scenario 4, followed by the orchestrator's unsigned magnitudes [\"0.11 GWh\",\"8%\",\"8.1%\"]. It also pins the positive case with no '+', the flat case and the number unit with no suffix. TestPercentFieldsUsePercentAndPercentagePoints pins [\"46%\",\"38%\",\"8%\",\"8 percentage points\",\"21%\",\"21.1%\"]. It also checks the singular 'percentage point' and the unsigned pp magnitude in the falling case. Material uses percentage points (facts.go:234): relative 21% vs 10 would give true, but the test expects false. TestDisplayRoundingHalfAwayFromZero pins half-away rounding, no -0 and thousands grouping."
+    },
+    {
+      "requirement": "Scenario 2",
+      "satisfied": true,
+      "evidence": "TestScenario2FactArithmetic"
+    },
+    {
+      "requirement": "Scenario 3",
+      "satisfied": true,
+      "evidence": "TestScenario3NewDirectionWhenPriorZeroOrMissing (no '%' forms in Display; missing prior gives the single form \"1,240,000.00 kWh\")"
+    },
+    {
+      "requirement": "Scenario 4",
+      "satisfied": true,
+      "evidence": "TestScenario4DisplayForms/negative: exact list with \"1.24 GWh\",\"1.35 GWh\",\"-0.11 GWh\",\"-8%\",\"-8.1%\" first"
+    },
+    {
+      "requirement": "Orchestrator unsigned-magnitude decision / L3 guard and NARRATIVE_STYLE consistency",
+      "satisfied": true,
+      "evidence": "facts.go:309-315 appends the change and percent forms without the '-' sign, skipping duplicates. In nl-l3 internal/sectiontext/guards.go, numericTokens extracts the token \"3%\" from \"fell 3%\", and the unsigned forms let that token match exactly. Formatting follows NARRATIVE_STYLE.md line 28: comma for thousands, '%' attached to the number, a space before the unit. The package comment records the percent-field choices and the rounding choice (facts.go:3-25). CONTEXT.md terms are used (narrative fact). The diff stays inside the task's owns."
+    }
+  ],
+  "new_tasks": []
+}

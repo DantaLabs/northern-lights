@@ -1,0 +1,14 @@
+$ go test -list '^TestScenario1InvalidRecipeStopsStartup$' ./internal/recipe/ | grep -qx 'TestScenario1InvalidRecipeStopsStartup'
+$ go test -list '^TestScenario1ValidRecipeLoads$' ./internal/recipe/ | grep -qx 'TestScenario1ValidRecipeLoads'
+$ go test -list '^TestScenario8SectionsSortedByID$' ./internal/recipe/ | grep -qx 'TestScenario8SectionsSortedByID'
+$ go test -list '^TestDocumentIDOverrideFromEnvironment$' ./internal/recipe/ | grep -qx 'TestDocumentIDOverrideFromEnvironment'
+$ go test -list '^TestNewSucceedsWithoutRecipes$' ./internal/recipe/ | grep -qx 'TestNewSucceedsWithoutRecipes'
+$ go test -race -count=1 -run '^(TestScenario1InvalidRecipeStopsStartup|TestScenario1ValidRecipeLoads|TestScenario8SectionsSortedByID|TestDocumentIDOverrideFromEnvironment|TestNewSucceedsWithoutRecipes)$' ./internal/recipe/
+ok  	github.com/dantalabs/northern-lights/internal/recipe	3.026s
+$ go test -race -count=1 -run '^TestDemoPipeline' ./cmd/workiva-mcp/
+ok  	github.com/dantalabs/northern-lights/cmd/workiva-mcp	16.044s
+$ go vet ./internal/recipe/
+$ ! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'
+$ test -z "$(gofmt -l internal/recipe internal/mcpserver/tools)"
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

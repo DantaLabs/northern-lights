@@ -1,0 +1,95 @@
+{
+  "task_id": "T3",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/factstore.go",
+      "line": 108,
+      "issue": "The two adapters return empty sets differently. If a caller stores an empty non-nil []VerbatimBlock{}, the memory adapter returns nil (factStoreCloneBlocks uses append onto nil) and SQLite returns []VerbatimBlock{} (JSON '[]'). Facts behave the other way round: the memory adapter keeps an empty slice. No covered requirement depends on this. It only matters if T4 or L3 tests compare against an empty slice with reflect.DeepEqual.",
+      "fix": "Optional: make factStoreCloneBlocks keep empty non-nil slices the way factStoreCloneFacts does (make + copy), so both adapters agree.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/factstore.go",
+      "line": 16,
+      "issue": "R10's 'Prepare stores ... through recipe.FactStore' is only half-done in this task: the store and LatestFacts exist, but nothing calls replaceFacts from Prepare yet. This is expected, because the plan gives that wiring to T4 and T3 must not edit service.go. It is noted so the T4 review checks it.",
+      "fix": "None for T3. T4 must call replaceFacts from Prepare and have a test that proves LatestFacts returns the prepared facts after Prepare.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/factstore.go",
+      "line": 109,
+      "issue": "The two adapters treat empty slices differently. factStoreCloneBlocks (and the Display clone at line 100) use append(nil, in...), which turns an empty non-nil slice into nil. The SQLite adapter round-trips [] as an empty non-nil slice. So the memory adapter hands back nil blocks for a stored empty set, while factStoreCloneFacts (make) keeps them non-nil. TestFactStoreReplacesPreviousSet works around this with len(b) != 0 instead of DeepEqual. That makes 'nothing stored' (nil, nil, nil) look the same as 'stored an empty set' in memory but not in SQLite.",
+      "fix": "Clone with make+copy (or slices.Clone) in both helpers so nil stays nil and empty stays empty. Then add a both-adapter subtest that stores empty facts and blocks and compares the result with reflect.DeepEqual.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/factstore_test.go",
+      "line": 101,
+      "issue": "TestFactStoreMemoryReturnsCopies throws away the errors from newFactStore and both LatestFacts calls (s, _ := ...; got, _, _ := ...). If either call failed, the test would panic on got[0] instead of reporting a clear failure. The other tests in the file do check every error.",
+      "fix": "Check each error with t.Fatalf, as the sibling tests do.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/factstore.go",
+      "line": 87,
+      "issue": "Possible Primitive Obsession: the memory key is a bare [3]string built in two places, so the reader has to remember the order tenant/actor/section.",
+      "fix": "Use a small struct key { tenant, actor, sectionID string } built by one helper that calls identity.StorageTenant.",
+      "axis": "standards"
+    }
+  ],
+  "fixes": [],
+  "minor": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/factstore.go",
+      "line": 108,
+      "issue": "The two adapters return empty sets differently. If a caller stores an empty non-nil []VerbatimBlock{}, the memory adapter returns nil (factStoreCloneBlocks uses append onto nil) and SQLite returns []VerbatimBlock{} (JSON '[]'). Facts behave the other way round: the memory adapter keeps an empty slice. No covered requirement depends on this. It only matters if T4 or L3 tests compare against an empty slice with reflect.DeepEqual.",
+      "fix": "Optional: make factStoreCloneBlocks keep empty non-nil slices the way factStoreCloneFacts does (make + copy), so both adapters agree.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/factstore.go",
+      "line": 16,
+      "issue": "R10's 'Prepare stores ... through recipe.FactStore' is only half-done in this task: the store and LatestFacts exist, but nothing calls replaceFacts from Prepare yet. This is expected, because the plan gives that wiring to T4 and T3 must not edit service.go. It is noted so the T4 review checks it.",
+      "fix": "None for T3. T4 must call replaceFacts from Prepare and have a test that proves LatestFacts returns the prepared facts after Prepare.",
+      "axis": "spec"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/factstore.go",
+      "line": 109,
+      "issue": "The two adapters treat empty slices differently. factStoreCloneBlocks (and the Display clone at line 100) use append(nil, in...), which turns an empty non-nil slice into nil. The SQLite adapter round-trips [] as an empty non-nil slice. So the memory adapter hands back nil blocks for a stored empty set, while factStoreCloneFacts (make) keeps them non-nil. TestFactStoreReplacesPreviousSet works around this with len(b) != 0 instead of DeepEqual. That makes 'nothing stored' (nil, nil, nil) look the same as 'stored an empty set' in memory but not in SQLite.",
+      "fix": "Clone with make+copy (or slices.Clone) in both helpers so nil stays nil and empty stays empty. Then add a both-adapter subtest that stores empty facts and blocks and compares the result with reflect.DeepEqual.",
+      "axis": "standards"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/factstore_test.go",
+      "line": 101,
+      "issue": "TestFactStoreMemoryReturnsCopies throws away the errors from newFactStore and both LatestFacts calls (s, _ := ...; got, _, _ := ...). If either call failed, the test would panic on got[0] instead of reporting a clear failure. The other tests in the file do check every error.",
+      "fix": "Check each error with t.Fatalf, as the sibling tests do.",
+      "axis": "standards"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/factstore.go",
+      "line": 87,
+      "issue": "Possible Primitive Obsession: the memory key is a bare [3]string built in two places, so the reader has to remember the order tenant/actor/section.",
+      "fix": "Use a small struct key { tenant, actor, sectionID string } built by one helper that calls identity.StorageTenant.",
+      "axis": "standards"
+    }
+  ],
+  "new_tasks": [],
+  "block_question": "",
+  "axes": {
+    "spec": "pass",
+    "standards": "pass"
+  }
+}

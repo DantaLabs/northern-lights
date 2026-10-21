@@ -1,0 +1,13 @@
+$ go test -list '^TestScenario8UnknownSectionListsSections$' ./internal/mcpserver/tools/ | grep -qx 'TestScenario8UnknownSectionListsSections'
+$ go test -list '^TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep$' ./internal/mcpserver/tools/ | grep -qx 'TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep'
+$ go test -list '^TestPrepareSectionRequiresRecipes$' ./internal/mcpserver/tools/ | grep -qx 'TestPrepareSectionRequiresRecipes'
+$ go test -race -count=1 -run '^(TestScenario8UnknownSectionListsSections|TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep|TestPrepareSectionRequiresRecipes)$' ./internal/mcpserver/tools/
+ok  	github.com/dantalabs/northern-lights/internal/mcpserver/tools	2.829s
+$ go test -race -count=1 -run '^TestDemo' ./internal/mcpserver/tools/
+ok  	github.com/dantalabs/northern-lights/internal/mcpserver/tools	3.271s
+$ ! go test -list '^TestPrepareSectionStubNotImplementedYet$' ./internal/mcpserver/tools/ | grep -q TestPrepareSectionStubNotImplementedYet
+$ ! grep -nE 'float(32|64)|ParseFloat|notImplementedYet' internal/mcpserver/tools/prepare_section.go
+$ go vet ./internal/mcpserver/tools/
+$ test -z "$(gofmt -l internal/recipe internal/mcpserver/tools)"
+$ test -z "$(gofmt -l .)" && go vet ./... && golangci-lint run
+0 issues.

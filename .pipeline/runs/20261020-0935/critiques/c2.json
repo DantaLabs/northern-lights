@@ -1,0 +1,62 @@
+{
+  "verdict": "accept",
+  "coverage": [
+    {"requirement": "R1", "tasks": ["T2"], "adequate": true, "note": "Without the loader, TestScenario1InvalidRecipeStopsStartup and TestScenario1ValidRecipeLoads fail. TestNewSucceedsWithoutRecipes and the cmd/workiva-mcp TestDemoPipeline run keep the L0 empty-directory contract. main.go wraps the New error, so startup stops with the file name and reason. The startup log line (c1) was added."},
+    {"requirement": "R2", "tasks": ["T2"], "adequate": true, "note": "Fixed since c1. unknown_field_key and unknown_verbatim_key (flow mapping) subtests were added, and UnmarshalYAML is limited to the scalar decimal type, so KnownFields reaches every nesting level. The committed recipes use only keys in the plan's schema."},
+    {"requirement": "R3", "tasks": ["T2", "T6"], "adequate": true, "note": "unknown_mapped_field runs against a real mapping.Store, where GetField returns (nil, nil) when a field is missing. Scenario 9 loads both committed recipes against mappings-demo.yaml."},
+    {"requirement": "R4", "tasks": ["T4", "T6"], "adequate": true, "note": "env.Client is a workivaprovider.Backend, and the value main.go passes is a *Router, so the cellReader assertion holds. The fake backend counts calls to GetSheetDataTyped (the ReadUncached path). Scenario 9 reads through NewRouter(NewDemoClient): source 2025 values come from demo-esg-source and prior values from demo-esg-report PY."},
+    {"requirement": "R5", "tasks": ["T1"], "adequate": true, "note": "Scenarios 2 and 3 pin Change, ChangePct, Direction and Material. DivideDecimal with RoundHalfUp at 38 places gives the -8.148148 prefix. The float grep enforces the no-float64 rule."},
+    {"requirement": "R6", "tasks": ["T1", "T6"], "adequate": true, "note": "Fixed since c1. Exact Display lists are pinned for the negative case (spec forms plus unsigned magnitudes), the positive case (no '+') and the flat case. The percent case has both the absolute change and the percentage-point form. Scenario 9 checks 1.98/2.03 GWh on real data (1978/2030 MWh). The displays fit L3's numberPattern tokens and the 'fell 3%' style."},
+    {"requirement": "R7", "tasks": ["T4", "T6"], "adequate": true, "note": "TestScenario5Findings covers all four kinds and the percent min in percent. I checked scenario 9 against the CSVs: the only change at or above 10% is business travel (17.857%), water_discharge_production is empty with a 2024 value of 14200, and electricity_renewable is 490 against min 500. Exactly three findings is correct."},
+    {"requirement": "R8", "tasks": ["T4", "T6"], "adequate": true, "note": "TestScenario6 checks 5 of 6 items, with targets and sources and canonical '585.0' -> '585'. Scenario 9 expects 25 items from esg-2025.csv: the environmental section has 26 fields and one empty value, which I verified."},
+    {"requirement": "R9", "tasks": ["T2", "T4"], "adequate": true, "note": "The bytes are written at test time with \\r\\n and non-ASCII characters and compared byte for byte. Empty verbatim files are rejected at load because the output schema sets minLength 1."},
+    {"requirement": "R10", "tasks": ["T3", "T4"], "adequate": true, "note": "Both adapters are tested for actor and section isolation, replacement and reopen. The recipe_prepared table is created with IF NOT EXISTS. assurance backup countTables tolerates unknown tables."},
+    {"requirement": "R11", "tasks": ["T5", "T4"], "adequate": true, "note": "The tool lists every ID and title and does not call Prepare. When no recipes are loaded, the hint has no 'is not available', so cmd TestDemoPipelineServicesReachTools stays green with an empty sections directory."},
+    {"requirement": "R12", "tasks": ["T5", "T6"], "adequate": true, "note": "Fixed since c1. The summary matches L1's summaryLine exactly (versions/nl-l1/internal/changeset/execute.go:172, field/before/after escaped, status awaiting_confirmation), and the switch to Preview.Summary is recorded in STATUS. TestScenario9PrepareSectionToolOnDemoData now runs real Prepared output through the SDK output-schema validation (go-sdk v1.7.0 applySchema on the output)."},
+    {"requirement": "R13", "tasks": ["T2", "T5"], "adequate": true, "note": "Sort order and all five SectionInfo fields are checked. The document ID override is tested for demo, sandbox-set and sandbox-unset."}
+  ],
+  "findings": [
+    {
+      "severity": "minor",
+      "task_ids": ["T6"],
+      "claim": "TestScenario9PrepareSectionToolOnDemoData can use the 'same env vars and files' as the recipe-package scenario 9 test, which uses filepath.Abs(\"../../configs/demo/...\").",
+      "doubt": "internal/mcpserver/tools is three levels below the repository root, so '../../configs/demo' resolves to internal/configs/demo. bootstrap.LoadMappings returns nil for a missing file (bootstrap.go:107), so the store stays empty silently. The failure then shows up as a confusing 'unknown mapped field' or 'unknown section ID' error, which costs a retry.",
+      "fix": "In T6, give the tools test the path '../../../configs/demo/...'. In both scenario 9 tests, assert after LoadMappings that store.GetField(ctx, \"src_env_energy_total\") is non-nil, so a wrong path fails with a clear message."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T6", "T2"],
+      "claim": "The owner constraint 'demo mode keeps demo-doc-annual-report' is covered by TestDocumentIDOverrideFromEnvironment/demo_mode_keeps_yaml.",
+      "doubt": "That subtest uses a testdata fixture recipe, so nothing checks that the committed configs/demo recipe keeps demo-doc-annual-report in demo mode while NL_DEMO_DOCUMENT_ID is set (the L4 sandbox setup).",
+      "fix": "In TestScenario9DemoModeEnvironmentalSection, call t.Setenv(\"NL_DEMO_DOCUMENT_ID\", \"sandbox-doc-test\") and assert that Sections() reports DocumentID \"demo-doc-annual-report\" for esg-environmental."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T4", "T6"],
+      "claim": "T4 and T6 may own internal/recipe/types.go because they only add declarations.",
+      "doubt": "types.go is the L0 contract that L3's branch compiles against (versions/nl-l3 guards.go uses recipe.Fact and SectionInfo). No acceptance command detects an edit to an L0 declaration, such as a renamed or reordered field or a changed comment contract. Such an edit would surface only when the lanes are integrated. No task actually needs new declarations in this file.",
+      "fix": "Remove internal/recipe/types.go from T4's owns, so new declarations go in prepare.go, recipe.go or factstore.go. Add the acceptance command `git diff --quiet 48269d9ee2ab52f64d4277931374fd7a4d7f3c76 -- internal/recipe/types.go` to T4 and T6."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T6"],
+      "claim": "The shared lane rules and T6's instructions agree on which docs may be edited.",
+      "doubt": "The shared lane rules say 'Never edit ... or any doc', but T6 owns docs/demo/STATUS.md and its acceptance requires the L2 row to say 'ready for review'. A worker that follows the rules literally fails acceptance on the first attempt.",
+      "fix": "Change the shared rule to 'or any doc except the L2 row of docs/demo/STATUS.md in T6'."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T1", "T2", "T3", "T4", "T5", "T6"],
+      "claim": "The plan has an end-to-end first slice (c1 major finding).",
+      "doubt": "The fix added an end-to-end test in T6 but kept the horizontal layers T1 to T5. The real recipe and the real tool path first run together in the last task, so a schema mismatch there could reopen T4 or T5. The risk is reduced because T4's fake preview now fills spreadsheet, sheet and range, and T6 may make minimal fixes in both files.",
+      "fix": "Accept this as a trade-off. Optionally, T5's TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep can build its canned Prepared with a non-zero ExpiresAt and non-empty item spreadsheet, sheet and range, so the output schema is exercised before T6."
+    },
+    {
+      "severity": "minor",
+      "task_ids": ["T4"],
+      "claim": "TestScenario7VerbatimByteForByteAndLatestFacts may write its whole sections directory at test time.",
+      "doubt": "The spec constraint says 'Section YAML used in tests lives in internal/recipe/testdata/'. Only the verbatim bytes need generating at test time, to avoid git normalisation.",
+      "fix": "Copy the recipe YAML from testdata/prepare into the t.TempDir() and generate only the verbatim file at test time."
+    }
+  ]
+}

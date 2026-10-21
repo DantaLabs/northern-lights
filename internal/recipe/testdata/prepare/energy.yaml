@@ -1,0 +1,16 @@
+id: prep-energy
+title: Energy section
+period: "2025"
+prior_period: "2024"
+document_id: "doc-prep"
+materiality_pct: 10
+fields:
+  - key: energy
+    label: Total energy
+    unit: kWh
+    decimals: 0
+    source: p_src_1
+    target: p_tgt_1
+    prior: p_prior_1
+    required: true
+    min: 0

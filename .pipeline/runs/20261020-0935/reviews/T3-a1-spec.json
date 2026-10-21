@@ -1,0 +1,36 @@
+{
+  "task_id": "T3",
+  "axis": "spec",
+  "attempt": 1,
+  "implementation_commit": "13c8bb520ea8f0ac7def90308579ab455c771fec",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/factstore.go",
+      "line": 108,
+      "issue": "The two adapters return empty sets differently. If a caller stores an empty non-nil []VerbatimBlock{}, the memory adapter returns nil (factStoreCloneBlocks uses append onto nil) and SQLite returns []VerbatimBlock{} (JSON '[]'). Facts behave the other way round: the memory adapter keeps an empty slice. No covered requirement depends on this. It only matters if T4 or L3 tests compare against an empty slice with reflect.DeepEqual.",
+      "fix": "Optional: make factStoreCloneBlocks keep empty non-nil slices the way factStoreCloneFacts does (make + copy), so both adapters agree."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/factstore.go",
+      "line": 16,
+      "issue": "R10's 'Prepare stores ... through recipe.FactStore' is only half-done in this task: the store and LatestFacts exist, but nothing calls replaceFacts from Prepare yet. This is expected, because the plan gives that wiring to T4 and T3 must not edit service.go. It is noted so the T4 review checks it.",
+      "fix": "None for T3. T4 must call replaceFacts from Prepare and have a test that proves LatestFacts returns the prepared facts after Prepare."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R10",
+      "satisfied": true,
+      "evidence": "Store side done; the Prepare wiring belongs to T4. internal/recipe/factstore.go:39-57 upserts one row per (tenant, actor, section) with ON CONFLICT DO UPDATE, and factstore.go:115-121 overwrites the memory map entry. Proven for both adapters by TestFactStoreReplacesPreviousSet: a second set replaces the first and does not append, and a plain INSERT would fail with a primary-key conflict. Tenant isolation is covered by TestScenario7LatestFactsPerActorAndSection (the 'tenant-two' check). Persistence is covered by TestFactStoreSQLiteSurvivesReopen."
+    },
+    {
+      "requirement": "Acceptance scenario 7 (LatestFacts part)",
+      "satisfied": true,
+      "evidence": "TestScenario7LatestFactsPerActorAndSection (factstore_test.go:49), sqlite and memory subtests. It checks with DeepEqual that the facts and blocks round-trip, that the verbatim text 'Line one\\r\\nLigne deux: émissions — 18 400 m³\\n' comes back byte for byte, that analyst-b gets nil,nil,nil, and that another section gets nil,nil,nil. checks/T3-a1.log shows all commands exit 0, including go test -race."
+    }
+  ],
+  "new_tasks": []
+}

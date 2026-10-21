@@ -1,0 +1,48 @@
+{
+  "task_id": "FINAL",
+  "axis": "final",
+  "verdict": "revise",
+  "reviewed_head": "ebea697c6003fe9a1b1e49828e65acefbff1a019",
+  "run_base_commit": "48269d9ee2ab52f64d4277931374fd7a4d7f3c76",
+  "findings": [
+    {
+      "severity": "major",
+      "file": "internal/mcpserver/tools/demo.go",
+      "line": 24,
+      "issue": "golangci-lint run fails at HEAD with `func notImplementedYet is unused (unused)`. On origin/claude/demo-integration the only remaining caller is the prepare_section.go stub (line 151). T5 replaced that stub, and L1 and L3 have already removed their callers, so merging this branch makes the helper dead and turns CI lint red. The lint command in .pipeline/config.json fails, so the run is not green.",
+      "fix": "LANES.md makes demo.go an L0-only file. Either get the owner's approval to delete notImplementedYet (demo.go lines 23-26) in this PR, or add an 'L2 -> L0, internal/mcpserver/tools/demo.go: delete notImplementedYet, now unused after all four demo tools are implemented' request to STATUS.md and have L0 land it before this PR merges. Then re-run golangci-lint run.",
+      "task_id": "T5"
+    },
+    {
+      "severity": "minor",
+      "file": "docs/demo/STATUS.md",
+      "line": 11,
+      "issue": "The L2 row is stale after ebea697. It still gives last commit 86781f2 and lists the blocker 'L1 changeset.Service (tests use a fake); when L1 merges, switch the summary to Preview.Summary'. That switch is done: L1 has merged, the tool returns p.ChangeSet.Summary, and integration_test.go runs the real changeset.New. AGENTS.md (Reporting) requires the lane row to show status, last commit and blockers at the end of each session. The row came from the non-task commit f361809, and T6 owns STATUS updates.",
+      "fix": "Update the L2 row. Set last commit to the new head, record that the integration test against the real L1 and L3 passes and that the summary is Preview.Summary, and replace the blocker with the demo.go lint request, or with nothing once that is resolved.",
+      "task_id": "T6"
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R1", "satisfied": true, "evidence": "service.go New reads NL_DEMO_SECTIONS_DIR (default configs/demo/sections); recipe.go loadRecipes errors name the file and the reason; TestScenario1InvalidRecipeStopsStartup passes at HEAD"},
+    {"requirement": "R2", "satisfied": true, "evidence": "recipe.go decodes with KnownFields(true); TestScenario1InvalidRecipeStopsStartup/unknown_key and missing_id"},
+    {"requirement": "R3", "satisfied": true, "evidence": "recipe.go fieldDef.validate uses GetField for source, target and prior; unknown_mapped_field subtest"},
+    {"requirement": "R4", "satisfied": true, "evidence": "prepare.go:79 readCell calls cellReader.ReadUncached with ConsistencyNone; TestScenario2PrepareReadsUncachedThroughRouter; integration_test.go goes through workivaprovider.NewRouter on the demo client"},
+    {"requirement": "R5", "satisfied": true, "evidence": "facts.go uses assurance decimal helpers and math/big, no floats; TestScenario2FactArithmetic, TestScenario3NewDirection"},
+    {"requirement": "R6", "satisfied": true, "evidence": "TestScenario4DisplayForms pins 1.24 GWh / 1.35 GWh / -0.11 GWh / -8% / -8.1%; percentage-point forms for % fields in facts_test.go"},
+    {"requirement": "R7", "satisfied": true, "evidence": "prepare.go Prepare and fieldFindings emit missing, out_of_range, material_change and sign_change; TestScenario5Findings"},
+    {"requirement": "R8", "satisfied": true, "evidence": "prepare.go:131 builds one changeset.Item per non-empty source (FieldName=target, Source=source); TestScenario6StagesOneItemPerValue (fake) and TestPrepareWithRealChangeSetFeedsSectionTextGuard stages 25 items through the real changeset.New"},
+    {"requirement": "R9", "satisfied": true, "evidence": "prepare.go readVerbatim reads through os.Root byte for byte; TestScenario7VerbatimByteForByteAndLatestFacts"},
+    {"requirement": "R10", "satisfied": true, "evidence": "factstore.go recipe_prepared upsert per tenant, actor and section; integration_test.go shows L3 sectiontext.Stage accepts prepared numbers (1.98 / 2.03 GWh), refuses 7.77, and returns 'Prepare the section first' for another actor"},
+    {"requirement": "R11", "satisfied": true, "evidence": "prepare_section.go unknown-section error lists 'id (title)'; TestScenario8UnknownSectionListsSections"},
+    {"requirement": "R12", "satisfied": true, "evidence": "prepare_section.go:205 Summary is p.ChangeSet.Summary (L1 Preview.Summary, set in changeset/service.go:123); TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep checks the summary passes through and the next_step order; integration test checks 25 awaiting_confirmation summary lines from real L1"},
+    {"requirement": "R13", "satisfied": true, "evidence": "service.go Sections() returns all five fields sorted by ID; TestScenario8SectionsSortedByID"},
+    {"requirement": "Scenario 9 (R4, R8) on L4 demo data", "satisfied": true, "evidence": "internal/recipe/demo_scenario_test.go passes at HEAD"},
+    {"requirement": "Owner: one integration test of Prepare with the real changeset.Service, fakes stay in unit tests", "satisfied": true, "evidence": "internal/recipe/integration_test.go:64 recipe.New(env, changeset.New(env)); the unit tests in prepare_test.go and service_test.go still use fakes"},
+    {"requirement": "Owner: recipe.New returns the FactStore that sectiontext.New receives in cmd/workiva-mcp", "satisfied": true, "evidence": "cmd/workiva-mcp/main.go:452-458 wireDemoPipeline passes the facts returned by recipe.New to sectiontext.New and deps.Facts; integration_test.go:79 uses the same wiring and the guard accepts or refuses based on that store"},
+    {"requirement": "Owner: NL_DEMO_DOCUMENT_ID override keeps the sandbox document ID out of git", "satisfied": true, "evidence": "service.go:60-75 applies a trimmed override in sandbox mode only; TestDocumentIDOverrideFromEnvironment; committed recipes and testdata carry only placeholder IDs (demo-doc-annual-report, doc-prep, doc-yaml); the L4 request was removed from STATUS"},
+    {"requirement": "Owner: lane scope", "satisfied": true, "evidence": "git diff origin/claude/demo-integration...HEAD (excluding .pipeline) touches only internal/recipe/**, internal/mcpserver/tools/prepare_section*.go and docs/demo/STATUS.md"},
+    {"requirement": "Commands from .pipeline/config.json", "satisfied": false, "evidence": "Passed: go build ./...; gofmt -l (empty); go vet ./...; go test -race -count=1 over internal/recipe, internal/mcpserver/..., internal/changeset, internal/sectiontext and cmd/workiva-mcp (run restricted per owner note; internal/assurance not run). Failed: golangci-lint run reports 1 issue (demo.go:24 notImplementedYet unused). typecheck is none."},
+    {"requirement": "final-1 findings", "satisfied": false, "evidence": "The 7 minor/nit findings from final-1 (untested formula, text-prior and sign_change-at-zero paths; untested duplicate-key and decimals checks; dead service.storageCtx; ungrouped percent displays; redundant sort in unknownSection) are still open at HEAD. They are not re-recorded here as new defects."}
+  ],
+  "new_tasks": []
+}

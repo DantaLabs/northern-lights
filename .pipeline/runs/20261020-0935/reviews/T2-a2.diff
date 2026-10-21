@@ -1,0 +1,788 @@
+diff --git a/internal/recipe/recipe.go b/internal/recipe/recipe.go
+new file mode 100644
+index 0000000..a4c5ece
+--- /dev/null
++++ b/internal/recipe/recipe.go
+@@ -0,0 +1,289 @@
++package recipe
++
++import (
++	"bytes"
++	"context"
++	"errors"
++	"fmt"
++	"io"
++	"io/fs"
++	"os"
++	"path/filepath"
++	"strings"
++
++	"gopkg.in/yaml.v3"
++
++	"github.com/dantalabs/northern-lights/internal/assurance"
++	"github.com/dantalabs/northern-lights/internal/mapping"
++)
++
++// recipeDef is one validated section recipe.
++type recipeDef struct {
++	ID, Title, Period, PriorPeriod, DocumentID string
++	MaterialityPct                             string // decimal text
++	Fields                                     []fieldDef
++	Verbatim                                   []verbatimDef
++	root                                       *os.Root // sections directory; verbatim files are read only through it
++	file                                       string   // base file name, for messages
++}
++
++// fieldDef is one field of a section recipe.
++type fieldDef struct {
++	Key, Label, Unit, DisplayUnit string
++	Decimals                      int
++	Source, Target, Prior         string // Prior "" when absent
++	Required                      bool
++	// Min and Max are decimal text, "" when absent. For a "%" field the recipe
++	// author writes them in percent (min: 50 means 50%); the value they are
++	// compared against is percent-scaled too.
++	Min, Max string
++}
++
++// verbatimDef names an approved text file, relative to the sections directory.
++type verbatimDef struct{ ID, Title, File string }
++
++// fieldLookup resolves mapped field names; *mapping.Store satisfies it.
++type fieldLookup interface {
++	GetField(ctx context.Context, name string) (*mapping.Field, error)
++}
++
++// decimalText captures a YAML scalar as its source text so numbers never pass
++// through a binary floating-point type. It is the only type here with a custom
++// unmarshaler, because yaml.v3 does not apply KnownFields inside those.
++type decimalText string
++
++// UnmarshalYAML keeps the scalar's literal text.
++func (d *decimalText) UnmarshalYAML(n *yaml.Node) error {
++	if n.Kind != yaml.ScalarNode {
++		return fmt.Errorf("line %d: expected a decimal number", n.Line)
++	}
++	*d = decimalText(strings.TrimSpace(n.Value))
++	return nil
++}
++
++type rawRecipe struct {
++	ID             string        `yaml:"id"`
++	Title          string        `yaml:"title"`
++	Period         string        `yaml:"period"`
++	PriorPeriod    string        `yaml:"prior_period"`
++	DocumentID     string        `yaml:"document_id"`
++	MaterialityPct decimalText   `yaml:"materiality_pct"`
++	Fields         []rawField    `yaml:"fields"`
++	Verbatim       []verbatimDef `yaml:"verbatim"`
++}
++
++type rawField struct {
++	Key         string      `yaml:"key"`
++	Label       string      `yaml:"label"`
++	Unit        string      `yaml:"unit"`
++	DisplayUnit string      `yaml:"display_unit"`
++	Decimals    int         `yaml:"decimals"`
++	Source      string      `yaml:"source"`
++	Target      string      `yaml:"target"`
++	Prior       string      `yaml:"prior"`
++	Required    bool        `yaml:"required"`
++	Min         decimalText `yaml:"min"`
++	Max         decimalText `yaml:"max"`
++}
++
++// loadRecipes reads every *.yaml file (not recursive, not .yml) in dir, sorted by name.
++// A missing directory loads zero recipes; a path that is not a directory is an error.
++func loadRecipes(ctx context.Context, dir string, fields fieldLookup) ([]recipeDef, error) {
++	info, err := os.Stat(dir)
++	if err != nil {
++		if errors.Is(err, os.ErrNotExist) {
++			return nil, nil
++		}
++		return nil, fmt.Errorf("section recipes directory: %w", err)
++	}
++	if !info.IsDir() {
++		return nil, fmt.Errorf("section recipes directory %q is not a directory", dir)
++	}
++	root, err := os.OpenRoot(dir)
++	if err != nil {
++		return nil, fmt.Errorf("section recipes directory: %w", err)
++	}
++	out, err := loadRecipesFromRoot(ctx, root, fields)
++	if err != nil {
++		_ = root.Close()
++		return nil, err
++	}
++	if len(out) == 0 {
++		_ = root.Close()
++	}
++	return out, nil
++}
++
++// loadRecipesFromRoot loads every recipe file at the top level of root. The
++// returned recipes keep root open for reading their verbatim files.
++func loadRecipesFromRoot(ctx context.Context, root *os.Root, fields fieldLookup) ([]recipeDef, error) {
++	entries, err := fs.ReadDir(root.FS(), ".")
++	if err != nil {
++		return nil, fmt.Errorf("section recipes directory: %w", err)
++	}
++	var out []recipeDef
++	seen := map[string]string{}
++	for _, e := range entries { // ReadDir returns entries sorted by name
++		if e.IsDir() || filepath.Ext(e.Name()) != ".yaml" {
++			continue
++		}
++		r, err := loadRecipeFile(ctx, root, e.Name(), fields)
++		if err != nil {
++			return nil, fmt.Errorf("section recipe %s: %w", e.Name(), err)
++		}
++		if first, dup := seen[r.ID]; dup {
++			return nil, fmt.Errorf("section recipe %s: duplicate id %q also in %s", e.Name(), r.ID, first)
++		}
++		seen[r.ID] = e.Name()
++		out = append(out, r)
++	}
++	return out, nil
++}
++
++func loadRecipeFile(ctx context.Context, root *os.Root, name string, fields fieldLookup) (recipeDef, error) {
++	data, err := root.ReadFile(name)
++	if err != nil {
++		return recipeDef{}, err
++	}
++	var raw rawRecipe
++	dec := yaml.NewDecoder(bytes.NewReader(data))
++	dec.KnownFields(true)
++	if err := dec.Decode(&raw); err != nil {
++		if errors.Is(err, io.EOF) {
++			return recipeDef{}, errors.New("file is empty: id is required")
++		}
++		return recipeDef{}, err
++	}
++	if err := dec.Decode(new(yaml.Node)); !errors.Is(err, io.EOF) {
++		return recipeDef{}, errors.New("multiple YAML documents are not allowed")
++	}
++	r := recipeDef{
++		ID: raw.ID, Title: raw.Title, Period: raw.Period, PriorPeriod: raw.PriorPeriod,
++		DocumentID: raw.DocumentID, MaterialityPct: string(raw.MaterialityPct),
++		Verbatim: raw.Verbatim, root: root, file: name,
++	}
++	for _, f := range raw.Fields {
++		r.Fields = append(r.Fields, fieldDef{
++			Key: f.Key, Label: f.Label, Unit: f.Unit, DisplayUnit: f.DisplayUnit, Decimals: f.Decimals,
++			Source: f.Source, Target: f.Target, Prior: f.Prior, Required: f.Required,
++			Min: string(f.Min), Max: string(f.Max),
++		})
++	}
++	if err := r.validate(ctx, fields); err != nil {
++		return recipeDef{}, err
++	}
++	return r, nil
++}
++
++func (r recipeDef) validate(ctx context.Context, fields fieldLookup) error {
++	for _, req := range []struct{ key, val string }{
++		{"id", r.ID}, {"title", r.Title}, {"period", r.Period},
++		{"prior_period", r.PriorPeriod}, {"document_id", r.DocumentID},
++		{"materiality_pct", r.MaterialityPct},
++	} {
++		if strings.TrimSpace(req.val) == "" {
++			return fmt.Errorf("%s is required", req.key)
++		}
++	}
++	coeff, _, err := assurance.ParseDecimal(r.MaterialityPct)
++	if err != nil {
++		return fmt.Errorf("materiality_pct: %w", err)
++	}
++	if coeff.Sign() < 0 {
++		return errors.New("materiality_pct must be >= 0")
++	}
++	if len(r.Fields) == 0 {
++		return errors.New("fields: at least one field is required")
++	}
++	keys := map[string]bool{}
++	for i, f := range r.Fields {
++		if err := f.validate(ctx, fields); err != nil {
++			label := f.Key
++			if label == "" {
++				label = fmt.Sprintf("#%d", i+1)
++			}
++			return fmt.Errorf("field %s: %w", label, err)
++		}
++		if keys[f.Key] {
++			return fmt.Errorf("field %s: duplicate key", f.Key)
++		}
++		keys[f.Key] = true
++	}
++	for i, v := range r.Verbatim {
++		if err := v.validate(r.root); err != nil {
++			label := v.ID
++			if label == "" {
++				label = fmt.Sprintf("#%d", i+1)
++			}
++			return fmt.Errorf("verbatim %s: %w", label, err)
++		}
++	}
++	return nil
++}
++
++func (f fieldDef) validate(ctx context.Context, fields fieldLookup) error {
++	for _, req := range []struct{ key, val string }{
++		{"key", f.Key}, {"label", f.Label}, {"unit", f.Unit},
++		{"source", f.Source}, {"target", f.Target},
++	} {
++		if strings.TrimSpace(req.val) == "" {
++			return fmt.Errorf("%s is required", req.key)
++		}
++	}
++	if f.Decimals < 0 || f.Decimals > 6 {
++		return fmt.Errorf("decimals must be between 0 and 6, got %d", f.Decimals)
++	}
++	if f.DisplayUnit != "" {
++		if _, err := unitShift(f.Unit, f.DisplayUnit); err != nil {
++			return fmt.Errorf("display_unit: %w", err)
++		}
++	}
++	for _, b := range []struct{ key, val string }{{"min", f.Min}, {"max", f.Max}} {
++		if b.val == "" {
++			continue
++		}
++		if _, _, err := assurance.ParseDecimal(b.val); err != nil {
++			return fmt.Errorf("%s: %w", b.key, err)
++		}
++	}
++	if fields == nil {
++		return errors.New("mapping store is not available")
++	}
++	for _, m := range []struct{ key, val string }{{"source", f.Source}, {"target", f.Target}, {"prior", f.Prior}} {
++		if m.val == "" {
++			continue
++		}
++		got, err := fields.GetField(ctx, m.val)
++		if err != nil {
++			return fmt.Errorf("%s: look up mapped field %s: %w", m.key, m.val, err)
++		}
++		if got == nil {
++			return fmt.Errorf("%s: unknown mapped field %s", m.key, m.val)
++		}
++	}
++	return nil
++}
++
++// validate stats the file through root, which refuses '..' and symlink escapes
++// out of the sections directory.
++func (v verbatimDef) validate(root *os.Root) error {
++	for _, req := range []struct{ key, val string }{{"id", v.ID}, {"title", v.Title}, {"file", v.File}} {
++		if strings.TrimSpace(req.val) == "" {
++			return fmt.Errorf("%s is required", req.key)
++		}
++	}
++	if !filepath.IsLocal(v.File) {
++		return fmt.Errorf("file %q must be relative to the sections directory and must not contain a parent-directory element", v.File)
++	}
++	info, err := root.Stat(v.File)
++	if err != nil {
++		return fmt.Errorf("file %q: %w", v.File, err)
++	}
++	if !info.Mode().IsRegular() {
++		return fmt.Errorf("file %q is not a regular file", v.File)
++	}
++	if info.Size() == 0 {
++		return fmt.Errorf("file %q is empty", v.File)
++	}
++	return nil
++}
+diff --git a/internal/recipe/service.go b/internal/recipe/service.go
+index 5fa262b..b19adae 100644
+--- a/internal/recipe/service.go
++++ b/internal/recipe/service.go
+@@ -3,39 +3,101 @@ package recipe
+ import (
+ 	"context"
+ 	"errors"
++	"log"
++	"os"
++	"sort"
++	"strings"
+ 
+ 	"github.com/dantalabs/northern-lights/internal/changeset"
++	"github.com/dantalabs/northern-lights/internal/config"
+ 	"github.com/dantalabs/northern-lights/internal/demoenv"
++	"github.com/dantalabs/northern-lights/internal/identity"
++	"github.com/dantalabs/northern-lights/internal/mapping"
++	"github.com/dantalabs/northern-lights/internal/workivaprovider"
+ )
+ 
++const defaultSectionsDir = "configs/demo/sections"
++
+ var errNotImplemented = errors.New("section recipe service is not implemented yet")
+ 
+-type stubService struct{}
++// service holds the loaded section recipes and the collaborators Prepare uses.
++type service struct {
++	recipes    map[string]recipeDef
++	store      *mapping.Store
++	client     workivaprovider.Backend
++	changes    changeset.Service
++	storageCtx context.Context
++}
+ 
+ type stubFactStore struct{}
+ 
+ // New returns the section recipe Service and FactStore for the demo lane. main.go
+-// calls New once when NL_DEMO_PIPELINE is on. L2 replaces the stub bodies.
++// calls New once when NL_DEMO_PIPELINE is on.
+ //
+ // Contract: New must succeed in demo mode with an empty NL_DEMO_SECTIONS_DIR,
+-// so the L0 flag-on server tests stay green after the lanes land.
++// so the L0 flag-on server tests stay green after the lanes land. A missing or
++// empty sections directory loads zero recipes; an invalid recipe is an error.
++//
++// The sections directory is NL_DEMO_SECTIONS_DIR, default configs/demo/sections.
++//
++// Document ID override: in sandbox mode (env.Cfg != nil and !env.Cfg.DemoMode) a
++// non-blank NL_DEMO_DOCUMENT_ID replaces the document_id of every recipe, so one
++// build can target a real Workiva document. When the variable is unset or blank,
++// or in demo mode, or with a nil Cfg, the YAML value is kept. The ID is never logged.
+ func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error) {
+-	_, _ = env, changes
+-	return stubService{}, stubFactStore{}, nil
++	dir := os.Getenv("NL_DEMO_SECTIONS_DIR")
++	if dir == "" {
++		dir = defaultSectionsDir
++	}
++	ctx := context.Background()
++	if env.Cfg != nil && env.Cfg.AuthMode == config.AuthModeEntra {
++		ctx = identity.ContextWithPrincipal(ctx, identity.Principal{TenantID: env.Cfg.EntraTenantID})
++	}
++	var lookup fieldLookup // nil until a store exists; a recipe then reports it
++	if env.Store != nil {
++		lookup = env.Store
++	}
++	defs, err := loadRecipes(ctx, dir, lookup)
++	if err != nil {
++		return nil, nil, err
++	}
++	override := ""
++	if env.Cfg != nil && !env.Cfg.DemoMode {
++		if v, ok := os.LookupEnv("NL_DEMO_DOCUMENT_ID"); ok && strings.TrimSpace(v) != "" {
++			override = strings.TrimSpace(v)
++		}
++	}
++	svc := &service{
++		recipes: make(map[string]recipeDef, len(defs)),
++		store:   env.Store, client: env.Client, changes: changes, storageCtx: ctx,
++	}
++	for _, d := range defs {
++		if override != "" {
++			d.DocumentID = override
++		}
++		svc.recipes[d.ID] = d
++	}
++	log.Printf("section recipes: loaded %d from %s", len(defs), dir)
++	return svc, stubFactStore{}, nil
+ }
+ 
+-// Prepare returns a zero Prepared and an error until L2 lands.
+-func (stubService) Prepare(ctx context.Context, actor, sectionID string) (Prepared, error) {
++// Prepare returns a zero Prepared and an error until T4 lands.
++func (*service) Prepare(ctx context.Context, actor, sectionID string) (Prepared, error) {
+ 	_, _, _ = ctx, actor, sectionID
+ 	return Prepared{}, errNotImplemented
+ }
+ 
+-// Sections returns nil until L2 lands.
+-func (stubService) Sections() []SectionInfo {
+-	return nil
++// Sections lists every loaded recipe, sorted by ID.
++func (s *service) Sections() []SectionInfo {
++	out := make([]SectionInfo, 0, len(s.recipes))
++	for _, r := range s.recipes {
++		out = append(out, SectionInfo{ID: r.ID, Title: r.Title, Period: r.Period, PriorPeriod: r.PriorPeriod, DocumentID: r.DocumentID})
++	}
++	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
++	return out
+ }
+ 
+-// LatestFacts returns an error until L2 lands.
++// LatestFacts returns an error until T4 lands.
+ func (stubFactStore) LatestFacts(ctx context.Context, actor, sectionID string) ([]Fact, []VerbatimBlock, error) {
+ 	_, _, _ = ctx, actor, sectionID
+ 	return nil, nil, errNotImplemented
+diff --git a/internal/recipe/service_test.go b/internal/recipe/service_test.go
+index f6a1e4a..d3fc03b 100644
+--- a/internal/recipe/service_test.go
++++ b/internal/recipe/service_test.go
+@@ -2,24 +2,312 @@ package recipe
+ 
+ import (
+ 	"context"
++	"database/sql"
++	"os"
++	"path/filepath"
++	"strings"
+ 	"testing"
+ 
+-	"github.com/dantalabs/northern-lights/internal/changeset"
++	"github.com/dantalabs/northern-lights/internal/bootstrap"
++	"github.com/dantalabs/northern-lights/internal/config"
+ 	"github.com/dantalabs/northern-lights/internal/demoenv"
++	"github.com/dantalabs/northern-lights/internal/mapping"
++	"github.com/dantalabs/northern-lights/internal/sqlitedb"
+ )
+ 
+-func TestNewStubSucceedsAndReturnsNotImplemented(t *testing.T) {
+-	svc, facts, err := New(demoenv.Env{}, changeset.New(demoenv.Env{}))
++func loadTestStore(t *testing.T) *mapping.Store {
++	t.Helper()
++	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "t.db"))
+ 	if err != nil {
+-		t.Fatalf("New: unexpected error %v", err)
++		t.Fatalf("open db: %v", err)
+ 	}
+-	if _, err := svc.Prepare(context.Background(), "actor", "sec"); err == nil {
+-		t.Fatal("Prepare: want not-implemented error")
++	t.Cleanup(func() { _ = db.Close() })
++	return loadTestStoreFromDB(t, db)
++}
++
++func loadTestStoreFromDB(t *testing.T, db *sql.DB) *mapping.Store {
++	t.Helper()
++	store, err := mapping.NewWithDB(db)
++	if err != nil {
++		t.Fatalf("mapping store: %v", err)
++	}
++	if err := bootstrap.LoadMappings(context.Background(), filepath.Join("testdata", "load", "mappings.yaml"), store); err != nil {
++		t.Fatalf("load mappings: %v", err)
++	}
++	return store
++}
++
++// loadTestDir copies the named testdata/load files (and the verbatim directory)
++// into a fresh temp directory and returns it.
++func loadTestDir(t *testing.T, names ...string) string {
++	t.Helper()
++	dir := t.TempDir()
++	loadTestCopy(t, filepath.Join("testdata", "load", "verbatim", "policy.txt"), filepath.Join(dir, "verbatim", "policy.txt"))
++	for _, n := range names {
++		loadTestCopy(t, filepath.Join("testdata", "load", n), filepath.Join(dir, n))
++	}
++	return dir
++}
++
++func loadTestCopy(t *testing.T, from, to string) {
++	t.Helper()
++	data, err := os.ReadFile(from)
++	if err != nil {
++		t.Fatal(err)
++	}
++	loadTestWrite(t, to, string(data))
++}
++
++func loadTestWrite(t *testing.T, path, content string) {
++	t.Helper()
++	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
++		t.Fatal(err)
++	}
++}
++
++// loadTestVariant writes the valid fixture as name in dir, optionally replacing
++// one substring.
++func loadTestVariant(t *testing.T, dir, name, old, repl string) {
++	t.Helper()
++	data, err := os.ReadFile(filepath.Join("testdata", "load", "valid.yaml"))
++	if err != nil {
++		t.Fatal(err)
+ 	}
+-	if got := svc.Sections(); got != nil {
+-		t.Fatalf("Sections: want nil, got %v", got)
++	s := string(data)
++	if old != "" {
++		if !strings.Contains(s, old) {
++			t.Fatalf("fixture has no %q", old)
++		}
++		s = strings.Replace(s, old, repl, 1)
+ 	}
+-	if _, _, err := facts.LatestFacts(context.Background(), "actor", "sec"); err == nil {
+-		t.Fatal("LatestFacts: want not-implemented error")
++	loadTestWrite(t, filepath.Join(dir, name), s)
++}
++
++func loadTestNew(t *testing.T, dir string, env demoenv.Env) (Service, error) {
++	t.Helper()
++	t.Setenv("NL_DEMO_SECTIONS_DIR", dir)
++	svc, _, err := New(env, nil)
++	return svc, err
++}
++
++func TestScenario1InvalidRecipeStopsStartup(t *testing.T) {
++	store := loadTestStore(t)
++	cases := []struct {
++		name, old, repl, want string
++	}{
++		{"unknown_key", "title: Valid section\n", "title: Valid section\nbogus_top: 1\n", "bogus_top"},
++		{"unknown_field_key", "    unit: MWh\n", "    unit: MWh\n    displayunit: GWh\n", "displayunit"},
++		{"unknown_verbatim_key", "{ id: policy,", "{ id: policy, colour: red,", "colour"},
++		{"missing_id", "id: load-valid\n", "", "id is required"},
++		{"unknown_mapped_field", "source: load_src_energy", "source: load_src_missing", "load_src_missing"},
++		{"empty_verbatim_file", "verbatim/policy.txt", "verbatim/empty.txt", "empty.txt"},
++	}
++	for _, tc := range cases {
++		t.Run(tc.name, func(t *testing.T) {
++			dir := loadTestDir(t)
++			loadTestWrite(t, filepath.Join(dir, "verbatim", "empty.txt"), "")
++			loadTestVariant(t, dir, "bad.yaml", tc.old, tc.repl)
++			_, err := loadTestNew(t, dir, demoenv.Env{Store: store})
++			if err == nil {
++				t.Fatal("New: want error")
++			}
++			if !strings.Contains(err.Error(), "bad.yaml") || !strings.Contains(err.Error(), tc.want) {
++				t.Fatalf("error %q should name bad.yaml and %q", err, tc.want)
++			}
++		})
++	}
++}
++
++func TestScenario1ValidRecipeLoads(t *testing.T) {
++	dir := loadTestDir(t, "valid.yaml")
++	svc, err := loadTestNew(t, dir, demoenv.Env{Store: loadTestStore(t)})
++	if err != nil {
++		t.Fatalf("New: %v", err)
++	}
++	got := svc.Sections()
++	want := SectionInfo{ID: "load-valid", Title: "Valid section", Period: "2025", PriorPeriod: "2024", DocumentID: "doc-yaml"}
++	if len(got) != 1 || got[0] != want {
++		t.Fatalf("Sections = %+v, want [%+v]", got, want)
++	}
++}
++
++func TestLoadRecipeRejectsDuplicateID(t *testing.T) {
++	store := loadTestStore(t)
++	dir := loadTestDir(t, "valid.yaml")
++	loadTestVariant(t, dir, "second.yaml", "", "")
++	_, err := loadTestNew(t, dir, demoenv.Env{Store: store})
++	if err == nil || !strings.Contains(err.Error(), "second.yaml") || !strings.Contains(err.Error(), "valid.yaml") {
++		t.Fatalf("duplicate id error = %v, want both file names", err)
++	}
++}
++
++func TestLoadRecipeVerbatimContainment(t *testing.T) {
++	store := loadTestStore(t)
++	outside := filepath.Join(t.TempDir(), "secret.txt")
++	loadTestWrite(t, outside, "secret")
++	cases := []struct {
++		name string
++		file string
++		prep func(t *testing.T, dir string)
++		want string
++	}{
++		{"parent_element", "../secret.txt", func(t *testing.T, dir string) {
++			loadTestWrite(t, filepath.Join(filepath.Dir(dir), "secret.txt"), "secret")
++		}, "must be relative"},
++		{"absolute", outside, nil, "must be relative"},
++		{"symlink_file_outside", "verbatim/link.txt", func(t *testing.T, dir string) {
++			if err := os.Symlink(outside, filepath.Join(dir, "verbatim", "link.txt")); err != nil {
++				t.Skipf("symlink: %v", err)
++			}
++		}, "escapes"},
++		{"symlink_dir_outside", "linkdir/secret.txt", func(t *testing.T, dir string) {
++			if err := os.Symlink(filepath.Dir(outside), filepath.Join(dir, "linkdir")); err != nil {
++				t.Skipf("symlink: %v", err)
++			}
++		}, "escapes"},
++	}
++	for _, tc := range cases {
++		t.Run(tc.name, func(t *testing.T) {
++			dir := loadTestDir(t)
++			if tc.prep != nil {
++				tc.prep(t, dir)
++			}
++			loadTestVariant(t, dir, "esc.yaml", "verbatim/policy.txt", tc.file)
++			_, err := loadTestNew(t, dir, demoenv.Env{Store: store})
++			if err == nil || !strings.Contains(err.Error(), "esc.yaml") || !strings.Contains(err.Error(), tc.want) {
++				t.Fatalf("error = %v, want esc.yaml and %q", err, tc.want)
++			}
++		})
++	}
++}
++
++func TestLoadRecipeAllowsSymlinkInsideSectionsDir(t *testing.T) {
++	dir := loadTestDir(t)
++	if err := os.Symlink("policy.txt", filepath.Join(dir, "verbatim", "alias.txt")); err != nil {
++		t.Skipf("symlink: %v", err)
++	}
++	loadTestVariant(t, dir, "ok.yaml", "verbatim/policy.txt", "verbatim/alias.txt")
++	if _, err := loadTestNew(t, dir, demoenv.Env{Store: loadTestStore(t)}); err != nil {
++		t.Fatalf("New: %v", err)
++	}
++}
++
++func TestLoadRecipeRejectsSecondYAMLDocument(t *testing.T) {
++	dir := loadTestDir(t, "valid.yaml")
++	f, err := os.OpenFile(filepath.Join(dir, "valid.yaml"), os.O_APPEND|os.O_WRONLY, 0)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, err := f.WriteString("---\nid: extra\n"); err != nil {
++		t.Fatal(err)
++	}
++	if err := f.Close(); err != nil {
++		t.Fatal(err)
++	}
++	_, err = loadTestNew(t, dir, demoenv.Env{Store: loadTestStore(t)})
++	if err == nil || !strings.Contains(err.Error(), "valid.yaml") || !strings.Contains(err.Error(), "multiple YAML documents") {
++		t.Fatalf("error = %v", err)
++	}
++}
++
++func TestNewWithRecipesRequiresStore(t *testing.T) {
++	dir := loadTestDir(t, "valid.yaml")
++	_, err := loadTestNew(t, dir, demoenv.Env{})
++	if err == nil || !strings.Contains(err.Error(), "valid.yaml") || !strings.Contains(err.Error(), "mapping store is not available") {
++		t.Fatalf("error = %v, want valid.yaml and mapping store is not available", err)
++	}
++}
++
++func TestScenario8SectionsSortedByID(t *testing.T) {
++	dir := loadTestDir(t)
++	loadTestVariant(t, dir, "one.yaml", "id: load-valid", "id: b-second")
++	loadTestVariant(t, dir, "two.yaml", "id: load-valid", "id: a-first")
++	svc, err := loadTestNew(t, dir, demoenv.Env{Store: loadTestStore(t)})
++	if err != nil {
++		t.Fatalf("New: %v", err)
++	}
++	got := svc.Sections()
++	want := []SectionInfo{
++		{ID: "a-first", Title: "Valid section", Period: "2025", PriorPeriod: "2024", DocumentID: "doc-yaml"},
++		{ID: "b-second", Title: "Valid section", Period: "2025", PriorPeriod: "2024", DocumentID: "doc-yaml"},
++	}
++	if len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
++		t.Fatalf("Sections = %+v, want %+v", got, want)
++	}
++}
++
++func TestDocumentIDOverrideFromEnvironment(t *testing.T) {
++	store := loadTestStore(t)
++	t.Run("nil_cfg_keeps_yaml", func(t *testing.T) {
++		t.Setenv("NL_DEMO_DOCUMENT_ID", "doc-env")
++		svc, err := loadTestNew(t, loadTestDir(t, "valid.yaml"), demoenv.Env{Store: store})
++		if err != nil {
++			t.Fatalf("New: %v", err)
++		}
++		if got := svc.Sections()[0].DocumentID; got != "doc-yaml" {
++			t.Fatalf("DocumentID = %q, want doc-yaml", got)
++		}
++	})
++	cases := []struct {
++		name    string
++		demo    bool
++		envVal  *string
++		wantDoc string
++	}{
++		{"demo_mode_keeps_yaml", true, loadTestPtr("doc-env"), "doc-yaml"},
++		{"sandbox_uses_env", false, loadTestPtr("doc-env"), "doc-env"},
++		{"sandbox_trims_env", false, loadTestPtr("  doc-env \n"), "doc-env"},
++		{"sandbox_unset_keeps_yaml", false, nil, "doc-yaml"},
++		{"sandbox_blank_keeps_yaml", false, loadTestPtr("  "), "doc-yaml"},
++	}
++	for _, tc := range cases {
++		t.Run(tc.name, func(t *testing.T) {
++			dir := loadTestDir(t, "valid.yaml")
++			if tc.envVal != nil {
++				t.Setenv("NL_DEMO_DOCUMENT_ID", *tc.envVal)
++			} else {
++				t.Setenv("NL_DEMO_DOCUMENT_ID", "")
++				if err := os.Unsetenv("NL_DEMO_DOCUMENT_ID"); err != nil {
++					t.Fatal(err)
++				}
++			}
++			svc, err := loadTestNew(t, dir, demoenv.Env{Store: store, Cfg: &config.Config{DemoMode: tc.demo}})
++			if err != nil {
++				t.Fatalf("New: %v", err)
++			}
++			if got := svc.Sections()[0].DocumentID; got != tc.wantDoc {
++				t.Fatalf("DocumentID = %q, want %q", got, tc.wantDoc)
++			}
++		})
++	}
++}
++
++func loadTestPtr(s string) *string { return &s }
++
++func TestNewSucceedsWithoutRecipes(t *testing.T) {
++	for name, dir := range map[string]string{
++		"empty":   t.TempDir(),
++		"missing": filepath.Join(t.TempDir(), "absent"),
++	} {
++		t.Run(name, func(t *testing.T) {
++			svc, err := loadTestNew(t, dir, demoenv.Env{})
++			if err != nil {
++				t.Fatalf("New: %v", err)
++			}
++			if n := len(svc.Sections()); n != 0 {
++				t.Fatalf("Sections len = %d, want 0", n)
++			}
++		})
++	}
++}
++
++func TestNewRejectsSectionsPathThatIsAFile(t *testing.T) {
++	f := filepath.Join(t.TempDir(), "file")
++	loadTestWrite(t, f, "x")
++	if _, err := loadTestNew(t, f, demoenv.Env{}); err == nil {
++		t.Fatal("New: want error for non-directory")
+ 	}
+ }
+diff --git a/internal/recipe/testdata/load/mappings.yaml b/internal/recipe/testdata/load/mappings.yaml
+new file mode 100644
+index 0000000..8fbb58d
+--- /dev/null
++++ b/internal/recipe/testdata/load/mappings.yaml
+@@ -0,0 +1,11 @@
++region: eu
++spreadsheets:
++  - id: "load-src"
++    name: "Load source"
++    sheets:
++      - id: "load-src-1"
++        name: "Source"
++        fields:
++          - { name: load_src_energy, range: "D2", field_type: number, description: "energy source" }
++          - { name: load_tgt_energy_2025, range: "D3", field_type: number, description: "energy target" }
++          - { name: load_tgt_energy_2024, range: "D4", field_type: number, description: "energy prior" }
+diff --git a/internal/recipe/testdata/load/valid.yaml b/internal/recipe/testdata/load/valid.yaml
+new file mode 100644
+index 0000000..d5d73e3
+--- /dev/null
++++ b/internal/recipe/testdata/load/valid.yaml
+@@ -0,0 +1,19 @@
++id: load-valid
++title: Valid section
++period: "2025"
++prior_period: "2024"
++document_id: "doc-yaml"
++materiality_pct: 10
++fields:
++  - key: energy
++    label: Energy
++    unit: MWh
++    display_unit: GWh
++    decimals: 2
++    source: load_src_energy
++    target: load_tgt_energy_2025
++    prior: load_tgt_energy_2024
++    required: true
++    min: 0
++verbatim:
++  - { id: policy, title: Policy, file: verbatim/policy.txt }
+diff --git a/internal/recipe/testdata/load/verbatim/policy.txt b/internal/recipe/testdata/load/verbatim/policy.txt
+new file mode 100644
+index 0000000..56d61ce
+--- /dev/null
++++ b/internal/recipe/testdata/load/verbatim/policy.txt
+@@ -0,0 +1 @@
++Approved policy text.

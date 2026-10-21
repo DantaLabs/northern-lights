@@ -1,0 +1,348 @@
+diff --git a/internal/mcpserver/tools/prepare_section.go b/internal/mcpserver/tools/prepare_section.go
+index 435a88d..a66acbd 100644
+--- a/internal/mcpserver/tools/prepare_section.go
++++ b/internal/mcpserver/tools/prepare_section.go
+@@ -2,10 +2,15 @@ package tools
+ 
+ import (
+ 	"context"
++	"fmt"
++	"strings"
++	"time"
+ 
+ 	"github.com/modelcontextprotocol/go-sdk/mcp"
+ 
++	"github.com/dantalabs/northern-lights/internal/changeset"
+ 	"github.com/dantalabs/northern-lights/internal/mcpserver"
++	"github.com/dantalabs/northern-lights/internal/recipe"
+ )
+ 
+ // prepareSectionTool implements workiva_prepare_section.
+@@ -98,14 +103,14 @@ func prepareSectionOutputSchema() map[string]any {
+ 		"key":        boundedSchema("narrative fact key", 256),
+ 		"label":      boundedSchema("narrative fact label", 256),
+ 		"unit":       optionalString("unit of the value", 32),
+-		"current":    boundedSchema("current value display string", 64),
+-		"prior":      optionalString("prior period value display string", 64),
+-		"change":     optionalString("absolute change display string", 64),
+-		"change_pct": optionalString("percentage change display string", 64),
++		"current":    boundedSchema("current value, canonical decimal string", 64),
++		"prior":      optionalString("prior period value, canonical decimal string", 64),
++		"change":     optionalString("absolute change, canonical decimal string", 64),
++		"change_pct": optionalString("percentage change, canonical decimal string", 64),
+ 		"direction":  boundedEnum("up", "down", "flat", "new"),
+ 		"material":   map[string]any{"type": "boolean"},
+ 		"display": map[string]any{"type": "array", "maxItems": 16,
+-			"items": boundedSchema("display string the number guard accepts", 128)},
++			"items": boundedSchema("approved display form of the value, accepted by the number guard", 128)},
+ 	}, []string{"key", "label", "current", "direction", "material", "display"})
+ 	verbatim := objectSchema(map[string]any{
+ 		"id":    boundedSchema("verbatim block ID", 128),
+@@ -133,21 +138,107 @@ func prepareSectionOutputSchema() map[string]any {
+ 		"facts":      map[string]any{"type": "array", "maxItems": 500, "items": fact},
+ 		"verbatim":   map[string]any{"type": "array", "maxItems": 50, "items": verbatim},
+ 		"change_set": changeSet,
+-		"summary":    optionalString("markdown summary of the preparation", 262144),
++		"summary":    optionalString("change set summary, one line per item", 262144),
+ 		"next_step":  boundedSchema("what to do next", 1024),
+ 	}), []string{"section_id", "findings", "facts", "verbatim", "change_set", "summary", "next_step"})
+ }
+ 
++const prepareSectionNextStep = "Show the analyst the findings first, then the change set summary. Ask for approval, and after the analyst approves call workiva_confirm_change_set with change_set_id and confirm_token."
++
+ func (prepareSectionTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
+ 	mcp.AddTool(s, &mcp.Tool{
+ 		Name:         prepareSectionName,
+ 		Description:  prepareSectionDescription,
+ 		InputSchema:  prepareSectionInputSchema(),
+ 		OutputSchema: prepareSectionOutputSchema(),
+-	}, func(_ context.Context, _ *mcp.CallToolRequest, _ prepareSectionInput) (*mcp.CallToolResult, prepareSectionOutput, error) {
++	}, func(ctx context.Context, req *mcp.CallToolRequest, in prepareSectionInput) (*mcp.CallToolResult, prepareSectionOutput, error) {
+ 		if err := requireDemoDep(deps.Recipes != nil, "Recipes"); err != nil {
+ 			return nil, prepareSectionOutput{}, err
+ 		}
+-		return nil, prepareSectionOutput{}, notImplementedYet(prepareSectionName)
++		actor := mcpserver.ActorFromContextOrRequest(ctx, req, deps.ActorHeader)
++
++		sections := deps.Recipes.Sections()
++		known := false
++		for _, section := range sections {
++			if section.ID == in.SectionID {
++				known = true
++				break
++			}
++		}
++		if !known {
++			return nil, prepareSectionOutput{}, unknownSectionError(in.SectionID, sections)
++		}
++
++		prepared, err := deps.Recipes.Prepare(ctx, actor, in.SectionID)
++		if err != nil {
++			return nil, prepareSectionOutput{}, fail(err, "fix the reported problem and call workiva_prepare_section again")
++		}
++		return nil, newPrepareSectionOutput(prepared), nil
+ 	})
+ }
++
++func unknownSectionError(sectionID string, sections []recipe.SectionInfo) error {
++	msg := fmt.Sprintf("unknown section ID %q", sectionID)
++	if len(sections) == 0 {
++		return failMsg(msg, "no section recipes are loaded; check NL_DEMO_SECTIONS_DIR")
++	}
++	parts := make([]string, 0, len(sections))
++	for _, section := range sections {
++		parts = append(parts, fmt.Sprintf("%s (%s)", section.ID, section.Title))
++	}
++	return failMsg(msg, "available sections: "+strings.Join(parts, ", "))
++}
++
++// newPrepareSectionOutput maps a prepared section to the tool output. Every
++// array is non-nil because the output schema requires arrays.
++func newPrepareSectionOutput(p recipe.Prepared) prepareSectionOutput {
++	out := prepareSectionOutput{
++		SectionID: p.SectionID,
++		Findings:  make([]prepareFinding, 0, len(p.Findings)),
++		Facts:     make([]prepareFact, 0, len(p.Facts)),
++		Verbatim:  make([]prepareVerbatim, 0, len(p.Verbatim)),
++		ChangeSet: prepareChangeSet{
++			ChangeSetID:  p.ChangeSet.ID,
++			ConfirmToken: p.ChangeSet.Token,
++			ExpiresAt:    p.ChangeSet.ExpiresAt.UTC().Format(time.RFC3339),
++			Items:        make([]prepareChangeSetItem, 0, len(p.ChangeSet.Items)),
++		},
++		Summary:  changeSetSummary(p.ChangeSet),
++		NextStep: prepareSectionNextStep,
++	}
++	for _, f := range p.Findings {
++		out.Findings = append(out.Findings, prepareFinding{Kind: f.Kind, Field: f.Field, Severity: f.Severity, Message: f.Message})
++	}
++	for _, f := range p.Facts {
++		display := make([]string, 0, len(f.Display))
++		display = append(display, f.Display...)
++		out.Facts = append(out.Facts, prepareFact{
++			Key: f.Key, Label: f.Label, Unit: f.Unit, Current: f.Current, Prior: f.Prior,
++			Change: f.Change, ChangePct: f.ChangePct, Direction: f.Direction, Material: f.Material, Display: display,
++		})
++	}
++	for _, v := range p.Verbatim {
++		out.Verbatim = append(out.Verbatim, prepareVerbatim{ID: v.ID, Title: v.Title, Text: v.Text})
++	}
++	for _, item := range p.ChangeSet.Items {
++		out.ChangeSet.Items = append(out.ChangeSet.Items, prepareChangeSetItem{
++			FieldName: item.FieldName, SpreadsheetID: item.SpreadsheetID, SheetID: item.SheetID,
++			Range: item.Range, Before: item.Before, After: item.After, Source: item.Source,
++		})
++	}
++	return out
++}
++
++// changeSetSummary mirrors L1's summaryLine format: one line per preview
++// item, "<field>: <before> -> <after> (awaiting_confirmation)", joined with
++// newlines, with carriage returns and line feeds inside values escaped.
++// Replace it with Preview.Summary when L1 merges.
++func changeSetSummary(p changeset.Preview) string {
++	escape := strings.NewReplacer("\r", "\\r", "\n", "\\n")
++	lines := make([]string, 0, len(p.Items))
++	for _, item := range p.Items {
++		lines = append(lines, fmt.Sprintf("%s: %s -> %s (awaiting_confirmation)",
++			escape.Replace(item.FieldName), escape.Replace(item.Before), escape.Replace(item.After)))
++	}
++	return strings.Join(lines, "\n")
++}
+diff --git a/internal/mcpserver/tools/prepare_section_test.go b/internal/mcpserver/tools/prepare_section_test.go
+index 475f2ab..487e926 100644
+--- a/internal/mcpserver/tools/prepare_section_test.go
++++ b/internal/mcpserver/tools/prepare_section_test.go
+@@ -5,31 +5,182 @@ import (
+ 	"net/http"
+ 	"strings"
+ 	"testing"
++	"time"
+ 
+ 	"github.com/modelcontextprotocol/go-sdk/mcp"
+ 
+-	"github.com/dantalabs/northern-lights/internal/demoenv"
++	"github.com/dantalabs/northern-lights/internal/changeset"
+ 	"github.com/dantalabs/northern-lights/internal/recipe"
+ )
+ 
+-// TestPrepareSectionStubNotImplementedYet is replaced by the L2 lane.
+-func TestPrepareSectionStubNotImplementedYet(t *testing.T) {
+-	t.Setenv("NL_DEMO_SECTIONS_DIR", t.TempDir())
++// fakeRecipes is a recipe.Service with canned data that records calls.
++type fakeRecipes struct {
++	sections []recipe.SectionInfo
++	prepared recipe.Prepared
++	err      error
++
++	calls   int
++	actor   string
++	section string
++}
++
++func (f *fakeRecipes) Sections() []recipe.SectionInfo { return f.sections }
++
++func (f *fakeRecipes) Prepare(_ context.Context, actor, sectionID string) (recipe.Prepared, error) {
++	f.calls++
++	f.actor, f.section = actor, sectionID
++	return f.prepared, f.err
++}
++
++func callPrepareSection(t *testing.T, fake *fakeRecipes, sectionID string) *mcp.CallToolResult {
++	t.Helper()
+ 	deps := newTestEnv(t, http.NotFound).deps
+-	recipes, facts, err := recipe.New(demoenv.Env{}, nil)
++	deps.Recipes = fake
++	session := serveDemoTools(t, deps)
++	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
++		Name: "workiva_prepare_section", Arguments: map[string]any{"section_id": sectionID},
++	})
+ 	if err != nil {
+-		t.Fatalf("recipe.New: %v", err)
++		t.Fatalf("CallTool: %v", err)
++	}
++	return result
++}
++
++func TestScenario8UnknownSectionListsSections(t *testing.T) {
++	fake := &fakeRecipes{sections: []recipe.SectionInfo{
++		{ID: "environmental", Title: "Environmental Disclosures"},
++		{ID: "governance", Title: "Governance Disclosures"},
++	}}
++	result := callPrepareSection(t, fake, "nope")
++	if !result.IsError {
++		t.Fatalf("want an error result, got %+v", result)
++	}
++	text := resultText(result)
++	for _, want := range []string{`unknown section ID \"nope\"`, "environmental (Environmental Disclosures)", "governance (Governance Disclosures)"} {
++		if !strings.Contains(text, want) {
++			t.Errorf("error text missing %q: %s", want, text)
++		}
+ 	}
+-	deps.Recipes, deps.Facts = recipes, facts
++	if fake.calls != 0 {
++		t.Errorf("Prepare called %d times for an unknown section, want 0", fake.calls)
++	}
++}
+ 
+-	session := serveDemoTools(t, deps)
++func TestScenario8UnknownSectionWithNoRecipes(t *testing.T) {
++	result := callPrepareSection(t, &fakeRecipes{}, "environmental")
++	if !result.IsError || !strings.Contains(resultText(result), "NL_DEMO_SECTIONS_DIR") {
++		t.Fatalf("want a hint naming NL_DEMO_SECTIONS_DIR, got %s", resultText(result))
++	}
++}
++
++func TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep(t *testing.T) {
++	expires := time.Date(2026, 10, 20, 12, 30, 0, 0, time.FixedZone("x", 3600))
++	fake := &fakeRecipes{
++		sections: []recipe.SectionInfo{{ID: "environmental", Title: "Environmental Disclosures"}},
++		prepared: recipe.Prepared{
++			SectionID: "environmental",
++			Findings:  []recipe.Finding{{Kind: "material_change", Field: "energy", Severity: "info", Message: "energy rose 8%"}},
++			Facts: []recipe.Fact{{
++				Key: "energy", Label: "Energy use", Unit: "GWh", Current: "1.24", Prior: "1.15",
++				Change: "0.09", ChangePct: "7.8", Direction: "up", Material: true,
++				Display: []string{"1.24 GWh", "8%", "7.8%"},
++			}},
++			Verbatim: []recipe.VerbatimBlock{{ID: "policy", Title: "Policy", Text: "Exact policy text."}},
++			ChangeSet: changeset.Preview{
++				ID: "cs-1", Token: "tok-1", ExpiresAt: expires,
++				Items: []changeset.PreviewItem{
++					{FieldName: "energy", SpreadsheetID: "sp-1", SheetID: "sh-1", Range: "B3", Before: "1.15", After: "1.24", Source: "meter"},
++					{FieldName: "note", SpreadsheetID: "sp-1", SheetID: "sh-1", Range: "B4", Before: "old", After: "line one\nline two\r"},
++				},
++			},
++		},
++	}
++	result := callPrepareSection(t, fake, "environmental")
++	if result.IsError {
++		t.Fatalf("unexpected error: %s", resultText(result))
++	}
++	if fake.calls != 1 || fake.section != "environmental" || fake.actor != "tester@example.com" {
++		t.Errorf("Prepare calls=%d section=%q actor=%q", fake.calls, fake.section, fake.actor)
++	}
++	out := structuredContent(t, result)
++
++	if out["section_id"] != "environmental" {
++		t.Errorf("section_id = %v", out["section_id"])
++	}
++	findings := out["findings"].([]any)
++	if len(findings) != 1 || findings[0].(map[string]any)["message"] != "energy rose 8%" {
++		t.Errorf("findings = %v", findings)
++	}
++	facts := out["facts"].([]any)
++	fact := facts[0].(map[string]any)
++	if fact["current"] != "1.24" || fact["prior"] != "1.15" || fact["change"] != "0.09" || fact["change_pct"] != "7.8" ||
++		fact["direction"] != "up" || fact["material"] != true {
++		t.Errorf("fact = %v", fact)
++	}
++	display := fact["display"].([]any)
++	if len(display) != 3 || display[0] != "1.24 GWh" || display[1] != "8%" || display[2] != "7.8%" {
++		t.Errorf("display = %v", display)
++	}
++	verbatim := out["verbatim"].([]any)[0].(map[string]any)
++	if verbatim["id"] != "policy" || verbatim["text"] != "Exact policy text." {
++		t.Errorf("verbatim = %v", verbatim)
++	}
++
++	cs := out["change_set"].(map[string]any)
++	if cs["change_set_id"] != "cs-1" || cs["confirm_token"] != "tok-1" || cs["expires_at"] != "2026-10-20T11:30:00Z" {
++		t.Errorf("change_set = %v", cs)
++	}
++	items := cs["items"].([]any)
++	if len(items) != 2 || items[0].(map[string]any)["range"] != "B3" || items[0].(map[string]any)["source"] != "meter" {
++		t.Errorf("items = %v", items)
++	}
++
++	wantSummary := "energy: 1.15 -> 1.24 (awaiting_confirmation)\n" +
++		`note: old -> line one\nline two\r (awaiting_confirmation)`
++	if out["summary"] != wantSummary {
++		t.Errorf("summary = %q, want %q", out["summary"], wantSummary)
++	}
++
++	next, _ := out["next_step"].(string)
++	last := -1
++	for _, word := range []string{"findings", "summary", "approval", "workiva_confirm_change_set"} {
++		i := strings.Index(next, word)
++		if i <= last {
++			t.Fatalf("next_step %q: %q not found after position %d", next, word, last)
++		}
++		last = i
++	}
++}
++
++func TestScenario8EmptyPreparedUsesEmptyArrays(t *testing.T) {
++	fake := &fakeRecipes{
++		sections: []recipe.SectionInfo{{ID: "environmental", Title: "E"}},
++		prepared: recipe.Prepared{SectionID: "environmental", ChangeSet: changeset.Preview{ID: "cs", Token: "t"}},
++	}
++	result := callPrepareSection(t, fake, "environmental")
++	if result.IsError {
++		t.Fatalf("unexpected error: %s", resultText(result))
++	}
++	out := structuredContent(t, result)
++	for _, k := range []string{"findings", "facts", "verbatim"} {
++		if arr, ok := out[k].([]any); !ok || len(arr) != 0 {
++			t.Errorf("%s = %#v, want empty array", k, out[k])
++		}
++	}
++	if items, ok := out["change_set"].(map[string]any)["items"].([]any); !ok || len(items) != 0 {
++		t.Errorf("items = %#v, want empty array", items)
++	}
++}
++
++func TestPrepareSectionRequiresRecipes(t *testing.T) {
++	session := serveDemoTools(t, newTestEnv(t, http.NotFound).deps)
+ 	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+ 		Name: "workiva_prepare_section", Arguments: map[string]any{"section_id": "environmental"},
+ 	})
+ 	if err != nil {
+ 		t.Fatalf("CallTool: %v", err)
+ 	}
+-	if !result.IsError || !strings.Contains(resultText(result), "not implemented yet") {
+-		t.Fatalf("want a not implemented yet error, got %+v", result)
++	if !result.IsError || !strings.Contains(resultText(result), "Recipes is not available") {
++		t.Fatalf("want Recipes is not available, got %s", resultText(result))
+ 	}
+ }

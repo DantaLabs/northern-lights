@@ -1,0 +1,18 @@
+{
+  "task_id": "T1",
+  "axis": "standards",
+  "verdict": "pass",
+  "implementation_commit": "8f1a635c44a19a670a13aad7add6de992b391474",
+  "attempt": 2,
+  "findings": [
+    {"severity": "minor", "file": "internal/recipe/facts_test.go", "line": 193, "issue": "The name TestDisplayFormsAreNotDuplicated and its comment ('each form appears once') contradict the pinned result. The expected list contains \"-10%\" twice, once as the change form and once as the 0 dp percent form. The test therefore locks in a duplicate while its name says there are none. Whether the plan's 'skip any form that exactly duplicates an earlier entry' should cover the percent forms is for the spec axis. On standards, the name and comment are misleading.", "fix": "Rename the test to say what it pins (for example TestPercentFieldUnsignedMagnitudesSkipDuplicates) and correct the comment. Alternatively, if duplicate skipping is meant to cover the percent forms, extend containsString to them and drop the second \"-10%\"."},
+    {"severity": "minor", "file": "internal/recipe/facts.go", "line": 306, "issue": "The containsString guard on the percentage-point form can never trigger, because no earlier form ends in 'percentage point(s)'. Replacing it with `if true` keeps the suite green, and the worker report says so too. This is a dead branch that suggests a case which cannot happen.", "fix": "Append pp unconditionally, or keep the guard with a comment saying it is defensive."},
+    {"severity": "minor", "file": "internal/recipe/facts.go", "line": 171, "issue": "Carried over from attempt 1: computeFactValues is still about 150 lines. It mixes input normalisation, change/direction/materiality maths and display assembly (possible Divergent Change).", "fix": "Split it into normaliseInputs, computeChange (Change, ChangePct, Direction, Material) and buildDisplay."},
+    {"severity": "nit", "file": "internal/recipe/facts.go", "line": 214, "issue": "Carried over: direction values 'new', 'flat', 'up' and 'down' are bare string literals, repeated in facts.go and the tests (possible Primitive Obsession).", "fix": "Declare package constants next to the Fact type and use them in the code and tests."}
+  ],
+  "requirements_checked": [
+    {"requirement": "R5", "satisfied": true, "evidence": "The attempt 1 major finding is fixed. TestMaterialityEqualityBoundaryIsMaterial covers the relative case (110 vs 100 at 10) and the percentage-point case (0.48 vs 0.38 at 10). Mutating facts.go `cmp >= 0` to `cmp > 0` in a scratch copy now fails that test. TestScenario2FactArithmetic and TestScenario3NewDirectionWhenPriorZeroOrMissing pass. There is no float use, and the acceptance grep exits 0."},
+    {"requirement": "R6", "satisfied": true, "evidence": "TestScenario4DisplayForms, TestPercentFieldsUsePercentAndPercentagePoints and TestDisplayRoundingHalfAwayFromZero. The singular noun is consistent at decimals>0: AbsoluteDecimal canonicalises \"1.0\" to \"1\", so the form is '1.0 percentage point' (checked with a probe)."}
+  ],
+  "new_tasks": []
+}

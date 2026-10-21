@@ -1,0 +1,71 @@
+{
+  "task_id": "T2",
+  "axis": "spec",
+  "attempt": 2,
+  "implementation_commit": "cfd726259e3d3fe2d1cd5065c28a32671f4e7f06",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 49,
+      "issue": "No test covers R1's default directory, configs/demo/sections, because every test sets NL_DEMO_SECTIONS_DIR. Attempt 1 already flagged this and it is still open. It is acceptable for T2 because T4 scenario 9 exercises the real sections.",
+      "fix": "Optional: add a test that points NL_DEMO_SECTIONS_DIR at ../../configs/demo/sections with the demo mappings and asserts that both real recipes load. Alternatively, leave this to T4."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/service_test.go",
+      "line": 543,
+      "issue": "The symlink containment subtests call t.Skipf when os.Symlink fails. On a host without symlink support, the attempt-1 fix would go unverified without any visible failure. It works on Linux CI, where the tests ran and passed.",
+      "fix": "Optional: use t.Fatalf on Linux, or accept as is."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R1",
+      "satisfied": true,
+      "evidence": "loadRecipes/loadRecipesFromRoot (recipe.go, diff lines 91-140) read only top-level *.yaml files in name order through os.Root. Errors are wrapped as 'section recipe <file>: <reason>'. The default directory is set at service.go:defaultSectionsDir. Proven by TestScenario1InvalidRecipeStopsStartup (6 subtests, each asserting bad.yaml plus the reason) and TestScenario1ValidRecipeLoads. These pass in checks/T2-a2.log and in my local re-run."
+    },
+    {
+      "requirement": "R2",
+      "satisfied": true,
+      "evidence": "rawRecipe, rawField and verbatimDef are plain tagged structs. decimalText is the only UnmarshalYAML, and KnownFields(true) is set in loadRecipeFile. A second YAML document is now rejected. Proven by the unknown_key, unknown_field_key, unknown_verbatim_key (flow mapping) and missing_id subtests, and by TestLoadRecipeRejectsSecondYAMLDocument."
+    },
+    {
+      "requirement": "R3",
+      "satisfied": true,
+      "evidence": "fieldDef.validate looks up source, target and prior (when set) and returns '<key>: unknown mapped field <name>' when GetField is nil. Proven by TestScenario1InvalidRecipeStopsStartup/unknown_mapped_field against a real mapping.Store from bootstrap.LoadMappings. With a nil store, TestNewWithRecipesRequiresStore asserts both the file name and 'mapping store is not available'."
+    },
+    {
+      "requirement": "R13",
+      "satisfied": true,
+      "evidence": "service.Sections() returns all five SectionInfo fields sorted by ID. TestScenario8SectionsSortedByID uses one.yaml=b-second and two.yaml=a-first, so file order and ID order differ, and it compares full structs."
+    },
+    {
+      "requirement": "Acceptance scenario 1",
+      "satisfied": true,
+      "evidence": "TestScenario1InvalidRecipeStopsStartup (unknown key, missing id, unknown mapped field, plus unknown field/verbatim keys and an empty verbatim file) and TestScenario1ValidRecipeLoads pass. All checks/T2-a2.json commands exit 0, including golangci-lint."
+    },
+    {
+      "requirement": "Owner: NL_DEMO_DOCUMENT_ID sandbox override; demo mode keeps demo-doc-annual-report",
+      "satisfied": true,
+      "evidence": "In New (service.go), the override is applied only when Cfg != nil && !DemoMode and the value is non-blank, and the value is trimmed. It is documented on New, and the ID is never logged. Proven by the TestDocumentIDOverrideFromEnvironment subtests nil_cfg_keeps_yaml, demo_mode_keeps_yaml, sandbox_uses_env, sandbox_trims_env, sandbox_unset_keeps_yaml and sandbox_blank_keeps_yaml. configs/demo is untouched."
+    },
+    {
+      "requirement": "L0 contract: New succeeds with no recipes",
+      "satisfied": true,
+      "evidence": "A missing directory returns nil, and an empty directory loads zero and closes the root. Proven by TestNewSucceedsWithoutRecipes (empty and missing, demoenv.Env{}) and by go test -race -run '^TestDemoPipeline' ./cmd/workiva-mcp/ (exit 0). A non-directory path errors, per TestNewRejectsSectionsPathThatIsAFile."
+    },
+    {
+      "requirement": "Fix from review of attempt 1: os.OpenRoot containment plus a symlink test",
+      "satisfied": true,
+      "evidence": "loadRecipes opens the directory with os.OpenRoot. verbatimDef.validate stats files through root.Stat, and the root is kept on recipeDef for T4. TestLoadRecipeVerbatimContainment covers parent_element (with a real outside file), absolute, symlink_file_outside and symlink_dir_outside. The symlink cases assert 'escapes', which only os.Root produces, so they would fail without the fix. TestLoadRecipeAllowsSymlinkInsideSectionsDir accepts an internal symlink."
+    },
+    {
+      "requirement": "Scope and naming",
+      "satisfied": true,
+      "evidence": "The code diff touches only owned files (recipe.go, service.go, service_test.go, testdata/load/**). The New signature is unchanged, test helpers use the loadTest prefix, and no test asserts Prepare or LatestFacts results. The vocabulary (section recipe, field, verbatim block, section) matches CONTEXT.md."
+    }
+  ],
+  "new_tasks": []
+}

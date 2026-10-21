@@ -1,0 +1,68 @@
+{
+  "task_id": "T2",
+  "axis": "spec",
+  "attempt": 1,
+  "implementation_commit": "c65dfa3d2b77a6d0680f7a769a16e42b5068d816",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 48,
+      "issue": "R1 sets the default directory to configs/demo/sections, and service.go:19/48-51 implements it. No test proves the default: every test sets NL_DEMO_SECTIONS_DIR. I checked outside the repo that the real configs/demo/sections recipes (esg-environmental, esg-social) load against configs/demo/mappings-demo.yaml with this commit, so the default path works today. No test protects it, though.",
+      "fix": "Optional: add a test that unsets NL_DEMO_SECTIONS_DIR, or that points it at ../../configs/demo/sections with the demo mappings, and asserts that both real sections load. T4 scenario 9 may cover this."
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 69,
+      "issue": "The owner rule 'nil Cfg keeps the YAML document_id' is implemented (env.Cfg != nil guard), but TestDocumentIDOverrideFromEnvironment only covers Cfg with DemoMode true or false. The Entra storage context (service.go:53-55) is also untested. Neither is a covered spec requirement; both come from the task instructions.",
+      "fix": "Optional: add a nil_cfg_keeps_yaml subtest with NL_DEMO_DOCUMENT_ID set."
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/service_test.go",
+      "line": 105,
+      "issue": "For R3, unknown_mapped_field only exercises the source key. The target and prior lookups run through the same loop (recipe.go:233-244), so the risk is low.",
+      "fix": "Optional: add cases for the target and prior keys."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R1",
+      "satisfied": true,
+      "evidence": "recipe.go:91-128 reads only *.yaml files in the directory, non-recursively and sorted. Errors are wrapped as 'section recipe <file>: <reason>' (recipe.go:118). service.go:48-51 reads NL_DEMO_SECTIONS_DIR with the default configs/demo/sections. Proven by TestScenario1InvalidRecipeStopsStartup (6 subtests; each asserts that bad.yaml and the reason appear in the error from New) and by TestScenario1ValidRecipeLoads. The check log shows all commands exit 0."
+    },
+    {
+      "requirement": "R2",
+      "satisfied": true,
+      "evidence": "rawRecipe and rawField (recipe.go:64-87) are plain structs with every schema key. decimalText is the only UnmarshalYAML (recipe.go:53-62), and KnownFields(true) is set at recipe.go:137. Unknown keys are rejected at three levels, proven by the unknown_key, unknown_field_key and unknown_verbatim_key (flow mapping) subtests. Required keys are enforced at recipe.go:163-171, proven by missing_id."
+    },
+    {
+      "requirement": "R3",
+      "satisfied": true,
+      "evidence": "recipe.go:233-244 looks up source, target and prior (when set) and returns 'unknown mapped field <name>' when GetField returns nil. Proven by the unknown_mapped_field subtest against a real mapping.Store loaded via bootstrap.LoadMappings. A nil store gives exactly 'mapping store is not available', proven by TestNewWithRecipesRequiresStore."
+    },
+    {
+      "requirement": "R13",
+      "satisfied": true,
+      "evidence": "service.go:104-111 returns all five SectionInfo fields sorted by ID. TestScenario8SectionsSortedByID writes b-second in one.yaml and a-first in two.yaml, so file order differs from ID order, and asserts the ID order with all fields."
+    },
+    {
+      "requirement": "Acceptance scenario 1",
+      "satisfied": true,
+      "evidence": "TestScenario1InvalidRecipeStopsStartup (unknown key, missing id, unknown mapped field, plus an empty verbatim file) and TestScenario1ValidRecipeLoads both pass in checks/T2-a1.log."
+    },
+    {
+      "requirement": "Owner: NL_DEMO_DOCUMENT_ID override (sandbox only; demo mode keeps demo-doc-annual-report)",
+      "satisfied": true,
+      "evidence": "service.go:68-83, documented on New at service.go:43-46. The ID is never logged; the log line at service.go:84 has only the count and dir. Proven by the TestDocumentIDOverrideFromEnvironment subtests demo_mode_keeps_yaml (env set, demo mode keeps the YAML value), sandbox_uses_env, sandbox_unset_keeps_yaml and sandbox_blank_keeps_yaml. No document ID is committed; the configs are unchanged."
+    },
+    {
+      "requirement": "L0 contract: New succeeds with an empty NL_DEMO_SECTIONS_DIR in demo mode",
+      "satisfied": true,
+      "evidence": "recipe.go:92-96 treats a missing dir as zero recipes, and an empty dir also loads zero. Proven by TestNewSucceedsWithoutRecipes (empty and missing subtests, demoenv.Env{}) and by the TestDemoPipeline acceptance in ./cmd/workiva-mcp (exit 0). A non-directory path errors, per TestNewRejectsSectionsPathThatIsAFile."
+    }
+  ],
+  "new_tasks": []
+}

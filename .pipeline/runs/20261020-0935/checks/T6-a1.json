@@ -1,0 +1,61 @@
+{
+  "task_id": "T6",
+  "attempt": 1,
+  "implementation_commit": "9a4446d78d0ff013566e231e9c3057eea54c95df",
+  "commands": [
+    {
+      "command": "go test -list '^TestScenario9PrepareSectionToolOnDemoData$' ./internal/mcpserver/tools/ | grep -qx 'TestScenario9PrepareSectionToolOnDemoData'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -race -count=1 -run '^TestScenario9PrepareSectionToolOnDemoData$' ./internal/mcpserver/tools/",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -list '^TestScenario9DemoModeEnvironmentalSection$' ./internal/recipe/ | grep -qx 'TestScenario9DemoModeEnvironmentalSection'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -race -count=1 -run '^(TestScenario9DemoModeEnvironmentalSection)$' ./internal/recipe/",
+      "exit_code": 0
+    },
+    {
+      "command": "for n in 1 2 3 4 5 6 7 8 9; do (go test -list '^TestScenario'$n ./internal/recipe/ ./internal/mcpserver/tools/ | grep -q '^TestScenario'$n) || exit 1; done",
+      "exit_code": 0
+    },
+    {
+      "command": "go build ./...",
+      "exit_code": 0
+    },
+    {
+      "command": "go test ./... -race -timeout 40m",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    },
+    {
+      "command": "! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'",
+      "exit_code": 0
+    },
+    {
+      "command": "grep -E '^\\| L2 Section recipe' docs/demo/STATUS.md | grep -q 'ready for review'",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --name-only 48269d9ee2ab52f64d4277931374fd7a4d7f3c76 -- . ':!internal/recipe' ':!internal/mcpserver/tools/prepare_section.go' ':!internal/mcpserver/tools/prepare_section_test.go' ':!docs/demo/STATUS.md' ':!.pipeline' ':!PLAN.md' | (! grep -q .)",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --quiet $(git merge-base HEAD origin/claude/demo-integration) -- internal/recipe/types.go",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    }
+  ],
+  "checkout_clean": true,
+  "created_at": "2026-10-20T10:51:30Z"
+}

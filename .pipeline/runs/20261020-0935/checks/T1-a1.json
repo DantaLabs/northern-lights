@@ -1,0 +1,49 @@
+{
+  "task_id": "T1",
+  "attempt": 1,
+  "implementation_commit": "0ccd01a60666441af3f42a1abfd0ee5141aa587c",
+  "commands": [
+    {
+      "command": "go test -list '^TestScenario2FactArithmetic$' ./internal/recipe/ | grep -qx 'TestScenario2FactArithmetic'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -list '^TestScenario3NewDirectionWhenPriorZeroOrMissing$' ./internal/recipe/ | grep -qx 'TestScenario3NewDirectionWhenPriorZeroOrMissing'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -list '^TestScenario4DisplayForms$' ./internal/recipe/ | grep -qx 'TestScenario4DisplayForms'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -list '^TestPercentFieldsUsePercentAndPercentagePoints$' ./internal/recipe/ | grep -qx 'TestPercentFieldsUsePercentAndPercentagePoints'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -list '^TestDisplayRoundingHalfAwayFromZero$' ./internal/recipe/ | grep -qx 'TestDisplayRoundingHalfAwayFromZero'",
+      "exit_code": 0
+    },
+    {
+      "command": "go test -race -count=1 -run '^(TestScenario2FactArithmetic|TestScenario3NewDirectionWhenPriorZeroOrMissing|TestScenario4DisplayForms|TestPercentFieldsUsePercentAndPercentagePoints|TestDisplayRoundingHalfAwayFromZero)$' ./internal/recipe/",
+      "exit_code": 0
+    },
+    {
+      "command": "go vet ./internal/recipe/",
+      "exit_code": 0
+    },
+    {
+      "command": "! grep -rnE 'float(32|64)|ParseFloat' internal/recipe --include='*.go'",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l internal/recipe internal/mcpserver/tools)\"",
+      "exit_code": 0
+    },
+    {
+      "command": "test -z \"$(gofmt -l .)\" && go vet ./... && golangci-lint run",
+      "exit_code": 0
+    }
+  ],
+  "checkout_clean": true,
+  "created_at": "2026-10-20T10:04:34Z"
+}

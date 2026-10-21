@@ -1,0 +1,49 @@
+{
+  "task_id": "T1",
+  "axis": "spec",
+  "attempt": 2,
+  "implementation_commit": "8f1a635c44a19a670a13aad7add6de992b391474",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/facts_test.go",
+      "line": 193,
+      "issue": "The name TestDisplayFormsAreNotDuplicated and its comment 'each form appears once' do not match its own expected list. That list contains \"-10%\" twice, once as the change display and once as pct0. The test pins the plan's narrower rule: only the percentage-point form and the unsigned magnitudes are deduplicated. It does not show that no form is duplicated. This is the same reading as the a1 minor finding, which was optional. The behaviour is acceptable, but the name misleads.",
+      "fix": "Optional: rename the test, for example to TestUnsignedMagnitudesSkipDuplicates, and correct the comment so it says the change and pct0 forms may coincide."
+    }
+  ],
+  "requirements_checked": [
+    {
+      "requirement": "R5",
+      "satisfied": true,
+      "evidence": "facts.go:207-243 (SubtractDecimal and DivideDecimal over |Prior|, Material = cmp >= 0). TestScenario2FactArithmetic covers the arithmetic and direction. TestScenario3NewDirectionWhenPriorZeroOrMissing covers 'new'. TestScenario4DisplayForms covers up and flat. The a1 major finding (the 'at or above' boundary was untested) is fixed: TestMaterialityEqualityBoundaryIsMaterial (facts_test.go:182) asserts relative 110 vs 100 at 10 and % field 0.48 vs 0.38 at 10. I re-ran the reviewer mutation `cmp >= 0` -> `cmp > 0` in a scratch copy, and that test now fails on both assertions. The no-float grep passes."
+    },
+    {
+      "requirement": "R6",
+      "satisfied": true,
+      "evidence": "TestScenario4DisplayForms pins the exact forms from scenario 4 plus the unsigned magnitudes. TestPercentFieldsUsePercentAndPercentagePoints pins the percentage-point form and Material in pp (8 pp gives false, 12 pp gives true). TestMaterialityEqualityBoundaryIsMaterial checks the pp equality case (10 pp gives true). TestDisplayFormsAreNotDuplicated pins the duplicate-skip branch for magnitudes. TestDisplayRoundingHalfAwayFromZero covers rounding."
+    },
+    {
+      "requirement": "Scenario 2",
+      "satisfied": true,
+      "evidence": "TestScenario2FactArithmetic"
+    },
+    {
+      "requirement": "Scenario 3",
+      "satisfied": true,
+      "evidence": "TestScenario3NewDirectionWhenPriorZeroOrMissing"
+    },
+    {
+      "requirement": "Scenario 4",
+      "satisfied": true,
+      "evidence": "TestScenario4DisplayForms"
+    },
+    {
+      "requirement": "Fix from review of attempt 1 / scope / checks",
+      "satisfied": true,
+      "evidence": "Attempt 2 adds only tests to facts_test.go and leaves facts.go behaviour unchanged. The diff touches only the owned files internal/recipe/facts.go and facts_test.go. checks/T1-a2.json reports exit 0 for every command (tests, vet, float grep, gofmt, golangci-lint 0 issues). The full ./internal/recipe suite passes on 8f1a635. Naming uses the CONTEXT.md term 'narrative fact' and the factsTest helper prefix."
+    }
+  ],
+  "new_tasks": []
+}
