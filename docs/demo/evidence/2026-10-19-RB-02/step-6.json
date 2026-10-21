@@ -1,0 +1,15 @@
+[
+  {
+    "note": "delete section",
+    "method": "DELETE",
+    "path": "/documents/<document-id>/sections/<document-id>_244",
+    "status": 204
+  },
+  {
+    "note": "get section after delete (expect 404)",
+    "method": "GET",
+    "path": "/documents/<document-id>/sections/<document-id>_244",
+    "status": 0,
+    "response": "workiva api error: status 404: {\"documentationUrl\":\"https://developers.workiva.com/2026-01-01/getsectionbyid.html?rel=error\",\"message\":\"section not found\",\"version\":\"2026-01-01\"}\n"
+  }
+]
