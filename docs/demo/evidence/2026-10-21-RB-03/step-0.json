@@ -1,0 +1,55 @@
+{
+  "branch": "codex/demo-rb03",
+  "base_commit": "a060abb",
+  "document_lookup": {
+    "result": "pass",
+    "exact_match_count": 1,
+    "validated_document_name": "2025 Annual Report - EN",
+    "private_source_filename": ".scratch/rb03/step-2.local.json",
+    "spreadsheet_id_source_filename": "docs/demo/evidence/2026-10-19-RB-01/step-3.local.json"
+  },
+  "mapping": {
+    "result": "generated",
+    "private_filename": ".scratch/rb03/mappings-sandbox.yaml",
+    "ignored": true,
+    "sandbox_id_leak_check": "pass"
+  },
+  "local_mcp_preflight": {
+    "result": "pass",
+    "tool_count": 17,
+    "checks_passed": 7,
+    "database": ".scratch/rb03/preflight.db",
+    "database_counts": {
+      "fields": 126,
+      "sheets": 5,
+      "spreadsheets": 2
+    },
+    "temporary_server_stopped": true
+  },
+  "seed": {
+    "result": "completed",
+    "exit_code": 0,
+    "elapsed_seconds": 111.4,
+    "planned_writes": 84,
+    "planned_clears": 42,
+    "planned_section_deletes": 2,
+    "readback_ok": 126,
+    "readback_mismatch": 0,
+    "seed_log": ".scratch/rb03/seed-run.log"
+  },
+  "build_all": {
+    "result": "pass",
+    "command": "go build ./..."
+  },
+  "copilot_setup": {
+    "agent": "Workiva_Sandbox_Test",
+    "environment": "Northern-Lights-Sandbox",
+    "tools_seen": 17,
+    "auth_mode": "api_key",
+    "old_active_connector_disabled": true,
+    "demo_connector": "Northern Lights RB03 Demo",
+    "instruction_persistence_verified": true,
+    "initial_instructions_characters": 7781,
+    "final_instructions_characters": 7964
+  }
+}

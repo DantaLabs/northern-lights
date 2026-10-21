@@ -1,0 +1,1395 @@
+{
+  "url": "[REDACTED_URL]",
+  "title": "Agents",
+  "tree": [
+    {
+      "role": "link",
+      "name": "Skip to main content",
+      "ref": "@e1000511",
+      "children": [
+        {
+          "role": "StaticText",
+          "name": "Skip to main content"
+        }
+      ]
+    },
+    {
+      "role": "navigation",
+      "name": "Main navigation",
+      "children": [
+        {
+          "role": "button",
+          "name": "Expand navigation",
+          "ref": "@e1000512"
+        },
+        {
+          "role": "list",
+          "children": [
+            {
+              "role": "link",
+              "name": "Home",
+              "ref": "@e1000513"
+            },
+            {
+              "role": "link",
+              "name": "Agents",
+              "ref": "@e1000514"
+            },
+            {
+              "role": "link",
+              "name": "Workflows",
+              "ref": "@e1000515"
+            },
+            {
+              "role": "link",
+              "name": "Apps (Preview)",
+              "ref": "@e1000516"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Switch environment (current: Northern-Lights-Sandbox)",
+          "ref": "@e1000517"
+        },
+        {
+          "role": "button",
+          "name": "Open account menu for Sigmundo Contreras2",
+          "description": "Sigmundo Contreras2",
+          "ref": "@e1000518"
+        },
+        {
+          "role": "button",
+          "name": "More options",
+          "ref": "@e1000519"
+        }
+      ]
+    },
+    {
+      "role": "main",
+      "children": [
+        {
+          "role": "image",
+          "name": "Icon for your agent"
+        },
+        {
+          "role": "heading",
+          "name": "Workiva_Sandbox_Test",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Workiva_Sandbox_Test"
+            }
+          ]
+        },
+        {
+          "role": "image",
+          "name": "Securely authenticated with Microsoft"
+        },
+        {
+          "role": "tablist",
+          "children": [
+            {
+              "role": "tab",
+              "name": "Overview",
+              "ref": "@e1000520",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Overview"
+                }
+              ]
+            },
+            {
+              "role": "tab",
+              "name": "8 more options",
+              "ref": "@e1000521",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "+8"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Search your agent",
+          "ref": "@e1000522"
+        },
+        {
+          "role": "button",
+          "name": "Publish",
+          "ref": "@e1000523",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Publish"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Settings",
+          "ref": "@e1000524",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Settings"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Options",
+          "ref": "@e1000525"
+        },
+        {
+          "role": "separator"
+        },
+        {
+          "role": "button",
+          "name": "Test",
+          "ref": "@e1000526",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Test"
+            }
+          ]
+        },
+        {
+          "role": "toolbar",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Test your agent"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Northern Lights RB03 Demo Northern Lights RB03 Demo only visible to makers",
+          "ref": "@e1000726",
+          "children": [
+            {
+              "role": "image",
+              "name": "Northern Lights RB03 Demo"
+            },
+            {
+              "role": "StaticText",
+              "name": "Northern Lights RB03 Demo"
+            },
+            {
+              "role": "StaticText",
+              "name": "only visible to makers"
+            }
+          ]
+        },
+        {
+          "role": "progressbar",
+          "name": "Working"
+        },
+        {
+          "role": "StaticText",
+          "name": "Interpreting flow intent"
+        },
+        {
+          "role": "StaticText",
+          "name": "RB-03 sandbox report section demo. Reads mapped synthetic data and writes only after approval."
+        },
+        {
+          "role": "progressbar",
+          "name": "Working"
+        },
+        {
+          "role": "StaticText",
+          "name": "Executing flow"
+        },
+        {
+          "role": "StaticText",
+          "name": "The agent invoked the MCP server."
+        },
+        {
+          "role": "button",
+          "name": "Send feedback to Microsoft",
+          "ref": "@e1000727",
+          "children": [
+            {
+              "role": "image",
+              "name": "Send feedback to Microsoft"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Documentation",
+          "ref": "@e1000728"
+        },
+        {
+          "role": "heading",
+          "name": "Rationale",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Rationale"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Rationale information",
+          "ref": "@e1000729"
+        },
+        {
+          "role": "button",
+          "name": "Show rationale",
+          "ref": "@e1000730",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Show rationale"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "workiva_search_fields only visible to makers",
+          "ref": "@e1000731",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "workiva_search_fields"
+            },
+            {
+              "role": "StaticText",
+              "name": "only visible to makers"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "Interpreting tool intent"
+        },
+        {
+          "role": "StaticText",
+          "name": "The agent determined that invoking the "
+        },
+        {
+          "role": "button",
+          "name": "workiva_search_fields",
+          "ref": "@e1000732",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "workiva_search_fields"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": " tool was required to fulfill the user's request."
+        },
+        {
+          "role": "StaticText",
+          "name": "Preparing tool inputs"
+        },
+        {
+          "role": "StaticText",
+          "name": "Inputs"
+        },
+        {
+          "role": "StaticText",
+          "name": "query (String)"
+        },
+        {
+          "role": "textbox",
+          "name": "query (String)",
+          "value": "energy",
+          "ref": "@e1000733",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "energy"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Copy",
+          "ref": "@e1000734"
+        },
+        {
+          "role": "StaticText",
+          "name": "Executing tool action"
+        },
+        {
+          "role": "StaticText",
+          "name": "The agent executed the "
+        },
+        {
+          "role": "button",
+          "name": "workiva_search_fields",
+          "ref": "@e1000735",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "workiva_search_fields"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": " tool with the prepared inputs."
+        },
+        {
+          "role": "StaticText",
+          "name": "Processing tool result"
+        },
+        {
+          "role": "StaticText",
+          "name": "The tool execution returned a result, which was processed for downstream reasoning."
+        },
+        {
+          "role": "StaticText",
+          "name": "Passing control to next node"
+        },
+        {
+          "role": "StaticText",
+          "name": "Based on the tool output, the agent passed control to the next activity node."
+        },
+        {
+          "role": "StaticText",
+          "name": "Generated result"
+        },
+        {
+          "role": "StaticText",
+          "name": "Outputs"
+        },
+        {
+          "role": "StaticText",
+          "name": "content (Table)"
+        },
+        {
+          "role": "code",
+          "children": [
+            {
+              "role": "textbox",
+              "name": "Editor content;Press Alt+F1 for Accessibility Options.",
+              "ref": "@e1000736"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Copy",
+          "ref": "@e1000737",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Copy"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "structuredContent (Record)"
+        },
+        {
+          "role": "code",
+          "children": [
+            {
+              "role": "textbox",
+              "name": "Editor content;Press Alt+F1 for Accessibility Options.",
+              "ref": "@e1000738"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Copy",
+          "ref": "@e1000739",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Copy"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "Execution summary"
+        },
+        {
+          "role": "StaticText",
+          "name": "Searches the semantic field mapping for fields matching a natural-language query. Call this tool FIRST whenever the user refers to a report value in plain language, such as \"scope 2 energy\", \"water consumption\", or \"turnover\". It resolves those references to mapped field names with their exact spreadsheet, sheet, and cell range, which you then pass to workiva_get_field for the value or to write tools. Matches come from field names and their aliases. Results include the field's range, description, and, when a fresh cached read exists, the current value. If nothing matches, try rephrasing or list connected spreadsheets with workiva_list_spreadsheets. The tool action completed with status Completed in 1,05s. Consuming 7 tokens."
+        },
+        {
+          "role": "button",
+          "name": "Send feedback to Microsoft",
+          "ref": "@e1000740",
+          "children": [
+            {
+              "role": "image",
+              "name": "Send feedback to Microsoft"
+            }
+          ]
+        },
+        {
+          "role": "heading",
+          "name": "Rationale",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Rationale"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Rationale information",
+          "ref": "@e1000741"
+        },
+        {
+          "role": "button",
+          "name": "Show rationale",
+          "ref": "@e1000742",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Show rationale"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "workiva_get_field only visible to makers",
+          "ref": "@e1000743",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "workiva_get_field"
+            },
+            {
+              "role": "StaticText",
+              "name": "only visible to makers"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "Interpreting tool intent"
+        },
+        {
+          "role": "StaticText",
+          "name": "The agent determined that invoking the "
+        },
+        {
+          "role": "button",
+          "name": "workiva_get_field",
+          "ref": "@e1000744",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "workiva_get_field"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": " tool was required to fulfill the user's request."
+        },
+        {
+          "role": "StaticText",
+          "name": "Preparing tool inputs"
+        },
+        {
+          "role": "StaticText",
+          "name": "Inputs"
+        },
+        {
+          "role": "StaticText",
+          "name": "name (String)"
+        },
+        {
+          "role": "textbox",
+          "name": "name (String) name (String)",
+          "value": "src_env_energy_total",
+          "ref": "@e1000745",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "src_env_energy_total"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Copy",
+          "ref": "@e1000746"
+        },
+        {
+          "role": "StaticText",
+          "name": "Executing tool action"
+        },
+        {
+          "role": "StaticText",
+          "name": "The agent executed the "
+        },
+        {
+          "role": "button",
+          "name": "workiva_get_field",
+          "ref": "@e1000747",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "workiva_get_field"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": " tool with the prepared inputs."
+        },
+        {
+          "role": "StaticText",
+          "name": "Processing tool result"
+        },
+        {
+          "role": "StaticText",
+          "name": "The tool execution returned a result, which was processed for downstream reasoning."
+        },
+        {
+          "role": "StaticText",
+          "name": "Passing control to next node"
+        },
+        {
+          "role": "StaticText",
+          "name": "Based on the tool output, the agent passed control to the next activity node."
+        },
+        {
+          "role": "StaticText",
+          "name": "Generated result"
+        },
+        {
+          "role": "StaticText",
+          "name": "Outputs"
+        },
+        {
+          "role": "StaticText",
+          "name": "content (Table)"
+        },
+        {
+          "role": "code",
+          "children": [
+            {
+              "role": "textbox",
+              "name": "Editor content;Press Alt+F1 for Accessibility Options.",
+              "ref": "@e1000748"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Copy",
+          "ref": "@e1000749",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Copy"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "structuredContent (Record)"
+        },
+        {
+          "role": "code",
+          "children": [
+            {
+              "role": "textbox",
+              "name": "Editor content;Press Alt+F1 for Accessibility Options.",
+              "ref": "@e1000750"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Copy",
+          "ref": "@e1000751",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Copy"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "Execution summary"
+        },
+        {
+          "role": "StaticText",
+          "name": "Returns the current value of one mapped field, identified by its exact field name. Use workiva_search_fields first when you only have a natural-language reference such as \"scope 2 energy\"; it resolves those to field names. When the cached read is still fresh the value comes from the local snapshot cache with no Workiva API call; otherwise the field's range is read live from the API and the cache is refreshed. The response includes the field's spreadsheet, sheet, range, type, description, the value, and when it was fetched (fetched_at, RFC 3339). The tool action completed with status Completed in 2,13s. Consuming 7 tokens."
+        },
+        {
+          "role": "button",
+          "name": "Send feedback to Microsoft",
+          "ref": "@e1000752",
+          "children": [
+            {
+              "role": "image",
+              "name": "Send feedback to Microsoft"
+            }
+          ]
+        },
+        {
+          "role": "heading",
+          "name": "Rationale",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Rationale"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Rationale information",
+          "ref": "@e1000753"
+        },
+        {
+          "role": "button",
+          "name": "Show rationale",
+          "ref": "@e1000754",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Show rationale"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "workiva_get_field workiva_get_field only visible to makers",
+          "ref": "@e1000755",
+          "children": [
+            {
+              "role": "image",
+              "name": "workiva_get_field"
+            },
+            {
+              "role": "StaticText",
+              "name": "workiva_get_field"
+            },
+            {
+              "role": "StaticText",
+              "name": "only visible to makers"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "Interpreting tool intent"
+        },
+        {
+          "role": "StaticText",
+          "name": "The agent determined that invoking the "
+        },
+        {
+          "role": "button",
+          "name": "workiva_get_field workiva_get_field",
+          "ref": "@e1000756",
+          "children": [
+            {
+              "role": "image",
+              "name": "workiva_get_field"
+            },
+            {
+              "role": "StaticText",
+              "name": "workiva_get_field"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": " tool was required to fulfill the user's request."
+        },
+        {
+          "role": "StaticText",
+          "name": "Preparing tool inputs"
+        },
+        {
+          "role": "StaticText",
+          "name": "Inputs"
+        },
+        {
+          "role": "StaticText",
+          "name": "name (String)"
+        },
+        {
+          "role": "textbox",
+          "value": "rpt_env_energy_total_2024",
+          "ref": "@e1000757",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "rpt_env_energy_total_2024"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Copy",
+          "ref": "@e1000758"
+        },
+        {
+          "role": "StaticText",
+          "name": "Executing tool action"
+        },
+        {
+          "role": "StaticText",
+          "name": "The agent executed the "
+        },
+        {
+          "role": "button",
+          "name": "workiva_get_field workiva_get_field",
+          "ref": "@e1000759",
+          "children": [
+            {
+              "role": "image",
+              "name": "workiva_get_field"
+            },
+            {
+              "role": "StaticText",
+              "name": "workiva_get_field"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": " tool with the prepared inputs."
+        },
+        {
+          "role": "StaticText",
+          "name": "Processing tool result"
+        },
+        {
+          "role": "StaticText",
+          "name": "The tool execution returned a result, which was processed for downstream reasoning."
+        },
+        {
+          "role": "StaticText",
+          "name": "Passing control to next node"
+        },
+        {
+          "role": "StaticText",
+          "name": "Based on the tool output, the agent passed control to the next activity node."
+        },
+        {
+          "role": "StaticText",
+          "name": "Generated result"
+        },
+        {
+          "role": "StaticText",
+          "name": "Outputs"
+        },
+        {
+          "role": "StaticText",
+          "name": "content (Table)"
+        },
+        {
+          "role": "code",
+          "children": [
+            {
+              "role": "textbox",
+              "name": "Editor content;Press Alt+F1 for Accessibility Options.",
+              "ref": "@e1000760"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Copy",
+          "ref": "@e1000761",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Copy"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "structuredContent (Record)"
+        },
+        {
+          "role": "code",
+          "children": [
+            {
+              "role": "textbox",
+              "name": "Editor content;Press Alt+F1 for Accessibility Options.",
+              "ref": "@e1000762"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Copy",
+          "ref": "@e1000763",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Copy"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "Execution summary"
+        },
+        {
+          "role": "StaticText",
+          "name": "Returns the current value of one mapped field, identified by its exact field name. Use workiva_search_fields first when you only have a natural-language reference such as \"scope 2 energy\"; it resolves those to field names. When the cached read is still fresh the value comes from the local snapshot cache with no Workiva API call; otherwise the field's range is read live from the API and the cache is refreshed. The response includes the field's spreadsheet, sheet, range, type, description, the value, and when it was fetched (fetched_at, RFC 3339). The tool action completed with status Completed in 1,64s. Consuming 7 tokens."
+        },
+        {
+          "role": "button",
+          "name": "Send feedback to Microsoft",
+          "ref": "@e1000764",
+          "children": [
+            {
+              "role": "image",
+              "name": "Send feedback to Microsoft"
+            }
+          ]
+        },
+        {
+          "role": "heading",
+          "name": "Rationale",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Rationale"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Rationale information",
+          "ref": "@e1000765"
+        },
+        {
+          "role": "button",
+          "name": "Show rationale",
+          "ref": "@e1000766",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Show rationale"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "workiva_list_spreadsheets workiva_list_spreadsheets only visible to makers",
+          "ref": "@e1000767",
+          "children": [
+            {
+              "role": "image",
+              "name": "workiva_list_spreadsheets"
+            },
+            {
+              "role": "StaticText",
+              "name": "workiva_list_spreadsheets"
+            },
+            {
+              "role": "StaticText",
+              "name": "only visible to makers"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "Interpreting tool intent"
+        },
+        {
+          "role": "StaticText",
+          "name": "The agent determined that invoking the "
+        },
+        {
+          "role": "button",
+          "name": "workiva_list_spreadsheets workiva_list_spreadsheets",
+          "ref": "@e1000768",
+          "children": [
+            {
+              "role": "image",
+              "name": "workiva_list_spreadsheets"
+            },
+            {
+              "role": "StaticText",
+              "name": "workiva_list_spreadsheets"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": " tool was required to fulfill the user's request."
+        },
+        {
+          "role": "StaticText",
+          "name": "Executing tool action"
+        },
+        {
+          "role": "StaticText",
+          "name": "The agent executed the "
+        },
+        {
+          "role": "button",
+          "name": "workiva_list_spreadsheets workiva_list_spreadsheets",
+          "ref": "@e1000769",
+          "children": [
+            {
+              "role": "image",
+              "name": "workiva_list_spreadsheets"
+            },
+            {
+              "role": "StaticText",
+              "name": "workiva_list_spreadsheets"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": " tool with the prepared inputs."
+        },
+        {
+          "role": "StaticText",
+          "name": "Processing tool result"
+        },
+        {
+          "role": "StaticText",
+          "name": "The tool execution returned a result, which was processed for downstream reasoning."
+        },
+        {
+          "role": "StaticText",
+          "name": "Passing control to next node"
+        },
+        {
+          "role": "StaticText",
+          "name": "Based on the tool output, the agent passed control to the next activity node."
+        },
+        {
+          "role": "StaticText",
+          "name": "Generated result"
+        },
+        {
+          "role": "StaticText",
+          "name": "Outputs"
+        },
+        {
+          "role": "StaticText",
+          "name": "content (Table)"
+        },
+        {
+          "role": "code",
+          "children": [
+            {
+              "role": "textbox",
+              "name": "Editor content;Press Alt+F1 for Accessibility Options.",
+              "ref": "@e1000770"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Copy",
+          "ref": "@e1000771",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Copy"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "structuredContent (Record)"
+        },
+        {
+          "role": "code",
+          "children": [
+            {
+              "role": "textbox",
+              "name": "Editor content;Press Alt+F1 for Accessibility Options.",
+              "ref": "@e1000772"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Copy",
+          "ref": "@e1000773",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Copy"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "Execution summary"
+        },
+        {
+          "role": "StaticText",
+          "name": "Discovers the Workiva spreadsheets and sheets currently available to the authenticated client. When a Workiva client is configured, this tool reads the live spreadsheet and sheet catalogs, including files that are not mapped locally. In demo or no-client mode it falls back to the local mapping store. Use this tool to discover which spreadsheet_id and sheet_id values to pass to workiva_read_range or workiva_sync_mapping. Live discovery only identifies files and sheets; local semantic mappings are still required by workiva_search_fields, workiva_get_field, and workiva_update_field. The tool action completed with status Completed in 4,42s. Consuming 7 tokens."
+        },
+        {
+          "role": "button",
+          "name": "Send feedback to Microsoft",
+          "ref": "@e1000774",
+          "children": [
+            {
+              "role": "image",
+              "name": "Send feedback to Microsoft"
+            }
+          ]
+        },
+        {
+          "role": "heading",
+          "name": "Rationale",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Rationale"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Rationale information",
+          "ref": "@e1000775"
+        },
+        {
+          "role": "button",
+          "name": "Show rationale",
+          "ref": "@e1000776",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Show rationale"
+            }
+          ]
+        },
+        {
+          "role": "separator",
+          "value": 65
+        },
+        {
+          "role": "button",
+          "name": "Start new test session",
+          "ref": "@e1000568",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "New test session"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Evaluate Workiva_Sandbox_Test",
+          "ref": "@e1000569",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Evaluate"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Chat mode",
+          "ref": "@e1000570",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Chat mode"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Variables",
+          "ref": "@e1000777",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Variables"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "More",
+          "ref": "@e1000572"
+        },
+        {
+          "role": "button",
+          "name": "Contract test pane",
+          "ref": "@e1000573"
+        },
+        {
+          "role": "button",
+          "name": "Close test pane ",
+          "ref": "@e1000574"
+        },
+        {
+          "role": "log"
+        },
+        {
+          "role": "group",
+          "name": "Chat history, press arrow keys to navigate.",
+          "children": [
+            {
+              "role": "feed",
+              "children": [
+                {
+                  "role": "article",
+                  "children": [
+                    {
+                      "role": "group",
+                      "children": [
+                        {
+                          "role": "StaticText",
+                          "name": "Bot said:"
+                        },
+                        {
+                          "role": "StaticText",
+                          "name": "Hello, I'm Workiva_Sandbox_Test. How can I help?"
+                        },
+                        {
+                          "role": "form",
+                          "children": [
+                            {
+                              "role": "radio",
+                              "name": "Like",
+                              "ref": "@e1000778"
+                            },
+                            {
+                              "role": "radio",
+                              "name": "Dislike",
+                              "ref": "@e1000779"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "StaticText",
+                      "name": "Sent at October 21 at 7:15 PM"
+                    },
+                    {
+                      "role": "article",
+                      "name": "Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact."
+                    }
+                  ]
+                },
+                {
+                  "role": "article",
+                  "children": [
+                    {
+                      "role": "group",
+                      "children": [
+                        {
+                          "role": "StaticText",
+                          "name": "You said:"
+                        },
+                        {
+                          "role": "StaticText",
+                          "name": "What was total energy consumption in 2025 and how does it compare with 2024?"
+                        }
+                      ]
+                    },
+                    {
+                      "role": "article",
+                      "name": "You said: What was total energy consumption in 2025 and how does it compare with 2024?"
+                    }
+                  ]
+                },
+                {
+                  "role": "article",
+                  "children": [
+                    {
+                      "role": "group",
+                      "children": [
+                        {
+                          "role": "StaticText",
+                          "name": "Bot said:"
+                        },
+                        {
+                          "role": "StaticText",
+                          "name": "Total energy consumption in 2025 was 1,978 (period: 2025), from spreadsheet \"VSME-Digital-Template-1.0.1 Unlocked\", sheet \"Environmental Disclosures\", cell G5."
+                        },
+                        {
+                          "role": "StaticText",
+                          "name": "Total energy consumption in 2024 was 2,030 (period: 2024), from spreadsheet \"VSME - Factbook template\", sheet \"PY Data Output\", cell L2."
+                        },
+                        {
+                          "role": "StaticText",
+                          "name": "Comparison: total energy consumption fell from 2,030 in 2024 to 1,978 in 2025."
+                        },
+                        {
+                          "role": "StaticText",
+                          "name": "Sources:"
+                        },
+                        {
+                          "role": "list",
+                          "children": [
+                            {
+                              "role": "listitem",
+                              "children": [
+                                {
+                                  "role": "ListMarker",
+                                  "name": "• "
+                                },
+                                {
+                                  "role": "StaticText",
+                                  "name": "2025: VSME-Digital-Template-1.0.1 Unlocked → Environmental Disclosures → G5"
+                                }
+                              ]
+                            },
+                            {
+                              "role": "listitem",
+                              "children": [
+                                {
+                                  "role": "ListMarker",
+                                  "name": "• "
+                                },
+                                {
+                                  "role": "StaticText",
+                                  "name": "2024: VSME - Factbook template → PY Data Output → L2"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "form",
+                          "children": [
+                            {
+                              "role": "radio",
+                              "name": "Like",
+                              "ref": "@e1000780"
+                            },
+                            {
+                              "role": "radio",
+                              "name": "Dislike",
+                              "ref": "@e1000781"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "StaticText",
+                      "name": "Sent at October 21 at 7:15 PM"
+                    },
+                    {
+                      "role": "article",
+                      "name": "Bot said: Total energy consumption in 2025 was 1,978 (period: 2025), from spreadsheet \"VSME-Digital-Template-1.0.1 Unlocked\", sheet \"Environmental Disclosures\", cell G5. Total energy consumption in 2024 was 2,030 (period: 2024), from spreadsheet \"VSME - Factbook template\", sheet \"PY Data Output\", cell L2. Comparison: total energy consumption fell from 2,030 in 2024 to 1,978 in 2025. Sources: 2025: VSME-Digital-Template-1.0.1 Unlocked → Environmental Disclosures → G5 2024: VSME - Factbook template → PY Data Output → L2"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "role": "note",
+              "name": "End of chat history"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "Connectivity Status: Connected"
+        },
+        {
+          "role": "form",
+          "children": [
+            {
+              "role": "toolbar",
+              "name": "Suggested actions"
+            },
+            {
+              "role": "textbox",
+              "name": "Ask a question or describe what you need, Workiva_Sandbox_Test",
+              "ref": "@e1000782"
+            },
+            {
+              "role": "StaticText",
+              "name": "0/2000"
+            },
+            {
+              "role": "button",
+              "name": "Upload file",
+              "ref": "@e1000783"
+            },
+            {
+              "role": "separator"
+            },
+            {
+              "role": "button",
+              "name": "Send",
+              "ref": "@e1000784"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "You're testing your agent's real responses and capabilities. "
+        },
+        {
+          "role": "link",
+          "name": "Find troubleshooting help here.",
+          "ref": "@e1000785",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Find troubleshooting help here."
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": " Make sure AI-generated content is accurate and appropriate before using. "
+        },
+        {
+          "role": "link",
+          "name": "See terms",
+          "ref": "@e1000786",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "See terms"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "role": "alert"
+    },
+    {
+      "role": "alert"
+    },
+    {
+      "role": "file-input",
+      "name": "0/2000",
+      "ref": "@e1000787",
+      "hidden": true,
+      "multiple": true
+    }
+  ]
+}

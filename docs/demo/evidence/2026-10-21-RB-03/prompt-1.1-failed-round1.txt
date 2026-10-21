@@ -1,0 +1,33 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 21 at 7:08 PM
+A minute ago
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+What was total energy consumption in 2025 and how does it compare with 2024?
+
+You said: What was total energy consumption in 2025 and how does it compare with 2024?
+Bot said:
+
+I could not find a mapped field for “total energy consumption” in the available Workiva field mappings after searching for that term and related energy-consumption phrases.
+
+The available Workiva data includes an energy-consumption sheet ("B3 - Energy consumption"), but without a mapped field name or specific cell references I cannot reliably provide the 2025 and 2024 values. The reporting rules require values to come directly from Workiva fields or cells and to be cited with their spreadsheet, sheet, and cell locations.
+
+I searched for:
+
+“total energy consumption”
+“energy consumption 2025 2024 total energy”
+“environmental energy”
+
+No matching mapped fields were found.
+
+Like
+Dislike
+Sent at October 21 at 7:09 PM
+Just now
+Bot said: I could not find a mapped field for “total energy consumption” in the available Workiva field mappings after searching for that term and related energy-consumption phrases. The available Workiva data includes an energy-consumption sheet ("B3 - Energy consumption"), but without a mapped field name or specific cell references I cannot reliably provide the 2025 and 2024 values. The reporting rules require values to come directly from Workiva fields or cells and to be cited with their spreadsheet, sheet, and cell locations. I searched for: “total energy consumption” “energy consumption 2025 2024 total energy” “environmental energy” No matching mapped fields were found.

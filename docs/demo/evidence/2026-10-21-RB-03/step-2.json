@@ -1,0 +1,67 @@
+{
+  "result": "FAIL",
+  "stopped_at": "Act 1 prompt 1.1 after three fix rounds",
+  "failure": "Final answer omitted MWh for both energy values. Values, periods, direction and named cell citations were correct.",
+  "classification": "Copilot presentation; earlier search guidance and editor persistence problems were diagnosed separately.",
+  "attempts": [
+    {
+      "attempt": "baseline",
+      "result": "FAIL: no mapped field found",
+      "evidence": [
+        "act-1-1-failed-round0.png",
+        "act-1-1-failed-round0.json"
+      ]
+    },
+    {
+      "fix_round": 1,
+      "change": "Added short mapping search keys.",
+      "result": "FAIL: browser fill did not persist the revised instructions; repeated phrase searches.",
+      "evidence": [
+        "prompt-1.1-failed-round1.txt"
+      ]
+    },
+    {
+      "fix_round": 2,
+      "change": "Used editor input that persists; clarified src_ current-year and rpt_*_2024 prior fields.",
+      "result": "FAIL: correct values and units, but citations used raw resource IDs.",
+      "evidence": [
+        "prompt-1.1-failed-round2-citations.txt"
+      ]
+    },
+    {
+      "fix_round": 3,
+      "change": "Resolved citation IDs to spreadsheet and sheet names through the catalog.",
+      "result": "FAIL: correct values and named citations, MWh omitted. No further fixes attempted.",
+      "evidence": [
+        "prompt-1.1.txt",
+        "act-1-1.png",
+        "act-1-1.json"
+      ]
+    }
+  ],
+  "timing": {
+    "act_1_final_attempt_prompt_1_1_seconds": 34.5,
+    "act_1_scope": "Aborted at prompt 1.1; prompts 1.2 to 1.4 were not run. End measured after complete answer settled; includes polling latency. Total first-prompt-to-final-answer wall time includes all three fix rounds and editor/setup delays.",
+    "first_prompt_utc": "2026-10-21T12:15:16.348685+00:00",
+    "answer_observed_utc": "2026-10-21T12:15:50.881769+00:00",
+    "acts_2_to_5_seconds": null,
+    "five_act_total_seconds": null,
+    "act_1_including_fix_rounds_seconds": 603.1,
+    "initial_prompt_utc": "2026-10-21T12:05:47.757138+00:00"
+  },
+  "browser": {
+    "used": "Kimi WebBridge in existing signed-in Edge browser",
+    "playwright": "NOT SHOWN: Playwright package was available locally, but no CDP endpoint for the signed-in browser was exposed; this run used Kimi only.",
+    "workiva_home_signed_in": true,
+    "workiva_spreadsheet_and_document_comparison": "NOT SHOWN: run stopped before Acts 3 and 5.",
+    "recording": "NOT SHOWN: no recording made."
+  },
+  "run_continuity": {
+    "database": ".scratch/rb03/preflight.db",
+    "server_restarts_during_browser_attempts": 0,
+    "reset_repeats_after_browser_attempts": 0,
+    "workiva_mutations_after_seed": 0,
+    "same_server_and_database_maintained": true,
+    "confirmation_write_audit_rows": 0
+  }
+}
