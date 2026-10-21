@@ -12,10 +12,10 @@ The audience is not technical. They should leave believing two things: this save
 
 Split screen: Copilot in Teams on the left, the Workiva workspace on the right. 7 to 8 minutes.
 
-1. Ask (2 min). Questions across the workspace, for example "What was total energy consumption in 2025 and how does it compare with 2024?". Answers name the spreadsheet, sheet and cell. Follow-up questions work. Uses existing read tools plus the agent instructions in `docs/demo/agent/INSTRUCTIONS.md`.
+1. Ask (2 min). Questions across the workspace, for example "What was total energy consumption in 2025 and how does it compare with 2024?". Answers read current and prior cells, give both values with spreadsheet, sheet and cell citations, and state the direction in words without computing a percentage. Follow-up questions work. Uses existing read tools plus the agent instructions in `docs/demo/agent/INSTRUCTIONS.md`.
 2. Catch (1 min). The analyst asks to prepare the environmental section. Before proposing anything, the agent lists findings: a missing value, a change above the materiality threshold. Lane L2.
 3. Build (2 min). One preview of about 30 cell changes, one approval, values fill on the right. Then the narrative: Copilot drafts from narrative facts, the server checks it, and a new "Environmental disclosures" section appears in the report document with the narrative and the verbatim policy paragraph. Lanes L1, L2, L3.
-4. Guard (1 min). The analyst asks Copilot to "make the policy paragraph sound better" and the server refuses because verbatim blocks cannot change. A draft with a number that is not a narrative fact is refused by the number guard. The evidence pack is exported with `workiva_export_evidence`. Lane L3 plus existing tools.
+4. Guard (1 min). The analyst asks Copilot to "make the policy paragraph sound better" and the server refuses because verbatim blocks cannot change. A draft with a number that is not a narrative fact is refused by the number guard. The analyst asks "Show me the audit trail for what we just wrote."; `workiva_audit_trail` shows the confirmed writes with their actor and Workiva operation fields. Lane L3 plus existing tools.
 5. Repeat (1 min). "Now prepare the social section." Same recipe engine, different YAML. Lanes L2 and L4.
 
 Closing slide: the annual report sections with their status (environmental and social live, the rest "same recipe, needs a mapping file and sample data") and the analyst hours the ESG section takes today by hand. That number comes from the KPMG team: PENDIENTE.
@@ -33,6 +33,8 @@ No model runs inside the server (ADR 0001). All demo tools are behind `NL_DEMO_P
 ## Scope
 
 In scope: two sections (environmental, social) from the VSME-style ESG template, two reporting years of synthetic data, one report document, the four demo tools above, agent instructions with the consultant style guide, a two-page IT and risk brief.
+
+Evidence export is after the demo; the live script shows the audit trail.
 
 Out of scope until after the demo: PDF or file ingestion through Copilot, scanned documents, more than two sections, per-user Workiva permissions, backup and restore changes, Wave 4.2, 4.3 and 5, the official Workiva MCP adapter.
 
