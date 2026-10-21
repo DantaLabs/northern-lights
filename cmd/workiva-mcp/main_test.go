@@ -199,7 +199,7 @@ func TestDemoModeEndToEnd(t *testing.T) {
 		}
 	})
 
-	// 1. list_spreadsheets returns 2 demo spreadsheets.
+	// 1. list_spreadsheets returns the two energy and two ESG demo spreadsheets.
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      "workiva_list_spreadsheets",
 		Arguments: map[string]any{},
@@ -209,8 +209,8 @@ func TestDemoModeEndToEnd(t *testing.T) {
 	}
 	content := structuredContent(t, result)
 	spreadsheets := content["spreadsheets"].([]any)
-	if len(spreadsheets) != 2 {
-		t.Fatalf("expected 2 spreadsheets, got %d", len(spreadsheets))
+	if len(spreadsheets) != 4 {
+		t.Fatalf("expected 4 spreadsheets, got %d", len(spreadsheets))
 	}
 
 	// 2. search_fields returns demo fields.
