@@ -1,0 +1,187 @@
+{
+  "step": 34,
+  "label": "Run summary",
+  "elapsed_seconds": 0,
+  "issues": [
+    "Setup: seed --reset: 113.8s exceeds 60s",
+    "Act 1: workiva_compare_periods cannot compare mapped fields; immutable snapshots and materiality policy required; assurance disabled",
+    "Harness interruption after environmental confirmation: empty preview before omitted; fixed read-only check and resumed without repeating writes",
+    "Act 4: no exportable assurance subject; workiva_export_evidence does not accept demo change sets or section text"
+  ],
+  "steps": [
+    {
+      "file": "step-0.json",
+      "label": "Setup: seed --reset",
+      "elapsed_seconds": 113.753
+    },
+    {
+      "file": "step-1.json",
+      "label": "Setup: initialize and tool inventory",
+      "elapsed_seconds": 0.009
+    },
+    {
+      "file": "step-2.json",
+      "label": "workiva_get_field",
+      "elapsed_seconds": 1.388
+    },
+    {
+      "file": "step-3.json",
+      "label": "workiva_get_field",
+      "elapsed_seconds": 0.335
+    },
+    {
+      "file": "step-4.json",
+      "label": "Act 1 independent source/prior read-back",
+      "elapsed_seconds": 2.858
+    },
+    {
+      "file": "step-5.json",
+      "label": "Act 1 comparison blocked",
+      "elapsed_seconds": 0
+    },
+    {
+      "file": "step-6.json",
+      "label": "workiva_get_field",
+      "elapsed_seconds": 0.324
+    },
+    {
+      "file": "step-7.json",
+      "label": "workiva_get_field",
+      "elapsed_seconds": 0.811
+    },
+    {
+      "file": "step-8.json",
+      "label": "Act 1 independent source/prior read-back",
+      "elapsed_seconds": 1.785
+    },
+    {
+      "file": "step-9.json",
+      "label": "workiva_get_field",
+      "elapsed_seconds": 0.814
+    },
+    {
+      "file": "step-10.json",
+      "label": "workiva_get_field",
+      "elapsed_seconds": 0.325
+    },
+    {
+      "file": "step-11.json",
+      "label": "Act 1 independent source/prior read-back",
+      "elapsed_seconds": 1.194
+    },
+    {
+      "file": "step-12.json",
+      "label": "workiva_get_field",
+      "elapsed_seconds": 0.803
+    },
+    {
+      "file": "step-13.json",
+      "label": "workiva_get_field",
+      "elapsed_seconds": 0.357
+    },
+    {
+      "file": "step-14.json",
+      "label": "Act 1 independent source/prior read-back",
+      "elapsed_seconds": 1.741
+    },
+    {
+      "file": "step-15.json",
+      "label": "workiva_prepare_section",
+      "elapsed_seconds": 43.682
+    },
+    {
+      "file": "step-16.json",
+      "label": "workiva_confirm_change_set",
+      "elapsed_seconds": 22.254
+    },
+    {
+      "file": "step-17.json",
+      "label": "Run interrupted",
+      "elapsed_seconds": 0
+    },
+    {
+      "file": "step-18.json",
+      "label": "Setup: initialize and tool inventory",
+      "elapsed_seconds": 0.005
+    },
+    {
+      "file": "step-19.json",
+      "label": "Independent cell read-back and audit rows",
+      "elapsed_seconds": 15.438
+    },
+    {
+      "file": "step-20.json",
+      "label": "workiva_stage_section_text",
+      "elapsed_seconds": 0.021
+    },
+    {
+      "file": "step-21.json",
+      "label": "workiva_confirm_section_text",
+      "elapsed_seconds": 9.2
+    },
+    {
+      "file": "step-22.json",
+      "label": "Independent document read-back and audit row",
+      "elapsed_seconds": 3.114
+    },
+    {
+      "file": "step-23.json",
+      "label": "workiva_stage_section_text",
+      "elapsed_seconds": 0.012
+    },
+    {
+      "file": "step-24.json",
+      "label": "Guard: unchanged document after verbatim refusal",
+      "elapsed_seconds": 2.073
+    },
+    {
+      "file": "step-25.json",
+      "label": "workiva_stage_section_text",
+      "elapsed_seconds": 0.014
+    },
+    {
+      "file": "step-26.json",
+      "label": "Guard: unchanged document after number refusal",
+      "elapsed_seconds": 2.035
+    },
+    {
+      "file": "step-27.json",
+      "label": "Act 4 evidence export blocked",
+      "elapsed_seconds": 0
+    },
+    {
+      "file": "step-28.json",
+      "label": "workiva_prepare_section",
+      "elapsed_seconds": 28.824
+    },
+    {
+      "file": "step-29.json",
+      "label": "workiva_confirm_change_set",
+      "elapsed_seconds": 16.305
+    },
+    {
+      "file": "step-30.json",
+      "label": "Independent cell read-back and audit rows",
+      "elapsed_seconds": 9.301
+    },
+    {
+      "file": "step-31.json",
+      "label": "workiva_stage_section_text",
+      "elapsed_seconds": 0.019
+    },
+    {
+      "file": "step-32.json",
+      "label": "workiva_confirm_section_text",
+      "elapsed_seconds": 8.825
+    },
+    {
+      "file": "step-33.json",
+      "label": "Independent document read-back and audit row",
+      "elapsed_seconds": 2.851
+    }
+  ],
+  "scope": "HTTP MCP rehearsal only; Copilot, Teams and browser presentation not exercised",
+  "active_steps_elapsed_seconds": 176.728,
+  "acts_wall_seconds_including_interruption": 268.0,
+  "timing_source": "SQLite first and last MCP tool audit timestamps; 1 second resolution"
+}

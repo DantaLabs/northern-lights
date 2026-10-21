@@ -1,0 +1,37 @@
+{
+  "step": 10,
+  "label": "workiva_get_field",
+  "elapsed_seconds": 0.325,
+  "prompt": "What were our business travel emissions in 2025 and in 2024?",
+  "request": {
+    "name": "workiva_get_field",
+    "arguments": {
+      "name": "rpt_env_ghg_scope3_business_travel_2024"
+    }
+  },
+  "http_status": 200,
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 9,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"description\":\"6. Business Travel\",\"fetched_at\":\"2026-10-21T09:01:01.108765244Z\",\"field_type\":\"number\",\"name\":\"rpt_env_ghg_scope3_business_travel_2024\",\"nl_audit_id\":\"31a72bd9-76f8-4243-a4f0-35e2e6367e58\",\"range\":\"L15\",\"sheet_id\":\"<sheet-2-2>\",\"source\":\"live\",\"spreadsheet_id\":\"<spreadsheet-2>\",\"value\":\"140\"}"
+        }
+      ],
+      "structuredContent": {
+        "description": "6. Business Travel",
+        "fetched_at": "2026-10-21T09:01:01.108765244Z",
+        "field_type": "number",
+        "name": "rpt_env_ghg_scope3_business_travel_2024",
+        "nl_audit_id": "31a72bd9-76f8-4243-a4f0-35e2e6367e58",
+        "range": "L15",
+        "sheet_id": "<sheet-2-2>",
+        "source": "live",
+        "spreadsheet_id": "<spreadsheet-2>",
+        "value": "140"
+      }
+    }
+  }
+}

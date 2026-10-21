@@ -1,0 +1,30 @@
+{
+  "step": 22,
+  "label": "Independent document read-back and audit row",
+  "elapsed_seconds": 3.114,
+  "section_id": "esg-environmental",
+  "readback": {
+    "cells": [],
+    "paragraphs": [
+      "Business travel emissions rose 18% to 165.0 tCO2e. Energy consumption and the other reported environmental indicators were broadly stable.",
+      "Demo Harbour Components commits to reducing the environmental footprint of its plants and offices, to buying more of its electricity from renewable sources, and to managing waste and water with care. Each site reviews its environmental performance every year and reports it openly to its stakeholders.",
+      ""
+    ],
+    "section_name": "Environmental disclosures"
+  },
+  "expected_paragraphs": [
+    "Business travel emissions rose 18% to 165.0 tCO2e. Energy consumption and the other reported environmental indicators were broadly stable.",
+    "Demo Harbour Components commits to reducing the environmental footprint of its plants and offices, to buying more of its electricity from renewable sources, and to managing waste and water with care. Each site reviews its environmental performance every year and reports it openly to its stakeholders.",
+    ""
+  ],
+  "audit_row": {
+    "actor": "demo-dryrun@example.com",
+    "tool": "workiva_confirm_section_text",
+    "action": "completed",
+    "target": "esg-environmental",
+    "before_json": "",
+    "after_json": "{\"section_id\":\"esg-environmental\",\"document_id\":\"<report-document-id>\",\"workiva_section_id\":\"<esg-environmental-workiva-section-id>\",\"text_sha256\":\"faeaa66a54574fbacadda1905b116a7abe1f1193a1574691c3a3313bf0ec9513\",\"verbatim_ids\":[\"env-policy\"],\"status\":\"completed\"}",
+    "workiva_op_url": "https://api.eu.wdesk.com/operations/d926958c-0815-4790-ba80-022d788d57f1",
+    "audit_id": "LLFWKMOOFYBR2SJKUTV3RHG4V7"
+  }
+}

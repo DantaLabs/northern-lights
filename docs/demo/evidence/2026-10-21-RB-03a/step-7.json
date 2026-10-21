@@ -1,0 +1,37 @@
+{
+  "step": 7,
+  "label": "workiva_get_field",
+  "elapsed_seconds": 0.811,
+  "prompt": "How many employees did we have at the end of 2025, and how many in 2024?",
+  "request": {
+    "name": "workiva_get_field",
+    "arguments": {
+      "name": "rpt_soc_employees_total_2024"
+    }
+  },
+  "http_status": 200,
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 7,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"description\":\"Number of employees\",\"fetched_at\":\"2026-10-21T09:00:58.173031469Z\",\"field_type\":\"number\",\"name\":\"rpt_soc_employees_total_2024\",\"nl_audit_id\":\"c1d736b4-4ac9-4c90-b3be-b11b99836619\",\"range\":\"L28\",\"sheet_id\":\"<sheet-2-2>\",\"source\":\"live\",\"spreadsheet_id\":\"<spreadsheet-2>\",\"value\":\"412\"}"
+        }
+      ],
+      "structuredContent": {
+        "description": "Number of employees",
+        "fetched_at": "2026-10-21T09:00:58.173031469Z",
+        "field_type": "number",
+        "name": "rpt_soc_employees_total_2024",
+        "nl_audit_id": "c1d736b4-4ac9-4c90-b3be-b11b99836619",
+        "range": "L28",
+        "sheet_id": "<sheet-2-2>",
+        "source": "live",
+        "spreadsheet_id": "<spreadsheet-2>",
+        "value": "412"
+      }
+    }
+  }
+}

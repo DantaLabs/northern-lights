@@ -1,0 +1,259 @@
+{
+  "step": 16,
+  "label": "workiva_confirm_change_set",
+  "elapsed_seconds": 22.254,
+  "prompt": "Yes, approve these changes.",
+  "request": {
+    "name": "workiva_confirm_change_set",
+    "arguments": {
+      "change_set_id": "kV_bX8Autt7raQ8hWlJhLNGvFgL1a5VeoftFTzUaWaY",
+      "confirm_token": "<redacted>"
+    }
+  },
+  "http_status": 200,
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 13,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"change_set_id\":\"kV_bX8Autt7raQ8hWlJhLNGvFgL1a5VeoftFTzUaWaY\",\"items\":[{\"after\":\"1978\",\"audit_id\":\"AeZz5zO87D6M1CoB3BSlb7ldH3lzQP7B-rn-njwUAZE\",\"before\":\"\",\"field_name\":\"rpt_env_energy_total_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"1978\",\"status\":\"completed\"},{\"after\":\"490\",\"audit_id\":\"Uzdj5Jtgzv9mA-W2bbBABdcxqI0FbEnGhmawc4Wu1Ao\",\"before\":\"\",\"field_name\":\"rpt_env_electricity_renewable_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"490\",\"status\":\"completed\"},{\"after\":\"1280\",\"audit_id\":\"22njaW6Qgd7h5l8he0L_YuMqZ7E05mv2knN5B5ASvYQ\",\"before\":\"\",\"field_name\":\"rpt_env_electricity_non_renewable_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"1280\",\"status\":\"completed\"},{\"after\":\"150\",\"audit_id\":\"UDfAmvOL8J3oeOSug25XMMK2al4wsh3AlhvE0xFH3_8\",\"before\":\"\",\"field_name\":\"rpt_env_self_generated_electricity_renewable_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"150\",\"status\":\"completed\"},{\"after\":\"58\",\"audit_id\":\"FmkCNorGZoH-AenYDKFLFJFsk-IEZOpKq4GarfO7c1o\",\"before\":\"\",\"field_name\":\"rpt_env_self_generated_electricity_non_renewable_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"58\",\"status\":\"completed\"},{\"after\":\"812.5\",\"audit_id\":\"BEInuLnGdqxHtk1GZ9E-8fWK4lVxkgCBgm0NwG3_8Tk\",\"before\":\"\",\"field_name\":\"rpt_env_ghg_scope1_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"812.5\",\"status\":\"completed\"},{\"after\":\"585\",\"audit_id\":\"axYE7SNp4I1qbBYOUkPAlG0HMj1KRr2TWDAwpgyjSFA\",\"before\":\"\",\"field_name\":\"rpt_env_ghg_scope2_location_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"585\",\"status\":\"completed\"},{\"after\":\"520\",\"audit_id\":\"kiMN5ZIBh0AZmIKzhNIi6CzxANCmFxSZP0XU6cT75EE\",\"before\":\"\",\"field_name\":\"rpt_env_ghg_scope2_market_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"520\",\"status\":\"completed\"},{\"after\":\"4050\",\"audit_id\":\"fpwi8so4lxN_nuXCXp6Sl9rq_Gdx1a8gN9QL2B8SyRg\",\"before\":\"\",\"field_name\":\"rpt_env_ghg_scope3_purchased_goods_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"4050\",\"status\":\"completed\"},{\"after\":\"820\",\"audit_id\":\"RNmr6FU4E7cuOI_2sJwjXTOSs4PZmSaXoUOJ6fLNjI4\",\"before\":\"\",\"field_name\":\"rpt_env_ghg_scope3_capital_goods_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"820\",\"status\":\"completed\"},{\"after\":\"298\",\"audit_id\":\"UP3m0wHD7ngZjLSrGJ1rg0u3BTnzmCrUizreCFtcvzk\",\"before\":\"\",\"field_name\":\"rpt_env_ghg_scope3_fuel_energy_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"298\",\"status\":\"completed\"},{\"after\":\"545\",\"audit_id\":\"khR0mAeNYfQNIUVDquFkBrdNhhrqxUZgXr-6227NUYo\",\"before\":\"\",\"field_name\":\"rpt_env_ghg_scope3_upstream_transport_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"545\",\"status\":\"completed\"},{\"after\":\"92\",\"audit_id\":\"kUSYU66Y-TxJ-Fa2Cbfl7YBIdocOyJ1ZH2CuaoNWehM\",\"before\":\"\",\"field_name\":\"rpt_env_ghg_scope3_waste_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"92\",\"status\":\"completed\"},{\"after\":\"165\",\"audit_id\":\"wo28rOJ1aa3oOGcdalEwJ27ydErWxIrqqr1_g8li_o4\",\"before\":\"\",\"field_name\":\"rpt_env_ghg_scope3_business_travel_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"165\",\"status\":\"completed\"},{\"after\":\"224\",\"audit_id\":\"HMTN9qBYagyvDtRoK3hGfoiCE62-UCnBI6rij6ztxog\",\"before\":\"\",\"field_name\":\"rpt_env_ghg_scope3_commuting_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"224\",\"status\":\"completed\"},{\"after\":\"12.6\",\"audit_id\":\"gquXdvyimKWID1LfT3Ba4j5gZvMexxfpOL6DBTuok_E\",\"before\":\"\",\"field_name\":\"rpt_env_land_sealed_area_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"12.6\",\"status\":\"completed\"},{\"after\":\"3.2\",\"audit_id\":\"jZHSKBpL0gNWQ-z9ZRQ-eKZbDsWn6r9hMhz2PcB1l9w\",\"before\":\"\",\"field_name\":\"rpt_env_land_nature_onsite_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"3.2\",\"status\":\"completed\"},{\"after\":\"1.6\",\"audit_id\":\"NgSYP-LlnxVixkqgvmRiF2LjNb2-6ngiVwytXAPaHjw\",\"before\":\"\",\"field_name\":\"rpt_env_land_nature_offsite_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"1.6\",\"status\":\"completed\"},{\"after\":\"17.4\",\"audit_id\":\"eRcbshi2iCjSENElSfMsCeA0LUrdWkjZiUewX1hW8yI\",\"before\":\"\",\"field_name\":\"rpt_env_land_use_total_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"17.4\",\"status\":\"completed\"},{\"after\":\"18100\",\"audit_id\":\"O74rr-1Zne1ZBSnnKxd8xiPlYHqMV2zucMOXjRALDGc\",\"before\":\"\",\"field_name\":\"rpt_env_water_withdrawn_total_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"18100\",\"status\":\"completed\"},{\"after\":\"2300\",\"audit_id\":\"PpcPmQ6X_CR0GgHV5mp2um8LmWEqkCpw1-NCXUh3NrE\",\"before\":\"\",\"field_name\":\"rpt_env_water_withdrawn_high_stress_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"2300\",\"status\":\"completed\"},{\"after\":\"5400\",\"audit_id\":\"DYXoYlTW45Frdz5EHGwxN9CsykI3WYu-j9jXUwLS3RI\",\"before\":\"\",\"field_name\":\"rpt_env_waste_recycled_type1_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"5400\",\"status\":\"completed\"},{\"after\":\"2000\",\"audit_id\":\"xflCCIQ4oRAnYxEtJSPqUgndrq349dKoGg_9NZ4ExsY\",\"before\":\"\",\"field_name\":\"rpt_env_waste_disposed_type1_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"2000\",\"status\":\"completed\"},{\"after\":\"910\",\"audit_id\":\"VSuSd5KiJm-bJh59Izd9wgNl-r5MLmlIqp-6_ccGUo4\",\"before\":\"\",\"field_name\":\"rpt_env_waste_recycled_type2_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"910\",\"status\":\"completed\"},{\"after\":\"415\",\"audit_id\":\"2yrs2hNnueifcDtJx8CMRUhofSDXmMHsAGsKhV8TMDY\",\"before\":\"\",\"field_name\":\"rpt_env_waste_disposed_type2_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b\",\"read_back\":\"415\",\"status\":\"completed\"}],\"nl_audit_id\":\"ab233915-2e65-45e2-be63-d60e5f7625d3\",\"status\":\"completed\",\"summary\":\"rpt_env_energy_total_2025:  -> 1978 (completed)\\nrpt_env_electricity_renewable_2025:  -> 490 (completed)\\nrpt_env_electricity_non_renewable_2025:  -> 1280 (completed)\\nrpt_env_self_generated_electricity_renewable_2025:  -> 150 (completed)\\nrpt_env_self_generated_electricity_non_renewable_2025:  -> 58 (completed)\\nrpt_env_ghg_scope1_2025:  -> 812.5 (completed)\\nrpt_env_ghg_scope2_location_2025:  -> 585 (completed)\\nrpt_env_ghg_scope2_market_2025:  -> 520 (completed)\\nrpt_env_ghg_scope3_purchased_goods_2025:  -> 4050 (completed)\\nrpt_env_ghg_scope3_capital_goods_2025:  -> 820 (completed)\\nrpt_env_ghg_scope3_fuel_energy_2025:  -> 298 (completed)\\nrpt_env_ghg_scope3_upstream_transport_2025:  -> 545 (completed)\\nrpt_env_ghg_scope3_waste_2025:  -> 92 (completed)\\nrpt_env_ghg_scope3_business_travel_2025:  -> 165 (completed)\\nrpt_env_ghg_scope3_commuting_2025:  -> 224 (completed)\\nrpt_env_land_sealed_area_2025:  -> 12.6 (completed)\\nrpt_env_land_nature_onsite_2025:  -> 3.2 (completed)\\nrpt_env_land_nature_offsite_2025:  -> 1.6 (completed)\\nrpt_env_land_use_total_2025:  -> 17.4 (completed)\\nrpt_env_water_withdrawn_total_2025:  -> 18100 (completed)\\nrpt_env_water_withdrawn_high_stress_2025:  -> 2300 (completed)\\nrpt_env_waste_recycled_type1_2025:  -> 5400 (completed)\\nrpt_env_waste_disposed_type1_2025:  -> 2000 (completed)\\nrpt_env_waste_recycled_type2_2025:  -> 910 (completed)\\nrpt_env_waste_disposed_type2_2025:  -> 415 (completed)\"}"
+        }
+      ],
+      "structuredContent": {
+        "change_set_id": "kV_bX8Autt7raQ8hWlJhLNGvFgL1a5VeoftFTzUaWaY",
+        "items": [
+          {
+            "after": "1978",
+            "audit_id": "AeZz5zO87D6M1CoB3BSlb7ldH3lzQP7B-rn-njwUAZE",
+            "before": "",
+            "field_name": "rpt_env_energy_total_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "1978",
+            "status": "completed"
+          },
+          {
+            "after": "490",
+            "audit_id": "Uzdj5Jtgzv9mA-W2bbBABdcxqI0FbEnGhmawc4Wu1Ao",
+            "before": "",
+            "field_name": "rpt_env_electricity_renewable_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "490",
+            "status": "completed"
+          },
+          {
+            "after": "1280",
+            "audit_id": "22njaW6Qgd7h5l8he0L_YuMqZ7E05mv2knN5B5ASvYQ",
+            "before": "",
+            "field_name": "rpt_env_electricity_non_renewable_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "1280",
+            "status": "completed"
+          },
+          {
+            "after": "150",
+            "audit_id": "UDfAmvOL8J3oeOSug25XMMK2al4wsh3AlhvE0xFH3_8",
+            "before": "",
+            "field_name": "rpt_env_self_generated_electricity_renewable_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "150",
+            "status": "completed"
+          },
+          {
+            "after": "58",
+            "audit_id": "FmkCNorGZoH-AenYDKFLFJFsk-IEZOpKq4GarfO7c1o",
+            "before": "",
+            "field_name": "rpt_env_self_generated_electricity_non_renewable_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "58",
+            "status": "completed"
+          },
+          {
+            "after": "812.5",
+            "audit_id": "BEInuLnGdqxHtk1GZ9E-8fWK4lVxkgCBgm0NwG3_8Tk",
+            "before": "",
+            "field_name": "rpt_env_ghg_scope1_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "812.5",
+            "status": "completed"
+          },
+          {
+            "after": "585",
+            "audit_id": "axYE7SNp4I1qbBYOUkPAlG0HMj1KRr2TWDAwpgyjSFA",
+            "before": "",
+            "field_name": "rpt_env_ghg_scope2_location_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "585",
+            "status": "completed"
+          },
+          {
+            "after": "520",
+            "audit_id": "kiMN5ZIBh0AZmIKzhNIi6CzxANCmFxSZP0XU6cT75EE",
+            "before": "",
+            "field_name": "rpt_env_ghg_scope2_market_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "520",
+            "status": "completed"
+          },
+          {
+            "after": "4050",
+            "audit_id": "fpwi8so4lxN_nuXCXp6Sl9rq_Gdx1a8gN9QL2B8SyRg",
+            "before": "",
+            "field_name": "rpt_env_ghg_scope3_purchased_goods_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "4050",
+            "status": "completed"
+          },
+          {
+            "after": "820",
+            "audit_id": "RNmr6FU4E7cuOI_2sJwjXTOSs4PZmSaXoUOJ6fLNjI4",
+            "before": "",
+            "field_name": "rpt_env_ghg_scope3_capital_goods_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "820",
+            "status": "completed"
+          },
+          {
+            "after": "298",
+            "audit_id": "UP3m0wHD7ngZjLSrGJ1rg0u3BTnzmCrUizreCFtcvzk",
+            "before": "",
+            "field_name": "rpt_env_ghg_scope3_fuel_energy_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "298",
+            "status": "completed"
+          },
+          {
+            "after": "545",
+            "audit_id": "khR0mAeNYfQNIUVDquFkBrdNhhrqxUZgXr-6227NUYo",
+            "before": "",
+            "field_name": "rpt_env_ghg_scope3_upstream_transport_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "545",
+            "status": "completed"
+          },
+          {
+            "after": "92",
+            "audit_id": "kUSYU66Y-TxJ-Fa2Cbfl7YBIdocOyJ1ZH2CuaoNWehM",
+            "before": "",
+            "field_name": "rpt_env_ghg_scope3_waste_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "92",
+            "status": "completed"
+          },
+          {
+            "after": "165",
+            "audit_id": "wo28rOJ1aa3oOGcdalEwJ27ydErWxIrqqr1_g8li_o4",
+            "before": "",
+            "field_name": "rpt_env_ghg_scope3_business_travel_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "165",
+            "status": "completed"
+          },
+          {
+            "after": "224",
+            "audit_id": "HMTN9qBYagyvDtRoK3hGfoiCE62-UCnBI6rij6ztxog",
+            "before": "",
+            "field_name": "rpt_env_ghg_scope3_commuting_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "224",
+            "status": "completed"
+          },
+          {
+            "after": "12.6",
+            "audit_id": "gquXdvyimKWID1LfT3Ba4j5gZvMexxfpOL6DBTuok_E",
+            "before": "",
+            "field_name": "rpt_env_land_sealed_area_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "12.6",
+            "status": "completed"
+          },
+          {
+            "after": "3.2",
+            "audit_id": "jZHSKBpL0gNWQ-z9ZRQ-eKZbDsWn6r9hMhz2PcB1l9w",
+            "before": "",
+            "field_name": "rpt_env_land_nature_onsite_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "3.2",
+            "status": "completed"
+          },
+          {
+            "after": "1.6",
+            "audit_id": "NgSYP-LlnxVixkqgvmRiF2LjNb2-6ngiVwytXAPaHjw",
+            "before": "",
+            "field_name": "rpt_env_land_nature_offsite_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "1.6",
+            "status": "completed"
+          },
+          {
+            "after": "17.4",
+            "audit_id": "eRcbshi2iCjSENElSfMsCeA0LUrdWkjZiUewX1hW8yI",
+            "before": "",
+            "field_name": "rpt_env_land_use_total_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "17.4",
+            "status": "completed"
+          },
+          {
+            "after": "18100",
+            "audit_id": "O74rr-1Zne1ZBSnnKxd8xiPlYHqMV2zucMOXjRALDGc",
+            "before": "",
+            "field_name": "rpt_env_water_withdrawn_total_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "18100",
+            "status": "completed"
+          },
+          {
+            "after": "2300",
+            "audit_id": "PpcPmQ6X_CR0GgHV5mp2um8LmWEqkCpw1-NCXUh3NrE",
+            "before": "",
+            "field_name": "rpt_env_water_withdrawn_high_stress_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "2300",
+            "status": "completed"
+          },
+          {
+            "after": "5400",
+            "audit_id": "DYXoYlTW45Frdz5EHGwxN9CsykI3WYu-j9jXUwLS3RI",
+            "before": "",
+            "field_name": "rpt_env_waste_recycled_type1_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "5400",
+            "status": "completed"
+          },
+          {
+            "after": "2000",
+            "audit_id": "xflCCIQ4oRAnYxEtJSPqUgndrq349dKoGg_9NZ4ExsY",
+            "before": "",
+            "field_name": "rpt_env_waste_disposed_type1_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "2000",
+            "status": "completed"
+          },
+          {
+            "after": "910",
+            "audit_id": "VSuSd5KiJm-bJh59Izd9wgNl-r5MLmlIqp-6_ccGUo4",
+            "before": "",
+            "field_name": "rpt_env_waste_recycled_type2_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "910",
+            "status": "completed"
+          },
+          {
+            "after": "415",
+            "audit_id": "2yrs2hNnueifcDtJx8CMRUhofSDXmMHsAGsKhV8TMDY",
+            "before": "",
+            "field_name": "rpt_env_waste_disposed_type2_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/8a64c11e-2c2a-4983-aae8-0666f7de0b9b",
+            "read_back": "415",
+            "status": "completed"
+          }
+        ],
+        "nl_audit_id": "ab233915-2e65-45e2-be63-d60e5f7625d3",
+        "status": "completed",
+        "summary": "rpt_env_energy_total_2025:  -> 1978 (completed)\nrpt_env_electricity_renewable_2025:  -> 490 (completed)\nrpt_env_electricity_non_renewable_2025:  -> 1280 (completed)\nrpt_env_self_generated_electricity_renewable_2025:  -> 150 (completed)\nrpt_env_self_generated_electricity_non_renewable_2025:  -> 58 (completed)\nrpt_env_ghg_scope1_2025:  -> 812.5 (completed)\nrpt_env_ghg_scope2_location_2025:  -> 585 (completed)\nrpt_env_ghg_scope2_market_2025:  -> 520 (completed)\nrpt_env_ghg_scope3_purchased_goods_2025:  -> 4050 (completed)\nrpt_env_ghg_scope3_capital_goods_2025:  -> 820 (completed)\nrpt_env_ghg_scope3_fuel_energy_2025:  -> 298 (completed)\nrpt_env_ghg_scope3_upstream_transport_2025:  -> 545 (completed)\nrpt_env_ghg_scope3_waste_2025:  -> 92 (completed)\nrpt_env_ghg_scope3_business_travel_2025:  -> 165 (completed)\nrpt_env_ghg_scope3_commuting_2025:  -> 224 (completed)\nrpt_env_land_sealed_area_2025:  -> 12.6 (completed)\nrpt_env_land_nature_onsite_2025:  -> 3.2 (completed)\nrpt_env_land_nature_offsite_2025:  -> 1.6 (completed)\nrpt_env_land_use_total_2025:  -> 17.4 (completed)\nrpt_env_water_withdrawn_total_2025:  -> 18100 (completed)\nrpt_env_water_withdrawn_high_stress_2025:  -> 2300 (completed)\nrpt_env_waste_recycled_type1_2025:  -> 5400 (completed)\nrpt_env_waste_disposed_type1_2025:  -> 2000 (completed)\nrpt_env_waste_recycled_type2_2025:  -> 910 (completed)\nrpt_env_waste_disposed_type2_2025:  -> 415 (completed)"
+      }
+    }
+  }
+}

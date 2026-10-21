@@ -1,0 +1,54 @@
+{
+  "step": 35,
+  "label": "Final independent verification",
+  "elapsed_seconds": 1.91,
+  "audit_integrity": {
+    "chain_verified": true
+  },
+  "mutation_counts": [
+    {
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "rows": 41
+    },
+    {
+      "tool": "workiva_confirm_section_text",
+      "action": "completed",
+      "rows": 2
+    }
+  ],
+  "missing_field_readback": {
+    "cells": [
+      {
+        "name": "rpt_env_water_discharge_production_2025",
+        "range": "L23",
+        "value": ""
+      }
+    ]
+  },
+  "missing_field_write_audits": 0,
+  "section_verifications": [
+    {
+      "section_id": "esg-environmental",
+      "audit_id": "LLFWKMOOFYBR2SJKUTV3RHG4V7",
+      "staged_text_sha256": "faeaa66a54574fbacadda1905b116a7abe1f1193a1574691c3a3313bf0ec9513",
+      "audit_text_sha256": "faeaa66a54574fbacadda1905b116a7abe1f1193a1574691c3a3313bf0ec9513",
+      "hash_matches": true,
+      "live_paragraphs_match": true
+    },
+    {
+      "section_id": "esg-social",
+      "audit_id": "QBH27XN2YW3ZAVP3XXJVC5FEF7",
+      "staged_text_sha256": "78cae8a69363280a51d41eaeb8473b8601367d0c73afc646fdad840c2902facb",
+      "audit_text_sha256": "78cae8a69363280a51d41eaeb8473b8601367d0c73afc646fdad840c2902facb",
+      "hash_matches": true,
+      "live_paragraphs_match": true
+    }
+  ],
+  "first_tool_call_utc": "2026-10-21 09:00:52",
+  "last_tool_call_utc": "2026-10-21 09:05:20",
+  "acts_wall_seconds_including_interruption": 268.0,
+  "acts_wall_timing_resolution_seconds": 1,
+  "server_stopped": true,
+  "product_mismatches": []
+}

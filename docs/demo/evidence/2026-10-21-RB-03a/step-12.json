@@ -1,0 +1,37 @@
+{
+  "step": 12,
+  "label": "workiva_get_field",
+  "elapsed_seconds": 0.803,
+  "prompt": "And how much electricity from renewable sources did we buy in 2025 versus 2024?",
+  "request": {
+    "name": "workiva_get_field",
+    "arguments": {
+      "name": "src_env_electricity_renewable"
+    }
+  },
+  "http_status": 200,
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 10,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"description\":\"Electricity (as reflected in utility billings) - Renewable\",\"fetched_at\":\"2026-10-21T09:01:03.103509399Z\",\"field_type\":\"number\",\"name\":\"src_env_electricity_renewable\",\"nl_audit_id\":\"36876d10-0a16-42dc-bc03-830c32b8598a\",\"range\":\"G12\",\"sheet_id\":\"<sheet-1-1>\",\"source\":\"live\",\"spreadsheet_id\":\"<spreadsheet-1>\",\"value\":\"490\"}"
+        }
+      ],
+      "structuredContent": {
+        "description": "Electricity (as reflected in utility billings) - Renewable",
+        "fetched_at": "2026-10-21T09:01:03.103509399Z",
+        "field_type": "number",
+        "name": "src_env_electricity_renewable",
+        "nl_audit_id": "36876d10-0a16-42dc-bc03-830c32b8598a",
+        "range": "G12",
+        "sheet_id": "<sheet-1-1>",
+        "source": "live",
+        "spreadsheet_id": "<spreadsheet-1>",
+        "value": "490"
+      }
+    }
+  }
+}

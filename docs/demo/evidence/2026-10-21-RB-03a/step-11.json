@@ -1,0 +1,20 @@
+{
+  "step": 11,
+  "label": "Act 1 independent source/prior read-back",
+  "elapsed_seconds": 1.194,
+  "prompt": "What were our business travel emissions in 2025 and in 2024?",
+  "readback": {
+    "cells": [
+      {
+        "name": "src_env_ghg_scope3_business_travel",
+        "range": "D35",
+        "value": "165"
+      },
+      {
+        "name": "rpt_env_ghg_scope3_business_travel_2024",
+        "range": "L15",
+        "value": "140"
+      }
+    ]
+  }
+}

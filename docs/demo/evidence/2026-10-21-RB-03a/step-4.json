@@ -1,0 +1,20 @@
+{
+  "step": 4,
+  "label": "Act 1 independent source/prior read-back",
+  "elapsed_seconds": 2.858,
+  "prompt": "What was total energy consumption in 2025 and how does it compare with 2024?",
+  "readback": {
+    "cells": [
+      {
+        "name": "src_env_energy_total",
+        "range": "G5",
+        "value": "1978"
+      },
+      {
+        "name": "rpt_env_energy_total_2024",
+        "range": "L2",
+        "value": "2030"
+      }
+    ]
+  }
+}

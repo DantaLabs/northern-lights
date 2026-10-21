@@ -1,0 +1,253 @@
+{
+  "step": 30,
+  "label": "Independent cell read-back and audit rows",
+  "elapsed_seconds": 9.301,
+  "section_id": "esg-social",
+  "readback": {
+    "cells": [
+      {
+        "name": "rpt_soc_employees_total_2025",
+        "range": "L28",
+        "value": "428"
+      },
+      {
+        "name": "rpt_soc_employees_permanent_2025",
+        "range": "L29",
+        "value": "402"
+      },
+      {
+        "name": "rpt_soc_employees_male_2025",
+        "range": "L30",
+        "value": "238"
+      },
+      {
+        "name": "rpt_soc_employees_female_2025",
+        "range": "L31",
+        "value": "183"
+      },
+      {
+        "name": "rpt_soc_employees_other_2025",
+        "range": "L32",
+        "value": "5"
+      },
+      {
+        "name": "rpt_soc_employees_not_reported_2025",
+        "range": "L33",
+        "value": "2"
+      },
+      {
+        "name": "rpt_soc_employees_left_2025",
+        "range": "L34",
+        "value": "41"
+      },
+      {
+        "name": "rpt_soc_employees_start_2025",
+        "range": "L35",
+        "value": "412"
+      },
+      {
+        "name": "rpt_soc_employees_end_2025",
+        "range": "L36",
+        "value": "428"
+      },
+      {
+        "name": "rpt_soc_accidents_recordable_2025",
+        "range": "L37",
+        "value": "11"
+      },
+      {
+        "name": "rpt_soc_fatalities_work_related_2025",
+        "range": "L38",
+        "value": "0"
+      },
+      {
+        "name": "rpt_soc_employees_collective_bargaining_2025",
+        "range": "L39",
+        "value": "281"
+      },
+      {
+        "name": "rpt_soc_training_hours_male_2025",
+        "range": "L40",
+        "value": "19"
+      },
+      {
+        "name": "rpt_soc_training_hours_female_2025",
+        "range": "L41",
+        "value": "25.5"
+      },
+      {
+        "name": "rpt_soc_managers_male_2025",
+        "range": "L42",
+        "value": "32"
+      },
+      {
+        "name": "rpt_soc_managers_female_2025",
+        "range": "L43",
+        "value": "15"
+      }
+    ]
+  },
+  "audit_rows": [
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L28",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_total_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_total_2025\",\"intended\":\"428\",\"status\":\"completed\",\"value\":\"428\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "4kmSJt1bO2T1K_gJk7GbbCD4Jn_S3uU7yjxEB6du98s"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L29",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_permanent_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_permanent_2025\",\"intended\":\"402\",\"status\":\"completed\",\"value\":\"402\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "WWfcPLiZNfPQXUFcEsq7M1mhJRYGqW-j_AwlejVVZ1c"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L30",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_male_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_male_2025\",\"intended\":\"238\",\"status\":\"completed\",\"value\":\"238\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "f0nmBy4IBXV4cN7HqWneu9ia17Fs6E8uHHOX457srEQ"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L31",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_female_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_female_2025\",\"intended\":\"183\",\"status\":\"completed\",\"value\":\"183\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "9Uex2JtUCu019-M05QxMdZN2O-EyjyAXsc1tH5Ry_ys"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L32",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_other_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_other_2025\",\"intended\":\"5\",\"status\":\"completed\",\"value\":\"5\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "5C_YrjRaGoGtbxDGmDw4UaTD3_MDxG5WFXhpN9saFPE"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L33",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_not_reported_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_not_reported_2025\",\"intended\":\"2\",\"status\":\"completed\",\"value\":\"2\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "9YA8kwU1esrORSNU8cjH9BGsy8tzpijcRh4YHsNljio"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L34",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_left_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_left_2025\",\"intended\":\"41\",\"status\":\"completed\",\"value\":\"41\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "kyyfH2WbInUQmM7srTu9AwYOP_Jh4f6jBUWPRCMpxxA"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L35",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_start_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_start_2025\",\"intended\":\"412\",\"status\":\"completed\",\"value\":\"412\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "OMQQNSt9vLWGqxkK9l2226wkC-tUG1H_hhAy4wyaEyw"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L36",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_end_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_end_2025\",\"intended\":\"428\",\"status\":\"completed\",\"value\":\"428\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "XlHA2QPJ8wGV9eOlPftWC_9XyoskPR6DxzWkIZ_H3CI"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L37",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_accidents_recordable_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_accidents_recordable_2025\",\"intended\":\"11\",\"status\":\"completed\",\"value\":\"11\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "vb235WMfT2xSIeJBEQd2TML4gLbBeWoJNmarC7-I5mw"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L38",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_fatalities_work_related_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_fatalities_work_related_2025\",\"intended\":\"0\",\"status\":\"completed\",\"value\":\"0\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "YEGvYzfPqJjgIaQ4614ttISQiHY0lTEVE-0XdcAoxmk"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L39",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_collective_bargaining_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_employees_collective_bargaining_2025\",\"intended\":\"281\",\"status\":\"completed\",\"value\":\"281\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "4YnMtwFp-txUPL0AKNX2KMP7iC8OR59aMOc-PFpIako"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L40",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_training_hours_male_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_training_hours_male_2025\",\"intended\":\"19\",\"status\":\"completed\",\"value\":\"19\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "_eR2TpBC4xE11f653xGdmvglPsI1jZ2-QD48OdHPfSM"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L41",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_training_hours_female_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_training_hours_female_2025\",\"intended\":\"25.5\",\"status\":\"completed\",\"value\":\"25.5\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "Tpi8f4ue_ZgmcKbZjI40oR37G2Lxty6J4Eaj-mExllY"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L42",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_managers_male_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_managers_male_2025\",\"intended\":\"32\",\"status\":\"completed\",\"value\":\"32\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "CF_LfHsER-zKTKfjTQspPR7bDTLHzf9C5bCb6ck19SA"
+    },
+    {
+      "actor": "demo-dryrun@example.com",
+      "tool": "workiva_confirm_change_set",
+      "action": "write",
+      "target": "<spreadsheet-2>/<sheet-2-1>/L43",
+      "before_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_managers_female_2025\",\"value\":\"\"}",
+      "after_json": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"field\":\"rpt_soc_managers_female_2025\",\"intended\":\"15\",\"status\":\"completed\",\"value\":\"15\"}",
+      "workiva_op_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+      "audit_id": "3BWlrnIyota6Qk7CVqfc4K2UxL04FQJAnFXzg4BrFqM"
+    }
+  ],
+  "expected_count": 16
+}

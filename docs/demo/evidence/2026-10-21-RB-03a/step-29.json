@@ -1,0 +1,178 @@
+{
+  "step": 29,
+  "label": "workiva_confirm_change_set",
+  "elapsed_seconds": 16.305,
+  "prompt": "Yes, approve these changes, then draft the narrative and add the policy paragraph.",
+  "request": {
+    "name": "workiva_confirm_change_set",
+    "arguments": {
+      "change_set_id": "Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao",
+      "confirm_token": "<redacted>"
+    }
+  },
+  "http_status": 200,
+  "response": {
+    "jsonrpc": "2.0",
+    "id": 9,
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"change_set_id\":\"Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao\",\"items\":[{\"after\":\"428\",\"audit_id\":\"4kmSJt1bO2T1K_gJk7GbbCD4Jn_S3uU7yjxEB6du98s\",\"before\":\"\",\"field_name\":\"rpt_soc_employees_total_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"428\",\"status\":\"completed\"},{\"after\":\"402\",\"audit_id\":\"WWfcPLiZNfPQXUFcEsq7M1mhJRYGqW-j_AwlejVVZ1c\",\"before\":\"\",\"field_name\":\"rpt_soc_employees_permanent_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"402\",\"status\":\"completed\"},{\"after\":\"238\",\"audit_id\":\"f0nmBy4IBXV4cN7HqWneu9ia17Fs6E8uHHOX457srEQ\",\"before\":\"\",\"field_name\":\"rpt_soc_employees_male_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"238\",\"status\":\"completed\"},{\"after\":\"183\",\"audit_id\":\"9Uex2JtUCu019-M05QxMdZN2O-EyjyAXsc1tH5Ry_ys\",\"before\":\"\",\"field_name\":\"rpt_soc_employees_female_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"183\",\"status\":\"completed\"},{\"after\":\"5\",\"audit_id\":\"5C_YrjRaGoGtbxDGmDw4UaTD3_MDxG5WFXhpN9saFPE\",\"before\":\"\",\"field_name\":\"rpt_soc_employees_other_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"5\",\"status\":\"completed\"},{\"after\":\"2\",\"audit_id\":\"9YA8kwU1esrORSNU8cjH9BGsy8tzpijcRh4YHsNljio\",\"before\":\"\",\"field_name\":\"rpt_soc_employees_not_reported_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"2\",\"status\":\"completed\"},{\"after\":\"41\",\"audit_id\":\"kyyfH2WbInUQmM7srTu9AwYOP_Jh4f6jBUWPRCMpxxA\",\"before\":\"\",\"field_name\":\"rpt_soc_employees_left_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"41\",\"status\":\"completed\"},{\"after\":\"412\",\"audit_id\":\"OMQQNSt9vLWGqxkK9l2226wkC-tUG1H_hhAy4wyaEyw\",\"before\":\"\",\"field_name\":\"rpt_soc_employees_start_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"412\",\"status\":\"completed\"},{\"after\":\"428\",\"audit_id\":\"XlHA2QPJ8wGV9eOlPftWC_9XyoskPR6DxzWkIZ_H3CI\",\"before\":\"\",\"field_name\":\"rpt_soc_employees_end_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"428\",\"status\":\"completed\"},{\"after\":\"11\",\"audit_id\":\"vb235WMfT2xSIeJBEQd2TML4gLbBeWoJNmarC7-I5mw\",\"before\":\"\",\"field_name\":\"rpt_soc_accidents_recordable_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"11\",\"status\":\"completed\"},{\"after\":\"0\",\"audit_id\":\"YEGvYzfPqJjgIaQ4614ttISQiHY0lTEVE-0XdcAoxmk\",\"before\":\"\",\"field_name\":\"rpt_soc_fatalities_work_related_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"0\",\"status\":\"completed\"},{\"after\":\"281\",\"audit_id\":\"4YnMtwFp-txUPL0AKNX2KMP7iC8OR59aMOc-PFpIako\",\"before\":\"\",\"field_name\":\"rpt_soc_employees_collective_bargaining_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"281\",\"status\":\"completed\"},{\"after\":\"19\",\"audit_id\":\"_eR2TpBC4xE11f653xGdmvglPsI1jZ2-QD48OdHPfSM\",\"before\":\"\",\"field_name\":\"rpt_soc_training_hours_male_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"19\",\"status\":\"completed\"},{\"after\":\"25.5\",\"audit_id\":\"Tpi8f4ue_ZgmcKbZjI40oR37G2Lxty6J4Eaj-mExllY\",\"before\":\"\",\"field_name\":\"rpt_soc_training_hours_female_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"25.5\",\"status\":\"completed\"},{\"after\":\"32\",\"audit_id\":\"CF_LfHsER-zKTKfjTQspPR7bDTLHzf9C5bCb6ck19SA\",\"before\":\"\",\"field_name\":\"rpt_soc_managers_male_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"32\",\"status\":\"completed\"},{\"after\":\"15\",\"audit_id\":\"3BWlrnIyota6Qk7CVqfc4K2UxL04FQJAnFXzg4BrFqM\",\"before\":\"\",\"field_name\":\"rpt_soc_managers_female_2025\",\"operation_url\":\"https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e\",\"read_back\":\"15\",\"status\":\"completed\"}],\"nl_audit_id\":\"0324cdcd-719a-4bf5-bf24-373df05eca1b\",\"status\":\"completed\",\"summary\":\"rpt_soc_employees_total_2025:  -> 428 (completed)\\nrpt_soc_employees_permanent_2025:  -> 402 (completed)\\nrpt_soc_employees_male_2025:  -> 238 (completed)\\nrpt_soc_employees_female_2025:  -> 183 (completed)\\nrpt_soc_employees_other_2025:  -> 5 (completed)\\nrpt_soc_employees_not_reported_2025:  -> 2 (completed)\\nrpt_soc_employees_left_2025:  -> 41 (completed)\\nrpt_soc_employees_start_2025:  -> 412 (completed)\\nrpt_soc_employees_end_2025:  -> 428 (completed)\\nrpt_soc_accidents_recordable_2025:  -> 11 (completed)\\nrpt_soc_fatalities_work_related_2025:  -> 0 (completed)\\nrpt_soc_employees_collective_bargaining_2025:  -> 281 (completed)\\nrpt_soc_training_hours_male_2025:  -> 19 (completed)\\nrpt_soc_training_hours_female_2025:  -> 25.5 (completed)\\nrpt_soc_managers_male_2025:  -> 32 (completed)\\nrpt_soc_managers_female_2025:  -> 15 (completed)\"}"
+        }
+      ],
+      "structuredContent": {
+        "change_set_id": "Swpu-E4bjEi0YvxZZiWW1InTayZ0VkMZl_4mbzjM8Ao",
+        "items": [
+          {
+            "after": "428",
+            "audit_id": "4kmSJt1bO2T1K_gJk7GbbCD4Jn_S3uU7yjxEB6du98s",
+            "before": "",
+            "field_name": "rpt_soc_employees_total_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "428",
+            "status": "completed"
+          },
+          {
+            "after": "402",
+            "audit_id": "WWfcPLiZNfPQXUFcEsq7M1mhJRYGqW-j_AwlejVVZ1c",
+            "before": "",
+            "field_name": "rpt_soc_employees_permanent_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "402",
+            "status": "completed"
+          },
+          {
+            "after": "238",
+            "audit_id": "f0nmBy4IBXV4cN7HqWneu9ia17Fs6E8uHHOX457srEQ",
+            "before": "",
+            "field_name": "rpt_soc_employees_male_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "238",
+            "status": "completed"
+          },
+          {
+            "after": "183",
+            "audit_id": "9Uex2JtUCu019-M05QxMdZN2O-EyjyAXsc1tH5Ry_ys",
+            "before": "",
+            "field_name": "rpt_soc_employees_female_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "183",
+            "status": "completed"
+          },
+          {
+            "after": "5",
+            "audit_id": "5C_YrjRaGoGtbxDGmDw4UaTD3_MDxG5WFXhpN9saFPE",
+            "before": "",
+            "field_name": "rpt_soc_employees_other_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "5",
+            "status": "completed"
+          },
+          {
+            "after": "2",
+            "audit_id": "9YA8kwU1esrORSNU8cjH9BGsy8tzpijcRh4YHsNljio",
+            "before": "",
+            "field_name": "rpt_soc_employees_not_reported_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "2",
+            "status": "completed"
+          },
+          {
+            "after": "41",
+            "audit_id": "kyyfH2WbInUQmM7srTu9AwYOP_Jh4f6jBUWPRCMpxxA",
+            "before": "",
+            "field_name": "rpt_soc_employees_left_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "41",
+            "status": "completed"
+          },
+          {
+            "after": "412",
+            "audit_id": "OMQQNSt9vLWGqxkK9l2226wkC-tUG1H_hhAy4wyaEyw",
+            "before": "",
+            "field_name": "rpt_soc_employees_start_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "412",
+            "status": "completed"
+          },
+          {
+            "after": "428",
+            "audit_id": "XlHA2QPJ8wGV9eOlPftWC_9XyoskPR6DxzWkIZ_H3CI",
+            "before": "",
+            "field_name": "rpt_soc_employees_end_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "428",
+            "status": "completed"
+          },
+          {
+            "after": "11",
+            "audit_id": "vb235WMfT2xSIeJBEQd2TML4gLbBeWoJNmarC7-I5mw",
+            "before": "",
+            "field_name": "rpt_soc_accidents_recordable_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "11",
+            "status": "completed"
+          },
+          {
+            "after": "0",
+            "audit_id": "YEGvYzfPqJjgIaQ4614ttISQiHY0lTEVE-0XdcAoxmk",
+            "before": "",
+            "field_name": "rpt_soc_fatalities_work_related_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "0",
+            "status": "completed"
+          },
+          {
+            "after": "281",
+            "audit_id": "4YnMtwFp-txUPL0AKNX2KMP7iC8OR59aMOc-PFpIako",
+            "before": "",
+            "field_name": "rpt_soc_employees_collective_bargaining_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "281",
+            "status": "completed"
+          },
+          {
+            "after": "19",
+            "audit_id": "_eR2TpBC4xE11f653xGdmvglPsI1jZ2-QD48OdHPfSM",
+            "before": "",
+            "field_name": "rpt_soc_training_hours_male_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "19",
+            "status": "completed"
+          },
+          {
+            "after": "25.5",
+            "audit_id": "Tpi8f4ue_ZgmcKbZjI40oR37G2Lxty6J4Eaj-mExllY",
+            "before": "",
+            "field_name": "rpt_soc_training_hours_female_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "25.5",
+            "status": "completed"
+          },
+          {
+            "after": "32",
+            "audit_id": "CF_LfHsER-zKTKfjTQspPR7bDTLHzf9C5bCb6ck19SA",
+            "before": "",
+            "field_name": "rpt_soc_managers_male_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "32",
+            "status": "completed"
+          },
+          {
+            "after": "15",
+            "audit_id": "3BWlrnIyota6Qk7CVqfc4K2UxL04FQJAnFXzg4BrFqM",
+            "before": "",
+            "field_name": "rpt_soc_managers_female_2025",
+            "operation_url": "https://api.eu.wdesk.com/operations/b85cf1c8-b7fa-4145-83b9-9ec3c2c0ea4e",
+            "read_back": "15",
+            "status": "completed"
+          }
+        ],
+        "nl_audit_id": "0324cdcd-719a-4bf5-bf24-373df05eca1b",
+        "status": "completed",
+        "summary": "rpt_soc_employees_total_2025:  -> 428 (completed)\nrpt_soc_employees_permanent_2025:  -> 402 (completed)\nrpt_soc_employees_male_2025:  -> 238 (completed)\nrpt_soc_employees_female_2025:  -> 183 (completed)\nrpt_soc_employees_other_2025:  -> 5 (completed)\nrpt_soc_employees_not_reported_2025:  -> 2 (completed)\nrpt_soc_employees_left_2025:  -> 41 (completed)\nrpt_soc_employees_start_2025:  -> 412 (completed)\nrpt_soc_employees_end_2025:  -> 428 (completed)\nrpt_soc_accidents_recordable_2025:  -> 11 (completed)\nrpt_soc_fatalities_work_related_2025:  -> 0 (completed)\nrpt_soc_employees_collective_bargaining_2025:  -> 281 (completed)\nrpt_soc_training_hours_male_2025:  -> 19 (completed)\nrpt_soc_training_hours_female_2025:  -> 25.5 (completed)\nrpt_soc_managers_male_2025:  -> 32 (completed)\nrpt_soc_managers_female_2025:  -> 15 (completed)"
+      }
+    }
+  }
+}
