@@ -5,10 +5,13 @@
   "branch": "claude/demo-l2-section-recipe",
   "status": "blocked",
   "round": 0,
-  "checkpoint": null,
-  "active_tasks": [
-    "T6"
-  ],
+  "checkpoint": {
+    "commit": "33f240ee171408ddbb2915b95fa2cc85374ec34f",
+    "created_at": "2026-10-21T04:21:36Z",
+    "environment": "local",
+    "router": "planner-hint"
+  },
+  "active_tasks": [],
   "run_base_commit": "48269d9ee2ab52f64d4277931374fd7a4d7f3c76",
   "block_question": "Delete the dead notImplementedYet helper from L0's internal/mcpserver/tools/demo.go in this PR (only change needed for green golangci-lint), or wait for L0 to land it?",
   "processed_reviews": [
