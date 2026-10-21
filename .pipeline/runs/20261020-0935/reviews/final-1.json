@@ -1,0 +1,86 @@
+{
+  "task_id": "FINAL",
+  "axis": "final",
+  "verdict": "pass",
+  "reviewed_head": "86781f2dfdb0a3ee550c5043c3f54c7fdcc52cda",
+  "run_base_commit": "48269d9ee2ab52f64d4277931374fd7a4d7f3c76",
+  "findings": [
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare.go",
+      "line": 84,
+      "issue": "The formula path (use Value.CalculatedValue when Value.Formula != \"\") has no test. Replacing the condition with `if false` leaves go test ./internal/recipe/ green. If this path broke, a formula source cell would be read as its formula text and staged as a literal string into the report target field.",
+      "fix": "Add a prepare test whose fake backend returns a formula cell (\"=A1*2\") with a calculated json.Number, and assert that the staged item Value and the fact Current are the calculated value.",
+      "task_id": "T4"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare.go",
+      "line": 138,
+      "issue": "The rule that a text prior counts as missing (direction new) has no test. Mutating `prior.kind == cellNumeric` to `prior.kind != cellEmpty` survives the suite. Under that mutation computeFact fails on a text prior and Prepare errors.",
+      "fix": "Add a case with a numeric current and a text prior cell, and assert Direction \"new\", an empty ChangePct and no error.",
+      "task_id": "T4"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/prepare.go",
+      "line": 217,
+      "issue": "The sign_change guard `fact.Current != \"0\"` has no test. Removing it survives the suite. Without the guard, a move from a negative prior to a current of 0 is reported as a sign change.",
+      "fix": "Add a TestScenario5Findings case with prior -5 and current 0, and assert no sign_change finding.",
+      "task_id": "T4"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/recipe.go",
+      "line": 207,
+      "issue": "Two load validations are untested: duplicate field keys (recipe.go:207) and decimals outside 0..6 (recipe.go:233). Replacing either check with `if false` survives the suite. A bad decimals value would then fail only at Prepare time, not at startup as R1 requires.",
+      "fix": "Add subtests duplicate_field_key and decimals_out_of_range to TestScenario1InvalidRecipeStopsStartup, and assert that the error names the file and the reason.",
+      "task_id": "T2"
+    },
+    {
+      "severity": "minor",
+      "file": "internal/recipe/service.go",
+      "line": 27,
+      "issue": "service.storageCtx is written in New but never read. Prepare uses the request ctx for store lookups, the uncached reads and the fact store. The field is dead code, and it also stores a context in a struct, which the T2 review flagged as a nit.",
+      "fix": "Delete the storageCtx field and its assignment in New. Keep the storage context local to New, where it is used for the load-time lookups.",
+      "task_id": "T2"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/facts.go",
+      "line": 306,
+      "issue": "Percent display forms are not thousands-grouped (ChangePct 1299900 gives \"1299900%\"), but value displays are grouped (\"129,990 m3\"). L3's numberPattern accepts grouped tokens, so a draft that writes \"1,299,900%\" would be refused. This only affects changes of 1000% or more.",
+      "fix": "Pass the percent forms through groupThousands as well, and extend TestScenario4DisplayForms with a change of 1000% or more.",
+      "task_id": "T1"
+    },
+    {
+      "severity": "nit",
+      "file": "internal/recipe/prepare.go",
+      "line": 230,
+      "issue": "unknownSection sorts the result of s.Sections() again, although Sections() already returns the list sorted by ID.",
+      "fix": "Drop the sort.Slice call.",
+      "task_id": "T4"
+    }
+  ],
+  "requirements_checked": [
+    {"requirement": "R1", "satisfied": true, "evidence": "service.go New reads NL_DEMO_SECTIONS_DIR (default configs/demo/sections); recipe.go loadRecipes wraps every error as 'section recipe <file>: <reason>'; TestScenario1InvalidRecipeStopsStartup, TestScenario1ValidRecipeLoads, TestNewSucceedsWithoutRecipes; cmd/workiva-mcp TestDemoPipeline green"},
+    {"requirement": "R2", "satisfied": true, "evidence": "recipe.go rawRecipe/rawField decoded with KnownFields(true); decimalText is the only custom unmarshaler; extra YAML documents rejected; TestScenario1InvalidRecipeStopsStartup/unknown_key, unknown_field_key, unknown_verbatim_key, missing_id; mutation KnownFields(false) killed"},
+    {"requirement": "R3", "satisfied": true, "evidence": "recipe.go fieldDef.validate looks up source/target/prior with GetField ('unknown mapped field'); TestScenario1InvalidRecipeStopsStartup/unknown_mapped_field"},
+    {"requirement": "R4", "satisfied": true, "evidence": "prepare.go readCell uses cellReader.ReadUncached (workivaprovider.Router) with ConsistencyNone; TestScenario2PrepareReadsUncachedThroughRouter asserts GetSheetDataTyped calls and an empty mapping cache; TestScenario9DemoModeEnvironmentalSection"},
+    {"requirement": "R5", "satisfied": true, "evidence": "facts.go computeFactValues uses assurance decimal helpers and math/big only (float grep empty); TestScenario2FactArithmetic (-110000, -8.148148..., down, not material); TestScenario3NewDirectionWhenPriorZeroOrMissing; materiality equality boundary test kills the >= to > mutation"},
+    {"requirement": "R6", "satisfied": true, "evidence": "TestScenario4DisplayForms pins [\"1.24 GWh\",\"1.35 GWh\",\"-0.11 GWh\",\"-8%\",\"-8.1%\",\"0.11 GWh\",\"8%\",\"8.1%\"] (spec forms followed by the unsigned magnitudes the orchestrator decided for L3's exact-token guard); TestPercentFieldsUsePercentAndPercentagePoints (fractions scaled x100, '8 percentage points', Material uses pp)"},
+    {"requirement": "R7", "satisfied": true, "evidence": "prepare.go Prepare/fieldFindings emit missing, out_of_range (percent min/max for % fields), material_change and sign_change, each with label and a one-sentence message; TestScenario5Findings (including severities)"},
+    {"requirement": "R8", "satisfied": true, "evidence": "prepare.go builds one changeset.Item per non-empty source with FieldName=target, Source=source name and a canonical value; TestScenario6StagesOneItemPerSourceValue (5 of 6, 585.0 -> 585); TestScenario9DemoModeEnvironmentalSection (25 items from esg-2025.csv); fake changeset.Service only"},
+    {"requirement": "R9", "satisfied": true, "evidence": "prepare.go readVerbatim reads through os.Root byte for byte and rejects invalid UTF-8; TestScenario7VerbatimByteForByteAndLatestFacts (CRLF and non-ASCII written at test time)"},
+    {"requirement": "R10", "satisfied": true, "evidence": "factstore.go recipe_prepared table upsert keyed by tenant/actor/section, plus an in-memory adapter; Prepare calls replaceFacts after Stage; TestScenario7LatestFactsPerActorAndSection (sqlite and memory, other actor gets nothing), TestFactStoreReplacesPreviousSet, TestFactStoreSQLiteSurvivesReopen"},
+    {"requirement": "R11", "satisfied": true, "evidence": "prepare_section.go unknownSectionError lists 'id (title)' from Sections(); TestScenario8UnknownSectionListsSections, TestScenario8UnknownSectionWithNoRecipes; recipe-level TestPrepareUnknownSectionListsAvailable"},
+    {"requirement": "R12", "satisfied": true, "evidence": "prepare_section.go returns Prepared mapped to the output, changeSetSummary in L1's line format (escapes CR/LF; mutation killed) and the next_step text; TestScenario8KnownSectionReturnsPreparedSummaryAndNextStep; TestScenario9PrepareSectionToolOnDemoData passes the output schema end to end (3 findings, 25 items, 25-line summary). The switch to Preview.Summary after L1 merges is recorded in STATUS"},
+    {"requirement": "R13", "satisfied": true, "evidence": "service.go Sections() returns all five SectionInfo fields sorted by ID; TestScenario8SectionsSortedByID"},
+    {"requirement": "Owner: lane scope, L0 signatures unchanged", "satisfied": true, "evidence": "git diff 48269d9..HEAD touches only internal/recipe/**, internal/mcpserver/tools/prepare_section*.go, docs/demo/STATUS.md and .pipeline; types.go has no diff; the New signature has no diff"},
+    {"requirement": "Owner: decimal only, percent cells store fractions", "satisfied": true, "evidence": "grep float(32|64)|ParseFloat over internal/recipe and prepare_section*.go finds nothing; facts.go scales % by x100 exactly (TestPercentFieldsUsePercentAndPercentagePoints)"},
+    {"requirement": "Owner: NL_DEMO_DOCUMENT_ID only in sandbox mode", "satisfied": true, "evidence": "service.go New applies the override only when Cfg != nil && !DemoMode, trimmed; TestDocumentIDOverrideFromEnvironment demo_mode_keeps_yaml / sandbox_uses_env / sandbox_unset_keeps_yaml; mutation that drops the DemoMode check is killed"},
+    {"requirement": "Owner: scenarios 1-9 as tests; STATUS L2 row updated and the handled L4 request removed", "satisfied": true, "evidence": "go test -list finds TestScenario1..9 in internal/recipe and internal/mcpserver/tools; the STATUS L2 row reads 'ready for review' with the NL_DEMO_DOCUMENT_ID note, and the L4 -> L2 request line is removed"},
+    {"requirement": "Commands from .pipeline/config.json", "satisfied": true, "evidence": "Re-run at HEAD: go build ./... ok; go test -race -count=1 for internal/recipe, internal/mcpserver/..., cmd/workiva-mcp ok; gofmt/go vet/golangci-lint 0 issues. Full suite: checks/T6-a1.log shows go test ./... -race -timeout 40m green at 9a4446d, whose non-.pipeline tree is identical to HEAD (empty diff). Typecheck is none"}
+  ],
+  "new_tasks": []
+}

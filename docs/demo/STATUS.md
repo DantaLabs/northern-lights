@@ -8,7 +8,7 @@ Plan day: 1 of 11 (Monday 19 October 2026).
 |---|---|---|---|---|
 | L0 Scaffold | ready for review (R10 end-to-end test waits for L1-L4) | `claude/demo-l0-scaffold` | 19b03ea | Entra permission mapping for demo tools |
 | L1 Change set | waiting for L0 | `codex/demo-l1-change-set` | | L0 merge |
-| L2 Section recipe | ready for review (draft PR); scenario 9 proven on L4 demo data; `NL_DEMO_DOCUMENT_ID` overrides the recipe document ID in sandbox mode only (ignored in demo mode) | `claude/demo-l2-section-recipe` | see PR | L1 merge: switch summary to Preview.Summary |
+| L2 Section recipe | ready for review (draft PR); scenario 9 proven on L4 demo data; `NL_DEMO_DOCUMENT_ID` overrides the recipe document ID in sandbox mode only (ignored in demo mode); percent cells read as fractions | `claude/demo-l2-section-recipe` | 86781f2 | L1 changeset.Service (tests use a fake); when L1 merges, switch the summary to Preview.Summary |
 | L3 Section text | RB-02 spike can start now | `codex/demo-l3-section-text` | | RB-02 result for the document writer |
 | L4 Data and agent | ready for review (draft PR); live seed done 2026-10-19 (42 fields, 126 cells read back, 0 mismatch, 99.7 s vs 1-minute target) | `claude/demo-l4-data-and-agent` | 7002483 | L2 `workiva_prepare_section` for scenario 5; Tom's RB-03 for scenario 6 |
 | L5 Manual tests | RB-01 today | `claude/demo-integration` | | |
