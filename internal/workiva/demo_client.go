@@ -24,6 +24,9 @@ type DemoTransport struct {
 	// "spreadsheet/sheet" key. Tests and demo seeds can inspect it.
 	WrittenCells map[string]string
 
+	// esgOverlay stores ESG edits by "spreadsheet/sheet" and row/column, guarded by mu.
+	esgOverlay map[string]map[[2]int]any
+
 	fixture *SheetData
 }
 
@@ -88,7 +91,7 @@ func isSheetsPath(path string) bool {
 }
 
 func demoSpreadsheetsResponse() *http.Response {
-	return demoJSONResponse([]byte(`{"data":[{"id":"demo-sp-energy-2026","name":"VSME Energy Report 2026","template":false},{"id":"demo-sp-energy-2025","name":"VSME Energy Report 2025","template":false}]}`))
+	return demoJSONResponse([]byte(`{"data":[{"id":"demo-sp-energy-2026","name":"VSME Energy Report 2026","template":false},{"id":"demo-sp-energy-2025","name":"VSME Energy Report 2025","template":false},{"id":"demo-esg-source","name":"ESG Source","template":false},{"id":"demo-esg-report","name":"ESG Report","template":false}]}`))
 }
 
 func demoSheetsResponse(path string) *http.Response {
