@@ -4,7 +4,9 @@ Spec: `docs/specs/demo-l2-section-recipe.md`. Branch `claude/demo-l2-section-rec
 
 ## Outcome
 
-**Blocked on one owner decision.** All 6 tasks passed. Final review 1 passed at 86781f2. After that, L1 and L3 were merged in from `claude/demo-integration`, and the owner's integration requests were done in ebea697. Final review 2 returned **revise** with one major finding. golangci-lint (`unused`) fails on `notImplementedYet` in `internal/mcpserver/tools/demo.go`. Before the merge, the L2 tool stub was the last thing that called it. `demo.go` belongs to L0, so the lane rules (AGENTS.md rule 1) do not let L2 delete it. STATUS.md now has an L2 -> L0 request to delete the function.
+**Done.** The owner approved deleting `notImplementedYet` from L0's demo.go in this PR, since no L0 session is active, and golangci-lint now reports 0 issues. The original block is kept below for the record.
+
+Previously **blocked on one owner decision.** All 6 tasks passed. Final review 1 passed at 86781f2. After that, L1 and L3 were merged in from `claude/demo-integration`, and the owner's integration requests were done in ebea697. Final review 2 returned **revise** with one major finding. golangci-lint (`unused`) fails on `notImplementedYet` in `internal/mcpserver/tools/demo.go`. Before the merge, the L2 tool stub was the last thing that called it. `demo.go` belongs to L0, so the lane rules (AGENTS.md rule 1) do not let L2 delete it. STATUS.md now has an L2 -> L0 request to delete the function.
 
 **Block question:** Should the L2 PR delete the dead `notImplementedYet` helper from the L0 file `demo.go`? This is the only change needed for green lint. The alternative is for L0 to land that deletion before this PR merges.
 

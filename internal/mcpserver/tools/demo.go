@@ -19,8 +19,3 @@ func requireDemoDep(present bool, name string) error {
 	}
 	return failMsg(name+" is not available", "server misconfiguration: start the server with NL_DEMO_PIPELINE=true")
 }
-
-// notImplementedYet is the stub handler result until a lane replaces it.
-func notImplementedYet(tool string) error {
-	return failMsg(tool+" is not implemented yet", "this demo tool is a placeholder until its lane lands")
-}
