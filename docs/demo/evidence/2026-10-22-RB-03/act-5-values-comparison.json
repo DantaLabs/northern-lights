@@ -1,0 +1,31 @@
+{
+  "result": "PASS",
+  "method": "Read Workiva CY Data Output L28:L43 in signed-in browser after reload; compared visually to current confirmation and synthetic source.",
+  "values": [
+    428,
+    402,
+    238,
+    183,
+    5,
+    2,
+    41,
+    412,
+    428,
+    11,
+    0,
+    281,
+    19,
+    25.5,
+    32,
+    15
+  ],
+  "completed_count": 16,
+  "evidence": [
+    "act-5-values.png",
+    "prompt-5.2-round0.txt",
+    "act-5-after-values.json"
+  ],
+  "document": "PASS: Social disclosures narrative and unchanged policy read in Workiva, matched approved preview; environmental text also still present.",
+  "document_evidence": "act-5-section.png",
+  "presentation_limitation": "Template logo overlaps headline in document UI; DOM text read confirms exact content. No formatting changes made."
+}

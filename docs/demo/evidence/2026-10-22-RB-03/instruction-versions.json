@@ -1,0 +1,20 @@
+{
+  "baseline": 7964,
+  "act2_round2": 7993,
+  "act2_round3": 7921,
+  "act2_round4": 7981,
+  "act3_round1": {
+    "characters": 7953,
+    "persisted_source_match": true,
+    "narrative_rules_changed": false,
+    "citation_direction_rules_changed": false
+  },
+  "act3_round3": 7992,
+  "act4_round1": 7970,
+  "act1_round1": 7986,
+  "act1_round2": 7956,
+  "act1_round3": 8000,
+  "final_persisted_source_match": true,
+  "narrative_rules_changed": false,
+  "citation_direction_rules_changed": false
+}

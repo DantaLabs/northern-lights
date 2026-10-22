@@ -1,0 +1,58 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 2:19 PM
+A minute ago
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+Prepare the environmental section.
+
+You said: Prepare the environmental section.
+Bot said:
+
+Findings
+
+Missing | High
+
+Water discharge from undertaking production processes (m³)
+Current value: missing
+Message: Water discharge from undertaking production processes (m³) is required but has no value.
+
+Out of range | High
+
+Electricity (as reflected in utility billings) - Renewable
+Current: 490 MWh
+Prior: 520 MWh
+Message: Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500.
+
+Material change | Medium
+
+6. Business Travel
+Current: 165.0 tCO2e
+Prior: 140.0 tCO2e
+Message: 6. Business Travel changed by 17.9% from the prior period.
+
+Change Set Summary
+
+25 environmental fields are prepared for update and are awaiting confirmation, including:
+
+Total energy consumption → 1,978
+Renewable electricity → 490
+Non-renewable electricity → 1,280
+Scope 1 emissions → 812.5
+Scope 2 location-based emissions → 585
+Scope 3 business travel emissions → 165
+Water withdrawn total → 18,100
+Waste and land-use metrics → prepared for update
+
+Approve these changes?
+
+Like
+Dislike
+Sent at October 22 at 2:21 PM
+Just now
+Bot said: Findings Missing | High Water discharge from undertaking production processes (m³) Current value: missing Message: Water discharge from undertaking production processes (m³) is required but has no value. Out of range | High Electricity (as reflected in utility billings) - Renewable Current: 490 MWh Prior: 520 MWh Message: Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500. Material change | Medium 6. Business Travel Current: 165.0 tCO2e Prior: 140.0 tCO2e Message: 6. Business Travel changed by 17.9% from the prior period. Change Set Summary 25 environmental fields are prepared for update and are awaiting confirmation, including: Total energy consumption → 1,978 Renewable electricity → 490 Non-renewable electricity → 1,280 Scope 1 emissions → 812.5 Scope 2 location-based emissions → 585 Scope 3 business travel emissions → 165 Water withdrawn total → 18,100 Waste and land-use metrics → prepared for update Approve these changes?

@@ -1,0 +1,45 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 4:28 PM
+A minute ago
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+What was total energy consumption in 2025 and how does it compare with 2024?
+
+You said: What was total energy consumption in 2025 and how does it compare with 2024?
+Bot said:
+
+2025: 1,978 MWh (VSME-Digital-Template-1.0.1 Unlocked / Environmental Disclosures / G5).
+
+2024: 2,030 MWh (VSME - Factbook template / PY Data Output / L2).
+
+Total energy consumption fell from 2024 to 2025.
+
+Like
+Dislike
+Sent at October 22 at 4:29 PM
+Just now
+Bot said: 2025: 1,978 MWh (VSME-Digital-Template-1.0.1 Unlocked / Environmental Disclosures / G5). 2024: 2,030 MWh (VSME - Factbook template / PY Data Output / L2). Total energy consumption fell from 2024 to 2025.
+You said:
+
+How many employees did we have at the end of 2025, and how many in 2024?
+
+You said: How many employees did we have at the end of 2025, and how many in 2024?
+Bot said:
+
+2025: 428 employees (VSME-Digital-Template-1.0.1 Unlocked / Social Disclosures / D45).
+
+2024: 412 employees (VSME - Factbook template / PY Data Output / L36).
+
+The number of employees at the end of the reporting period rose from 2024 to 2025.
+
+Like
+Dislike
+Sent at October 22 at 4:30 PM
+Just now
+Bot said: 2025: 428 employees (VSME-Digital-Template-1.0.1 Unlocked / Social Disclosures / D45). 2024: 412 employees (VSME - Factbook template / PY Data Output / L36). The number of employees at the end of the reporting period rose from 2024 to 2025.

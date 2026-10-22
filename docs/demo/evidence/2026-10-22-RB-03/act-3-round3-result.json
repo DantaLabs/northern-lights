@@ -1,0 +1,14 @@
+{
+  "fix_round": 3,
+  "preview": "PASS: only material business travel numbers, supplied cause, grouped nonmaterial indicators, unchanged policy",
+  "confirmation": "completed",
+  "confirmation_prompt_seconds": 37.471,
+  "evidence": [
+    "prompt-3.2a-round3.txt",
+    "prompt-3.3-round0.txt",
+    "act-3-2a.png",
+    "act-3-3.png",
+    "act-3-section.png"
+  ],
+  "remaining": "Current-attempt spreadsheet read-back paused for sign-in."
+}

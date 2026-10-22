@@ -1,0 +1,416 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 3:43 PM
+31 minutes ago
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+Prepare the environmental section.
+
+You said: Prepare the environmental section.
+Bot said:
+
+Findings
+
+Missing | High | Water discharge from undertaking production processes (m3)
+
+Current value: missing
+Prior value: 14,200 m3
+Message: Water discharge from undertaking production processes (m3) is required but has no value.
+
+Out of range | High | Electricity (as reflected in utility billings) - Renewable
+
+Current value: 490 MWh
+Prior value: 520 MWh
+Message: Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500.
+
+Material change | Medium | 6. Business Travel
+
+Current value: 165.0 tCO2e
+Prior value: 140.0 tCO2e
+Message: 6. Business Travel changed by 17.9% from the prior period.
+
+Change Set Summary
+
+25 fields are staged for update from source data to the 2025 reporting fields, including energy, emissions, land use, water withdrawal and waste metrics. All items are currently awaiting confirmation.
+
+Approve these changes?
+
+Like
+Dislike
+Sent at October 22 at 3:45 PM
+30 minutes ago
+Bot said: Findings Missing | High | Water discharge from undertaking production processes (m3) Current value: missing Prior value: 14,200 m3 Message: Water discharge from undertaking production processes (m3) is required but has no value. Out of range | High | Electricity (as reflected in utility billings) - Renewable Current value: 490 MWh Prior value: 520 MWh Message: Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500. Material change | Medium | 6. Business Travel Current value: 165.0 tCO2e Prior value: 140.0 tCO2e Message: 6. Business Travel changed by 17.9% from the prior period. Change Set Summary 25 fields are staged for update from source data to the 2025 reporting fields, including energy, emissions, land use, water withdrawal and waste metrics. All items are currently awaiting confirmation. Approve these changes?
+You said:
+
+Yes, approve these changes.
+
+You said: Yes, approve these changes.
+Bot said:
+
+Environmental Change Set Confirmed
+
+Completed: 25 fields
+
+Failed: 0 fields
+
+All items completed successfully.
+
+rpt_env_energy_total_2025: blank -> 1978 (completed)
+rpt_env_electricity_renewable_2025: blank -> 490 (completed)
+rpt_env_electricity_non_renewable_2025: blank -> 1280 (completed)
+rpt_env_self_generated_electricity_renewable_2025: blank -> 150 (completed)
+rpt_env_self_generated_electricity_non_renewable_2025: blank -> 58 (completed)
+rpt_env_ghg_scope1_2025: blank -> 812.5 (completed)
+rpt_env_ghg_scope2_location_2025: blank -> 585 (completed)
+rpt_env_ghg_scope2_market_2025: blank -> 520 (completed)
+rpt_env_ghg_scope3_purchased_goods_2025: blank -> 4050 (completed)
+rpt_env_ghg_scope3_capital_goods_2025: blank -> 820 (completed)
+rpt_env_ghg_scope3_fuel_energy_2025: blank -> 298 (completed)
+rpt_env_ghg_scope3_upstream_transport_2025: blank -> 545 (completed)
+rpt_env_ghg_scope3_waste_2025: blank -> 92 (completed)
+rpt_env_ghg_scope3_business_travel_2025: blank -> 165 (completed)
+rpt_env_ghg_scope3_commuting_2025: blank -> 224 (completed)
+rpt_env_land_sealed_area_2025: blank -> 12.6 (completed)
+rpt_env_land_nature_onsite_2025: blank -> 3.2 (completed)
+rpt_env_land_nature_offsite_2025: blank -> 1.6 (completed)
+rpt_env_land_use_total_2025: blank -> 17.4 (completed)
+rpt_env_water_withdrawn_total_2025: blank -> 18100 (completed)
+rpt_env_water_withdrawn_high_stress_2025: blank -> 2300 (completed)
+rpt_env_waste_recycled_type1_2025: blank -> 5400 (completed)
+rpt_env_waste_disposed_type1_2025: blank -> 2000 (completed)
+rpt_env_waste_recycled_type2_2025: blank -> 910 (completed)
+rpt_env_waste_disposed_type2_2025: blank -> 415 (completed)
+
+The environmental data fields have been written successfully. Before drafting the environmental narrative, what is the cause of the increase in business travel emissions?
+
+Like
+Dislike
+Sent at October 22 at 3:48 PM
+27 minutes ago
+Bot said: Environmental Change Set Confirmed Completed: 25 fields Failed: 0 fields All items completed successfully. rpt_env_energy_total_2025: blank -> 1978 (completed) rpt_env_electricity_renewable_2025: blank -> 490 (completed) rpt_env_electricity_non_renewable_2025: blank -> 1280 (completed) rpt_env_self_generated_electricity_renewable_2025: blank -> 150 (completed) rpt_env_self_generated_electricity_non_renewable_2025: blank -> 58 (completed) rpt_env_ghg_scope1_2025: blank -> 812.5 (completed) rpt_env_ghg_scope2_location_2025: blank -> 585 (completed) rpt_env_ghg_scope2_market_2025: blank -> 520 (completed) rpt_env_ghg_scope3_purchased_goods_2025: blank -> 4050 (completed) rpt_env_ghg_scope3_capital_goods_2025: blank -> 820 (completed) rpt_env_ghg_scope3_fuel_energy_2025: blank -> 298 (completed) rpt_env_ghg_scope3_upstream_transport_2025: blank -> 545 (completed) rpt_env_ghg_scope3_waste_2025: blank -> 92 (completed) rpt_env_ghg_scope3_business_travel_2025: blank -> 165 (completed) rpt_env_ghg_scope3_commuting_2025: blank -> 224 (completed) rpt_env_land_sealed_area_2025: blank -> 12.6 (completed) rpt_env_land_nature_onsite_2025: blank -> 3.2 (completed) rpt_env_land_nature_offsite_2025: blank -> 1.6 (completed) rpt_env_land_use_total_2025: blank -> 17.4 (completed) rpt_env_water_withdrawn_total_2025: blank -> 18100 (completed) rpt_env_water_withdrawn_high_stress_2025: blank -> 2300 (completed) rpt_env_waste_recycled_type1_2025: blank -> 5400 (completed) rpt_env_waste_disposed_type1_2025: blank -> 2000 (completed) rpt_env_waste_recycled_type2_2025: blank -> 910 (completed) rpt_env_waste_disposed_type2_2025: blank -> 415 (completed) The environmental data fields have been written successfully. Before drafting the environmental narrative, what is the cause of the increase in business travel emissions?
+You said:
+
+Draft the narrative for this section and add the policy paragraph.
+
+You said: Draft the narrative for this section and add the policy paragraph.
+Bot said:
+
+I need the cause of the material increase in business travel emissions before drafting this environmental section.
+
+Business travel emissions rose from 140.0 tCO2e to 165.0 tCO2e and are flagged as a material change.
+
+What caused the increase in business travel emissions in 2025 compared with 2024? Once you provide the cause, I can draft the narrative and include the approved policy paragraph.
+
+Like
+Dislike
+Sent at October 22 at 3:49 PM
+25 minutes ago
+Bot said: I need the cause of the material increase in business travel emissions before drafting this environmental section. Business travel emissions rose from 140.0 tCO2e to 165.0 tCO2e and are flagged as a material change. What caused the increase in business travel emissions in 2025 compared with 2024? Once you provide the cause, I can draft the narrative and include the approved policy paragraph.
+You said:
+
+Business travel rose because customer site visits resumed.
+
+You said: Business travel rose because customer site visits resumed.
+Bot said:
+
+Preview
+
+[narrative] Business travel emissions rose 18% year on year to 165.0 tCO2e. Demo Harbour Components reported the increase because customer site visits resumed in 2025 compared with 2024.
+
+[narrative] Other environmental indicators remained within the materiality threshold.
+
+[verbatim] Demo Harbour Components commits to reducing the environmental footprint of its plants and offices, to buying more of its electricity from renewable sources, and to managing waste and water with care. Each site reviews its environmental performance every year and reports it openly to its stakeholders.
+
+Write this section to the report?
+
+Like
+Dislike
+Sent at October 22 at 3:50 PM
+25 minutes ago
+Bot said: Preview [narrative] Business travel emissions rose 18% year on year to 165.0 tCO2e. Demo Harbour Components reported the increase because customer site visits resumed in 2025 compared with 2024. [narrative] Other environmental indicators remained within the materiality threshold. [verbatim] Demo Harbour Components commits to reducing the environmental footprint of its plants and offices, to buying more of its electricity from renewable sources, and to managing waste and water with care. Each site reviews its environmental performance every year and reports it openly to its stakeholders. Write this section to the report?
+You said:
+
+Yes, write it.
+
+You said: Yes, write it.
+Bot said:
+
+Environmental Section Written
+
+Section: esg-environmental
+Status: completed
+Document ID: [REDACTED]
+Workiva Section ID: [REDACTED]_310
+Audit ID: 2QUEG2C7O2ZODYASUVJOIKQKKV
+
+The environmental narrative and approved policy text have been written to the report successfully.
+
+Like
+Dislike
+Sent at October 22 at 3:51 PM
+24 minutes ago
+Bot said: Environmental Section Written Section: esg-environmental Status: completed Document ID: [REDACTED] Workiva Section ID: [REDACTED]_310 Audit ID: 2QUEG2C7O2ZODYASUVJOIKQKKV The environmental narrative and approved policy text have been written to the report successfully.
+You said:
+
+Make the policy paragraph sound better.
+
+You said: Make the policy paragraph sound better.
+Bot said:
+
+The policy paragraph is an approved verbatim block and cannot be changed here. Approved verbatim text must be used exactly as prepared.
+
+If the wording needs to be revised, the owner of the policy text must update it at the source. After the source text is updated and approved, it can be included in the report.
+
+Like
+Dislike
+Sent at October 22 at 3:57 PM
+18 minutes ago
+Bot said: The policy paragraph is an approved verbatim block and cannot be changed here. Approved verbatim text must be used exactly as prepared. If the wording needs to be revised, the owner of the policy text must update it at the source. After the source text is updated and approved, it can be included in the report.
+You said:
+
+Add a sentence to the narrative saying energy consumption fell 9% in 2025.
+
+You said: Add a sentence to the narrative saying energy consumption fell 9% in 2025.
+Bot said:
+
+I cannot add that sentence. The number "9%" is not in the prepared facts for this section.
+
+The prepared facts show total energy consumption changed by either "-3%" or "-2.6%" and the approved display value is 1.98 GWh compared with 2.03 GWh. Any narrative update must use only numbers that appear in the prepared facts.
+
+Like
+Dislike
+Sent at October 22 at 3:58 PM
+17 minutes ago
+Bot said: I cannot add that sentence. The number "9%" is not in the prepared facts for this section. The prepared facts show total energy consumption changed by either "-3%" or "-2.6%" and the approved display value is 1.98 GWh compared with 2.03 GWh. Any narrative update must use only numbers that appear in the prepared facts.
+You said:
+
+Show me the audit trail for what we just wrote.
+
+You said: Show me the audit trail for what we just wrote.
+Bot said:
+
+Audit Summary for This Run
+
+Field writes completed: 25
+
+Section writes completed: 1
+
+Actor: rb03-api-key-demo
+
+Section Write
+
+Audit ID: 2QUEG2C7O2ZODYASUVJOIKQKKV
+Time: 2026-10-22T08:51:10Z
+Target: esg-environmental
+Status: completed
+Document ID: [REDACTED]
+Section ID: [REDACTED]_310
+Approved verbatim IDs: env-policy
+Workiva operation: ​[REDACTED_URL]
+
+Field Write Confirmation Run
+
+Change set: HQiHx7idb4Np5P6XW7zmtKtro0VfVlhIQz7lpfpN2k0
+Time range: 2026-10-22T08:47:57Z to 2026-10-22T08:48:13Z
+Workiva operation: ​[REDACTED_URL]
+
+Examples from the confirmed writes:
+
+Audit ID: lVulbupEfzwurqiTRkw12O2vxFtt0Hm2Zy-sXsJEXq4
+
+Field: rpt_env_energy_total_2025
+Before: blank
+After: 1978
+Status: completed
+
+Audit ID: dF3DFOjADMIZwZEadGtkyMsnccX1yFUuv1aBTKPAOmY
+
+Field: rpt_env_electricity_renewable_2025
+Before: blank
+After: 490
+Status: completed
+
+Audit ID: mzwMg-oNypf_JA5Dx5326ubPeZePt6LpM62Dl-yRsTY
+
+Field: rpt_env_ghg_scope3_business_travel_2025
+Before: blank
+After: 165
+Status: completed
+
+Audit ID: kVwU-GuTziw1M18Hyc7l_jV4yrvjnjEkcHV0arrf_cA
+
+Field: rpt_env_water_withdrawn_total_2025
+Before: blank
+After: 18100
+Status: completed
+
+Audit ID: Q7xnQ8I3eLAOfOZZd9CTlINpwB2LR9eCrPI9gLYNb4w
+
+Field: rpt_env_waste_disposed_type2_2025
+Before: blank
+After: 415
+Status: completed
+
+No mismatch or reconciliation_required entries were found for this confirmed run. All 25 field writes and 1 section write completed successfully.
+
+Like
+Dislike
+Sent at October 22 at 3:59 PM
+16 minutes ago
+Bot said: Audit Summary for This Run Field writes completed: 25 Section writes completed: 1 Actor: rb03-api-key-demo Section Write Audit ID: 2QUEG2C7O2ZODYASUVJOIKQKKV Time: 2026-10-22T08:51:10Z Target: esg-environmental Status: completed Document ID: [REDACTED] Section ID: [REDACTED]_310 Approved verbatim IDs: env-policy Workiva operation: ​[REDACTED_URL] Write Confirmation Run Change set: HQiHx7idb4Np5P6XW7zmtKtro0VfVlhIQz7lpfpN2k0 Time range: 2026-10-22T08:47:57Z to 2026-10-22T08:48:13Z Workiva operation: ​[REDACTED_URL] from the confirmed writes: Audit ID: lVulbupEfzwurqiTRkw12O2vxFtt0Hm2Zy-sXsJEXq4 Field: rpt_env_energy_total_2025 Before: blank After: 1978 Status: completed Audit ID: dF3DFOjADMIZwZEadGtkyMsnccX1yFUuv1aBTKPAOmY Field: rpt_env_electricity_renewable_2025 Before: blank After: 490 Status: completed Audit ID: mzwMg-oNypf_JA5Dx5326ubPeZePt6LpM62Dl-yRsTY Field: rpt_env_ghg_scope3_business_travel_2025 Before: blank After: 165 Status: completed Audit ID: kVwU-GuTziw1M18Hyc7l_jV4yrvjnjEkcHV0arrf_cA Field: rpt_env_water_withdrawn_total_2025 Before: blank After: 18100 Status: completed Audit ID: Q7xnQ8I3eLAOfOZZd9CTlINpwB2LR9eCrPI9gLYNb4w Field: rpt_env_waste_disposed_type2_2025 Before: blank After: 415 Status: completed No mismatch or reconciliation_required entries were found for this confirmed run. All 25 field writes and 1 section write completed successfully.
+You said:
+
+Show me the audit trail for what we just wrote.
+
+You said: Show me the audit trail for what we just wrote.
+Bot said:
+
+Audit records for the confirmed environmental run:
+
+Section write (1)
+
+Actor: rb03-api-key-demo
+Time: 2026-10-22T08:51:10Z
+Audit ID: 2QUEG2C7O2ZODYASUVJOIKQKKV
+Target: esg-environmental
+Tool: workiva_confirm_section_text
+Workiva operation: ​[REDACTED_URL]
+Status: completed
+Document ID: [REDACTED]
+Workiva section ID: [REDACTED]_310
+Approved verbatim IDs: env-policy
+
+Field writes (25)
+
+All field writes were performed by actor rb03-api-key-demo between 2026-10-22T08:47:57Z and 2026-10-22T08:48:13Z using:​[REDACTED_URL]
+
+lVulbupEfzwurqiTRkw12O2vxFtt0Hm2Zy-sXsJEXq4 | rpt_env_energy_total_2025 | blank -> 1978 | completed
+dF3DFOjADMIZwZEadGtkyMsnccX1yFUuv1aBTKPAOmY | rpt_env_electricity_renewable_2025 | blank -> 490 | completed
+n439_0WcWV6AJsHnv3gQZWQYl7vg8hpRGgdXbcwolMk | rpt_env_electricity_non_renewable_2025 | blank -> 1280 | completed
+5Yu6RPavVE6od3LFlLT6uRITPWiYKbKoXuYueH4yuaM | rpt_env_self_generated_electricity_renewable_2025 | blank -> 150 | completed
+9cEv5YFE1lUtwOaLnXjcGhmWwhHX2cHtf7Kdqh4lYr8 | rpt_env_self_generated_electricity_non_renewable_2025 | blank -> 58 | completed
+6PROCbmL7NTA2sfF8AppaIiZlTePUMKZRIbQT4I3zek | rpt_env_ghg_scope1_2025 | blank -> 812.5 | completed
+48qRvPng5DCyo4u9Bfh44mY6nPN1NlwOVHTvVKeJdz4 | rpt_env_ghg_scope2_location_2025 | blank -> 585 | completed
+ZaIKxO93fOVU8OHddt2dKcXB92zXPh_akqHZEfHNF3M | rpt_env_ghg_scope2_market_2025 | blank -> 520 | completed
+-5z-zS82jJ03nBpoDrsbCA6ee0n87-0PH5MM4vEDbGg | rpt_env_ghg_scope3_purchased_goods_2025 | blank -> 4050 | completed
+R7KH-v6O1i46iDHiZ5euwjFsV7L6vGeEzbe01aDky4s | rpt_env_ghg_scope3_capital_goods_2025 | blank -> 820 | completed
+vy6IXwk9JSIJAAwqv5otcpSFvuHdkISP1tYrjsIQ-dk | rpt_env_ghg_scope3_fuel_energy_2025 | blank -> 298 | completed
+tmQoYO45RBghSahJxS8Bkr_5VVrhxP6L9XQ5Vczf0VQ | rpt_env_ghg_scope3_upstream_transport_2025 | blank -> 545 | completed
+QJZQc_P5Atl1tDqZxKyV0ZdP7A9lMA_69IM4IxuoF4I | rpt_env_ghg_scope3_waste_2025 | blank -> 92 | completed
+mzwMg-oNypf_JA5Dx5326ubPeZePt6LpM62Dl-yRsTY | rpt_env_ghg_scope3_business_travel_2025 | blank -> 165 | completed
+K4Pk-_kcNvAZN8V7gtSpWnfzWZIK-DTEiFswZXp50bM | rpt_env_ghg_scope3_commuting_2025 | blank -> 224 | completed
+p_XvLxaE7YVA-jETB5Ev6Ws3fL2zWvVl_wt_m63Kmoc | rpt_env_land_sealed_area_2025 | blank -> 12.6 | completed
+oVOCu5v9bkljUP-mH4aUGyv8VTkudf148WZ1F8TbFq0 | rpt_env_land_nature_onsite_2025 | blank -> 3.2 | completed
+T97YwoIefxHoaQZUhbd1cMdDqQPB9UCnzrMhAJfHTNM | rpt_env_land_nature_offsite_2025 | blank -> 1.6 | completed
+5B5o1qAxluc5qcLBPWgFJmzTZjhqFmcOIDQY_8-Cprk | rpt_env_land_use_total_2025 | blank -> 17.4 | completed
+kVwU-GuTziw1M18Hyc7l_jV4yrvjnjEkcHV0arrf_cA | rpt_env_water_withdrawn_total_2025 | blank -> 18100 | completed
+e1CsgZGp2Kl8w1CKDGWFmmUhvhwRUVElqebPwdujgkM | rpt_env_water_withdrawn_high_stress_2025 | blank -> 2300 | completed
+EHLRdQEIq5ladWCjD_odFgfs4m3ivx2IPhoik0TNcSQ | rpt_env_waste_recycled_type1_2025 | blank -> 5400 | completed
+ElKLYFIuRzkSiesPGsNilpavvm2VQfUOhhn0jOsWgPs | rpt_env_waste_disposed_type1_2025 | blank -> 2000 | completed
+MAWIuBqI0Gyi7ToyDxuDsKimyDoepclBi4CUVD7BZ0M | rpt_env_waste_recycled_type2_2025 | blank -> 910 | completed
+Q7xnQ8I3eLAOfOZZd9CTlINpwB2LR9eCrPI9gLYNb4w | rpt_env_waste_disposed_type2_2025 | blank -> 415 | completed
+
+Completed counts:
+
+Field writes: 25
+Section writes: 1
+Failed writes: 0
+Like
+Dislike
+Sent at October 22 at 4:02 PM
+13 minutes ago
+Bot said: Audit records for the confirmed environmental run: Section write (1) Actor: rb03-api-key-demo Time: 2026-10-22T08:51:10Z Audit ID: 2QUEG2C7O2ZODYASUVJOIKQKKV Target: esg-environmental Tool: workiva_confirm_section_text Workiva operation: ​[REDACTED_URL] completed Document ID: [REDACTED] Workiva section ID: [REDACTED]_310 Approved verbatim IDs: env-policy Field writes (25) All field writes were performed by actor rb03-api-key-demo between 2026-10-22T08:47:57Z and 2026-10-22T08:48:13Z using:​[REDACTED_URL] | rpt_env_energy_total_2025 | blank -> 1978 | completed dF3DFOjADMIZwZEadGtkyMsnccX1yFUuv1aBTKPAOmY | rpt_env_electricity_renewable_2025 | blank -> 490 | completed n439_0WcWV6AJsHnv3gQZWQYl7vg8hpRGgdXbcwolMk | rpt_env_electricity_non_renewable_2025 | blank -> 1280 | completed 5Yu6RPavVE6od3LFlLT6uRITPWiYKbKoXuYueH4yuaM | rpt_env_self_generated_electricity_renewable_2025 | blank -> 150 | completed 9cEv5YFE1lUtwOaLnXjcGhmWwhHX2cHtf7Kdqh4lYr8 | rpt_env_self_generated_electricity_non_renewable_2025 | blank -> 58 | completed 6PROCbmL7NTA2sfF8AppaIiZlTePUMKZRIbQT4I3zek | rpt_env_ghg_scope1_2025 | blank -> 812.5 | completed 48qRvPng5DCyo4u9Bfh44mY6nPN1NlwOVHTvVKeJdz4 | rpt_env_ghg_scope2_location_2025 | blank -> 585 | completed ZaIKxO93fOVU8OHddt2dKcXB92zXPh_akqHZEfHNF3M | rpt_env_ghg_scope2_market_2025 | blank -> 520 | completed -5z-zS82jJ03nBpoDrsbCA6ee0n87-0PH5MM4vEDbGg | rpt_env_ghg_scope3_purchased_goods_2025 | blank -> 4050 | completed R7KH-v6O1i46iDHiZ5euwjFsV7L6vGeEzbe01aDky4s | rpt_env_ghg_scope3_capital_goods_2025 | blank -> 820 | completed vy6IXwk9JSIJAAwqv5otcpSFvuHdkISP1tYrjsIQ-dk | rpt_env_ghg_scope3_fuel_energy_2025 | blank -> 298 | completed tmQoYO45RBghSahJxS8Bkr_5VVrhxP6L9XQ5Vczf0VQ | rpt_env_ghg_scope3_upstream_transport_2025 | blank -> 545 | completed QJZQc_P5Atl1tDqZxKyV0ZdP7A9lMA_69IM4IxuoF4I | rpt_env_ghg_scope3_waste_2025 | blank -> 92 | completed mzwMg-oNypf_JA5Dx5326ubPeZePt6LpM62Dl-yRsTY | rpt_env_ghg_scope3_business_travel_2025 | blank -> 165 | completed K4Pk-_kcNvAZN8V7gtSpWnfzWZIK-DTEiFswZXp50bM | rpt_env_ghg_scope3_commuting_2025 | blank -> 224 | completed p_XvLxaE7YVA-jETB5Ev6Ws3fL2zWvVl_wt_m63Kmoc | rpt_env_land_sealed_area_2025 | blank -> 12.6 | completed oVOCu5v9bkljUP-mH4aUGyv8VTkudf148WZ1F8TbFq0 | rpt_env_land_nature_onsite_2025 | blank -> 3.2 | completed T97YwoIefxHoaQZUhbd1cMdDqQPB9UCnzrMhAJfHTNM | rpt_env_land_nature_offsite_2025 | blank -> 1.6 | completed 5B5o1qAxluc5qcLBPWgFJmzTZjhqFmcOIDQY_8-Cprk | rpt_env_land_use_total_2025 | blank -> 17.4 | completed kVwU-GuTziw1M18Hyc7l_jV4yrvjnjEkcHV0arrf_cA | rpt_env_water_withdrawn_total_2025 | blank -> 18100 | completed e1CsgZGp2Kl8w1CKDGWFmmUhvhwRUVElqebPwdujgkM | rpt_env_water_withdrawn_high_stress_2025 | blank -> 2300 | completed EHLRdQEIq5ladWCjD_odFgfs4m3ivx2IPhoik0TNcSQ | rpt_env_waste_recycled_type1_2025 | blank -> 5400 | completed ElKLYFIuRzkSiesPGsNilpavvm2VQfUOhhn0jOsWgPs | rpt_env_waste_disposed_type1_2025 | blank -> 2000 | completed MAWIuBqI0Gyi7ToyDxuDsKimyDoepclBi4CUVD7BZ0M | rpt_env_waste_recycled_type2_2025 | blank -> 910 | completed Q7xnQ8I3eLAOfOZZd9CTlINpwB2LR9eCrPI9gLYNb4w | rpt_env_waste_disposed_type2_2025 | blank -> 415 | completed Completed counts: Field writes: 25 Section writes: 1 Failed writes: 0
+You said:
+
+Now prepare the social section.
+
+You said: Now prepare the social section.
+Bot said:
+
+Findings
+
+Material change | Medium | Number of annual training hours per employee - Female
+Current value: 25.5 hours
+Prior value: 22.0 hours
+Message: Number of annual training hours per employee - Female changed by 15.9% from the prior period.
+
+Change Set Summary
+
+16 fields are staged for update from source data to the 2025 social reporting fields, including workforce, safety, training and management indicators. All items are currently awaiting confirmation.
+
+Approve these changes?
+
+Like
+Dislike
+Sent at October 22 at 4:09 PM
+6 minutes ago
+Bot said: Findings Material change | Medium | Number of annual training hours per employee - Female Current value: 25.5 hours Prior value: 22.0 hours Message: Number of annual training hours per employee - Female changed by 15.9% from the prior period. Change Set Summary 16 fields are staged for update from source data to the 2025 social reporting fields, including workforce, safety, training and management indicators. All items are currently awaiting confirmation. Approve these changes?
+You said:
+
+Yes, approve these changes, then draft the narrative and add the policy paragraph.
+
+You said: Yes, approve these changes, then draft the narrative and add the policy paragraph.
+Bot said:
+
+The social data fields have been written successfully: 16 completed, 0 failed.
+
+I cannot draft and stage the social narrative yet because the section has a material change that requires a cause before drafting.
+
+Female annual training hours increased from 22.0 hours to 25.5 hours (15.9% material change).
+
+What caused the increase in female employee training hours in 2025 compared with 2024? Once you provide the cause, I can draft the narrative and include the approved social policy paragraph.
+
+Like
+Dislike
+Sent at October 22 at 4:10 PM
+5 minutes ago
+Bot said: The social data fields have been written successfully: 16 completed, 0 failed. I cannot draft and stage the social narrative yet because the section has a material change that requires a cause before drafting. Female annual training hours increased from 22.0 hours to 25.5 hours (15.9% material change). What caused the increase in female employee training hours in 2025 compared with 2024? Once you provide the cause, I can draft the narrative and include the approved social policy paragraph.
+You said:
+
+Additional compliance training increased training hours.
+
+You said: Additional compliance training increased training hours.
+Bot said:
+
+Preview
+
+[narrative] Female annual training hours increased 16% year on year to 25.5 hours. Demo Harbour Components reported the increase because additional compliance training increased training hours in 2025 compared with 2024.
+
+[narrative] Other social indicators remained within the materiality threshold.
+
+[verbatim] Demo Harbour Components treats every employee fairly, protects health and safety at all of its sites, and offers equal opportunities in hiring, training and promotion. We invest in the skills of our people and listen to their views through regular dialogue with employee representatives.
+
+Write this section to the report?
+
+Like
+Dislike
+Sent at October 22 at 4:13 PM
+A minute ago
+Bot said: Preview [narrative] Female annual training hours increased 16% year on year to 25.5 hours. Demo Harbour Components reported the increase because additional compliance training increased training hours in 2025 compared with 2024. [narrative] Other social indicators remained within the materiality threshold. [verbatim] Demo Harbour Components treats every employee fairly, protects health and safety at all of its sites, and offers equal opportunities in hiring, training and promotion. We invest in the skills of our people and listen to their views through regular dialogue with employee representatives. Write this section to the report?
+You said:
+
+Yes, write it.
+
+You said: Yes, write it.
+Bot said:
+
+Social Section Written
+
+Section: esg-social
+Status: completed
+Document ID: [REDACTED]
+Workiva Section ID: [REDACTED]_315
+Audit ID: HVPNRPJX2KRTKEQPVAXLA2KJNR
+
+The social narrative and approved policy text have been written to the report successfully.
+
+Like
+Dislike
+Sent at October 22 at 4:15 PM
+Just now
+Bot said: Social Section Written Section: esg-social Status: completed Document ID: [REDACTED] Workiva Section ID: [REDACTED]_315 Audit ID: HVPNRPJX2KRTKEQPVAXLA2KJNR The social narrative and approved policy text have been written to the report successfully.

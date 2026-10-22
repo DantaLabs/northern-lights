@@ -1,0 +1,12 @@
+{
+  "reset": "reset-act3-round1",
+  "exit_code": 0,
+  "elapsed_seconds": 119.224,
+  "server_restarted": false,
+  "database_replaced": false,
+  "writes": 84,
+  "clears": 42,
+  "section_deletes": 2,
+  "readback_ok": 126,
+  "readback_mismatches": 0
+}

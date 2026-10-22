@@ -1,0 +1,32 @@
+{
+  "scan": "interim redaction and screenshot review",
+  "timestamp_utc": "2026-10-22T08:01:50Z",
+  "scope": "Existing files in docs/demo/evidence/2026-10-22-RB-03/",
+  "text_scan": {
+    "files_scanned": 28,
+    "known_private_values_checked": 14,
+    "known_private_value_matches": 0,
+    "guid_matches": 0,
+    "ngrok_or_trycloudflare_url_matches": 0,
+    "url_matches": 0,
+    "credential_pattern_files": [
+      "fix-rounds.json"
+    ],
+    "credential_pattern_type": "false positive: prose in field path $.act_2.attempts[0].reason; no credential value",
+    "credential_pattern_count_raw": 1,
+    "credential_pattern_matches": 1
+  },
+  "image_review": {
+    "pngs_inspected": 14,
+    "visible_credentials_or_tokens": 0,
+    "visible_tunnel_urls": 0,
+    "visible_raw_guids_or_document_ids": 0,
+    "redacted_guid_placeholders": "present in failed-round screenshots",
+    "cropped_or_incomplete_captures": "present; failed-round captures remain cropped as documented in existing interim review",
+    "values_sheet": "act-3-values.png shows the selected 25-value range L2:L27 in the current viewport"
+  },
+  "limitations": [
+    "Visual inspection can identify visible content only; it does not inspect hidden image metadata.",
+    "This is an interim scan, not final evidence review."
+  ]
+}

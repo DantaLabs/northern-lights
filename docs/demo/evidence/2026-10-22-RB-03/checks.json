@@ -1,0 +1,33 @@
+{
+  "focused_section_text_race": {
+    "result": "PASS",
+    "seconds": 4.783
+  },
+  "tools_package_race": {
+    "result": "PASS",
+    "seconds": 242.464
+  },
+  "fixed_server_build": "PASS",
+  "full_race": [
+    {
+      "result": "FAIL",
+      "seconds": 619.632,
+      "reason": "Two cmd/workiva-mcp tests require OS /tmp ephemeral key storage; task scratch TMPDIR conflicts with that assertion. Tests unchanged."
+    },
+    {
+      "result": "PASS",
+      "environment": "TMPDIR unset; standard OS temporary storage; task logs kept in ignored scratch.",
+      "seconds": 644.952,
+      "exit_code": 0
+    }
+  ],
+  "vet": {
+    "result": "PASS",
+    "seconds": 0.881
+  },
+  "gofmt_source": {
+    "result": "PASS",
+    "seconds": 0.166,
+    "listed_files": []
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "tool_count": 17,
+  "tools": [
+    {
+      "name": "workiva_audit_trail",
+      "checked": true
+    },
+    {
+      "name": "workiva_compare_periods",
+      "checked": true
+    },
+    {
+      "name": "workiva_confirm_change_set",
+      "checked": true
+    },
+    {
+      "name": "workiva_confirm_section_text",
+      "checked": true
+    },
+    {
+      "name": "workiva_discover_relationships",
+      "checked": true
+    },
+    {
+      "name": "workiva_export_evidence",
+      "checked": true
+    },
+    {
+      "name": "workiva_get_field",
+      "checked": true
+    },
+    {
+      "name": "workiva_list_spreadsheets",
+      "checked": true
+    },
+    {
+      "name": "workiva_prepare_section",
+      "checked": true
+    },
+    {
+      "name": "workiva_read_range",
+      "checked": true
+    },
+    {
+      "name": "workiva_search_fields",
+      "checked": true
+    },
+    {
+      "name": "workiva_snapshot_report",
+      "checked": true
+    },
+    {
+      "name": "workiva_stage_section_text",
+      "checked": true
+    },
+    {
+      "name": "workiva_sync_mapping",
+      "checked": true
+    },
+    {
+      "name": "workiva_transfer_value",
+      "checked": true
+    },
+    {
+      "name": "workiva_update_field",
+      "checked": true
+    },
+    {
+      "name": "workiva_validate_report",
+      "checked": true
+    }
+  ],
+  "instruction_characters": 7981,
+  "instructions_source_match": true,
+  "other_connectors_disabled": true,
+  "database_preserved": true
+}

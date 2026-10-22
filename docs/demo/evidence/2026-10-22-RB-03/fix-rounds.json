@@ -1,0 +1,113 @@
+{
+  "act_2": {
+    "fix_rounds": 4,
+    "attempts": [
+      {
+        "round": 0,
+        "result": "FAIL",
+        "reason": "Native MCP sent bearer key but omitted actor; preparation refused; no Workiva writes."
+      },
+      {
+        "fix_round": 1,
+        "classification": "setup/doc",
+        "change": "Ngrok strips caller actor headers and supplies shared API-key service actor; bad-key 401 reverified."
+      },
+      {
+        "fix_round": 2,
+        "classification": "Copilot behaviour",
+        "change": "Explicit missing, out-of-range, material finding order; values/units requested."
+      },
+      {
+        "fix_round": 3,
+        "classification": "Copilot behaviour",
+        "change": "Read missing finding prior-year mapping; reply still omitted prior value."
+      },
+      {
+        "fix_round": 4,
+        "classification": "Copilot behaviour",
+        "change": "Exact prior water-discharge field lookup required.",
+        "result": "PASS findings and 25-field preview; prior water discharge 14200 m3 shown."
+      }
+    ],
+    "replay_after_act3_reset": "Not another Act 2 fix; rerun with same correct findings."
+  },
+  "act_3": {
+    "fix_rounds_prepared": 3,
+    "attempts": [
+      {
+        "round": 0,
+        "field_writes": 25,
+        "section_previews": 0,
+        "section_writes": 0,
+        "failures": [
+          "Field-level before/after/status summary absent",
+          "Asked for technical block inputs instead of cause",
+          "SystemError on exact synthetic answer"
+        ]
+      },
+      {
+        "fix_round": 1,
+        "classification": "Copilot behaviour",
+        "change": "Require field-level summaries, cause question before staging, and construction of block array.",
+        "reset_seconds": 119.224,
+        "result": "25 writes and cause question correct; still asked for block text after synthetic answer; no stage call reached server."
+      },
+      {
+        "fix_round": 2,
+        "classification": "demo integration compatibility",
+        "change": "Optional bounded blocks_json, strict original-array-schema validation and existing Stage guards; array clients preserved.",
+        "focused_race": "PASS 4.783s",
+        "tools_package_race": "PASS 242.464s",
+        "fixed_binary_build": "PASS",
+        "live_status": "JSON-string staging reached server and created one preview; 25 field writes completed; no document write approved.",
+        "result": "FAIL style rule 3: draft quoted nonmaterial energy figures."
+      },
+      {
+        "fix_round": 3,
+        "classification": "Copilot behaviour",
+        "change": "Explicit numeric movements only for material facts, with energy/renewable values omitted from grouped indicators.",
+        "live_status": "PASS:25 fields and one section completed; correct travel-only numeric narrative and exact policy; spreadsheet and report UI matched.",
+        "reset_seconds": 121.669
+      }
+    ],
+    "fix_rounds": 3
+  },
+  "code_changed": [
+    "internal/mcpserver/tools/section_text.go",
+    "internal/mcpserver/tools/section_text_test.go"
+  ],
+  "frozen_packages_changed": false,
+  "narrative_rules_changed": false,
+  "existing_tests_changed": false,
+  "act_4": {
+    "fix_rounds": 1,
+    "classification": "Copilot behavior plus conflicting script expectations",
+    "result": "FAIL: no stage calls for either guard; audit retry listed all25 IDs but incomplete row details; afterAct5 onlysocial16+1 ratherthancombined41+2.",
+    "change": "Require every matching audit row rather than examples. Refusal style rules preserved; no test/check weakened."
+  },
+  "act_5": {
+    "fix_rounds": 0,
+    "script_completion": "Added missing5.2a analyst cause supplied by Tom; continued pending draft after approval, no repeated writes or reset needed.",
+    "result": "PASS:16fields+one section; UIvalues/text/policy match; no code/configchange withinAct5."
+  },
+  "act_1": {
+    "fix_rounds": 3,
+    "attempts": [
+      {
+        "fix_round": 1,
+        "change": "Near-top label/mapping unit and unknown-unit rule.",
+        "result": "FAIL: energy unit unknown; mapping lacks units."
+      },
+      {
+        "fix_round": 2,
+        "change": "SeedCSV unit metadata plus worked energy example.",
+        "result": "Energy PASS; employee chose employees_end field."
+      },
+      {
+        "fix_round": 3,
+        "change": "Explicit employees_total source/prior mapping; fresh conversation loads rule.",
+        "result": "All4 comparisons PASS with units, requiredfields,citations,direction; read-only replay, no further reset needed."
+      }
+    ]
+  }
+}

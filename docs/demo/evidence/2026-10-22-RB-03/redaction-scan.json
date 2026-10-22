@@ -1,0 +1,100 @@
+{
+  "scan": "final redaction and screenshot review",
+  "timestamp_utc": "2026-10-22T09:44:25Z",
+  "text_scan": {
+    "text_files_scanned": 92,
+    "includes_act1_tool_trace_json": true,
+    "known_private_values_checked": 14,
+    "known_private_value_matches": 0,
+    "guid_matches": 0,
+    "url_matches": 0,
+    "ngrok_or_trycloudflare_url_matches": 0,
+    "credential_field_pattern_matches": 0,
+    "bearer_shaped_pattern_matches_raw": 1,
+    "bearer_shaped_pattern_false_positive": {
+      "file": "fix-rounds.json",
+      "field_path": "$.act_2.attempts[0].reason",
+      "classification": "prose, not a credential"
+    },
+    "database_audit_id_allowlist_values": 43,
+    "files_with_allowlisted_audit_id_identifiers": 17,
+    "files_with_allowlisted_audit_id_identifiers_classification": "database audit identifiers; not credentials; values omitted",
+    "includes_final_reports_in_scan": true,
+    "known_private_match_counts_by_category": {
+      "private_env_credential": 0,
+      "ngrok_token": 0,
+      "mapping_or_sandbox_id": 0,
+      "document_id": 0,
+      "tunnel_url_or_host": 0,
+      "confirmation_token": 0
+    }
+  },
+  "image_review": {
+    "current_png_count": 43,
+    "previously_reviewed_pngs_referenced": 29,
+    "new_final_pngs_inspected": 14,
+    "visible_credentials_or_tokens": 0,
+    "visible_tunnel_urls": 0,
+    "visible_raw_document_or_section_ids": 0,
+    "database_audit_id_screenshots": [
+      "act-3-3.png",
+      "act-4-1.png",
+      "act-4-2.png",
+      "act-4-3-failed0.png",
+      "act-4-3.png",
+      "act-5-1.png",
+      "act-5-2.png",
+      "act-5-preview.png",
+      "act-5.png",
+      "act-5-audit.png"
+    ],
+    "audit_id_classification": "visible audit identifiers correspond to audit_id records in the database allowlist; treated as identifiers, not credentials",
+    "ui_values_match": {
+      "current_period": {
+        "energy_G5": 1978,
+        "renewable_G12": 490,
+        "business_travel_D35": 165,
+        "employees_E62": 428
+      },
+      "prior_period": {
+        "energy_L2": 2030,
+        "renewable_L3": 520,
+        "business_travel_L15": 140,
+        "employees_L28": 412
+      }
+    },
+    "visual_issues": [
+      "act-3-section.png and act-5-section.png show the Workiva logo overlapping section text.",
+      "Several failure and transcript captures are cropped to their current scroll position."
+    ],
+    "new_png_files": [
+      "act-1-1-failed0.png",
+      "act-1-1.png",
+      "act-1-2-failed0.png",
+      "act-1-2-failed1.png",
+      "act-1-2.png",
+      "act-1-3.png",
+      "act-1-4.png",
+      "act-1-ui-employees.png",
+      "act-1-ui-energy.png",
+      "act-1-ui-prior.png",
+      "act-1-ui-renewable.png",
+      "act-1-ui-travel.png",
+      "act-5-audit.png",
+      "act-5-section.png"
+    ]
+  },
+  "prior_screenshot_reviews": [
+    "screenshot-review-interim.md",
+    "screenshot-review-pre-act1.md"
+  ],
+  "scope_note": "This is the final redaction scan for the evidence folder; it is not a broader evidence-quality acceptance review.",
+  "post_review_rescan": {
+    "text_files": 93,
+    "known_private_value_matches": 0,
+    "guid_matches": 0,
+    "url_matches": 0,
+    "includes": "evidence-review.md and final checklist updates",
+    "audit_identifiers": "Previously verified DB allowlist; not credentials."
+  }
+}

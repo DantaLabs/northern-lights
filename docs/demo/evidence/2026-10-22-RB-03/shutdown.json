@@ -1,0 +1,9 @@
+{
+  "test_session_stop_exit_code": 0,
+  "local_server_port_open": false,
+  "rb03_ngrok_running": false,
+  "browser_device_and_focus_overrides_cleared": true,
+  "unrelated_tunnels_touched": false,
+  "database_retained": true,
+  "sandbox_final_state": "Fresh Act1reset; source/prior values retained;reporttargetcells cleared and inserted demo sections removed."
+}

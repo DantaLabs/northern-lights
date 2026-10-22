@@ -1,0 +1,61 @@
+{
+  "scan": "pre-Act-1 redaction scan",
+  "timestamp_utc": "2026-10-22T09:19:14Z",
+  "scope": "Current text evidence in docs/demo/evidence/2026-10-22-RB-03/ and PNGs added since the previous screenshot scan.",
+  "text_scan": {
+    "files_scanned": 64,
+    "known_private_values_checked": 14,
+    "known_private_value_matches": 0,
+    "guid_matches": 0,
+    "url_matches": 0,
+    "ngrok_or_trycloudflare_url_matches": 0,
+    "credential_field_pattern_matches": 0,
+    "bearer_shape_matches_raw": 1,
+    "bearer_shape_match_classification": "prose false positive in fix-rounds.json at $.act_2.attempts[0].reason; value omitted",
+    "files_with_pattern_matches": [
+      "fix-rounds.json"
+    ]
+  },
+  "image_review": {
+    "new_pngs_inspected": 15,
+    "visible_credentials_or_tokens": 0,
+    "visible_tunnel_urls": 0,
+    "visible_raw_document_or_section_ids": 0,
+    "redacted_identifier_placeholders": "present in transcript screenshots",
+    "unique_database_audit_identifiers_visible": 1,
+    "audit_identifier_classification": "identifier false positive, not a credential; matched to the exported database field act-3-audit-matches.json at $.section_completion_match.rows[0].audit_id; OCR candidate differed by one character",
+    "audit_identifier_visible_in_files": [
+      "act-3-3.png",
+      "act-4-1.png",
+      "act-4-2.png",
+      "act-4-3-failed0.png",
+      "act-4-3.png",
+      "act-5-1.png",
+      "act-5-2.png",
+      "act-5-preview.png",
+      "act-5.png"
+    ],
+    "cropped_or_small_content": "Several screenshots are scroll-position captures; act-3-section.png has small rendered report text. No credentials were visible."
+  },
+  "new_png_files": [
+    "act-3-2a-failed-round2.png",
+    "act-3-2a.png",
+    "act-3-3.png",
+    "act-3-section.png",
+    "act-4-1.png",
+    "act-4-2.png",
+    "act-4-3-failed0.png",
+    "act-4-3.png",
+    "act-5-1.png",
+    "act-5-2.png",
+    "act-5-preview.png",
+    "act-5-values.png",
+    "act-5.png",
+    "connection-after-restart.png",
+    "step-1-post-restart.png"
+  ],
+  "limitations": [
+    "Interim review only; this is not the final evidence review.",
+    "Visual inspection does not inspect hidden image metadata."
+  ]
+}

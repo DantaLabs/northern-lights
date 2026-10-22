@@ -1,0 +1,17 @@
+{
+  "policy_edit": {
+    "agent_refusal": "PASS",
+    "server_refusal": "NOT SHOWN",
+    "reason": "Agent declined without staging. Narrative rule 10 forbids editing verbatim text; prompt permits no-call declining but also expects server refusal. Preserve rule; no check weakened.",
+    "evidence": "prompt-4.1-round0.txt"
+  },
+  "invented_number": {
+    "agent_refusal": "PASS",
+    "server_refusal": "NOT SHOWN",
+    "reason": "Agent rejected 9% without staging; server did not receive candidate. No write.",
+    "evidence": "prompt-4.2-round0.txt"
+  },
+  "classification": "Script expectations conflict with mandated style rules; agent behavior does not demonstrate server enforcement. Keep checklist requirement unsatisfied; do not force prohibited draft or claim server refusal.",
+  "mutation_check": "No stage or confirm call in audit after Act3 completed section; next row is audit_trail call.",
+  "audit_first_attempt": "FAIL: correct25+1 totals, example rows only; tightened instruction then repeated exact4.3."
+}
