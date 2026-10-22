@@ -1,0 +1,24 @@
+configured key_sha256=[REDACTED] last 60 min: 22 request(s)
+time      mcp method                 status auth         key      match  user agent                     nl-actor                           error
+17:05:47  initialize                 200    bearer/53    e2dac6a7 yes    curl/7.81.0                    rb03-api-key-demo
+17:05:47  notifications/initialized  202    bearer/53    e2dac6a7 yes    curl/7.81.0                    rb03-api-key-demo
+17:05:47  tools/list                 200    bearer/53    e2dac6a7 yes    curl/7.81.0                    rb03-api-key-demo
+17:08:23  initialize                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:08:24  notifications/initialized  202    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:08:25  tools/list                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:08:32  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:09:12  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:10:18  initialize                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:10:19  notifications/initialized  202    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:10:20  tools/list                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:10:26  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:14:40  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:14:41  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:14:42  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:14:43  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:14:44  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:18:59  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:19:00  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:19:01  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:19:02  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo
+17:19:03  tools/call                 200    bearer/53    e2dac6a7 yes    CopilotStudio PowerFx/1.99.0-l rb03-api-key-demo

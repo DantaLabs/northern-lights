@@ -1,0 +1,34 @@
+{
+  "result": "FAIL_INCOMPLETE",
+  "expected_mutation_rows": 43,
+  "returned_json_rows": 33,
+  "exactly_matched_rows": 33,
+  "missing_rows": 10,
+  "mismatched_rows": 0,
+  "unexpected_rows": 0,
+  "duplicate_rows": 0,
+  "json_parse_errors": 0,
+  "actor": "rb03-api-key-demo",
+  "inclusive_window_utc": {
+    "start": "2026-10-22T08:47:57Z",
+    "end": "2026-10-22T09:15:15Z"
+  },
+  "expected_mutation_types": [
+    {"tool": "workiva_confirm_change_set", "action": "write", "rows": 41},
+    {"tool": "workiva_confirm_section_text", "action": "completed", "rows": 2}
+  ],
+  "copilot_answer_sources": [
+    {"private_raw_file": "4.3b-round2.raw.txt", "rows": 5},
+    {"private_raw_file": "4.3c-round0.raw.txt", "rows": 5},
+    {"private_raw_file": "4.3d-round0.raw.txt", "rows": 5},
+    {"private_raw_file": "4.3e-round0.raw.txt", "rows": 5},
+    {"private_raw_file": "4.3f-round0.raw.txt", "rows": 5},
+    {"private_raw_file": "4.3g-round0.raw.txt", "rows": 5},
+    {"private_raw_file": "4.3j-round0.raw.txt", "rows": 3}
+  ],
+  "comparison_method": "Extract the first actual Bot answer after the last You said marker in each full feed, excluding duplicate accessibility rendering. Parse JSON row objects and compare complete returned key sets, field types and values with read-only SQLite audit rows in tool output shape. Preserve before_json and after_json as strings; compare opaque hashes exactly.",
+  "reference": "Ignored local session.db opened with mode=ro and query_only; the database supplies comparison values, never substitute Copilot answers.",
+  "private_report": "followup-audit-verification.raw.json",
+  "unsettled_prompts": ["4.3h", "4.3i"],
+  "failure_classification": "Ten requested mutation rows were not presented by Copilot. The two remaining responses were interrupted without settled answer artifacts. Cause is not established."
+}

@@ -1,0 +1,8 @@
+{
+  "method": "Copied complete raw tool response from Copilot Studio tool-result Copy control; no direct audit API call by operator.",
+  "raw_copy_characters": 77444,
+  "valid_complete_json": true,
+  "tool_entries": 100,
+  "requested_mutations_present": 43,
+  "conclusion": "Server/tool panel returned all43 requested mutations within100 complete entries. Copilot reported truncation; model-context truncation versus model interpretation is unproven. Use narrow exact-target requests to reduce context."
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "seq": 169,
+    "ts": "2026-10-22 10:08:32",
+    "tenant_id": "legacy-api-key",
+    "hash_version": 2,
+    "actor": "rb03-api-key-demo",
+    "tool": "workiva_stage_section_text",
+    "action": "call",
+    "target": "workiva_stage_section_text",
+    "before_json": "",
+    "after_json": "",
+    "workiva_op_url": "",
+    "audit_id": "[REDACTED_GUID]",
+    "prev_hash": "31c88b6836c16650912d24a6442e9162f622acdbbb30b5509b73edacee35eda6",
+    "hash": "72006eb99b87e8a06418c1894a134a94ddebc0a7d890bb6d6343a4db6aab77b8"
+  },
+  {
+    "seq": 170,
+    "ts": "2026-10-22 10:09:12",
+    "tenant_id": "legacy-api-key",
+    "hash_version": 2,
+    "actor": "rb03-api-key-demo",
+    "tool": "workiva_stage_section_text",
+    "action": "call",
+    "target": "workiva_stage_section_text",
+    "before_json": "",
+    "after_json": "",
+    "workiva_op_url": "",
+    "audit_id": "[REDACTED_GUID]",
+    "prev_hash": "72006eb99b87e8a06418c1894a134a94ddebc0a7d890bb6d6343a4db6aab77b8",
+    "hash": "b150abfa3d136ebc6f0334069df658042dc571436e12bab07c9b6588e941380c"
+  }
+]

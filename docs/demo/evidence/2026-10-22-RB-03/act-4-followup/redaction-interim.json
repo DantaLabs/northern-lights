@@ -1,0 +1,41 @@
+{
+  "scan_type": "interim redaction scan history",
+  "scope": "docs/demo/evidence/2026-10-22-RB-03/act-4-followup",
+  "latest_scan": {
+    "timestamp_utc": "2026-10-22 11:06:43 UTC",
+    "text_files_scanned": 24,
+    "known_value_matches": {
+      "private_environment_credentials": 0,
+      "ngrok_token": 0,
+      "mapping_or_sandbox_ids": 0,
+      "document_id": 0,
+      "tunnel_url_or_host": 0,
+      "confirmation_tokens": 0
+    },
+    "pattern_scan_counts": {
+      "credential_field_shapes": 0,
+      "bearer_tokens": 0,
+      "nonmetadata_guid_patterns": 0,
+      "generic_urls": 0,
+      "ngrok_or_trycloudflare_urls": 0
+    },
+    "findings": [],
+    "screenshot_review": "Not rescanned during this text-only pass.",
+    "status": "Interim scan; final scan pending completion of new evidence files."
+  },
+  "superseded_scan": {
+    "timestamp_utc": "2026-10-22 10:21:06 UTC",
+    "text_files_scanned": 15,
+    "known_mapping_or_sandbox_id_matches": 2,
+    "field_path": "response-times.json:$[3].prompt",
+    "resolution": "The matched prompt identifiers were patched after the earlier scan; the latest scan reports zero matches.",
+    "png_files_visually_reviewed": 4,
+    "note": "Earlier visual review was limited to the screenshots present at that time; current screenshots were not rescanned in the latest text-only pass."
+  },
+  "earlier_visual_review_notes": {
+    "visible_credentials_tokens_urls_or_document_ids": 0,
+    "visible_database_audit_identifiers": "Present in audit-first-attempt.png; treated as database audit metadata, not credentials.",
+    "hash_chain_metadata": "Visible in audit screenshots; no credential or token pattern identified.",
+    "audit_first_attempt": "Copilot panel claims result truncation at 100 rows; copied complete tool result is recorded as 77,444 characters with 100 entries and all 43 expected records in tool-result-size-check.json."
+  }
+}

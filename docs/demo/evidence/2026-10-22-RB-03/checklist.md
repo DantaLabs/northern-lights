@@ -30,3 +30,11 @@ Narrative rules and working comparison citation/direction rules remain unchanged
 Act 4 needs a script-compatible way to demonstrate both server guards without violating the mandatory narrative rules, complete combined audit presentation, and substantially faster responses. The document template logo overlaps the inserted headline; text was read and matched, but presentation needs attention before recording. Tom still needs his own recorded run, his recording authentication choice (Entra or API key) and the analyst-hours figure for the closing slide.
 
 The final Act 1 reset intentionally left report targets cleared and the inserted demo sections removed. All rehearsal evidence was captured first; the local audit history remains in the same database. `requests.txt` is the final exact requests-60 export; `requests-before-restart.txt` preserves earlier traffic outside that window. No audit-chain integrity or evidence-export claim is made.
+
+## Subsequent Act 4 follow-up
+
+The historical checklist above is preserved. [The follow-up](act-4-followup/checklist.md) proves both server guards through explicit invalid Copilot inputs. Exact audit presentation remains incomplete: 33/43 rows matched every field; 10 were NOT SHOWN after a parallel-chat interruption. Timing is informational under Tom’s revised scope.
+
+## Tom’s subsequent acceptance
+
+Tom explicitly approved the audit evidence with 33/43 rows (76.7%) verified exactly despite the technical interruption. The 10 unshown rows and strict full-coverage failure remain recorded; this is acceptance with that limitation, not a claim that all 43 were shown. See [acceptance record](act-4-followup/tom-acceptance.md).

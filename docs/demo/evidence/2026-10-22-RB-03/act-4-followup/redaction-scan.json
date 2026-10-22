@@ -1,0 +1,51 @@
+{
+  "scan_type": "final follow-up redaction scan",
+  "timestamp_utc": "2026-10-22 12:23:10 UTC",
+  "scope": "docs/demo/evidence/2026-10-22-RB-03/act-4-followup",
+  "text_scan": {
+    "text_files_scanned": 41,
+    "includes_evidence_review": true,
+    "includes_technical_review": true,
+    "includes_audit_comparison": true,
+    "includes_latest_followup_checklist": true,
+    "includes_tom_acceptance": true,
+    "includes_updated_evidence_review": true,
+    "known_private_values_checked": 14,
+    "known_value_match_counts": {
+      "private_environment_credentials": 0,
+      "ngrok_token": 0,
+      "mapping_or_sandbox_ids": 0,
+      "document_id": 0,
+      "tunnel_url_or_host": 0,
+      "confirmation_tokens": 0
+    },
+    "pattern_match_counts": {
+      "credential_field_shapes": 0,
+      "bearer_shaped_tokens": 0,
+      "nonmetadata_guid_patterns": 0,
+      "generic_urls": 0,
+      "ngrok_or_trycloudflare_urls": 0
+    },
+    "findings": [],
+    "metadata_classification": "Database audit identifiers, hashes, and consumed changeset identifiers are retained as noncredential metadata."
+  },
+  "audit_acceptance_record": "Tom accepted the 33/43 result (76.7%) with limitation; strict full coverage remains FAIL and 10 rows remain NOT SHOWN.",
+  "related_safe_false_positive": {
+    "file": "../fix-rounds.json",
+    "field_path": "$.act_2.attempts[0].reason",
+    "classification": "The broader evidence-folder scan records one bearer-shaped prose match in fix-rounds.json; it is not a credential. This follow-up-folder rescan found zero bearer-shaped tokens."
+  },
+  "visual_review_retained": {
+    "png_files_visually_reviewed": 16,
+    "review_timestamp_utc": "2026-10-22 12:15:19 UTC",
+    "reinspected_during_this_text_only_rescan": false,
+    "visible_credentials_tokens_tunnel_urls_or_document_ids": 0,
+    "visible_audit_ids_and_hashes": "Metadata only; no credential values identified.",
+    "evidence_limitations": [
+      "Older batch 1 through batch 4 screenshot viewports may not contain the matching answer and must not be used to claim completeness.",
+      "Batch 5 and batch 6 frames show intended answer segments; saved response text with verifier supports exact rows.",
+      "pending-h-visible-greeting.png and pending-i-greeting-message.png show reset greetings. pending-i-visible-greeting.png is blank and does not support a claim.",
+      "Historical answer recapture is not shown because the chat history was lost."
+    ]
+  }
+}
