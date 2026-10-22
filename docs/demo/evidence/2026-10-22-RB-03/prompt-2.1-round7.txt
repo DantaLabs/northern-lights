@@ -1,0 +1,47 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 3:43 PM
+A minute ago
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+Prepare the environmental section.
+
+You said: Prepare the environmental section.
+Bot said:
+
+Findings
+
+Missing | High | Water discharge from undertaking production processes (m3)
+
+Current value: missing
+Prior value: 14,200 m3
+Message: Water discharge from undertaking production processes (m3) is required but has no value.
+
+Out of range | High | Electricity (as reflected in utility billings) - Renewable
+
+Current value: 490 MWh
+Prior value: 520 MWh
+Message: Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500.
+
+Material change | Medium | 6. Business Travel
+
+Current value: 165.0 tCO2e
+Prior value: 140.0 tCO2e
+Message: 6. Business Travel changed by 17.9% from the prior period.
+
+Change Set Summary
+
+25 fields are staged for update from source data to the 2025 reporting fields, including energy, emissions, land use, water withdrawal and waste metrics. All items are currently awaiting confirmation.
+
+Approve these changes?
+
+Like
+Dislike
+Sent at October 22 at 3:45 PM
+Just now
+Bot said: Findings Missing | High | Water discharge from undertaking production processes (m3) Current value: missing Prior value: 14,200 m3 Message: Water discharge from undertaking production processes (m3) is required but has no value. Out of range | High | Electricity (as reflected in utility billings) - Renewable Current value: 490 MWh Prior value: 520 MWh Message: Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500. Material change | Medium | 6. Business Travel Current value: 165.0 tCO2e Prior value: 140.0 tCO2e Message: 6. Business Travel changed by 17.9% from the prior period. Change Set Summary 25 fields are staged for update from source data to the 2025 reporting fields, including energy, emissions, land use, water withdrawal and waste metrics. All items are currently awaiting confirmation. Approve these changes?

@@ -1,0 +1,117 @@
+[
+  {
+    "prompt_id": "4.3b",
+    "rows": 5,
+    "row_start": 1,
+    "row_end": 5,
+    "targets": [
+      "[REDACTED]/[REDACTED]/L2",
+      "[REDACTED]/[REDACTED]/L3",
+      "[REDACTED]/[REDACTED]/L4",
+      "[REDACTED]/[REDACTED]/L5",
+      "[REDACTED]/[REDACTED]/L6"
+    ]
+  },
+  {
+    "prompt_id": "4.3c",
+    "rows": 5,
+    "row_start": 6,
+    "row_end": 10,
+    "targets": [
+      "[REDACTED]/[REDACTED]/L7",
+      "[REDACTED]/[REDACTED]/L8",
+      "[REDACTED]/[REDACTED]/L9",
+      "[REDACTED]/[REDACTED]/L10",
+      "[REDACTED]/[REDACTED]/L11"
+    ]
+  },
+  {
+    "prompt_id": "4.3d",
+    "rows": 5,
+    "row_start": 11,
+    "row_end": 15,
+    "targets": [
+      "[REDACTED]/[REDACTED]/L12",
+      "[REDACTED]/[REDACTED]/L13",
+      "[REDACTED]/[REDACTED]/L14",
+      "[REDACTED]/[REDACTED]/L15",
+      "[REDACTED]/[REDACTED]/L16"
+    ]
+  },
+  {
+    "prompt_id": "4.3e",
+    "rows": 5,
+    "row_start": 16,
+    "row_end": 20,
+    "targets": [
+      "[REDACTED]/[REDACTED]/L17",
+      "[REDACTED]/[REDACTED]/L18",
+      "[REDACTED]/[REDACTED]/L19",
+      "[REDACTED]/[REDACTED]/L20",
+      "[REDACTED]/[REDACTED]/L21"
+    ]
+  },
+  {
+    "prompt_id": "4.3f",
+    "rows": 5,
+    "row_start": 21,
+    "row_end": 25,
+    "targets": [
+      "[REDACTED]/[REDACTED]/L22",
+      "[REDACTED]/[REDACTED]/L24",
+      "[REDACTED]/[REDACTED]/L25",
+      "[REDACTED]/[REDACTED]/L26",
+      "[REDACTED]/[REDACTED]/L27"
+    ]
+  },
+  {
+    "prompt_id": "4.3g",
+    "rows": 5,
+    "row_start": 26,
+    "row_end": 30,
+    "targets": [
+      "esg-environmental",
+      "[REDACTED]/[REDACTED]/L28",
+      "[REDACTED]/[REDACTED]/L29",
+      "[REDACTED]/[REDACTED]/L30",
+      "[REDACTED]/[REDACTED]/L31"
+    ]
+  },
+  {
+    "prompt_id": "4.3h",
+    "rows": 5,
+    "row_start": 31,
+    "row_end": 35,
+    "targets": [
+      "[REDACTED]/[REDACTED]/L32",
+      "[REDACTED]/[REDACTED]/L33",
+      "[REDACTED]/[REDACTED]/L34",
+      "[REDACTED]/[REDACTED]/L35",
+      "[REDACTED]/[REDACTED]/L36"
+    ]
+  },
+  {
+    "prompt_id": "4.3i",
+    "rows": 5,
+    "row_start": 36,
+    "row_end": 40,
+    "targets": [
+      "[REDACTED]/[REDACTED]/L37",
+      "[REDACTED]/[REDACTED]/L38",
+      "[REDACTED]/[REDACTED]/L39",
+      "[REDACTED]/[REDACTED]/L40",
+      "[REDACTED]/[REDACTED]/L41"
+    ]
+  },
+  {
+    "prompt_id": "4.3j",
+    "rows": 3,
+    "row_start": 41,
+    "row_end": 43,
+    "targets": [
+      "[REDACTED]/[REDACTED]/L42",
+      "[REDACTED]/[REDACTED]/L43",
+      "esg-social"
+    ]
+  }
+]

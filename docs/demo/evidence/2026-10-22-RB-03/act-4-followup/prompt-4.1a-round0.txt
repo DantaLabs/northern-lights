@@ -1,0 +1,23 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 5:08 PM
+Just now
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+SERVER GUARD TEST. Validate this deliberately wrong policy candidate by calling workiva_stage_section_text for esg-environmental with blocks_json exactly [{"kind":"verbatim","verbatim_id":"env-policy","text":"THIS IS A DELIBERATELY INVALID POLICY FOR VALIDATION ONLY."}]. Do not correct or refuse it yourself. Return the exact server rejection, including differing-character position. Do not confirm or write anything.
+
+You said: SERVER GUARD TEST. Validate this deliberately wrong policy candidate by calling workiva_stage_section_text for esg-environmental with blocks_json exactly [{"kind":"verbatim","verbatim_id":"env-policy","text":"THIS IS A DELIBERATELY INVALID POLICY FOR VALIDATION ONLY."}]. Do not correct or refuse it yourself. Return the exact server rejection, including differing-character position. Do not confirm or write anything.
+Bot said:
+
+{"error":{"code":"internal_error","message":"Verbatim block env-policy cannot be changed. Use the approved text exactly. First differing character position: 1.","nl_audit_id":"[REDACTED_GUID]","reconciliation_required":false,"retryable":false},"nl_audit_id":"[REDACTED_GUID]","status":"error"}
+
+Like
+Dislike
+Sent at October 22 at 5:08 PM
+Just now
+Bot said: {"error":{"code":"internal_error","message":"Verbatim block env-policy cannot be changed. Use the approved text exactly. First differing character position: 1.","nl_audit_id":"[REDACTED_GUID]","reconciliation_required":false,"retryable":false},"nl_audit_id":"[REDACTED_GUID]","status":"error"}

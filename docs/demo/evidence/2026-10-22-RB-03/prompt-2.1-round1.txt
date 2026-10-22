@@ -1,0 +1,64 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 2:12 PM
+4 minutes ago
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+Prepare the environmental section.
+
+You said: Prepare the environmental section.
+Bot said:
+
+Environmental Section Preparation
+
+The section could not be prepared because the Workiva service denied the operation:
+
+Error: authorization_denied
+Message: workiva_prepare_section requires an authenticated actor; refusing unattributed write
+Audit ID: [REDACTED_GUID]
+
+An authenticated Workiva session is required before the environmental section can be prepared.
+
+Like
+Dislike
+Sent at October 22 at 2:13 PM
+4 minutes ago
+Bot said: Environmental Section Preparation The section could not be prepared because the Workiva service denied the operation: Error: authorization_denied Message: workiva_prepare_section requires an authenticated actor; refusing unattributed write Audit ID: [REDACTED_GUID] An authenticated Workiva session is required before the environmental section can be prepared.
+You said:
+
+Prepare the environmental section.
+
+You said: Prepare the environmental section.
+Bot said:
+
+Findings
+
+High: Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500.
+High: Water discharge from undertaking production processes (m³) is required but has no value.
+Medium: Business Travel changed by 17.9% from the prior period.
+
+Change Set Summary
+
+25 environmental report fields are prepared and awaiting confirmation, including energy consumption, electricity, GHG emissions, land use, water withdrawal and waste metrics for 2025.
+
+Examples:
+
+rpt_env_energy_total_2025 → 1978
+rpt_env_electricity_renewable_2025 → 490
+rpt_env_ghg_scope1_2025 → 812.5
+rpt_env_ghg_scope3_business_travel_2025 → 165
+rpt_env_water_withdrawn_total_2025 → 18100
+rpt_env_waste_recycled_type1_2025 → 5400
+
+Approve these changes?
+
+Like
+Dislike
+Sent at October 22 at 2:17 PM
+Just now
+Bot said: Findings High: Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500. High: Water discharge from undertaking production processes (m³) is required but has no value. Medium: Business Travel changed by 17.9% from the prior period. Change Set Summary 25 environmental report fields are prepared and awaiting confirmation, including energy consumption, electricity, GHG emissions, land use, water withdrawal and waste metrics for 2025. Examples: rpt_env_energy_total_2025 → 1978 rpt_env_electricity_renewable_2025 → 490 rpt_env_ghg_scope1_2025 → 812.5 rpt_env_ghg_scope3_business_travel_2025 → 165 rpt_env_water_withdrawn_total_2025 → 18100 rpt_env_waste_recycled_type1_2025 → 5400 Approve these changes?

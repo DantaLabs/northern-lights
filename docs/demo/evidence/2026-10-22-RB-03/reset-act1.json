@@ -1,0 +1,9 @@
+{
+  "reset": "reset-act1",
+  "exit_code": 0,
+  "elapsed_seconds": 125.538,
+  "server_restarted": false,
+  "database_replaced": false,
+  "readbacks": 126,
+  "mismatches": 0
+}

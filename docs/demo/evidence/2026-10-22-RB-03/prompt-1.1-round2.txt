@@ -1,0 +1,27 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 4:32 PM
+Just now
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+What was total energy consumption in 2025 and how does it compare with 2024?
+
+You said: What was total energy consumption in 2025 and how does it compare with 2024?
+Bot said:
+
+2025: 1,978 MWh (VSME-Digital-Template-1.0.1 Unlocked / Environmental Disclosures / G5).
+
+2024: 2,030 MWh (VSME - Factbook template / PY Data Output / L2).
+
+Total energy consumption fell.
+
+Like
+Dislike
+Sent at October 22 at 4:32 PM
+Just now
+Bot said: 2025: 1,978 MWh (VSME-Digital-Template-1.0.1 Unlocked / Environmental Disclosures / G5). 2024: 2,030 MWh (VSME - Factbook template / PY Data Output / L2). Total energy consumption fell.

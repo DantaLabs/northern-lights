@@ -2,13 +2,16 @@ package tools
 
 import (
 	"context"
-	"github.com/dantalabs/northern-lights/internal/sectiontext"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
+	"github.com/dantalabs/northern-lights/internal/sectiontext"
 )
 
 const (
@@ -16,7 +19,7 @@ const (
 	confirmSectionTextName = "workiva_confirm_section_text"
 )
 
-const stageSectionTextDescription = `Stages the narrative blocks and verbatim blocks for a section in the report document and returns a preview, after the number guard checks every number. Call it after workiva_prepare_section, once the narrative blocks are drafted from the narrative facts.`
+const stageSectionTextDescription = `Stages the narrative blocks and verbatim blocks for a section in the report document and returns a preview, after the number guard checks every number. Call it after workiva_prepare_section, once the narrative blocks are drafted from the narrative facts. For Copilot, prefer blocks_json: construct a JSON array string from your drafted narrative and the exact prepared verbatim blocks, for example [{"kind":"narrative","text":"Draft from prepared facts."},{"kind":"verbatim","verbatim_id":"policy","text":"Exact prepared policy text."}]. Supply exactly one of blocks_json or blocks. Copy every verbatim ID and text from prepare; never rewrite or invent them.`
 
 const confirmSectionTextDescription = `Writes previously staged section text into the report document after the person approved the preview. Call it only after workiva_stage_section_text returned a preview and the person explicitly approved it.`
 
@@ -45,8 +48,9 @@ type sectionTextBlock struct {
 }
 
 type stageSectionTextInput struct {
-	SectionID string             `json:"section_id"`
-	Blocks    []sectionTextBlock `json:"blocks"`
+	SectionID  string          `json:"section_id"`
+	Blocks     json.RawMessage `json:"blocks,omitempty"`
+	BlocksJSON json.RawMessage `json:"blocks_json,omitempty"`
 }
 
 type stageSectionTextOutput struct {
@@ -86,9 +90,45 @@ func sectionTextBlockSchema() map[string]any {
 
 func stageSectionTextInputSchema() map[string]any {
 	return objectSchema(map[string]any{
-		"section_id": boundedSchema("section ID", 128),
-		"blocks":     map[string]any{"type": "array", "minItems": 1, "maxItems": 20, "items": sectionTextBlockSchema()},
-	}, []string{"section_id", "blocks"})
+		"section_id":  boundedSchema("section ID", 128),
+		"blocks":      sectionTextBlocksSchema(),
+		"blocks_json": optionalString("Preferred for Copilot: JSON array string of drafted blocks; supply this or blocks, never both. Each block requires kind and text; verbatim blocks also require the exact prepared verbatim_id and text. Maximum 20 blocks, 4000 characters per text.", 100000),
+	}, []string{"section_id"})
+}
+
+func sectionTextBlocksSchema() map[string]any {
+	return map[string]any{"type": "array", "minItems": 1, "maxItems": 20, "items": sectionTextBlockSchema()}
+}
+
+func (in stageSectionTextInput) decodeBlocks(schema *jsonschema.Resolved) ([]sectionTextBlock, error) {
+	// RawMessage preserves property presence, including an explicitly supplied null.
+	if (in.Blocks == nil) == (in.BlocksJSON == nil) {
+		return nil, failMsg("supply exactly one of blocks or blocks_json", "construct the blocks from the prepared facts and verbatim text")
+	}
+	encoded := in.Blocks
+	if in.BlocksJSON != nil {
+		var value string
+		if string(in.BlocksJSON) == "null" {
+			return nil, failMsg("blocks_json must be a JSON array string", "supply the drafted blocks as JSON")
+		}
+		if err := json.Unmarshal(in.BlocksJSON, &value); err != nil {
+			return nil, fmt.Errorf("blocks_json must be a JSON array string: %w", err)
+		}
+		encoded = []byte(value)
+	}
+	var value any
+	// Unmarshal requires exactly one JSON value and rejects trailing values.
+	if err := json.Unmarshal(encoded, &value); err != nil {
+		return nil, fmt.Errorf("invalid section text blocks JSON: %w", err)
+	}
+	if err := schema.Validate(value); err != nil {
+		return nil, fmt.Errorf("invalid section text blocks: %w", err)
+	}
+	var blocks []sectionTextBlock
+	if err := json.Unmarshal(encoded, &blocks); err != nil {
+		return nil, fmt.Errorf("invalid section text blocks: %w", err)
+	}
+	return blocks, nil
 }
 
 func stageSectionTextOutputSchema() map[string]any {
@@ -121,6 +161,20 @@ func confirmSectionTextOutputSchema() map[string]any {
 }
 
 func (stageSectionTextTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
+	// Resolve the same bounded schema advertised for array clients, so JSON string
+	// clients cannot bypass required properties, types, lengths or extra-key checks.
+	encodedSchema, err := json.Marshal(sectionTextBlocksSchema())
+	if err != nil {
+		panic(err)
+	}
+	var schema jsonschema.Schema
+	if err := json.Unmarshal(encodedSchema, &schema); err != nil {
+		panic(err)
+	}
+	blocksSchema, err := schema.Resolve(nil)
+	if err != nil {
+		panic(err)
+	}
 	mcp.AddTool(s, &mcp.Tool{
 		Name:         stageSectionTextName,
 		Description:  stageSectionTextDescription,
@@ -134,8 +188,12 @@ func (stageSectionTextTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		if actor == "" || actor == mcpserver.DefaultActor {
 			return nil, stageSectionTextOutput{}, failMsg("section text requires an authenticated actor", "authenticate and prepare the section again")
 		}
-		blocks := make([]sectiontext.Block, len(in.Blocks))
-		for i, b := range in.Blocks {
+		inputBlocks, err := in.decodeBlocks(blocksSchema)
+		if err != nil {
+			return nil, stageSectionTextOutput{}, err
+		}
+		blocks := make([]sectiontext.Block, len(inputBlocks))
+		for i, b := range inputBlocks {
 			blocks[i] = sectiontext.Block{Kind: b.Kind, Text: b.Text, VerbatimID: b.VerbatimID}
 		}
 		preview, err := deps.SectionText.Stage(ctx, actor, in.SectionID, blocks)

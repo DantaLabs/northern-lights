@@ -1,0 +1,32 @@
+{
+  "policy_guard": "PASS:Copilot forwarded literal invalid policy to stage; server returned exact verbatim refusal and characterposition1.",
+  "number_guard": "PASS:Copilot forwarded literal invalid9% narrative to stage; server returned prepared-facts number refusal.",
+  "execution": "Temporary validation-only Copilot configuration; no direct operator staging API calls. Normal production instructions restored before audit request.",
+  "server_staging_call_sequences": [
+    169,
+    170
+  ],
+  "before": {
+    "mutation_rows": 118,
+    "section_preview_count": 3,
+    "audit_row_count": 168
+  },
+  "after_guard_tests": {
+    "mutation_rows": 118,
+    "section_preview_count": 3
+  },
+  "new_mutations": 0,
+  "new_previews": 0,
+  "evidence": [
+    "prompt-4.1a-round0.txt",
+    "prompt-4.2a-round0.txt",
+    "guard-policy.png",
+    "guard-number.png",
+    "guard-audits.json",
+    "guard-tool-trace.json"
+  ],
+  "server_response_audit_ids_match_staging_call_rows": [
+    true,
+    true
+  ]
+}

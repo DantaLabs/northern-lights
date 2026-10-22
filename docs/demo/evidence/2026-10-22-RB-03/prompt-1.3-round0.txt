@@ -1,0 +1,63 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 4:32 PM
+A minute ago
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+What was total energy consumption in 2025 and how does it compare with 2024?
+
+You said: What was total energy consumption in 2025 and how does it compare with 2024?
+Bot said:
+
+2025: 1,978 MWh (VSME-Digital-Template-1.0.1 Unlocked / Environmental Disclosures / G5).
+
+2024: 2,030 MWh (VSME - Factbook template / PY Data Output / L2).
+
+Total energy consumption fell.
+
+Like
+Dislike
+Sent at October 22 at 4:32 PM
+A minute ago
+Bot said: 2025: 1,978 MWh (VSME-Digital-Template-1.0.1 Unlocked / Environmental Disclosures / G5). 2024: 2,030 MWh (VSME - Factbook template / PY Data Output / L2). Total energy consumption fell.
+You said:
+
+How many employees did we have at the end of 2025, and how many in 2024?
+
+You said: How many employees did we have at the end of 2025, and how many in 2024?
+Bot said:
+
+2025: 428 employees (VSME-Digital-Template-1.0.1 Unlocked / General Information / E62).
+
+2024: 412 employees (VSME - Factbook template / PY Data Output / L28).
+
+Employee headcount rose.
+
+Like
+Dislike
+Sent at October 22 at 4:33 PM
+Just now
+Bot said: 2025: 428 employees (VSME-Digital-Template-1.0.1 Unlocked / General Information / E62). 2024: 412 employees (VSME - Factbook template / PY Data Output / L28). Employee headcount rose.
+You said:
+
+What were our business travel emissions in 2025 and in 2024?
+
+You said: What were our business travel emissions in 2025 and in 2024?
+Bot said:
+
+2025: 165 tCO2e (VSME-Digital-Template-1.0.1 Unlocked / Environmental Disclosures / D35).
+
+2024: 140 tCO2e (VSME - Factbook template / PY Data Output / L15).
+
+Business travel emissions rose.
+
+Like
+Dislike
+Sent at October 22 at 4:34 PM
+Just now
+Bot said: 2025: 165 tCO2e (VSME-Digital-Template-1.0.1 Unlocked / Environmental Disclosures / D35). 2024: 140 tCO2e (VSME - Factbook template / PY Data Output / L15). Business travel emissions rose.

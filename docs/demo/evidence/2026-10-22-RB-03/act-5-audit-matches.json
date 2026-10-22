@@ -1,0 +1,889 @@
+{
+  "source": {
+    "database": "session.db",
+    "connection": "read-only SQLite snapshot",
+    "audit_row_count": 147,
+    "latest_consumed_records_selected_by": "SQLite rowid within their category"
+  },
+  "latest_consumed_change_sets": {
+    "environmental": {
+      "latest_consumed_change_set_local_rowid": 7,
+      "matched_exact_change_set_id": true,
+      "match_method": "latest consumed change_set_pending.id exactly matched before_json and after_json change_set_id",
+      "planned_item_count": 25,
+      "matched_write_row_count": 25,
+      "status_counts": {
+        "completed": 25
+      },
+      "mismatch_count": 0,
+      "row_seq_min": 92,
+      "row_seq_max": 116,
+      "rows": [
+        {
+          "seq": 92,
+          "ts": "2026-10-22 08:47:57",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "lVulbupEfzwurqiTRkw12O2vxFtt0Hm2Zy-sXsJEXq4",
+          "target": "[REDACTED]/[REDACTED]/L2",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_energy_total_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_energy_total_2025",
+            "intended": "1978",
+            "value": "1978",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 93,
+          "ts": "2026-10-22 08:47:58",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "dF3DFOjADMIZwZEadGtkyMsnccX1yFUuv1aBTKPAOmY",
+          "target": "[REDACTED]/[REDACTED]/L3",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_electricity_renewable_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_electricity_renewable_2025",
+            "intended": "490",
+            "value": "490",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 94,
+          "ts": "2026-10-22 08:47:58",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "n439_0WcWV6AJsHnv3gQZWQYl7vg8hpRGgdXbcwolMk",
+          "target": "[REDACTED]/[REDACTED]/L4",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_electricity_non_renewable_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_electricity_non_renewable_2025",
+            "intended": "1280",
+            "value": "1280",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 95,
+          "ts": "2026-10-22 08:47:59",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "5Yu6RPavVE6od3LFlLT6uRITPWiYKbKoXuYueH4yuaM",
+          "target": "[REDACTED]/[REDACTED]/L5",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_self_generated_electricity_renewable_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_self_generated_electricity_renewable_2025",
+            "intended": "150",
+            "value": "150",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 96,
+          "ts": "2026-10-22 08:48:00",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "9cEv5YFE1lUtwOaLnXjcGhmWwhHX2cHtf7Kdqh4lYr8",
+          "target": "[REDACTED]/[REDACTED]/L6",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_self_generated_electricity_non_renewable_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_self_generated_electricity_non_renewable_2025",
+            "intended": "58",
+            "value": "58",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 97,
+          "ts": "2026-10-22 08:48:01",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "6PROCbmL7NTA2sfF8AppaIiZlTePUMKZRIbQT4I3zek",
+          "target": "[REDACTED]/[REDACTED]/L7",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_ghg_scope1_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_ghg_scope1_2025",
+            "intended": "812.5",
+            "value": "812.5",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 98,
+          "ts": "2026-10-22 08:48:01",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "48qRvPng5DCyo4u9Bfh44mY6nPN1NlwOVHTvVKeJdz4",
+          "target": "[REDACTED]/[REDACTED]/L8",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_ghg_scope2_location_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_ghg_scope2_location_2025",
+            "intended": "585",
+            "value": "585",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 99,
+          "ts": "2026-10-22 08:48:01",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "ZaIKxO93fOVU8OHddt2dKcXB92zXPh_akqHZEfHNF3M",
+          "target": "[REDACTED]/[REDACTED]/L9",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_ghg_scope2_market_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_ghg_scope2_market_2025",
+            "intended": "520",
+            "value": "520",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 100,
+          "ts": "2026-10-22 08:48:02",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "-5z-zS82jJ03nBpoDrsbCA6ee0n87-0PH5MM4vEDbGg",
+          "target": "[REDACTED]/[REDACTED]/L10",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_ghg_scope3_purchased_goods_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_ghg_scope3_purchased_goods_2025",
+            "intended": "4050",
+            "value": "4050",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 101,
+          "ts": "2026-10-22 08:48:03",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "R7KH-v6O1i46iDHiZ5euwjFsV7L6vGeEzbe01aDky4s",
+          "target": "[REDACTED]/[REDACTED]/L11",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_ghg_scope3_capital_goods_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_ghg_scope3_capital_goods_2025",
+            "intended": "820",
+            "value": "820",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 102,
+          "ts": "2026-10-22 08:48:03",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "vy6IXwk9JSIJAAwqv5otcpSFvuHdkISP1tYrjsIQ-dk",
+          "target": "[REDACTED]/[REDACTED]/L12",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_ghg_scope3_fuel_energy_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_ghg_scope3_fuel_energy_2025",
+            "intended": "298",
+            "value": "298",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 103,
+          "ts": "2026-10-22 08:48:04",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "tmQoYO45RBghSahJxS8Bkr_5VVrhxP6L9XQ5Vczf0VQ",
+          "target": "[REDACTED]/[REDACTED]/L13",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_ghg_scope3_upstream_transport_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_ghg_scope3_upstream_transport_2025",
+            "intended": "545",
+            "value": "545",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 104,
+          "ts": "2026-10-22 08:48:05",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "QJZQc_P5Atl1tDqZxKyV0ZdP7A9lMA_69IM4IxuoF4I",
+          "target": "[REDACTED]/[REDACTED]/L14",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_ghg_scope3_waste_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_ghg_scope3_waste_2025",
+            "intended": "92",
+            "value": "92",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 105,
+          "ts": "2026-10-22 08:48:05",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "mzwMg-oNypf_JA5Dx5326ubPeZePt6LpM62Dl-yRsTY",
+          "target": "[REDACTED]/[REDACTED]/L15",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_ghg_scope3_business_travel_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_ghg_scope3_business_travel_2025",
+            "intended": "165",
+            "value": "165",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 106,
+          "ts": "2026-10-22 08:48:06",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "K4Pk-_kcNvAZN8V7gtSpWnfzWZIK-DTEiFswZXp50bM",
+          "target": "[REDACTED]/[REDACTED]/L16",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_ghg_scope3_commuting_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_ghg_scope3_commuting_2025",
+            "intended": "224",
+            "value": "224",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 107,
+          "ts": "2026-10-22 08:48:06",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "p_XvLxaE7YVA-jETB5Ev6Ws3fL2zWvVl_wt_m63Kmoc",
+          "target": "[REDACTED]/[REDACTED]/L17",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_land_sealed_area_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_land_sealed_area_2025",
+            "intended": "12.6",
+            "value": "12.6",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 108,
+          "ts": "2026-10-22 08:48:07",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "oVOCu5v9bkljUP-mH4aUGyv8VTkudf148WZ1F8TbFq0",
+          "target": "[REDACTED]/[REDACTED]/L18",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_land_nature_onsite_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_land_nature_onsite_2025",
+            "intended": "3.2",
+            "value": "3.2",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 109,
+          "ts": "2026-10-22 08:48:08",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "T97YwoIefxHoaQZUhbd1cMdDqQPB9UCnzrMhAJfHTNM",
+          "target": "[REDACTED]/[REDACTED]/L19",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_land_nature_offsite_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_land_nature_offsite_2025",
+            "intended": "1.6",
+            "value": "1.6",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 110,
+          "ts": "2026-10-22 08:48:08",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "5B5o1qAxluc5qcLBPWgFJmzTZjhqFmcOIDQY_8-Cprk",
+          "target": "[REDACTED]/[REDACTED]/L20",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_land_use_total_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_land_use_total_2025",
+            "intended": "17.4",
+            "value": "17.4",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 111,
+          "ts": "2026-10-22 08:48:09",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "kVwU-GuTziw1M18Hyc7l_jV4yrvjnjEkcHV0arrf_cA",
+          "target": "[REDACTED]/[REDACTED]/L21",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_water_withdrawn_total_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_water_withdrawn_total_2025",
+            "intended": "18100",
+            "value": "18100",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 112,
+          "ts": "2026-10-22 08:48:10",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "e1CsgZGp2Kl8w1CKDGWFmmUhvhwRUVElqebPwdujgkM",
+          "target": "[REDACTED]/[REDACTED]/L22",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_water_withdrawn_high_stress_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_water_withdrawn_high_stress_2025",
+            "intended": "2300",
+            "value": "2300",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 113,
+          "ts": "2026-10-22 08:48:11",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "EHLRdQEIq5ladWCjD_odFgfs4m3ivx2IPhoik0TNcSQ",
+          "target": "[REDACTED]/[REDACTED]/L24",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_waste_recycled_type1_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_waste_recycled_type1_2025",
+            "intended": "5400",
+            "value": "5400",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 114,
+          "ts": "2026-10-22 08:48:11",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "ElKLYFIuRzkSiesPGsNilpavvm2VQfUOhhn0jOsWgPs",
+          "target": "[REDACTED]/[REDACTED]/L25",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_waste_disposed_type1_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_waste_disposed_type1_2025",
+            "intended": "2000",
+            "value": "2000",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 115,
+          "ts": "2026-10-22 08:48:12",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "MAWIuBqI0Gyi7ToyDxuDsKimyDoepclBi4CUVD7BZ0M",
+          "target": "[REDACTED]/[REDACTED]/L26",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_waste_recycled_type2_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_waste_recycled_type2_2025",
+            "intended": "910",
+            "value": "910",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 116,
+          "ts": "2026-10-22 08:48:13",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "Q7xnQ8I3eLAOfOZZd9CTlINpwB2LR9eCrPI9gLYNb4w",
+          "target": "[REDACTED]/[REDACTED]/L27",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_env_waste_disposed_type2_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_env_waste_disposed_type2_2025",
+            "intended": "415",
+            "value": "415",
+            "status": "completed"
+          }
+        }
+      ]
+    },
+    "social": {
+      "latest_consumed_change_set_local_rowid": 8,
+      "matched_exact_change_set_id": true,
+      "match_method": "latest consumed change_set_pending.id exactly matched before_json and after_json change_set_id",
+      "planned_item_count": 16,
+      "matched_write_row_count": 16,
+      "status_counts": {
+        "completed": 16
+      },
+      "mismatch_count": 0,
+      "row_seq_min": 123,
+      "row_seq_max": 138,
+      "rows": [
+        {
+          "seq": 123,
+          "ts": "2026-10-22 09:10:32",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "HQymn3D_HpCBAYDBzFKy8MCsMlNNH4IBcEa9d4vOWSI",
+          "target": "[REDACTED]/[REDACTED]/L28",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_employees_total_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_employees_total_2025",
+            "intended": "428",
+            "value": "428",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 124,
+          "ts": "2026-10-22 09:10:33",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "kbL-oH--_oVQV-ODbVCNktAe_3hx0jv35LRSA6SfH5g",
+          "target": "[REDACTED]/[REDACTED]/L29",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_employees_permanent_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_employees_permanent_2025",
+            "intended": "402",
+            "value": "402",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 125,
+          "ts": "2026-10-22 09:10:33",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "0yArKcXuBxOyA1S6n7Uwx3EFDck0s3syka5ajJ_0yGo",
+          "target": "[REDACTED]/[REDACTED]/L30",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_employees_male_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_employees_male_2025",
+            "intended": "238",
+            "value": "238",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 126,
+          "ts": "2026-10-22 09:10:34",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "E8ld8kEqLggIUNH-ZOUk5VJRgZF4D4zvJ8TIV60tpmI",
+          "target": "[REDACTED]/[REDACTED]/L31",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_employees_female_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_employees_female_2025",
+            "intended": "183",
+            "value": "183",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 127,
+          "ts": "2026-10-22 09:10:35",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "PSCHhG9vYQTfqZQ8SEI-G7ncn6Syw5Z6IMniqtb0upQ",
+          "target": "[REDACTED]/[REDACTED]/L32",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_employees_other_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_employees_other_2025",
+            "intended": "5",
+            "value": "5",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 128,
+          "ts": "2026-10-22 09:10:35",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "POni1d6AsJEIYzss990OnmTFUGZq5LdbZu_PtjBy-tA",
+          "target": "[REDACTED]/[REDACTED]/L33",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_employees_not_reported_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_employees_not_reported_2025",
+            "intended": "2",
+            "value": "2",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 129,
+          "ts": "2026-10-22 09:10:36",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "b1CzXZnAHxdBv_1D-bihpVXbG9Zg2C-9o3kJflRw1HM",
+          "target": "[REDACTED]/[REDACTED]/L34",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_employees_left_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_employees_left_2025",
+            "intended": "41",
+            "value": "41",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 130,
+          "ts": "2026-10-22 09:10:37",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "G9nseGcKpWmIonwR_EjlAlf5kINoKSIwlBuUnBsCFB0",
+          "target": "[REDACTED]/[REDACTED]/L35",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_employees_start_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_employees_start_2025",
+            "intended": "412",
+            "value": "412",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 131,
+          "ts": "2026-10-22 09:10:37",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "j8JZjauQM2q_Jv4tkgD9_GsdTTik0rmmMFXKw5C3Y4k",
+          "target": "[REDACTED]/[REDACTED]/L36",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_employees_end_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_employees_end_2025",
+            "intended": "428",
+            "value": "428",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 132,
+          "ts": "2026-10-22 09:10:38",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "4Hy_W--DMlFmsCyjhbAqZOoYNNFO6IpkbupKThVmW2E",
+          "target": "[REDACTED]/[REDACTED]/L37",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_accidents_recordable_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_accidents_recordable_2025",
+            "intended": "11",
+            "value": "11",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 133,
+          "ts": "2026-10-22 09:10:38",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "vkYV8MkI0mQ7PkwBEMJ3O32CexS3Xf47fFjXab8Uodg",
+          "target": "[REDACTED]/[REDACTED]/L38",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_fatalities_work_related_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_fatalities_work_related_2025",
+            "intended": "0",
+            "value": "0",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 134,
+          "ts": "2026-10-22 09:10:39",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "o3jSMbKZd9GKNnb-8ai_S_RODLKjrNbZO7aEoLoOajY",
+          "target": "[REDACTED]/[REDACTED]/L39",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_employees_collective_bargaining_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_employees_collective_bargaining_2025",
+            "intended": "281",
+            "value": "281",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 135,
+          "ts": "2026-10-22 09:10:39",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "W0Jxh_fBFh5BpIj_yAcMdINMihl-jyY7jiQpO_6lF7w",
+          "target": "[REDACTED]/[REDACTED]/L40",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_training_hours_male_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_training_hours_male_2025",
+            "intended": "19",
+            "value": "19",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 136,
+          "ts": "2026-10-22 09:10:40",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "BxQZqUpGTlIxU2UnReGsdeT-CzWiG8-gOSUaP3C66ZU",
+          "target": "[REDACTED]/[REDACTED]/L41",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_training_hours_female_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_training_hours_female_2025",
+            "intended": "25.5",
+            "value": "25.5",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 137,
+          "ts": "2026-10-22 09:10:41",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "hz_8-Fk6lEyElwQ9DJ4W0h_2x8rdy8CRX12NDaaG8u8",
+          "target": "[REDACTED]/[REDACTED]/L42",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_managers_male_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_managers_male_2025",
+            "intended": "32",
+            "value": "32",
+            "status": "completed"
+          }
+        },
+        {
+          "seq": 138,
+          "ts": "2026-10-22 09:10:42",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "DNH2aPaWhWbnuAy2RiBYFPLLQUc3UlertIMvYqF2L1Q",
+          "target": "[REDACTED]/[REDACTED]/L43",
+          "workiva_op_url": "[REDACTED_URL]",
+          "before": {
+            "field": "rpt_soc_managers_female_2025",
+            "value": ""
+          },
+          "after": {
+            "field": "rpt_soc_managers_female_2025",
+            "intended": "15",
+            "value": "15",
+            "status": "completed"
+          }
+        }
+      ]
+    }
+  },
+  "latest_consumed_section_previews": {
+    "environmental": {
+      "latest_consumed_preview_local_rowid": 2,
+      "section_id": "esg-environmental",
+      "preview_text_hash": "8948d6aae7c0153c09781dcda2f4e627d4a9e6a0dff17973a062783b3b4ac6b1",
+      "matched_completion_row_count": 1,
+      "match_method": "exact text_sha256, section_id and document_id equality between consumed preview and completed audit after_json",
+      "text_id_in_private_chat_tool_raw": "NOTSHOWN; local preview primary key is stored",
+      "rows": [
+        {
+          "seq": 119,
+          "ts": "2026-10-22 08:51:10",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "2QUEG2C7O2ZODYASUVJOIKQKKV",
+          "target": "esg-environmental",
+          "workiva_op_url": "[REDACTED_URL]",
+          "after": {
+            "section_id": "esg-environmental",
+            "document_id": "[REDACTED]",
+            "workiva_section_id": "[REDACTED]_310",
+            "text_sha256": "8948d6aae7c0153c09781dcda2f4e627d4a9e6a0dff17973a062783b3b4ac6b1",
+            "verbatim_ids": [
+              "env-policy"
+            ],
+            "status": "completed"
+          }
+        }
+      ]
+    },
+    "social": {
+      "latest_consumed_preview_local_rowid": 3,
+      "section_id": "esg-social",
+      "preview_text_hash": "f76aca5d76203dc14cdbce39be25429716a3b67e4af7677ab54638bdc18c2b02",
+      "matched_completion_row_count": 1,
+      "match_method": "exact text_sha256, section_id and document_id equality between consumed preview and completed audit after_json",
+      "text_id_in_private_chat_tool_raw": "NOTSHOWN; local preview primary key is stored",
+      "rows": [
+        {
+          "seq": 141,
+          "ts": "2026-10-22 09:15:15",
+          "actor": "rb03-api-key-demo",
+          "audit_id": "HVPNRPJX2KRTKEQPVAXLA2KJNR",
+          "target": "esg-social",
+          "workiva_op_url": "[REDACTED_URL]",
+          "after": {
+            "section_id": "esg-social",
+            "document_id": "[REDACTED]",
+            "workiva_section_id": "[REDACTED]_315",
+            "text_sha256": "f76aca5d76203dc14cdbce39be25429716a3b67e4af7677ab54638bdc18c2b02",
+            "verbatim_ids": [
+              "social-policy"
+            ],
+            "status": "completed"
+          }
+        }
+      ]
+    }
+  },
+  "combined_database_totals": {
+    "field_writes": 41,
+    "completed_field_status_count": 41,
+    "mismatches": 0,
+    "section_completions": 2
+  },
+  "private_chat_audit_id_comparison": {
+    "act4_final_4_3_round1": {
+      "source_file": "prompt-4.3-round1.txt",
+      "status": "RESPONSE_PRESENT",
+      "field_detail_line_count": 25,
+      "unique_field_audit_ids": 25,
+      "exact_db_field_audit_id_matches": 25,
+      "field_audit_ids_missing_from_db": 0,
+      "db_field_audit_ids_not_visible_in_response": 0,
+      "section_audit_ids_visible": 1,
+      "exact_db_section_audit_id_matches": 1,
+      "db_section_audit_ids_not_visible_in_response": 0
+    },
+    "act5_audit_round0": {
+      "source_file": "prompt-5.audit-round0.txt",
+      "status": "RESPONSE_PRESENT",
+      "field_detail_line_count": 17,
+      "unique_field_audit_ids": 16,
+      "exact_db_field_audit_id_matches": 16,
+      "field_audit_ids_missing_from_db": 0,
+      "db_field_audit_ids_not_visible_in_response": 0,
+      "section_audit_ids_visible": 1,
+      "exact_db_section_audit_id_matches": 1,
+      "db_section_audit_ids_not_visible_in_response": 0
+    }
+  },
+  "strict_chat_audit_criterion": {
+    "status": "FAIL",
+    "reason": "4.3 round 1 provides field audit IDs but lacks required per-cell target/exact timestamp/section-hash detail; 5.audit round 0 returns only the social 16 field rows plus one section row, not the combined 41 fields and two sections."
+  },
+  "act5_ui_readback": {
+    "spreadsheet_values": "PASS: 16 values matched after reload",
+    "document_text_and_policy": "PASS: approved preview narrative and verbatim policy matched in Workiva document UI",
+    "evidence": [
+      "act-5-values.png",
+      "act-5-section.png"
+    ],
+    "final_screenshot_redaction_review": "PENDING"
+  },
+  "act5_audit_response": {
+    "elapsed_seconds": 416.728,
+    "response_scope": "16 social field rows and 1 social section row only",
+    "combined_strict_audit_result": "FAIL"
+  },
+  "act1_reset": {
+    "status": "in progress per operator; same session.db retained; evidence collection did not write or replace the database"
+  }
+}

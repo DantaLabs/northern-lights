@@ -1,0 +1,2327 @@
+{
+  "snapshot": {
+    "audit_row_count": 31,
+    "audit_counts_by_tool_action": {
+      "workiva_confirm_change_set/call": 1,
+      "workiva_confirm_change_set/write": 25,
+      "workiva_get_field/call": 1,
+      "workiva_prepare_section/call": 4
+    },
+    "recipe_prepared_row_count": 1,
+    "prepared_section_count": 1,
+    "change_set_pending_row_count": 4,
+    "section_text_preview_row_count": 0,
+    "consumed_counts": {
+      "change_set_pending": {
+        "false": 3,
+        "true": 1
+      },
+      "section_text_previews": {}
+    }
+  },
+  "rows": {
+    "audit_log": [
+      {
+        "seq": 1,
+        "ts": "2026-10-22 07:16:37",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_prepare_section",
+        "action": "call",
+        "target": "workiva_prepare_section",
+        "before_json": "",
+        "after_json": "",
+        "workiva_op_url": "",
+        "audit_id": "[REDACTED_GUID]",
+        "prev_hash": "GENESIS",
+        "hash": "ecfe8c508fa137990c00264c07b3ecefcb724982fd71128a72cd6a71ff01f317"
+      },
+      {
+        "seq": 2,
+        "ts": "2026-10-22 07:20:07",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_prepare_section",
+        "action": "call",
+        "target": "workiva_prepare_section",
+        "before_json": "",
+        "after_json": "",
+        "workiva_op_url": "",
+        "audit_id": "[REDACTED_GUID]",
+        "prev_hash": "ecfe8c508fa137990c00264c07b3ecefcb724982fd71128a72cd6a71ff01f317",
+        "hash": "c45053ad19359985001bfc3511d79cc0c449d239d36c1de16dbd1ebfc5254af1"
+      },
+      {
+        "seq": 3,
+        "ts": "2026-10-22 07:24:00",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_prepare_section",
+        "action": "call",
+        "target": "workiva_prepare_section",
+        "before_json": "",
+        "after_json": "",
+        "workiva_op_url": "",
+        "audit_id": "[REDACTED_GUID]",
+        "prev_hash": "c45053ad19359985001bfc3511d79cc0c449d239d36c1de16dbd1ebfc5254af1",
+        "hash": "4f4bd5d492b67d37a4a1a8d18d27d1d4ae2d767dda954712ce1a9760208f3948"
+      },
+      {
+        "seq": 4,
+        "ts": "2026-10-22 07:27:13",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_prepare_section",
+        "action": "call",
+        "target": "workiva_prepare_section",
+        "before_json": "",
+        "after_json": "",
+        "workiva_op_url": "",
+        "audit_id": "[REDACTED_GUID]",
+        "prev_hash": "4f4bd5d492b67d37a4a1a8d18d27d1d4ae2d767dda954712ce1a9760208f3948",
+        "hash": "69edd4941aab53293f4a0a9960d51b2286877a280ac44f258043b925e170dd9d"
+      },
+      {
+        "seq": 5,
+        "ts": "2026-10-22 07:28:06",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_get_field",
+        "action": "call",
+        "target": "rpt_env_water_discharge_production_2024",
+        "before_json": "",
+        "after_json": "",
+        "workiva_op_url": "",
+        "audit_id": "[REDACTED_GUID]",
+        "prev_hash": "69edd4941aab53293f4a0a9960d51b2286877a280ac44f258043b925e170dd9d",
+        "hash": "d415f3c7903f9c3094f1e6e1e3cde88606de0e1491ce55d1817255572f3b43b4"
+      },
+      {
+        "seq": 6,
+        "ts": "2026-10-22 07:29:20",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "call",
+        "target": "workiva_confirm_change_set",
+        "before_json": "",
+        "after_json": "",
+        "workiva_op_url": "",
+        "audit_id": "[REDACTED_GUID]",
+        "prev_hash": "d415f3c7903f9c3094f1e6e1e3cde88606de0e1491ce55d1817255572f3b43b4",
+        "hash": "c663847241223c2fc748f620096aad207d6584f3298033687ca6bbf86b9e1abe"
+      },
+      {
+        "seq": 7,
+        "ts": "2026-10-22 07:29:28",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L2",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_energy_total_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_energy_total_2025",
+          "intended": "1978",
+          "status": "completed",
+          "value": "1978"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "f-O2AnV8hqS8_RS6nhvdDaL7uuAx6u0JHTJqNIm0B0w",
+        "prev_hash": "c663847241223c2fc748f620096aad207d6584f3298033687ca6bbf86b9e1abe",
+        "hash": "9316524eeca54737c4cf69ab873abc754b971d2a98eb73330cea02929417ed27"
+      },
+      {
+        "seq": 8,
+        "ts": "2026-10-22 07:29:29",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L3",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_electricity_renewable_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_electricity_renewable_2025",
+          "intended": "490",
+          "status": "completed",
+          "value": "490"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "Yox4Xcjc0YfaWqpVm2eXhfJIEwQadCaP1pLCFM8s5Kw",
+        "prev_hash": "9316524eeca54737c4cf69ab873abc754b971d2a98eb73330cea02929417ed27",
+        "hash": "3c5f3de202a9546a89ae23a6c2e50f495b2f0f306e9eade840d7b0004b77a0ef"
+      },
+      {
+        "seq": 9,
+        "ts": "2026-10-22 07:29:29",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L4",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_electricity_non_renewable_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_electricity_non_renewable_2025",
+          "intended": "1280",
+          "status": "completed",
+          "value": "1280"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "uNc4EIb_eocQQ8AtJJ3Effx4OJOdLc4ONwa8HKBGbEU",
+        "prev_hash": "3c5f3de202a9546a89ae23a6c2e50f495b2f0f306e9eade840d7b0004b77a0ef",
+        "hash": "82b9958edc083ad96f6e27e1d0e49e242a0d70726ee7c0e47731ac08fd9144ef"
+      },
+      {
+        "seq": 10,
+        "ts": "2026-10-22 07:29:29",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L5",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_self_generated_electricity_renewable_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_self_generated_electricity_renewable_2025",
+          "intended": "150",
+          "status": "completed",
+          "value": "150"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "rU5ZdMohv9rH8De2R7UnwyXA2yKDJzlWKxbSOMhBiN0",
+        "prev_hash": "82b9958edc083ad96f6e27e1d0e49e242a0d70726ee7c0e47731ac08fd9144ef",
+        "hash": "d7c65425bf7ea3e2b4cffb8f148497c1d7cbd546fee8003ffc6b88fd98494534"
+      },
+      {
+        "seq": 11,
+        "ts": "2026-10-22 07:29:30",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L6",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_self_generated_electricity_non_renewable_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_self_generated_electricity_non_renewable_2025",
+          "intended": "58",
+          "status": "completed",
+          "value": "58"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "88OiMIFdVRvDmhoU3LuavL41syLbzd2IJujjH5wJqyI",
+        "prev_hash": "d7c65425bf7ea3e2b4cffb8f148497c1d7cbd546fee8003ffc6b88fd98494534",
+        "hash": "75a884f3600a79db0f25193d4f3150a7de933dee90afd716c3ec10b6fce2bc77"
+      },
+      {
+        "seq": 12,
+        "ts": "2026-10-22 07:29:30",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L7",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope1_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope1_2025",
+          "intended": "812.5",
+          "status": "completed",
+          "value": "812.5"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "7XmqPIqUBv1HsfWuMe1AxkMGP8mmcYE35JsG7NVjBYc",
+        "prev_hash": "75a884f3600a79db0f25193d4f3150a7de933dee90afd716c3ec10b6fce2bc77",
+        "hash": "146556d6b83009db534a72ee948618851774f755f078de2840d381e99b6efa94"
+      },
+      {
+        "seq": 13,
+        "ts": "2026-10-22 07:29:31",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L8",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope2_location_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope2_location_2025",
+          "intended": "585",
+          "status": "completed",
+          "value": "585"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "n5-5Mz7XCY9nUYAD7wNJxrEaJtmifyb9klvHup-LH2g",
+        "prev_hash": "146556d6b83009db534a72ee948618851774f755f078de2840d381e99b6efa94",
+        "hash": "f955a5d682f64e8abc71286b5a79fb25906a93ba33050722fbf6494079f1926e"
+      },
+      {
+        "seq": 14,
+        "ts": "2026-10-22 07:29:32",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L9",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope2_market_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope2_market_2025",
+          "intended": "520",
+          "status": "completed",
+          "value": "520"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "op6YKId1AP29bVd5GjGSvavqg64ioBjlq8a3ie-gYTw",
+        "prev_hash": "f955a5d682f64e8abc71286b5a79fb25906a93ba33050722fbf6494079f1926e",
+        "hash": "868a42377733f46bbe9c2d8f55ebf19d83df2d10fcd15305c387b6cab1524e10"
+      },
+      {
+        "seq": 15,
+        "ts": "2026-10-22 07:29:33",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L10",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_purchased_goods_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_purchased_goods_2025",
+          "intended": "4050",
+          "status": "completed",
+          "value": "4050"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "R2WSeX0XZLceIOF_yk1MLmqMI62x68_3py9hCwZt66E",
+        "prev_hash": "868a42377733f46bbe9c2d8f55ebf19d83df2d10fcd15305c387b6cab1524e10",
+        "hash": "7d950660be2bb995e2d67c92aeddc9483b4b7d7a1f4ed74206af7aeb8e51af1d"
+      },
+      {
+        "seq": 16,
+        "ts": "2026-10-22 07:29:33",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L11",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_capital_goods_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_capital_goods_2025",
+          "intended": "820",
+          "status": "completed",
+          "value": "820"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "AKtXHFpGEQUuYizoEAuZru72u0m19HEIJwAeL_3Fu5g",
+        "prev_hash": "7d950660be2bb995e2d67c92aeddc9483b4b7d7a1f4ed74206af7aeb8e51af1d",
+        "hash": "668a3c1b0b8b770cbd02818103cd7894a04917d7303053e50dededd6f1ea4bf0"
+      },
+      {
+        "seq": 17,
+        "ts": "2026-10-22 07:29:34",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L12",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_fuel_energy_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_fuel_energy_2025",
+          "intended": "298",
+          "status": "completed",
+          "value": "298"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "X_PH2E5zliJ7lde1TcSKVTHhc8McaX0_t8CrKEF44Ks",
+        "prev_hash": "668a3c1b0b8b770cbd02818103cd7894a04917d7303053e50dededd6f1ea4bf0",
+        "hash": "a02f9a341b0aa24503b3bcf09be774c42c6d4cdc8db28642aac1c1cc2181bb92"
+      },
+      {
+        "seq": 18,
+        "ts": "2026-10-22 07:29:35",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L13",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_upstream_transport_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_upstream_transport_2025",
+          "intended": "545",
+          "status": "completed",
+          "value": "545"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "B7gHHZ0JfQCHsy-8GxsD0T2hNkJD-wI9jo342fJ4ieo",
+        "prev_hash": "a02f9a341b0aa24503b3bcf09be774c42c6d4cdc8db28642aac1c1cc2181bb92",
+        "hash": "ba64af03e844fb52ca6ad46f1988ecf0204bffa39aa84eb675e382d9d528520c"
+      },
+      {
+        "seq": 19,
+        "ts": "2026-10-22 07:29:35",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L14",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_waste_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_waste_2025",
+          "intended": "92",
+          "status": "completed",
+          "value": "92"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "Mi5k69pwW9AW8MK_2zoFVvlU-FtfHHt4oqj1AMXEnWo",
+        "prev_hash": "ba64af03e844fb52ca6ad46f1988ecf0204bffa39aa84eb675e382d9d528520c",
+        "hash": "62e9958ab10e93ed10b5469c41346fe9573eb62ab7e75947260b978fbfbc9255"
+      },
+      {
+        "seq": 20,
+        "ts": "2026-10-22 07:29:36",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L15",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_business_travel_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_business_travel_2025",
+          "intended": "165",
+          "status": "completed",
+          "value": "165"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "SszxlQCPoS1FaC9Tl20eYDhi-NK_6r5Z9gN_R1-3DRs",
+        "prev_hash": "62e9958ab10e93ed10b5469c41346fe9573eb62ab7e75947260b978fbfbc9255",
+        "hash": "ecc7424def4d8cd82e2ede738ea16c9712a863b90ced81feb88a4893693ec0d5"
+      },
+      {
+        "seq": 21,
+        "ts": "2026-10-22 07:29:37",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L16",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_commuting_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_ghg_scope3_commuting_2025",
+          "intended": "224",
+          "status": "completed",
+          "value": "224"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "VIq4ox4UeYglep1VNOSlJ6SIAHqG5gW2GLIwA3P05KI",
+        "prev_hash": "ecc7424def4d8cd82e2ede738ea16c9712a863b90ced81feb88a4893693ec0d5",
+        "hash": "bc13ae613eb2a05f2e2ec379cf5e65882adeb5b67a13d3cbcc4a6aededf40c01"
+      },
+      {
+        "seq": 22,
+        "ts": "2026-10-22 07:29:38",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L17",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_land_sealed_area_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_land_sealed_area_2025",
+          "intended": "12.6",
+          "status": "completed",
+          "value": "12.6"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "exSB3BbfP2mQG_JE6dCmeQlPL2asS4Ew5b4mt_fo54A",
+        "prev_hash": "bc13ae613eb2a05f2e2ec379cf5e65882adeb5b67a13d3cbcc4a6aededf40c01",
+        "hash": "d1689ff0c4144c28d2a720a02b8b5864f4f509709881f71894abcb95874fd55d"
+      },
+      {
+        "seq": 23,
+        "ts": "2026-10-22 07:29:39",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L18",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_land_nature_onsite_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_land_nature_onsite_2025",
+          "intended": "3.2",
+          "status": "completed",
+          "value": "3.2"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "shvy-CSGnjw0oEAT_bcMDJnJlYusdM8mrroINWdexs4",
+        "prev_hash": "d1689ff0c4144c28d2a720a02b8b5864f4f509709881f71894abcb95874fd55d",
+        "hash": "8f5dc66ce68a43232007ae8716d4baa6613eff962197df8de283cb0dd1a6eefd"
+      },
+      {
+        "seq": 24,
+        "ts": "2026-10-22 07:29:40",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L19",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_land_nature_offsite_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_land_nature_offsite_2025",
+          "intended": "1.6",
+          "status": "completed",
+          "value": "1.6"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "bgClH8N0fcwg3cg4Ex5QJbmXwZuUyrO8ZOnqPeeXJng",
+        "prev_hash": "8f5dc66ce68a43232007ae8716d4baa6613eff962197df8de283cb0dd1a6eefd",
+        "hash": "fe58daed9247ac4784dc3488bda53c641dbd8c76380e857bb8c78581a1e501c3"
+      },
+      {
+        "seq": 25,
+        "ts": "2026-10-22 07:29:41",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L20",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_land_use_total_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_land_use_total_2025",
+          "intended": "17.4",
+          "status": "completed",
+          "value": "17.4"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "h79rM4ZVBE0YGi2TJB707j69wWBDRDQjeWzpJgOR1hE",
+        "prev_hash": "fe58daed9247ac4784dc3488bda53c641dbd8c76380e857bb8c78581a1e501c3",
+        "hash": "7a05fbd6a0f628c3887be60f7e3733ddd58d1442b1a3248b307eb9ecbb7561c2"
+      },
+      {
+        "seq": 26,
+        "ts": "2026-10-22 07:29:41",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L21",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_water_withdrawn_total_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_water_withdrawn_total_2025",
+          "intended": "18100",
+          "status": "completed",
+          "value": "18100"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "ktBq-QTKhvZshZswtALEASip_YDb1UaITsb-6VVOoqA",
+        "prev_hash": "7a05fbd6a0f628c3887be60f7e3733ddd58d1442b1a3248b307eb9ecbb7561c2",
+        "hash": "f08c9407b93c2199ee1801e64bc0f065b07f622ea8adea19f712a85516081e4b"
+      },
+      {
+        "seq": 27,
+        "ts": "2026-10-22 07:29:42",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L22",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_water_withdrawn_high_stress_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_water_withdrawn_high_stress_2025",
+          "intended": "2300",
+          "status": "completed",
+          "value": "2300"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "cTaMwgRmVIOEhiaMq0Kg1CLPbdjLtgur_ztZ8F4MGUI",
+        "prev_hash": "f08c9407b93c2199ee1801e64bc0f065b07f622ea8adea19f712a85516081e4b",
+        "hash": "121e0e0fb548d60178ec53ab51052ed361ddc75c7138efaaa0eee8d9f77f4a96"
+      },
+      {
+        "seq": 28,
+        "ts": "2026-10-22 07:29:42",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L24",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_waste_recycled_type1_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_waste_recycled_type1_2025",
+          "intended": "5400",
+          "status": "completed",
+          "value": "5400"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "ydaplv6XeBQ-8-adjKo6XvadowMBr6s7HdsFiZMamNU",
+        "prev_hash": "121e0e0fb548d60178ec53ab51052ed361ddc75c7138efaaa0eee8d9f77f4a96",
+        "hash": "4095f3f9a2375720e18f17c53448640194a0fff090b600227d91406f225d361a"
+      },
+      {
+        "seq": 29,
+        "ts": "2026-10-22 07:29:43",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L25",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_waste_disposed_type1_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_waste_disposed_type1_2025",
+          "intended": "2000",
+          "status": "completed",
+          "value": "2000"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "kOumSv5Y0fFSpm_cyCa8KFy317iYCQPvBDRI4A4ZpuI",
+        "prev_hash": "4095f3f9a2375720e18f17c53448640194a0fff090b600227d91406f225d361a",
+        "hash": "7689930b51a55e65a4c923a1f2063a9f90029bb6e40d79983b282cc7f28226c1"
+      },
+      {
+        "seq": 30,
+        "ts": "2026-10-22 07:29:43",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L26",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_waste_recycled_type2_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_waste_recycled_type2_2025",
+          "intended": "910",
+          "status": "completed",
+          "value": "910"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "TMhSI0557jhtQixmTPTERZ9lpqYCJsFE0DXF-qo4XL4",
+        "prev_hash": "7689930b51a55e65a4c923a1f2063a9f90029bb6e40d79983b282cc7f28226c1",
+        "hash": "b31a94362342ce02942ff15783cd7354e539e671d0a78d3989f57d1aef1cdbb5"
+      },
+      {
+        "seq": 31,
+        "ts": "2026-10-22 07:29:44",
+        "tenant_id": "legacy-api-key",
+        "hash_version": 2,
+        "actor": "rb03-api-key-demo",
+        "tool": "workiva_confirm_change_set",
+        "action": "write",
+        "target": "[REDACTED]/[REDACTED]/L27",
+        "before_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_waste_disposed_type2_2025",
+          "value": ""
+        },
+        "after_json": {
+          "change_set_id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+          "field": "rpt_env_waste_disposed_type2_2025",
+          "intended": "415",
+          "status": "completed",
+          "value": "415"
+        },
+        "workiva_op_url": "[REDACTED_URL]",
+        "audit_id": "8grHL-Z3yBFLWA-nQvEUKodl05MnHVcnVOBTXJt3InY",
+        "prev_hash": "b31a94362342ce02942ff15783cd7354e539e671d0a78d3989f57d1aef1cdbb5",
+        "hash": "734459129418efdece20857011ad1f755b63c2cc7116b9820d34f7bd62d9eb50"
+      }
+    ],
+    "recipe_prepared": [
+      {
+        "tenant_id": "legacy-api-key",
+        "actor": "rb03-api-key-demo",
+        "section_id": "esg-environmental",
+        "facts_json": [
+          {
+            "Key": "energy_total",
+            "Label": "Total Energy Consumption",
+            "Unit": "MWh",
+            "Current": "1978",
+            "Prior": "2030",
+            "Change": "-52",
+            "ChangePct": "-2.56157635467980295566502463054187192118",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "1.98 GWh",
+              "2.03 GWh",
+              "-0.05 GWh",
+              "-3%",
+              "-2.6%",
+              "0.05 GWh",
+              "3%",
+              "2.6%"
+            ]
+          },
+          {
+            "Key": "electricity_renewable",
+            "Label": "Electricity (as reflected in utility billings) - Renewable",
+            "Unit": "MWh",
+            "Current": "490",
+            "Prior": "520",
+            "Change": "-30",
+            "ChangePct": "-5.76923076923076923076923076923076923077",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "490 MWh",
+              "520 MWh",
+              "-30 MWh",
+              "-6%",
+              "-5.8%",
+              "30 MWh",
+              "6%",
+              "5.8%"
+            ]
+          },
+          {
+            "Key": "electricity_non_renewable",
+            "Label": "Electricity (as reflected in utility billings) - Non-renewable",
+            "Unit": "MWh",
+            "Current": "1280",
+            "Prior": "1310",
+            "Change": "-30",
+            "ChangePct": "-2.29007633587786259541984732824427480916",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "1,280 MWh",
+              "1,310 MWh",
+              "-30 MWh",
+              "-2%",
+              "-2.3%",
+              "30 MWh",
+              "2%",
+              "2.3%"
+            ]
+          },
+          {
+            "Key": "self_generated_electricity_renewable",
+            "Label": "Self-generated electricity - Renewable",
+            "Unit": "MWh",
+            "Current": "150",
+            "Prior": "140",
+            "Change": "10",
+            "ChangePct": "7.14285714285714285714285714285714285714",
+            "Direction": "up",
+            "Material": false,
+            "Display": [
+              "150 MWh",
+              "140 MWh",
+              "10 MWh",
+              "7%",
+              "7.1%"
+            ]
+          },
+          {
+            "Key": "self_generated_electricity_non_renewable",
+            "Label": "Self-generated electricity - Non-renewable",
+            "Unit": "MWh",
+            "Current": "58",
+            "Prior": "60",
+            "Change": "-2",
+            "ChangePct": "-3.33333333333333333333333333333333333333",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "58 MWh",
+              "60 MWh",
+              "-2 MWh",
+              "-3%",
+              "-3.3%",
+              "2 MWh",
+              "3%",
+              "3.3%"
+            ]
+          },
+          {
+            "Key": "ghg_scope1",
+            "Label": "Gross Scope 1 GHG Emissions",
+            "Unit": "tCO2e",
+            "Current": "812.5",
+            "Prior": "845",
+            "Change": "-32.5",
+            "ChangePct": "-3.84615384615384615384615384615384615385",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "812.5 tCO2e",
+              "845.0 tCO2e",
+              "-32.5 tCO2e",
+              "-4%",
+              "-3.8%",
+              "32.5 tCO2e",
+              "4%",
+              "3.8%"
+            ]
+          },
+          {
+            "Key": "ghg_scope2_location",
+            "Label": "Gross Scope 2 location-based GHG Emissions",
+            "Unit": "tCO2e",
+            "Current": "585",
+            "Prior": "610",
+            "Change": "-25",
+            "ChangePct": "-4.09836065573770491803278688524590163934",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "585.0 tCO2e",
+              "610.0 tCO2e",
+              "-25.0 tCO2e",
+              "-4%",
+              "-4.1%",
+              "25.0 tCO2e",
+              "4%",
+              "4.1%"
+            ]
+          },
+          {
+            "Key": "ghg_scope2_market",
+            "Label": "Gross scope 2 market-based GHG Emissions - May (optional)",
+            "Unit": "tCO2e",
+            "Current": "520",
+            "Prior": "540",
+            "Change": "-20",
+            "ChangePct": "-3.7037037037037037037037037037037037037",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "520.0 tCO2e",
+              "540.0 tCO2e",
+              "-20.0 tCO2e",
+              "-4%",
+              "-3.7%",
+              "20.0 tCO2e",
+              "4%",
+              "3.7%"
+            ]
+          },
+          {
+            "Key": "ghg_scope3_purchased_goods",
+            "Label": "1. Purchased Goods and Services",
+            "Unit": "tCO2e",
+            "Current": "4050",
+            "Prior": "4200",
+            "Change": "-150",
+            "ChangePct": "-3.57142857142857142857142857142857142857",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "4,050.0 tCO2e",
+              "4,200.0 tCO2e",
+              "-150.0 tCO2e",
+              "-4%",
+              "-3.6%",
+              "150.0 tCO2e",
+              "4%",
+              "3.6%"
+            ]
+          },
+          {
+            "Key": "ghg_scope3_capital_goods",
+            "Label": "2. Capital Goods",
+            "Unit": "tCO2e",
+            "Current": "820",
+            "Prior": "780",
+            "Change": "40",
+            "ChangePct": "5.12820512820512820512820512820512820513",
+            "Direction": "up",
+            "Material": false,
+            "Display": [
+              "820.0 tCO2e",
+              "780.0 tCO2e",
+              "40.0 tCO2e",
+              "5%",
+              "5.1%"
+            ]
+          },
+          {
+            "Key": "ghg_scope3_fuel_energy",
+            "Label": "3. Fuel- and Energy-Related Activities (Not Included in Scope 1 or Scope 2)",
+            "Unit": "tCO2e",
+            "Current": "298",
+            "Prior": "310",
+            "Change": "-12",
+            "ChangePct": "-3.87096774193548387096774193548387096774",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "298.0 tCO2e",
+              "310.0 tCO2e",
+              "-12.0 tCO2e",
+              "-4%",
+              "-3.9%",
+              "12.0 tCO2e",
+              "4%",
+              "3.9%"
+            ]
+          },
+          {
+            "Key": "ghg_scope3_upstream_transport",
+            "Label": "4. Upstream Transportation and Distribution",
+            "Unit": "tCO2e",
+            "Current": "545",
+            "Prior": "520",
+            "Change": "25",
+            "ChangePct": "4.80769230769230769230769230769230769231",
+            "Direction": "up",
+            "Material": false,
+            "Display": [
+              "545.0 tCO2e",
+              "520.0 tCO2e",
+              "25.0 tCO2e",
+              "5%",
+              "4.8%"
+            ]
+          },
+          {
+            "Key": "ghg_scope3_waste",
+            "Label": "5. Waste Generated in Operations",
+            "Unit": "tCO2e",
+            "Current": "92",
+            "Prior": "95",
+            "Change": "-3",
+            "ChangePct": "-3.15789473684210526315789473684210526316",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "92.0 tCO2e",
+              "95.0 tCO2e",
+              "-3.0 tCO2e",
+              "-3%",
+              "-3.2%",
+              "3.0 tCO2e",
+              "3%",
+              "3.2%"
+            ]
+          },
+          {
+            "Key": "ghg_scope3_business_travel",
+            "Label": "6. Business Travel",
+            "Unit": "tCO2e",
+            "Current": "165",
+            "Prior": "140",
+            "Change": "25",
+            "ChangePct": "17.85714285714285714285714285714285714286",
+            "Direction": "up",
+            "Material": true,
+            "Display": [
+              "165.0 tCO2e",
+              "140.0 tCO2e",
+              "25.0 tCO2e",
+              "18%",
+              "17.9%"
+            ]
+          },
+          {
+            "Key": "ghg_scope3_commuting",
+            "Label": "7. Employee Commuting",
+            "Unit": "tCO2e",
+            "Current": "224",
+            "Prior": "230",
+            "Change": "-6",
+            "ChangePct": "-2.6086956521739130434782608695652173913",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "224.0 tCO2e",
+              "230.0 tCO2e",
+              "-6.0 tCO2e",
+              "-3%",
+              "-2.6%",
+              "6.0 tCO2e",
+              "3%",
+              "2.6%"
+            ]
+          },
+          {
+            "Key": "land_sealed_area",
+            "Label": "Total sealed area",
+            "Unit": "ha",
+            "Current": "12.6",
+            "Prior": "12.4",
+            "Change": "0.2",
+            "ChangePct": "1.61290322580645161290322580645161290323",
+            "Direction": "up",
+            "Material": false,
+            "Display": [
+              "12.6 ha",
+              "12.4 ha",
+              "0.2 ha",
+              "2%",
+              "1.6%"
+            ]
+          },
+          {
+            "Key": "land_nature_onsite",
+            "Label": "Total nature-oriented area on-site",
+            "Unit": "ha",
+            "Current": "3.2",
+            "Prior": "3.1",
+            "Change": "0.1",
+            "ChangePct": "3.22580645161290322580645161290322580645",
+            "Direction": "up",
+            "Material": false,
+            "Display": [
+              "3.2 ha",
+              "3.1 ha",
+              "0.1 ha",
+              "3%",
+              "3.2%"
+            ]
+          },
+          {
+            "Key": "land_nature_offsite",
+            "Label": "Total nature-oriented area off-site",
+            "Unit": "ha",
+            "Current": "1.6",
+            "Prior": "1.5",
+            "Change": "0.1",
+            "ChangePct": "6.66666666666666666666666666666666666667",
+            "Direction": "up",
+            "Material": false,
+            "Display": [
+              "1.6 ha",
+              "1.5 ha",
+              "0.1 ha",
+              "7%",
+              "6.7%"
+            ]
+          },
+          {
+            "Key": "land_use_total",
+            "Label": "Total use of land",
+            "Unit": "ha",
+            "Current": "17.4",
+            "Prior": "17",
+            "Change": "0.4",
+            "ChangePct": "2.35294117647058823529411764705882352941",
+            "Direction": "up",
+            "Material": false,
+            "Display": [
+              "17.4 ha",
+              "17.0 ha",
+              "0.4 ha",
+              "2%",
+              "2.4%"
+            ]
+          },
+          {
+            "Key": "water_withdrawn_total",
+            "Label": "Total amount of water withdrawn from all sites (cubic meters, m³)",
+            "Unit": "m3",
+            "Current": "18100",
+            "Prior": "18500",
+            "Change": "-400",
+            "ChangePct": "-2.16216216216216216216216216216216216216",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "18,100 m3",
+              "18,500 m3",
+              "-400 m3",
+              "-2%",
+              "-2.2%",
+              "400 m3",
+              "2%",
+              "2.2%"
+            ]
+          },
+          {
+            "Key": "water_withdrawn_high_stress",
+            "Label": "Amount of water withdrawn at sites located in areas of high water-stress",
+            "Unit": "m3",
+            "Current": "2300",
+            "Prior": "2400",
+            "Change": "-100",
+            "ChangePct": "-4.16666666666666666666666666666666666667",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "2,300 m3",
+              "2,400 m3",
+              "-100 m3",
+              "-4%",
+              "-4.2%",
+              "100 m3",
+              "4%",
+              "4.2%"
+            ]
+          },
+          {
+            "Key": "waste_recycled_type1",
+            "Label": "Waste diverted to recycle or reuse - waste type 1",
+            "Unit": "kg",
+            "Current": "5400",
+            "Prior": "5200",
+            "Change": "200",
+            "ChangePct": "3.84615384615384615384615384615384615385",
+            "Direction": "up",
+            "Material": false,
+            "Display": [
+              "5,400 kg",
+              "5,200 kg",
+              "200 kg",
+              "4%",
+              "3.8%"
+            ]
+          },
+          {
+            "Key": "waste_disposed_type1",
+            "Label": "Waste directed to disposal - waste type 1",
+            "Unit": "kg",
+            "Current": "2000",
+            "Prior": "2100",
+            "Change": "-100",
+            "ChangePct": "-4.76190476190476190476190476190476190476",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "2,000 kg",
+              "2,100 kg",
+              "-100 kg",
+              "-5%",
+              "-4.8%",
+              "100 kg",
+              "5%",
+              "4.8%"
+            ]
+          },
+          {
+            "Key": "waste_recycled_type2",
+            "Label": "Waste diverted to recycle or reuse - waste type 2",
+            "Unit": "kg",
+            "Current": "910",
+            "Prior": "880",
+            "Change": "30",
+            "ChangePct": "3.40909090909090909090909090909090909091",
+            "Direction": "up",
+            "Material": false,
+            "Display": [
+              "910 kg",
+              "880 kg",
+              "30 kg",
+              "3%",
+              "3.4%"
+            ]
+          },
+          {
+            "Key": "waste_disposed_type2",
+            "Label": "Waste directed to disposal - waste type 2",
+            "Unit": "kg",
+            "Current": "415",
+            "Prior": "430",
+            "Change": "-15",
+            "ChangePct": "-3.48837209302325581395348837209302325581",
+            "Direction": "down",
+            "Material": false,
+            "Display": [
+              "415 kg",
+              "430 kg",
+              "-15 kg",
+              "-3%",
+              "-3.5%",
+              "15 kg",
+              "3%",
+              "3.5%"
+            ]
+          }
+        ],
+        "verbatim_json": [
+          {
+            "ID": "env-policy",
+            "Title": "Environmental policy statement",
+            "Text": "Demo Harbour Components commits to reducing the environmental footprint of its plants and offices, to buying more of its electricity from renewable sources, and to managing waste and water with care. Each site reviews its environmental performance every year and reports it openly to its stakeholders.\n"
+          }
+        ],
+        "prepared_at": "2026-10-22T07:28:02.896633464Z"
+      }
+    ],
+    "change_set_pending": [
+      {
+        "tenant_id": "legacy-api-key",
+        "id": "3zBMWkxdCk8kvECrVEC4gcaFmt_DQHnafOsCQC3VjOQ",
+        "actor": "rb03-api-key-demo",
+        "required_permission": "workiva.write.confirm",
+        "expires_at": 1792654032996442822,
+        "consumed": 0,
+        "items_json": [
+          {
+            "FieldName": "rpt_env_energy_total_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L2",
+            "Before": "",
+            "After": "1978",
+            "Source": "src_env_energy_total",
+            "FieldID": 43
+          },
+          {
+            "FieldName": "rpt_env_electricity_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L3",
+            "Before": "",
+            "After": "490",
+            "Source": "src_env_electricity_renewable",
+            "FieldID": 44
+          },
+          {
+            "FieldName": "rpt_env_electricity_non_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L4",
+            "Before": "",
+            "After": "1280",
+            "Source": "src_env_electricity_non_renewable",
+            "FieldID": 45
+          },
+          {
+            "FieldName": "rpt_env_self_generated_electricity_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L5",
+            "Before": "",
+            "After": "150",
+            "Source": "src_env_self_generated_electricity_renewable",
+            "FieldID": 46
+          },
+          {
+            "FieldName": "rpt_env_self_generated_electricity_non_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L6",
+            "Before": "",
+            "After": "58",
+            "Source": "src_env_self_generated_electricity_non_renewable",
+            "FieldID": 47
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope1_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L7",
+            "Before": "",
+            "After": "812.5",
+            "Source": "src_env_ghg_scope1",
+            "FieldID": 48
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope2_location_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L8",
+            "Before": "",
+            "After": "585",
+            "Source": "src_env_ghg_scope2_location",
+            "FieldID": 49
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope2_market_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L9",
+            "Before": "",
+            "After": "520",
+            "Source": "src_env_ghg_scope2_market",
+            "FieldID": 50
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_purchased_goods_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L10",
+            "Before": "",
+            "After": "4050",
+            "Source": "src_env_ghg_scope3_purchased_goods",
+            "FieldID": 51
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_capital_goods_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L11",
+            "Before": "",
+            "After": "820",
+            "Source": "src_env_ghg_scope3_capital_goods",
+            "FieldID": 52
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_fuel_energy_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L12",
+            "Before": "",
+            "After": "298",
+            "Source": "src_env_ghg_scope3_fuel_energy",
+            "FieldID": 53
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_upstream_transport_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L13",
+            "Before": "",
+            "After": "545",
+            "Source": "src_env_ghg_scope3_upstream_transport",
+            "FieldID": 54
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_waste_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L14",
+            "Before": "",
+            "After": "92",
+            "Source": "src_env_ghg_scope3_waste",
+            "FieldID": 55
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_business_travel_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L15",
+            "Before": "",
+            "After": "165",
+            "Source": "src_env_ghg_scope3_business_travel",
+            "FieldID": 56
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_commuting_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L16",
+            "Before": "",
+            "After": "224",
+            "Source": "src_env_ghg_scope3_commuting",
+            "FieldID": 57
+          },
+          {
+            "FieldName": "rpt_env_land_sealed_area_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L17",
+            "Before": "",
+            "After": "12.6",
+            "Source": "src_env_land_sealed_area",
+            "FieldID": 58
+          },
+          {
+            "FieldName": "rpt_env_land_nature_onsite_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L18",
+            "Before": "",
+            "After": "3.2",
+            "Source": "src_env_land_nature_onsite",
+            "FieldID": 59
+          },
+          {
+            "FieldName": "rpt_env_land_nature_offsite_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L19",
+            "Before": "",
+            "After": "1.6",
+            "Source": "src_env_land_nature_offsite",
+            "FieldID": 60
+          },
+          {
+            "FieldName": "rpt_env_land_use_total_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L20",
+            "Before": "",
+            "After": "17.4",
+            "Source": "src_env_land_use_total",
+            "FieldID": 61
+          },
+          {
+            "FieldName": "rpt_env_water_withdrawn_total_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L21",
+            "Before": "",
+            "After": "18100",
+            "Source": "src_env_water_withdrawn_total",
+            "FieldID": 62
+          },
+          {
+            "FieldName": "rpt_env_water_withdrawn_high_stress_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L22",
+            "Before": "",
+            "After": "2300",
+            "Source": "src_env_water_withdrawn_high_stress",
+            "FieldID": 63
+          },
+          {
+            "FieldName": "rpt_env_waste_recycled_type1_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L24",
+            "Before": "",
+            "After": "5400",
+            "Source": "src_env_waste_recycled_type1",
+            "FieldID": 65
+          },
+          {
+            "FieldName": "rpt_env_waste_disposed_type1_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L25",
+            "Before": "",
+            "After": "2000",
+            "Source": "src_env_waste_disposed_type1",
+            "FieldID": 66
+          },
+          {
+            "FieldName": "rpt_env_waste_recycled_type2_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L26",
+            "Before": "",
+            "After": "910",
+            "Source": "src_env_waste_recycled_type2",
+            "FieldID": 67
+          },
+          {
+            "FieldName": "rpt_env_waste_disposed_type2_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L27",
+            "Before": "",
+            "After": "415",
+            "Source": "src_env_waste_disposed_type2",
+            "FieldID": 68
+          }
+        ]
+      },
+      {
+        "tenant_id": "legacy-api-key",
+        "id": "H1NOMyEJHih72oAwn4IAsyVz9ZfeDSUmkuW5o5rt_xU",
+        "actor": "rb03-api-key-demo",
+        "required_permission": "workiva.write.confirm",
+        "expires_at": 1792654243514670062,
+        "consumed": 0,
+        "items_json": [
+          {
+            "FieldName": "rpt_env_energy_total_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L2",
+            "Before": "",
+            "After": "1978",
+            "Source": "src_env_energy_total",
+            "FieldID": 43
+          },
+          {
+            "FieldName": "rpt_env_electricity_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L3",
+            "Before": "",
+            "After": "490",
+            "Source": "src_env_electricity_renewable",
+            "FieldID": 44
+          },
+          {
+            "FieldName": "rpt_env_electricity_non_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L4",
+            "Before": "",
+            "After": "1280",
+            "Source": "src_env_electricity_non_renewable",
+            "FieldID": 45
+          },
+          {
+            "FieldName": "rpt_env_self_generated_electricity_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L5",
+            "Before": "",
+            "After": "150",
+            "Source": "src_env_self_generated_electricity_renewable",
+            "FieldID": 46
+          },
+          {
+            "FieldName": "rpt_env_self_generated_electricity_non_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L6",
+            "Before": "",
+            "After": "58",
+            "Source": "src_env_self_generated_electricity_non_renewable",
+            "FieldID": 47
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope1_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L7",
+            "Before": "",
+            "After": "812.5",
+            "Source": "src_env_ghg_scope1",
+            "FieldID": 48
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope2_location_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L8",
+            "Before": "",
+            "After": "585",
+            "Source": "src_env_ghg_scope2_location",
+            "FieldID": 49
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope2_market_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L9",
+            "Before": "",
+            "After": "520",
+            "Source": "src_env_ghg_scope2_market",
+            "FieldID": 50
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_purchased_goods_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L10",
+            "Before": "",
+            "After": "4050",
+            "Source": "src_env_ghg_scope3_purchased_goods",
+            "FieldID": 51
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_capital_goods_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L11",
+            "Before": "",
+            "After": "820",
+            "Source": "src_env_ghg_scope3_capital_goods",
+            "FieldID": 52
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_fuel_energy_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L12",
+            "Before": "",
+            "After": "298",
+            "Source": "src_env_ghg_scope3_fuel_energy",
+            "FieldID": 53
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_upstream_transport_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L13",
+            "Before": "",
+            "After": "545",
+            "Source": "src_env_ghg_scope3_upstream_transport",
+            "FieldID": 54
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_waste_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L14",
+            "Before": "",
+            "After": "92",
+            "Source": "src_env_ghg_scope3_waste",
+            "FieldID": 55
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_business_travel_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L15",
+            "Before": "",
+            "After": "165",
+            "Source": "src_env_ghg_scope3_business_travel",
+            "FieldID": 56
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_commuting_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L16",
+            "Before": "",
+            "After": "224",
+            "Source": "src_env_ghg_scope3_commuting",
+            "FieldID": 57
+          },
+          {
+            "FieldName": "rpt_env_land_sealed_area_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L17",
+            "Before": "",
+            "After": "12.6",
+            "Source": "src_env_land_sealed_area",
+            "FieldID": 58
+          },
+          {
+            "FieldName": "rpt_env_land_nature_onsite_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L18",
+            "Before": "",
+            "After": "3.2",
+            "Source": "src_env_land_nature_onsite",
+            "FieldID": 59
+          },
+          {
+            "FieldName": "rpt_env_land_nature_offsite_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L19",
+            "Before": "",
+            "After": "1.6",
+            "Source": "src_env_land_nature_offsite",
+            "FieldID": 60
+          },
+          {
+            "FieldName": "rpt_env_land_use_total_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L20",
+            "Before": "",
+            "After": "17.4",
+            "Source": "src_env_land_use_total",
+            "FieldID": 61
+          },
+          {
+            "FieldName": "rpt_env_water_withdrawn_total_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L21",
+            "Before": "",
+            "After": "18100",
+            "Source": "src_env_water_withdrawn_total",
+            "FieldID": 62
+          },
+          {
+            "FieldName": "rpt_env_water_withdrawn_high_stress_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L22",
+            "Before": "",
+            "After": "2300",
+            "Source": "src_env_water_withdrawn_high_stress",
+            "FieldID": 63
+          },
+          {
+            "FieldName": "rpt_env_waste_recycled_type1_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L24",
+            "Before": "",
+            "After": "5400",
+            "Source": "src_env_waste_recycled_type1",
+            "FieldID": 65
+          },
+          {
+            "FieldName": "rpt_env_waste_disposed_type1_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L25",
+            "Before": "",
+            "After": "2000",
+            "Source": "src_env_waste_disposed_type1",
+            "FieldID": 66
+          },
+          {
+            "FieldName": "rpt_env_waste_recycled_type2_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L26",
+            "Before": "",
+            "After": "910",
+            "Source": "src_env_waste_recycled_type2",
+            "FieldID": 67
+          },
+          {
+            "FieldName": "rpt_env_waste_disposed_type2_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L27",
+            "Before": "",
+            "After": "415",
+            "Source": "src_env_waste_disposed_type2",
+            "FieldID": 68
+          }
+        ]
+      },
+      {
+        "tenant_id": "legacy-api-key",
+        "id": "CwS2J0LkSwZpwjHNFqrky3oOVl_oJTuWXjFKIE_aQFk",
+        "actor": "rb03-api-key-demo",
+        "required_permission": "workiva.write.confirm",
+        "expires_at": 1792654475326289148,
+        "consumed": 0,
+        "items_json": [
+          {
+            "FieldName": "rpt_env_energy_total_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L2",
+            "Before": "",
+            "After": "1978",
+            "Source": "src_env_energy_total",
+            "FieldID": 43
+          },
+          {
+            "FieldName": "rpt_env_electricity_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L3",
+            "Before": "",
+            "After": "490",
+            "Source": "src_env_electricity_renewable",
+            "FieldID": 44
+          },
+          {
+            "FieldName": "rpt_env_electricity_non_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L4",
+            "Before": "",
+            "After": "1280",
+            "Source": "src_env_electricity_non_renewable",
+            "FieldID": 45
+          },
+          {
+            "FieldName": "rpt_env_self_generated_electricity_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L5",
+            "Before": "",
+            "After": "150",
+            "Source": "src_env_self_generated_electricity_renewable",
+            "FieldID": 46
+          },
+          {
+            "FieldName": "rpt_env_self_generated_electricity_non_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L6",
+            "Before": "",
+            "After": "58",
+            "Source": "src_env_self_generated_electricity_non_renewable",
+            "FieldID": 47
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope1_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L7",
+            "Before": "",
+            "After": "812.5",
+            "Source": "src_env_ghg_scope1",
+            "FieldID": 48
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope2_location_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L8",
+            "Before": "",
+            "After": "585",
+            "Source": "src_env_ghg_scope2_location",
+            "FieldID": 49
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope2_market_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L9",
+            "Before": "",
+            "After": "520",
+            "Source": "src_env_ghg_scope2_market",
+            "FieldID": 50
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_purchased_goods_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L10",
+            "Before": "",
+            "After": "4050",
+            "Source": "src_env_ghg_scope3_purchased_goods",
+            "FieldID": 51
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_capital_goods_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L11",
+            "Before": "",
+            "After": "820",
+            "Source": "src_env_ghg_scope3_capital_goods",
+            "FieldID": 52
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_fuel_energy_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L12",
+            "Before": "",
+            "After": "298",
+            "Source": "src_env_ghg_scope3_fuel_energy",
+            "FieldID": 53
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_upstream_transport_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L13",
+            "Before": "",
+            "After": "545",
+            "Source": "src_env_ghg_scope3_upstream_transport",
+            "FieldID": 54
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_waste_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L14",
+            "Before": "",
+            "After": "92",
+            "Source": "src_env_ghg_scope3_waste",
+            "FieldID": 55
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_business_travel_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L15",
+            "Before": "",
+            "After": "165",
+            "Source": "src_env_ghg_scope3_business_travel",
+            "FieldID": 56
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_commuting_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L16",
+            "Before": "",
+            "After": "224",
+            "Source": "src_env_ghg_scope3_commuting",
+            "FieldID": 57
+          },
+          {
+            "FieldName": "rpt_env_land_sealed_area_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L17",
+            "Before": "",
+            "After": "12.6",
+            "Source": "src_env_land_sealed_area",
+            "FieldID": 58
+          },
+          {
+            "FieldName": "rpt_env_land_nature_onsite_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L18",
+            "Before": "",
+            "After": "3.2",
+            "Source": "src_env_land_nature_onsite",
+            "FieldID": 59
+          },
+          {
+            "FieldName": "rpt_env_land_nature_offsite_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L19",
+            "Before": "",
+            "After": "1.6",
+            "Source": "src_env_land_nature_offsite",
+            "FieldID": 60
+          },
+          {
+            "FieldName": "rpt_env_land_use_total_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L20",
+            "Before": "",
+            "After": "17.4",
+            "Source": "src_env_land_use_total",
+            "FieldID": 61
+          },
+          {
+            "FieldName": "rpt_env_water_withdrawn_total_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L21",
+            "Before": "",
+            "After": "18100",
+            "Source": "src_env_water_withdrawn_total",
+            "FieldID": 62
+          },
+          {
+            "FieldName": "rpt_env_water_withdrawn_high_stress_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L22",
+            "Before": "",
+            "After": "2300",
+            "Source": "src_env_water_withdrawn_high_stress",
+            "FieldID": 63
+          },
+          {
+            "FieldName": "rpt_env_waste_recycled_type1_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L24",
+            "Before": "",
+            "After": "5400",
+            "Source": "src_env_waste_recycled_type1",
+            "FieldID": 65
+          },
+          {
+            "FieldName": "rpt_env_waste_disposed_type1_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L25",
+            "Before": "",
+            "After": "2000",
+            "Source": "src_env_waste_disposed_type1",
+            "FieldID": 66
+          },
+          {
+            "FieldName": "rpt_env_waste_recycled_type2_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L26",
+            "Before": "",
+            "After": "910",
+            "Source": "src_env_waste_recycled_type2",
+            "FieldID": 67
+          },
+          {
+            "FieldName": "rpt_env_waste_disposed_type2_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L27",
+            "Before": "",
+            "After": "415",
+            "Source": "src_env_waste_disposed_type2",
+            "FieldID": 68
+          }
+        ]
+      },
+      {
+        "tenant_id": "legacy-api-key",
+        "id": "vB9v2I7tfTUq9O09zd57QpH-2DuG6rvLUEpFl0eE_ZQ",
+        "actor": "rb03-api-key-demo",
+        "required_permission": "workiva.write.confirm",
+        "expires_at": 1792654667555873246,
+        "consumed": 1,
+        "items_json": [
+          {
+            "FieldName": "rpt_env_energy_total_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L2",
+            "Before": "",
+            "After": "1978",
+            "Source": "src_env_energy_total",
+            "FieldID": 43
+          },
+          {
+            "FieldName": "rpt_env_electricity_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L3",
+            "Before": "",
+            "After": "490",
+            "Source": "src_env_electricity_renewable",
+            "FieldID": 44
+          },
+          {
+            "FieldName": "rpt_env_electricity_non_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L4",
+            "Before": "",
+            "After": "1280",
+            "Source": "src_env_electricity_non_renewable",
+            "FieldID": 45
+          },
+          {
+            "FieldName": "rpt_env_self_generated_electricity_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L5",
+            "Before": "",
+            "After": "150",
+            "Source": "src_env_self_generated_electricity_renewable",
+            "FieldID": 46
+          },
+          {
+            "FieldName": "rpt_env_self_generated_electricity_non_renewable_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L6",
+            "Before": "",
+            "After": "58",
+            "Source": "src_env_self_generated_electricity_non_renewable",
+            "FieldID": 47
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope1_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L7",
+            "Before": "",
+            "After": "812.5",
+            "Source": "src_env_ghg_scope1",
+            "FieldID": 48
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope2_location_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L8",
+            "Before": "",
+            "After": "585",
+            "Source": "src_env_ghg_scope2_location",
+            "FieldID": 49
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope2_market_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L9",
+            "Before": "",
+            "After": "520",
+            "Source": "src_env_ghg_scope2_market",
+            "FieldID": 50
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_purchased_goods_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L10",
+            "Before": "",
+            "After": "4050",
+            "Source": "src_env_ghg_scope3_purchased_goods",
+            "FieldID": 51
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_capital_goods_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L11",
+            "Before": "",
+            "After": "820",
+            "Source": "src_env_ghg_scope3_capital_goods",
+            "FieldID": 52
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_fuel_energy_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L12",
+            "Before": "",
+            "After": "298",
+            "Source": "src_env_ghg_scope3_fuel_energy",
+            "FieldID": 53
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_upstream_transport_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L13",
+            "Before": "",
+            "After": "545",
+            "Source": "src_env_ghg_scope3_upstream_transport",
+            "FieldID": 54
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_waste_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L14",
+            "Before": "",
+            "After": "92",
+            "Source": "src_env_ghg_scope3_waste",
+            "FieldID": 55
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_business_travel_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L15",
+            "Before": "",
+            "After": "165",
+            "Source": "src_env_ghg_scope3_business_travel",
+            "FieldID": 56
+          },
+          {
+            "FieldName": "rpt_env_ghg_scope3_commuting_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L16",
+            "Before": "",
+            "After": "224",
+            "Source": "src_env_ghg_scope3_commuting",
+            "FieldID": 57
+          },
+          {
+            "FieldName": "rpt_env_land_sealed_area_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L17",
+            "Before": "",
+            "After": "12.6",
+            "Source": "src_env_land_sealed_area",
+            "FieldID": 58
+          },
+          {
+            "FieldName": "rpt_env_land_nature_onsite_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L18",
+            "Before": "",
+            "After": "3.2",
+            "Source": "src_env_land_nature_onsite",
+            "FieldID": 59
+          },
+          {
+            "FieldName": "rpt_env_land_nature_offsite_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L19",
+            "Before": "",
+            "After": "1.6",
+            "Source": "src_env_land_nature_offsite",
+            "FieldID": 60
+          },
+          {
+            "FieldName": "rpt_env_land_use_total_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L20",
+            "Before": "",
+            "After": "17.4",
+            "Source": "src_env_land_use_total",
+            "FieldID": 61
+          },
+          {
+            "FieldName": "rpt_env_water_withdrawn_total_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L21",
+            "Before": "",
+            "After": "18100",
+            "Source": "src_env_water_withdrawn_total",
+            "FieldID": 62
+          },
+          {
+            "FieldName": "rpt_env_water_withdrawn_high_stress_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L22",
+            "Before": "",
+            "After": "2300",
+            "Source": "src_env_water_withdrawn_high_stress",
+            "FieldID": 63
+          },
+          {
+            "FieldName": "rpt_env_waste_recycled_type1_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L24",
+            "Before": "",
+            "After": "5400",
+            "Source": "src_env_waste_recycled_type1",
+            "FieldID": 65
+          },
+          {
+            "FieldName": "rpt_env_waste_disposed_type1_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L25",
+            "Before": "",
+            "After": "2000",
+            "Source": "src_env_waste_disposed_type1",
+            "FieldID": 66
+          },
+          {
+            "FieldName": "rpt_env_waste_recycled_type2_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L26",
+            "Before": "",
+            "After": "910",
+            "Source": "src_env_waste_recycled_type2",
+            "FieldID": 67
+          },
+          {
+            "FieldName": "rpt_env_waste_disposed_type2_2025",
+            "SpreadsheetID": "[REDACTED]",
+            "SheetID": "[REDACTED]",
+            "Range": "L27",
+            "Before": "",
+            "After": "415",
+            "Source": "src_env_waste_disposed_type2",
+            "FieldID": 68
+          }
+        ]
+      }
+    ],
+    "section_text_previews": []
+  }
+}

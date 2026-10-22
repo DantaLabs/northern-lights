@@ -1,0 +1,38 @@
+{
+  "selected_final_attempts": {
+    "Act 1": {
+      "first_send_utc": "2026-10-22T09:32:19.286638+00:00",
+      "last_settled_utc": "2026-10-22T09:34:54.226990+00:00",
+      "seconds": 154.94,
+      "prompt_response_seconds": 102.635
+    },
+    "Act 2": {
+      "first_send_utc": "2026-10-22T08:43:53.551260+00:00",
+      "last_settled_utc": "2026-10-22T08:45:35.971879+00:00",
+      "seconds": 102.421,
+      "prompt_response_seconds": 102.421
+    },
+    "Act 3": {
+      "first_send_utc": "2026-10-22T08:47:42.650987+00:00",
+      "last_settled_utc": "2026-10-22T08:51:34.950277+00:00",
+      "seconds": 232.299,
+      "prompt_response_seconds": 203.186
+    },
+    "Act 4": {
+      "first_send_utc": "2026-10-22T08:57:27.524095+00:00",
+      "last_settled_utc": "2026-10-22T09:08:32.864140+00:00",
+      "seconds": 665.34,
+      "prompt_response_seconds": 415.24
+    },
+    "Act 5": {
+      "first_send_utc": "2026-10-22T09:08:43.700778+00:00",
+      "last_settled_utc": "2026-10-22T09:23:05.532362+00:00",
+      "seconds": 861.832,
+      "prompt_response_seconds": 649.4
+    }
+  },
+  "sum_act_intervals_seconds": 2016.832,
+  "selected_response_seconds": 1472.882,
+  "eight_minutes": "FAIL",
+  "note": "Act intervals include operator gaps and social cause wait; sum of per-act intervals excludes setup/resets and inter-act sign-in wait. All-attempt envelopes in response-times.md overlap across rehearsals and must not be summed. All38 attempts settled;23 over30s. Earlier polling chunk observations can include observation gaps; stale-connection402.315s includes repair."
+}

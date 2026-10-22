@@ -143,7 +143,12 @@ Prompt 5.2: `Yes, approve these changes, then draft the narrative and add the po
 
 Correct answer contains:
 - Tool workiva_confirm_change_set with 16 items, each `completed`
-- Then a draft that leads with the female training hours rise of 16% to 25.5 hours
+- Before drafting, ask the analyst for the cause of the material training-hours increase (style rule 5); do not invent a cause
+
+Prompt 5.2a (analyst's synthetic answer, supplied by Tom in RB-03): `Additional compliance training increased training hours.`
+
+Correct answer contains:
+- Then a draft that leads with the female training hours rise of 16% to 25.5 hours and uses the analyst's supplied cause
 - The draft groups the other indicators without numbers
 - A block of kind `verbatim` with verbatim_id `social-policy` unchanged
 - The preview `summary`

@@ -1,0 +1,14 @@
+{
+  "result": "FAIL",
+  "verified_rows": 33,
+  "expected_rows": 43,
+  "missing_rows": 10,
+  "front_prompt": "4.3h",
+  "rear_prompt": "4.3i",
+  "completed_rear_prompt": "4.3j",
+  "completed_rear_seconds": 37.821,
+  "observation": "Exact selected tabs each displayed 0 user groups and 1 greeting bot group; neither pending prompt/history was visible. No sign-in or error text was observed.",
+  "cause": "Not established; browser/application conversation state or harness handling requires separate diagnosis.",
+  "action": "Terminated local polling helper; no prompt resent, no confirmation authorised. Five cumulative Act 4 fix rounds exhausted.",
+  "timing": "Unsettled prompts have no settled time or response seconds; observed wait is reported separately."
+}

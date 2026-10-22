@@ -1,0 +1,59 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 3:29 PM
+7 minutes ago
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+Prepare the environmental section.
+
+You said: Prepare the environmental section.
+Bot attached:
+
+Let's get you connected first, and then I can find that info for you. ​Open connection manager​ to verify your credentials.
+
+Once the connection is ready, retry your request.
+
+Retry
+Cancel
+Sent at October 22 at 3:30 PM
+Bot said: 1 attachment.
+Bot said:
+
+Findings
+
+Missing | High
+
+Water discharge from undertaking production processes (m3)
+Message: required but has no value.
+Prior value: 14,200 m3 (2024)
+
+Out of range | High
+
+Electricity (as reflected in utility billings) - Renewable
+Current: 490 MWh
+Prior: 520 MWh
+Message: 490 is below the minimum of 500.
+
+Material change | Medium
+
+6. Business Travel
+Current: 165.0 tCO2e
+Prior: 140.0 tCO2e
+Message: changed by 17.9% from the prior period.
+
+Change set summary
+
+25 environmental fields are prepared for update and are awaiting confirmation, including energy consumption, electricity, GHG emissions, land use, water withdrawal and waste metrics for 2025.
+
+Approve these changes?
+
+Like
+Dislike
+Sent at October 22 at 3:36 PM
+Just now
+Bot said: Findings Missing | High Water discharge from undertaking production processes (m3) Message: required but has no value. Prior value: 14,200 m3 (2024) Out of range | High Electricity (as reflected in utility billings) - Renewable Current: 490 MWh Prior: 520 MWh Message: 490 is below the minimum of 500. Material change | Medium 6. Business Travel Current: 165.0 tCO2e Prior: 140.0 tCO2e Message: changed by 17.9% from the prior period. Change set summary 25 environmental fields are prepared for update and are awaiting confirmation, including energy consumption, electricity, GHG emissions, land use, water withdrawal and waste metrics for 2025. Approve these changes? Message is interactive. Click to interact.

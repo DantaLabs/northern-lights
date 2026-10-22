@@ -1,0 +1,9 @@
+{
+  "old_pid": 266501,
+  "new_pid": 294385,
+  "same_database_inode": true,
+  "database_path": ".scratch/rb03-20261022/session.db",
+  "same_environment_and_config_arguments": true,
+  "tunnel_restarted": false,
+  "ready_http": 200
+}

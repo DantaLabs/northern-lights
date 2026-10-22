@@ -1,0 +1,123 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 3:29 PM
+9 minutes ago
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+Prepare the environmental section.
+
+You said: Prepare the environmental section.
+Bot attached:
+
+Let's get you connected first, and then I can find that info for you. ​Open connection manager​ to verify your credentials.
+
+Once the connection is ready, retry your request.
+
+Retry
+Cancel
+Sent at October 22 at 3:30 PM
+Bot said: 1 attachment.
+Bot said:
+
+Findings
+
+Missing | High
+
+Water discharge from undertaking production processes (m3)
+Message: required but has no value.
+Prior value: 14,200 m3 (2024)
+
+Out of range | High
+
+Electricity (as reflected in utility billings) - Renewable
+Current: 490 MWh
+Prior: 520 MWh
+Message: 490 is below the minimum of 500.
+
+Material change | Medium
+
+6. Business Travel
+Current: 165.0 tCO2e
+Prior: 140.0 tCO2e
+Message: changed by 17.9% from the prior period.
+
+Change set summary
+
+25 environmental fields are prepared for update and are awaiting confirmation, including energy consumption, electricity, GHG emissions, land use, water withdrawal and waste metrics for 2025.
+
+Approve these changes?
+
+Like
+Dislike
+Sent at October 22 at 3:36 PM
+A minute ago
+Bot said: Findings Missing | High Water discharge from undertaking production processes (m3) Message: required but has no value. Prior value: 14,200 m3 (2024) Out of range | High Electricity (as reflected in utility billings) - Renewable Current: 490 MWh Prior: 520 MWh Message: 490 is below the minimum of 500. Material change | Medium 6. Business Travel Current: 165.0 tCO2e Prior: 140.0 tCO2e Message: changed by 17.9% from the prior period. Change set summary 25 environmental fields are prepared for update and are awaiting confirmation, including energy consumption, electricity, GHG emissions, land use, water withdrawal and waste metrics for 2025. Approve these changes? Message is interactive. Click to interact.
+You said:
+
+Yes, approve these changes.
+
+You said: Yes, approve these changes.
+Bot said:
+
+Environmental data update completed.
+
+Completed: 25 fields Failed: 0 fields
+
+Confirmed items:
+
+rpt_env_energy_total_2025: → 1978 (completed)
+rpt_env_electricity_renewable_2025: → 490 (completed)
+rpt_env_electricity_non_renewable_2025: → 1280 (completed)
+rpt_env_self_generated_electricity_renewable_2025: → 150 (completed)
+rpt_env_self_generated_electricity_non_renewable_2025: → 58 (completed)
+rpt_env_ghg_scope1_2025: → 812.5 (completed)
+rpt_env_ghg_scope2_location_2025: → 585 (completed)
+rpt_env_ghg_scope2_market_2025: → 520 (completed)
+rpt_env_ghg_scope3_purchased_goods_2025: → 4050 (completed)
+rpt_env_ghg_scope3_capital_goods_2025: → 820 (completed)
+rpt_env_ghg_scope3_fuel_energy_2025: → 298 (completed)
+rpt_env_ghg_scope3_upstream_transport_2025: → 545 (completed)
+rpt_env_ghg_scope3_waste_2025: → 92 (completed)
+rpt_env_ghg_scope3_business_travel_2025: → 165 (completed)
+rpt_env_ghg_scope3_commuting_2025: → 224 (completed)
+rpt_env_land_sealed_area_2025: → 12.6 (completed)
+rpt_env_land_nature_onsite_2025: → 3.2 (completed)
+rpt_env_land_nature_offsite_2025: → 1.6 (completed)
+rpt_env_land_use_total_2025: → 17.4 (completed)
+rpt_env_water_withdrawn_total_2025: → 18,100 (completed)
+rpt_env_water_withdrawn_high_stress_2025: → 2,300 (completed)
+rpt_env_waste_recycled_type1_2025: → 5,400 (completed)
+rpt_env_waste_disposed_type1_2025: → 2,000 (completed)
+rpt_env_waste_recycled_type2_2025: → 910 (completed)
+rpt_env_waste_disposed_type2_2025: → 415 (completed)
+
+Before drafting the environmental narrative, I need the cause of the material change in business travel. Why did business travel rise from 140.0 tCO2e to 165.0 tCO2e?
+
+Like
+Dislike
+Sent at October 22 at 3:37 PM
+Just now
+Bot said: Environmental data update completed. Completed: 25 fields Failed: 0 fields Confirmed items: rpt_env_energy_total_2025: → 1978 (completed) rpt_env_electricity_renewable_2025: → 490 (completed) rpt_env_electricity_non_renewable_2025: → 1280 (completed) rpt_env_self_generated_electricity_renewable_2025: → 150 (completed) rpt_env_self_generated_electricity_non_renewable_2025: → 58 (completed) rpt_env_ghg_scope1_2025: → 812.5 (completed) rpt_env_ghg_scope2_location_2025: → 585 (completed) rpt_env_ghg_scope2_market_2025: → 520 (completed) rpt_env_ghg_scope3_purchased_goods_2025: → 4050 (completed) rpt_env_ghg_scope3_capital_goods_2025: → 820 (completed) rpt_env_ghg_scope3_fuel_energy_2025: → 298 (completed) rpt_env_ghg_scope3_upstream_transport_2025: → 545 (completed) rpt_env_ghg_scope3_waste_2025: → 92 (completed) rpt_env_ghg_scope3_business_travel_2025: → 165 (completed) rpt_env_ghg_scope3_commuting_2025: → 224 (completed) rpt_env_land_sealed_area_2025: → 12.6 (completed) rpt_env_land_nature_onsite_2025: → 3.2 (completed) rpt_env_land_nature_offsite_2025: → 1.6 (completed) rpt_env_land_use_total_2025: → 17.4 (completed) rpt_env_water_withdrawn_total_2025: → 18,100 (completed) rpt_env_water_withdrawn_high_stress_2025: → 2,300 (completed) rpt_env_waste_recycled_type1_2025: → 5,400 (completed) rpt_env_waste_disposed_type1_2025: → 2,000 (completed) rpt_env_waste_recycled_type2_2025: → 910 (completed) rpt_env_waste_disposed_type2_2025: → 415 (completed) Before drafting the environmental narrative, I need the cause of the material change in business travel. Why did business travel rise from 140.0 tCO2e to 165.0 tCO2e?
+You said:
+
+Draft the narrative for this section and add the policy paragraph.
+
+You said: Draft the narrative for this section and add the policy paragraph.
+Bot said:
+
+I can’t draft the environmental narrative yet because there is a material change in business travel and the cause has not been provided.
+
+Business travel rose from 140.0 tCO2e to 165.0 tCO2e (material change).
+
+What caused the increase in business travel during the reporting period? Once you provide the cause, I can draft the narrative and include the approved policy paragraph unchanged.
+
+Like
+Dislike
+Sent at October 22 at 3:38 PM
+Just now
+Bot said: I can’t draft the environmental narrative yet because there is a material change in business travel and the cause has not been provided. Business travel rose from 140.0 tCO2e to 165.0 tCO2e (material change). What caused the increase in business travel during the reporting period? Once you provide the cause, I can draft the narrative and include the approved policy paragraph unchanged.

@@ -1,0 +1,34 @@
+{
+  "result": "PASS",
+  "source_cells": {
+    "Environmental Disclosures/G5": 1978,
+    "Environmental Disclosures/G12": 490,
+    "Environmental Disclosures/D35": 165,
+    "General Information/E62": 428
+  },
+  "prior_cells": {
+    "PY Data Output/L2": 2030,
+    "PY Data Output/L3": 520,
+    "PY Data Output/L15": 140,
+    "PY Data Output/L28": 412
+  },
+  "method": "Read source cells using Workiva UI Go To; values visible in formula bar; prior values read visually in L2:L28 screenshot. All match final chat answers. No writes during Act1.",
+  "evidence": [
+    "act-1-ui-energy.png",
+    "act-1-ui-renewable.png",
+    "act-1-ui-travel.png",
+    "act-1-ui-employees.png",
+    "act-1-ui-prior.png",
+    "act-1-tool-trace.json"
+  ],
+  "tool_input_fields_verified_in_browser_trace": [
+    "src_env_energy_total",
+    "rpt_env_energy_total_2024",
+    "src_soc_employees_total",
+    "rpt_soc_employees_total_2024",
+    "src_env_ghg_scope3_business_travel",
+    "rpt_env_ghg_scope3_business_travel_2024",
+    "src_env_electricity_renewable",
+    "rpt_env_electricity_renewable_2024"
+  ]
+}

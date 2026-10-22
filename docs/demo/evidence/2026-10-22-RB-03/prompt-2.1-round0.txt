@@ -1,0 +1,31 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 2:12 PM
+Just now
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+Prepare the environmental section.
+
+You said: Prepare the environmental section.
+Bot said:
+
+Environmental Section Preparation
+
+The section could not be prepared because the Workiva service denied the operation:
+
+Error: authorization_denied
+Message: workiva_prepare_section requires an authenticated actor; refusing unattributed write
+Audit ID: [REDACTED_GUID]
+
+An authenticated Workiva session is required before the environmental section can be prepared.
+
+Like
+Dislike
+Sent at October 22 at 2:13 PM
+Just now
+Bot said: Environmental Section Preparation The section could not be prepared because the Workiva service denied the operation: Error: authorization_denied Message: workiva_prepare_section requires an authenticated actor; refusing unattributed write Audit ID: [REDACTED_GUID] An authenticated Workiva session is required before the environmental section can be prepared.

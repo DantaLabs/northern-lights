@@ -1,0 +1,95 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 3:43 PM
+5 minutes ago
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+Prepare the environmental section.
+
+You said: Prepare the environmental section.
+Bot said:
+
+Findings
+
+Missing | High | Water discharge from undertaking production processes (m3)
+
+Current value: missing
+Prior value: 14,200 m3
+Message: Water discharge from undertaking production processes (m3) is required but has no value.
+
+Out of range | High | Electricity (as reflected in utility billings) - Renewable
+
+Current value: 490 MWh
+Prior value: 520 MWh
+Message: Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500.
+
+Material change | Medium | 6. Business Travel
+
+Current value: 165.0 tCO2e
+Prior value: 140.0 tCO2e
+Message: 6. Business Travel changed by 17.9% from the prior period.
+
+Change Set Summary
+
+25 fields are staged for update from source data to the 2025 reporting fields, including energy, emissions, land use, water withdrawal and waste metrics. All items are currently awaiting confirmation.
+
+Approve these changes?
+
+Like
+Dislike
+Sent at October 22 at 3:45 PM
+4 minutes ago
+Bot said: Findings Missing | High | Water discharge from undertaking production processes (m3) Current value: missing Prior value: 14,200 m3 Message: Water discharge from undertaking production processes (m3) is required but has no value. Out of range | High | Electricity (as reflected in utility billings) - Renewable Current value: 490 MWh Prior value: 520 MWh Message: Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500. Material change | Medium | 6. Business Travel Current value: 165.0 tCO2e Prior value: 140.0 tCO2e Message: 6. Business Travel changed by 17.9% from the prior period. Change Set Summary 25 fields are staged for update from source data to the 2025 reporting fields, including energy, emissions, land use, water withdrawal and waste metrics. All items are currently awaiting confirmation. Approve these changes?
+You said:
+
+Yes, approve these changes.
+
+You said: Yes, approve these changes.
+Bot said:
+
+Environmental Change Set Confirmed
+
+Completed: 25 fields
+
+Failed: 0 fields
+
+All items completed successfully.
+
+rpt_env_energy_total_2025: blank -> 1978 (completed)
+rpt_env_electricity_renewable_2025: blank -> 490 (completed)
+rpt_env_electricity_non_renewable_2025: blank -> 1280 (completed)
+rpt_env_self_generated_electricity_renewable_2025: blank -> 150 (completed)
+rpt_env_self_generated_electricity_non_renewable_2025: blank -> 58 (completed)
+rpt_env_ghg_scope1_2025: blank -> 812.5 (completed)
+rpt_env_ghg_scope2_location_2025: blank -> 585 (completed)
+rpt_env_ghg_scope2_market_2025: blank -> 520 (completed)
+rpt_env_ghg_scope3_purchased_goods_2025: blank -> 4050 (completed)
+rpt_env_ghg_scope3_capital_goods_2025: blank -> 820 (completed)
+rpt_env_ghg_scope3_fuel_energy_2025: blank -> 298 (completed)
+rpt_env_ghg_scope3_upstream_transport_2025: blank -> 545 (completed)
+rpt_env_ghg_scope3_waste_2025: blank -> 92 (completed)
+rpt_env_ghg_scope3_business_travel_2025: blank -> 165 (completed)
+rpt_env_ghg_scope3_commuting_2025: blank -> 224 (completed)
+rpt_env_land_sealed_area_2025: blank -> 12.6 (completed)
+rpt_env_land_nature_onsite_2025: blank -> 3.2 (completed)
+rpt_env_land_nature_offsite_2025: blank -> 1.6 (completed)
+rpt_env_land_use_total_2025: blank -> 17.4 (completed)
+rpt_env_water_withdrawn_total_2025: blank -> 18100 (completed)
+rpt_env_water_withdrawn_high_stress_2025: blank -> 2300 (completed)
+rpt_env_waste_recycled_type1_2025: blank -> 5400 (completed)
+rpt_env_waste_disposed_type1_2025: blank -> 2000 (completed)
+rpt_env_waste_recycled_type2_2025: blank -> 910 (completed)
+rpt_env_waste_disposed_type2_2025: blank -> 415 (completed)
+
+The environmental data fields have been written successfully. Before drafting the environmental narrative, what is the cause of the increase in business travel emissions?
+
+Like
+Dislike
+Sent at October 22 at 3:48 PM
+A minute ago
+Bot said: Environmental Change Set Confirmed Completed: 25 fields Failed: 0 fields All items completed successfully. rpt_env_energy_total_2025: blank -> 1978 (completed) rpt_env_electricity_renewable_2025: blank -> 490 (completed) rpt_env_electricity_non_renewable_2025: blank -> 1280 (completed) rpt_env_self_generated_electricity_renewable_2025: blank -> 150 (completed) rpt_env_self_generated_electricity_non_renewable_2025: blank -> 58 (completed) rpt_env_ghg_scope1_2025: blank -> 812.5 (completed) rpt_env_ghg_scope2_location_2025: blank -> 585 (completed) rpt_env_ghg_scope2_market_2025: blank -> 520 (completed) rpt_env_ghg_scope3_purchased_goods_2025: blank -> 4050 (completed) rpt_env_ghg_scope3_capital_goods_2025: blank -> 820 (completed) rpt_env_ghg_scope3_fuel_energy_2025: blank -> 298 (completed) rpt_env_ghg_scope3_upstream_transport_2025: blank -> 545 (completed) rpt_env_ghg_scope3_waste_2025: blank -> 92 (completed) rpt_env_ghg_scope3_business_travel_2025: blank -> 165 (completed) rpt_env_ghg_scope3_commuting_2025: blank -> 224 (completed) rpt_env_land_sealed_area_2025: blank -> 12.6 (completed) rpt_env_land_nature_onsite_2025: blank -> 3.2 (completed) rpt_env_land_nature_offsite_2025: blank -> 1.6 (completed) rpt_env_land_use_total_2025: blank -> 17.4 (completed) rpt_env_water_withdrawn_total_2025: blank -> 18100 (completed) rpt_env_water_withdrawn_high_stress_2025: blank -> 2300 (completed) rpt_env_waste_recycled_type1_2025: blank -> 5400 (completed) rpt_env_waste_disposed_type1_2025: blank -> 2000 (completed) rpt_env_waste_recycled_type2_2025: blank -> 910 (completed) rpt_env_waste_disposed_type2_2025: blank -> 415 (completed) The environmental data fields have been written successfully. Before drafting the environmental narrative, what is the cause of the increase in business travel emissions?

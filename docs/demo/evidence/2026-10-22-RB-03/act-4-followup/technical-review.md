@@ -1,0 +1,13 @@
+# Act 4 technical review
+
+Result: **FAIL — incomplete audit presentation**. The final combined read-only comparison found 33 exact Copilot rows out of 43 requested, with 10 missing. There were zero field mismatches, unexpected rows, duplicate rows or JSON parse errors in those 33 rows. Counts and source filenames are in [audit-comparison.json](audit-comparison.json).
+
+The comparison used actual settled Copilot answers from `4.3b-round2`, `4.3c` through `4.3g` round 0, and `4.3j-round0`. It excluded duplicated accessibility rendering and compared every returned key, type and value against the read-only audit database, including encoded JSON strings and opaque hashes. Database rows were not substituted for model answers. Earlier malformed or incorrect attempts were excluded from the successful-row count.
+
+The audit tool supports exact targets and a bounded newest-first limit. Its middleware records each audit call on that target before the handler reads, so limit 1 selects the new call rather than the historical mutation. The corrected retrieval uses limit 100 per exact target, filters the requested actor, UTC window and mutation tool/action, and presents unchanged rows in fenced JSON. The final formatting correction was fix round 5; no further repair attempt was made.
+
+The parallel helper logs record `4.3h` and `4.3i` as sent, with no settled response or verification result. The saved observations for each contain 220 characters and no user-turn marker. These observations establish that the intended pending conversation content was not visible when inspected. They do not establish whether delivery, tab selection, conversation state, rendering or another condition caused the missing output. The operator interrupted the remaining waits. The helper's successful send response alone is not proof that Copilot accepted or completed a request.
+
+The instruction review found that negative tests require Copilot itself to submit literal candidates unchanged, prohibit confirmations and operator substitution, and treat an unexpected preview as failure. Audit instructions require every returned field and unchanged JSON strings, using continuations when needed. The compiled production instructions match the source Instructions body plus the unchanged narrative Rules and Conventions at 7,964 characters, within the 8,000-character limit. These instruction checks do not convert the incomplete audit presentation into a pass.
+
+This review was performed by the implementing agent using saved artifacts and a read-only database comparison. No browser actions, production source edits, new live writes or additional fix attempts were performed during the review. Raw comparisons and missing identifiers remain in ignored scratch storage.

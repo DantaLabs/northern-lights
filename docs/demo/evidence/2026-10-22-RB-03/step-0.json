@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-22",
+  "branch": "codex/demo-rb03-20261022",
+  "head": "dacad01069d1dacbe1c68459f8097f8a4e63de2c",
+  "base_commit": "dacad01069d1dacbe1c68459f8097f8a4e63de2c",
+  "tracked_worktree_changed_before_setup": [
+    "docs/demo/runbooks/RB-03-demo-acts.md"
+  ],
+  "build": {
+    "result": "pass",
+    "log": ".scratch/rb03-20261022/build.log",
+    "server_binary_result": "pass"
+  },
+  "document_lookup": {
+    "result": "pass",
+    "exact_match_count": 1,
+    "validated_document_name": "2025 Annual Report - EN",
+    "private_source_filename": ".scratch/rb03/step-2.local.json"
+  },
+  "mapping": {
+    "result": "reused",
+    "private_filename": ".scratch/rb03/mappings-sandbox.yaml"
+  },
+  "preflight": {
+    "result": "pass",
+    "listen_port": 8091,
+    "tools": 17,
+    "checks_passed": 7,
+    "database": ".scratch/rb03-20261022/session.db",
+    "stopped": true
+  },
+  "seed": {
+    "result": "completed",
+    "exit_code": 0,
+    "elapsed_seconds": 118.6,
+    "planned_writes": 84,
+    "planned_clears": 42,
+    "planned_section_deletes": 2,
+    "readback_ok": 126,
+    "readback_mismatch": 0,
+    "log": ".scratch/rb03-20261022/seed-reset-auth.log",
+    "failed_preflight_attempt_no_api_writes": true
+  },
+  "main_session": {
+    "server_pid": 266501,
+    "server_pid_alive": true,
+    "server_uses_today_database": true,
+    "database": ".scratch/rb03-20261022/session.db",
+    "local_verify_result": "pass",
+    "local_verify_tools": 17,
+    "local_verify_checks_passed": 7,
+    "test_session_script_start_exit": 1,
+    "script_start_error": "internal verify defaulted to 13 tools; actual demo server exposes 17",
+    "tunnel_provisioning": "failed",
+    "tunnel_failure_status": 429,
+    "tunnel_failure_code": 1015,
+    "tunnel_pid_stopped": true,
+    "public_url_saved": false
+  },
+  "existing_tunnel_check": {
+    "live_process_targeting_8090": true,
+    "process_log_destination": "anonymous_pipes",
+    "recoverable_url_from_current_process_log": false,
+    "prior_private_candidate_health_http": 0,
+    "mcp_verify_run": false,
+    "new_tunnel_started": false,
+    "result": "no validated URL"
+  },
+  "authorized_tunnel_retry": {
+    "provision_attempt": "one fresh Quick Tunnel attempt",
+    "result": "failed",
+    "cloudflare_status": 429,
+    "cloudflare_error_code": 1015,
+    "attempt_process_stopped": true,
+    "url_saved": false,
+    "server_restarted": false
+  },
+  "ngrok_tunnel": {
+    "result": "started",
+    "inspection_disabled": true,
+    "external_readyz_http": 200,
+    "mcp_tools": 17,
+    "mcp_checks_passed": 7,
+    "server_restarted": false,
+    "same_database": true,
+    "private_url_file": ".scratch/rb03-20261022/tunnel-url.txt",
+    "private_pid_file": ".scratch/rb03-20261022/ngrok.pid"
+  }
+}

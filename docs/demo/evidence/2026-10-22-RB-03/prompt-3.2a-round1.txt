@@ -1,0 +1,135 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 22 at 2:41 PM
+4 minutes ago
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+Prepare the environmental section.
+
+You said: Prepare the environmental section.
+Bot said:
+
+Findings
+
+Missing | High | Water discharge from undertaking production processes (m3)
+
+Current value: missing
+Prior value: 14,200 m3
+Message: Water discharge from undertaking production processes (m3) is required but has no value.
+
+Out of range | High | Electricity (as reflected in utility billings) - Renewable
+
+Current value: 490 MWh
+Prior value: 520 MWh
+Message: Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500.
+
+Material change | Medium | 6. Business Travel
+
+Current value: 165.0 tCO2e
+Prior value: 140.0 tCO2e
+Message: 6. Business Travel changed by 17.9% from the prior period.
+
+Change Set Summary
+
+25 fields are prepared for update, including:
+
+Total energy consumption → 1,978
+Renewable electricity → 490
+Scope 1 emissions → 812.5
+Scope 2 location-based emissions → 585
+Scope 3 business travel emissions → 165
+Water withdrawn total → 18,100
+Waste and land-use metrics → prepared
+
+All items are currently awaiting confirmation.
+
+Approve these changes?
+
+Like
+Dislike
+Sent at October 22 at 2:42 PM
+3 minutes ago
+Bot said: Findings Missing | High | Water discharge from undertaking production processes (m3) Current value: missing Prior value: 14,200 m3 Message: Water discharge from undertaking production processes (m3) is required but has no value. Out of range | High | Electricity (as reflected in utility billings) - Renewable Current value: 490 MWh Prior value: 520 MWh Message: Electricity (as reflected in utility billings) - Renewable is 490, below the minimum of 500. Material change | Medium | 6. Business Travel Current value: 165.0 tCO2e Prior value: 140.0 tCO2e Message: 6. Business Travel changed by 17.9% from the prior period. Change Set Summary 25 fields are prepared for update, including: Total energy consumption → 1,978 Renewable electricity → 490 Scope 1 emissions → 812.5 Scope 2 location-based emissions → 585 Scope 3 business travel emissions → 165 Water withdrawn total → 18,100 Waste and land-use metrics → prepared All items are currently awaiting confirmation. Approve these changes?
+You said:
+
+Yes, approve these changes.
+
+You said: Yes, approve these changes.
+Bot said:
+
+Changes confirmed.
+
+Completed: 25 fields Failed: 0 fields
+
+All confirmed items completed successfully:
+
+rpt_env_energy_total_2025: → 1978 (completed)
+rpt_env_electricity_renewable_2025: → 490 (completed)
+rpt_env_electricity_non_renewable_2025: → 1280 (completed)
+rpt_env_self_generated_electricity_renewable_2025: → 150 (completed)
+rpt_env_self_generated_electricity_non_renewable_2025: → 58 (completed)
+rpt_env_ghg_scope1_2025: → 812.5 (completed)
+rpt_env_ghg_scope2_location_2025: → 585 (completed)
+rpt_env_ghg_scope2_market_2025: → 520 (completed)
+rpt_env_ghg_scope3_purchased_goods_2025: → 4050 (completed)
+rpt_env_ghg_scope3_capital_goods_2025: → 820 (completed)
+rpt_env_ghg_scope3_fuel_energy_2025: → 298 (completed)
+rpt_env_ghg_scope3_upstream_transport_2025: → 545 (completed)
+rpt_env_ghg_scope3_waste_2025: → 92 (completed)
+rpt_env_ghg_scope3_business_travel_2025: → 165 (completed)
+rpt_env_ghg_scope3_commuting_2025: → 224 (completed)
+rpt_env_land_sealed_area_2025: → 12.6 (completed)
+rpt_env_land_nature_onsite_2025: → 3.2 (completed)
+rpt_env_land_nature_offsite_2025: → 1.6 (completed)
+rpt_env_land_use_total_2025: → 17.4 (completed)
+rpt_env_water_withdrawn_total_2025: → 18100 (completed)
+rpt_env_water_withdrawn_high_stress_2025: → 2300 (completed)
+rpt_env_waste_recycled_type1_2025: → 5400 (completed)
+rpt_env_waste_disposed_type1_2025: → 2000 (completed)
+rpt_env_waste_recycled_type2_2025: → 910 (completed)
+rpt_env_waste_disposed_type2_2025: → 415 (completed)
+
+Before drafting the environmental narrative, what caused the increase in business travel emissions?
+
+Like
+Dislike
+Sent at October 22 at 2:43 PM
+A minute ago
+Bot said: Changes confirmed. Completed: 25 fields Failed: 0 fields All confirmed items completed successfully: rpt_env_energy_total_2025: → 1978 (completed) rpt_env_electricity_renewable_2025: → 490 (completed) rpt_env_electricity_non_renewable_2025: → 1280 (completed) rpt_env_self_generated_electricity_renewable_2025: → 150 (completed) rpt_env_self_generated_electricity_non_renewable_2025: → 58 (completed) rpt_env_ghg_scope1_2025: → 812.5 (completed) rpt_env_ghg_scope2_location_2025: → 585 (completed) rpt_env_ghg_scope2_market_2025: → 520 (completed) rpt_env_ghg_scope3_purchased_goods_2025: → 4050 (completed) rpt_env_ghg_scope3_capital_goods_2025: → 820 (completed) rpt_env_ghg_scope3_fuel_energy_2025: → 298 (completed) rpt_env_ghg_scope3_upstream_transport_2025: → 545 (completed) rpt_env_ghg_scope3_waste_2025: → 92 (completed) rpt_env_ghg_scope3_business_travel_2025: → 165 (completed) rpt_env_ghg_scope3_commuting_2025: → 224 (completed) rpt_env_land_sealed_area_2025: → 12.6 (completed) rpt_env_land_nature_onsite_2025: → 3.2 (completed) rpt_env_land_nature_offsite_2025: → 1.6 (completed) rpt_env_land_use_total_2025: → 17.4 (completed) rpt_env_water_withdrawn_total_2025: → 18100 (completed) rpt_env_water_withdrawn_high_stress_2025: → 2300 (completed) rpt_env_waste_recycled_type1_2025: → 5400 (completed) rpt_env_waste_disposed_type1_2025: → 2000 (completed) rpt_env_waste_recycled_type2_2025: → 910 (completed) rpt_env_waste_disposed_type2_2025: → 415 (completed) Before drafting the environmental narrative, what caused the increase in business travel emissions?
+You said:
+
+Draft the narrative for this section and add the policy paragraph.
+
+You said: Draft the narrative for this section and add the policy paragraph.
+Bot said:
+
+I need the cause of the material increase in business travel emissions before drafting this environmental section.
+
+Business travel rose from 140.0 tCO2e to 165.0 tCO2e and is flagged as a material change.
+
+What caused the increase in business travel emissions?
+
+Like
+Dislike
+Sent at October 22 at 2:45 PM
+Just now
+Bot said: I need the cause of the material increase in business travel emissions before drafting this environmental section. Business travel rose from 140.0 tCO2e to 165.0 tCO2e and is flagged as a material change. What caused the increase in business travel emissions?
+You said:
+
+Business travel rose because customer site visits resumed.
+
+You said: Business travel rose because customer site visits resumed.
+Bot said:
+
+Please provide the text for the blocks.
+
+Like
+Dislike
+Sent at October 22 at 2:45 PM
+Just now
+Bot said: Please provide the text for the blocks. Message is interactive. Click to interact.
