@@ -1,0 +1,1569 @@
+{
+  "url": "[REDACTED_URL]",
+  "title": "Agents",
+  "tree": [
+    {
+      "role": "link",
+      "name": "Skip to main content",
+      "ref": "@e1000358",
+      "children": [
+        {
+          "role": "StaticText",
+          "name": "Skip to main content"
+        }
+      ]
+    },
+    {
+      "role": "navigation",
+      "name": "Main navigation",
+      "children": [
+        {
+          "role": "button",
+          "name": "Expand navigation",
+          "ref": "@e1000359"
+        },
+        {
+          "role": "list",
+          "children": [
+            {
+              "role": "link",
+              "name": "Home",
+              "ref": "@e1000360"
+            },
+            {
+              "role": "link",
+              "name": "Agents",
+              "ref": "@e1000361"
+            },
+            {
+              "role": "link",
+              "name": "Workflows",
+              "ref": "@e1000362"
+            },
+            {
+              "role": "link",
+              "name": "Apps (Preview)",
+              "ref": "@e1000363"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Switch environment (current: Northern-Lights-Sandbox)",
+          "ref": "@e1000364"
+        },
+        {
+          "role": "button",
+          "name": "Open account menu for Sigmundo Contreras2",
+          "description": "Sigmundo Contreras2",
+          "ref": "@e1000365"
+        },
+        {
+          "role": "button",
+          "name": "More options",
+          "ref": "@e1000366"
+        }
+      ]
+    },
+    {
+      "role": "main",
+      "children": [
+        {
+          "role": "image",
+          "name": "Icon for your agent"
+        },
+        {
+          "role": "heading",
+          "name": "Workiva_Sandbox_Test",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Workiva_Sandbox_Test"
+            }
+          ]
+        },
+        {
+          "role": "image",
+          "name": "Securely authenticated with Microsoft"
+        },
+        {
+          "role": "tablist",
+          "children": [
+            {
+              "role": "tab",
+              "name": "Tools",
+              "ref": "@e1000367",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Tools"
+                }
+              ]
+            },
+            {
+              "role": "tab",
+              "name": "8 more options",
+              "ref": "@e1000368",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "+8"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Search your agent",
+          "ref": "@e1000369"
+        },
+        {
+          "role": "button",
+          "name": "Publish",
+          "ref": "@e1000370",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Publish"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Settings",
+          "ref": "@e1000371",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Settings"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Options",
+          "ref": "@e1000372"
+        },
+        {
+          "role": "separator"
+        },
+        {
+          "role": "button",
+          "name": "Test",
+          "ref": "@e1000373",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Test"
+            }
+          ]
+        },
+        {
+          "role": "toolbar",
+          "children": [
+            {
+              "role": "button",
+              "name": "Back",
+              "ref": "@e1000375"
+            },
+            {
+              "role": "navigation",
+              "name": "breadcrumb",
+              "children": [
+                {
+                  "role": "list",
+                  "children": [
+                    {
+                      "role": "listitem",
+                      "children": [
+                        {
+                          "role": "heading",
+                          "name": "Northern Lights RB03 Demo",
+                          "children": [
+                            {
+                              "role": "textbox",
+                              "name": "Topic name",
+                              "value": "Northern Lights RB03 Demo",
+                              "ref": "@e1000376",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "Northern Lights RB03 Demo"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "group",
+                          "children": [
+                            {
+                              "role": "button",
+                              "name": "Select a tool",
+                              "ref": "@e1000377"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "role": "switch",
+              "name": "Enabled",
+              "ref": "@e1000378"
+            },
+            {
+              "role": "StaticText",
+              "name": "Enabled"
+            },
+            {
+              "role": "button",
+              "name": "More",
+              "ref": "@e1000379"
+            },
+            {
+              "role": "separator"
+            },
+            {
+              "role": "button",
+              "name": "Save",
+              "ref": "@e1000380",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Save"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "role": "tablist",
+          "children": [
+            {
+              "role": "tab",
+              "name": "Details",
+              "ref": "@e1000381",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Details"
+                }
+              ]
+            },
+            {
+              "role": "tab",
+              "name": "Inputs",
+              "ref": "@e1000382",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Inputs"
+                }
+              ]
+            },
+            {
+              "role": "tab",
+              "name": "Tools",
+              "ref": "@e1000383",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Tools"
+                }
+              ]
+            },
+            {
+              "role": "tab",
+              "name": "Resources",
+              "ref": "@e1000384",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Resources"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "role": "group",
+          "children": [
+            {
+              "role": "image"
+            },
+            {
+              "role": "StaticText",
+              "name": "Details"
+            },
+            {
+              "role": "StaticText",
+              "name": "What it is, how it operates, and how the orchestrator identifies it. "
+            },
+            {
+              "role": "link",
+              "name": "Learn more",
+              "ref": "@e1000385",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Learn more"
+                }
+              ]
+            },
+            {
+              "role": "StaticText",
+              "name": "Name"
+            },
+            {
+              "role": "textbox",
+              "name": "Name",
+              "value": "Northern Lights RB03 Demo",
+              "description": "25/64",
+              "ref": "@e1000386",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Northern Lights RB03 Demo"
+                }
+              ]
+            },
+            {
+              "role": "StaticText",
+              "name": "25"
+            },
+            {
+              "role": "StaticText",
+              "name": "/"
+            },
+            {
+              "role": "StaticText",
+              "name": "64"
+            },
+            {
+              "role": "StaticText",
+              "name": "Server"
+            },
+            {
+              "role": "StaticText",
+              "name": "Northern Lights RB03 Demo"
+            },
+            {
+              "role": "StaticText",
+              "name": "Northern Lights RB03 Demo"
+            },
+            {
+              "role": "StaticText",
+              "name": "Connection"
+            },
+            {
+              "role": "button",
+              "name": "Northern Lights RB03 Demo",
+              "ref": "@e1000387",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Northern Lights RB03 Demo"
+                }
+              ]
+            },
+            {
+              "role": "StaticText",
+              "name": "Available to"
+            },
+            {
+              "role": "image"
+            },
+            {
+              "role": "StaticText",
+              "name": "Workiva_Sandbox_Test"
+            },
+            {
+              "role": "button",
+              "name": "Additional details",
+              "ref": "@e1000388",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Additional details"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "role": "group",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Inputs"
+            },
+            {
+              "role": "StaticText",
+              "name": "These are inputs that are required to configure the server. They can be pre-configured here. Inputs are filled in the order they are specified."
+            },
+            {
+              "role": "button",
+              "name": "Add input",
+              "ref": "@e1000389",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Add input"
+                }
+              ]
+            },
+            {
+              "role": "StaticText",
+              "name": "Optional inputs are available to add."
+            }
+          ]
+        },
+        {
+          "role": "group",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Tools"
+            },
+            {
+              "role": "StaticText",
+              "name": "MCP tools enable servers to offer executable functionalities, allowing LLMs to interact with external systems and perform real-world actions."
+            },
+            {
+              "role": "grid",
+              "children": [
+                {
+                  "role": "row",
+                  "name": "Tool name Description Refresh connector Allow all",
+                  "children": [
+                    {
+                      "role": "columnheader",
+                      "name": "Tool name",
+                      "children": [
+                        {
+                          "role": "StaticText",
+                          "name": "Tool name"
+                        }
+                      ]
+                    },
+                    {
+                      "role": "columnheader",
+                      "name": "Description Refresh connector",
+                      "children": [
+                        {
+                          "role": "StaticText",
+                          "name": "Description"
+                        },
+                        {
+                          "role": "button",
+                          "name": "Refresh connector",
+                          "ref": "@e1000407"
+                        }
+                      ]
+                    },
+                    {
+                      "role": "columnheader",
+                      "name": "Allow all",
+                      "children": [
+                        {
+                          "role": "switch",
+                          "name": "Allow all",
+                          "description": "Allow all",
+                          "ref": "@e1000390"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "role": "rowgroup",
+                  "children": [
+                    {
+                      "role": "row",
+                      "name": "workiva_audit_trail Returns recent entries of the hash-chained audit trail, newest first. Use this to answer \"who changed what and when\": every read, sync, and write through this server is one entry carrying the tool, the action, the target (spreadsheet/sheet/range), the before and after values for writes, the Workiva operation URL, and the timestamp. Filter by target to trace one cell, for example target \"ss-1/sh-1/B3\". The full chain can be integrity-verified by the operator (workiva-mcp audit verify): every entry hashes the previous entry, so any tampering with a stored row breaks the chain at that sequence number. This tool exposes the entries; verification stays an operator-side command so clients cannot rewrite history through the MCP surface. See More workiva_audit_trail",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_audit_trail",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_audit_trail"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Returns recent entries of the hash-chained audit trail, newest first. Use this to answer \"who changed what and when\": every read, sync, and write through this server is one entry carrying the tool, the action, the target (spreadsheet/sheet/range), the before and after values for writes, the Workiva operation URL, and the timestamp. Filter by target to trace one cell, for example target \"ss-1/sh-1/B3\". The full chain can be integrity-verified by the operator (workiva-mcp audit verify): every entry hashes the previous entry, so any tampering with a stored row breaks the chain at that sequence number. This tool exposes the entries; verification stays an operator-side command so clients cannot rewrite history through the MCP surface. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Returns recent entries of the hash-chained audit trail, newest first. Use this to answer \"who changed what and when\": every read, sync, and write through this server is one entry carrying the tool, the action, the target (spreadsheet/sheet/range), the before and after values for writes, the Workiva operation URL, and the timestamp. Filter by target to trace one cell, for example target \"ss-1/sh-1/B3\". The full chain can be integrity-verified by the operator (workiva-mcp audit verify): every entry hashes the previous entry, so any tampering with a stored row breaks the chain at that sequence number. This tool exposes the entries; verification stays an operator-side command so clients cannot rewrite history through the MCP surface."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000408",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_audit_trail",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_audit_trail",
+                              "ref": "@e1000409"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_compare_periods Compares two immutable snapshots by stable server-owned field IDs using the selected server-owned materiality policy. workiva_compare_periods",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_compare_periods",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_compare_periods"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Compares two immutable snapshots by stable server-owned field IDs using the selected server-owned materiality policy.",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Compares two immutable snapshots by stable server-owned field IDs using the selected server-owned materiality policy."
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_compare_periods",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_compare_periods",
+                              "ref": "@e1000410"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_confirm_change_set Writes every field in a previewed change set after the person approved it, using the change set ID and confirmation token. Call it only after workiva_prepare_section returned a change set and the person explicitly approved the preview. See More workiva_confirm_change_set",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_confirm_change_set",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_confirm_change_set"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Writes every field in a previewed change set after the person approved it, using the change set ID and confirmation token. Call it only after workiva_prepare_section returned a change set and the person explicitly approved the preview. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Writes every field in a previewed change set after the person approved it, using the change set ID and confirmation token. Call it only after workiva_prepare_section returned a change set and the person explicitly approved the preview."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000411",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_confirm_change_set",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_confirm_change_set",
+                              "ref": "@e1000412"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_confirm_section_text Writes previously staged section text into the report document after the person approved the preview. Call it only after workiva_stage_section_text returned a preview and the person explicitly approved it. See More workiva_confirm_section_text",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_confirm_section_text",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_confirm_section_text"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Writes previously staged section text into the report document after the person approved the preview. Call it only after workiva_stage_section_text returned a preview and the person explicitly approved it. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Writes previously staged section text into the report document after the person approved the preview. Call it only after workiva_stage_section_text returned a preview and the person explicitly approved it."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000413",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_confirm_section_text",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_confirm_section_text",
+                              "ref": "@e1000414"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_discover_relationships Read-only discovery or bounded lineage over the tenant-scoped persisted relationship graph. Provider discovery/refresh is not enabled unless a verified exact-scope provider capability is configured. See More workiva_discover_relationships",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_discover_relationships",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_discover_relationships"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Read-only discovery or bounded lineage over the tenant-scoped persisted relationship graph. Provider discovery/refresh is not enabled unless a verified exact-scope provider capability is configured. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Read-only discovery or bounded lineage over the tenant-scoped persisted relationship graph. Provider discovery/refresh is not enabled unless a verified exact-scope provider capability is configured."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000415",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_discover_relationships",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_discover_relationships",
+                              "ref": "@e1000416"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_export_evidence Exports exactly one authorized assurance subject as a manifest-v2 package with authoritative canonical JSON and an optional safe CSV derivative. See More workiva_export_evidence",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_export_evidence",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_export_evidence"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Exports exactly one authorized assurance subject as a manifest-v2 package with authoritative canonical JSON and an optional safe CSV derivative. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Exports exactly one authorized assurance subject as a manifest-v2 package with authoritative canonical JSON and an optional safe CSV derivative."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000417",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_export_evidence",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_export_evidence",
+                              "ref": "@e1000418"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_get_field Returns the current value of one mapped field, identified by its exact field name. Use workiva_search_fields first when you only have a natural-language reference such as \"scope 2 energy\"; it resolves those to field names. When the cached read is still fresh the value comes from the local snapshot cache with no Workiva API call; otherwise the field's range is read live from the API and the cache is refreshed. The response includes the field's spreadsheet, sheet, range, type, description, the value, and when it was fetched (fetched_at, RFC 3339). See More workiva_get_field",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_get_field",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_get_field"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Returns the current value of one mapped field, identified by its exact field name. Use workiva_search_fields first when you only have a natural-language reference such as \"scope 2 energy\"; it resolves those to field names. When the cached read is still fresh the value comes from the local snapshot cache with no Workiva API call; otherwise the field's range is read live from the API and the cache is refreshed. The response includes the field's spreadsheet, sheet, range, type, description, the value, and when it was fetched (fetched_at, RFC 3339). See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Returns the current value of one mapped field, identified by its exact field name. Use workiva_search_fields first when you only have a natural-language reference such as \"scope 2 energy\"; it resolves those to field names. When the cached read is still fresh the value comes from the local snapshot cache with no Workiva API call; otherwise the field's range is read live from the API and the cache is refreshed. The response includes the field's spreadsheet, sheet, range, type, description, the value, and when it was fetched (fetched_at, RFC 3339)."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000419",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_get_field",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_get_field",
+                              "ref": "@e1000420"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_list_spreadsheets Discovers the Workiva spreadsheets and sheets currently available to the authenticated client. When a Workiva client is configured, this tool reads the live spreadsheet and sheet catalogs, including files that are not mapped locally. In demo or no-client mode it falls back to the local mapping store. Use this tool to discover which spreadsheet_id and sheet_id values to pass to workiva_read_range or workiva_sync_mapping. Live discovery only identifies files and sheets; local semantic mappings are still required by workiva_search_fields, workiva_get_field, and workiva_update_field. See More workiva_list_spreadsheets",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_list_spreadsheets",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_list_spreadsheets"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Discovers the Workiva spreadsheets and sheets currently available to the authenticated client. When a Workiva client is configured, this tool reads the live spreadsheet and sheet catalogs, including files that are not mapped locally. In demo or no-client mode it falls back to the local mapping store. Use this tool to discover which spreadsheet_id and sheet_id values to pass to workiva_read_range or workiva_sync_mapping. Live discovery only identifies files and sheets; local semantic mappings are still required by workiva_search_fields, workiva_get_field, and workiva_update_field. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Discovers the Workiva spreadsheets and sheets currently available to the authenticated client. When a Workiva client is configured, this tool reads the live spreadsheet and sheet catalogs, including files that are not mapped locally. In demo or no-client mode it falls back to the local mapping store. Use this tool to discover which spreadsheet_id and sheet_id values to pass to workiva_read_range or workiva_sync_mapping. Live discovery only identifies files and sheets; local semantic mappings are still required by workiva_search_fields, workiva_get_field, and workiva_update_field."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000421",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_list_spreadsheets",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_list_spreadsheets",
+                              "ref": "@e1000422"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_prepare_section Prepares one report section from its section recipe, returning findings, narrative facts, verbatim blocks and a change set preview. Call it first when a consultant asks to update a section, before staging any section text. See More workiva_prepare_section",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_prepare_section",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_prepare_section"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Prepares one report section from its section recipe, returning findings, narrative facts, verbatim blocks and a change set preview. Call it first when a consultant asks to update a section, before staging any section text. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Prepares one report section from its section recipe, returning findings, narrative facts, verbatim blocks and a change set preview. Call it first when a consultant asks to update a section, before staging any section text."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000423",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_prepare_section",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_prepare_section",
+                              "ref": "@e1000424"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_read_range Reads a range of cells from a Workiva sheet and returns the values as a grid of rows. Args: - spreadsheet_id: the spreadsheet ID, found via workiva_list_spreadsheets. - sheet_id: the sheet ID within that spreadsheet. - range: A1 notation such as \"B3\" or \"B3:D10\". Every call fetches live data from the Workiva API and refreshes the read cache, so recent values are also available to workiva_get_field and workiva_search_fields. Formula cells return their calculated value. Values are returned in Ones scale, matching the Workiva API. See More workiva_read_range",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_read_range",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_read_range"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Reads a range of cells from a Workiva sheet and returns the values as a grid of rows. Args: - spreadsheet_id: the spreadsheet ID, found via workiva_list_spreadsheets. - sheet_id: the sheet ID within that spreadsheet. - range: A1 notation such as \"B3\" or \"B3:D10\". Every call fetches live data from the Workiva API and refreshes the read cache, so recent values are also available to workiva_get_field and workiva_search_fields. Formula cells return their calculated value. Values are returned in Ones scale, matching the Workiva API. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Reads a range of cells from a Workiva sheet and returns the values as a grid of rows. Args: - spreadsheet_id: the spreadsheet ID, found via workiva_list_spreadsheets. - sheet_id: the sheet ID within that spreadsheet. - range: A1 notation such as \"B3\" or \"B3:D10\". Every call fetches live data from the Workiva API and refreshes the read cache, so recent values are also available to workiva_get_field and workiva_search_fields. Formula cells return their calculated value. Values are returned in Ones scale, matching the Workiva API."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000425",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_read_range",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_read_range",
+                              "ref": "@e1000426"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_search_fields Searches the semantic field mapping for fields matching a natural-language query. Call this tool FIRST whenever the user refers to a report value in plain language, such as \"scope 2 energy\", \"water consumption\", or \"turnover\". It resolves those references to mapped field names with their exact spreadsheet, sheet, and cell range, which you then pass to workiva_get_field for the value or to write tools. Matches come from field names and their aliases. Results include the field's range, description, and, when a fresh cached read exists, the current value. If nothing matches, try rephrasing or list connected spreadsheets with workiva_list_spreadsheets. See More workiva_search_fields",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_search_fields",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_search_fields"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Searches the semantic field mapping for fields matching a natural-language query. Call this tool FIRST whenever the user refers to a report value in plain language, such as \"scope 2 energy\", \"water consumption\", or \"turnover\". It resolves those references to mapped field names with their exact spreadsheet, sheet, and cell range, which you then pass to workiva_get_field for the value or to write tools. Matches come from field names and their aliases. Results include the field's range, description, and, when a fresh cached read exists, the current value. If nothing matches, try rephrasing or list connected spreadsheets with workiva_list_spreadsheets. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Searches the semantic field mapping for fields matching a natural-language query. Call this tool FIRST whenever the user refers to a report value in plain language, such as \"scope 2 energy\", \"water consumption\", or \"turnover\". It resolves those references to mapped field names with their exact spreadsheet, sheet, and cell range, which you then pass to workiva_get_field for the value or to write tools. Matches come from field names and their aliases. Results include the field's range, description, and, when a fresh cached read exists, the current value. If nothing matches, try rephrasing or list connected spreadsheets with workiva_list_spreadsheets."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000427",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_search_fields",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_search_fields",
+                              "ref": "@e1000428"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_snapshot_report Captures an immutable, typed snapshot of an approved server-owned report revision and named period. The server resolves all approved fields and reads Workiva directly without using the read cache. Empty field_ids selects all required fields. allow_partial defaults to false. consistency defaults to best_effort; revision_pinned fails unless the active provider proves that capability. The request never supplies authoritative report values. See More workiva_snapshot_report",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_snapshot_report",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_snapshot_report"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Captures an immutable, typed snapshot of an approved server-owned report revision and named period. The server resolves all approved fields and reads Workiva directly without using the read cache. Empty field_ids selects all required fields. allow_partial defaults to false. consistency defaults to best_effort; revision_pinned fails unless the active provider proves that capability. The request never supplies authoritative report values. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Captures an immutable, typed snapshot of an approved server-owned report revision and named period. The server resolves all approved fields and reads Workiva directly without using the read cache. Empty field_ids selects all required fields. allow_partial defaults to false. consistency defaults to best_effort; revision_pinned fails unless the active provider proves that capability. The request never supplies authoritative report values."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000429",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_snapshot_report",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_snapshot_report",
+                              "ref": "@e1000430"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_stage_section_text Stages the narrative blocks and verbatim blocks for a section in the report document and returns a preview, after the number guard checks every number. Call it after workiva_prepare_section, once the narrative blocks are drafted from the narrative facts. See More workiva_stage_section_text",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_stage_section_text",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_stage_section_text"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Stages the narrative blocks and verbatim blocks for a section in the report document and returns a preview, after the number guard checks every number. Call it after workiva_prepare_section, once the narrative blocks are drafted from the narrative facts. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Stages the narrative blocks and verbatim blocks for a section in the report document and returns a preview, after the number guard checks every number. Call it after workiva_prepare_section, once the narrative blocks are drafted from the narrative facts."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000431",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_stage_section_text",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_stage_section_text",
+                              "ref": "@e1000432"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_sync_mapping Discovers fields from a two-column \"mapper\" sheet and upserts them into the mapping store. Reads the sheet live: the name column holds human-readable field labels, the value column holds the cells those labels refer to. Every row from start_row on becomes one field whose name is the label normalized to snake_case (for example \"Scope 2 Energy (kWh)\" becomes scope_2_energy_kwh) and whose range is the value column cell of that row. Rows with an empty name are skipped. Use this after the reporting team edits the mapper sheet, or to bootstrap a new spreadsheet. Afterwards workiva_search_fields and workiva_get_field resolve the synced names, and workiva_update_field can write them with confirmation. The sync itself is recorded in the audit trail. See More workiva_sync_mapping",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_sync_mapping",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_sync_mapping"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Discovers fields from a two-column \"mapper\" sheet and upserts them into the mapping store. Reads the sheet live: the name column holds human-readable field labels, the value column holds the cells those labels refer to. Every row from start_row on becomes one field whose name is the label normalized to snake_case (for example \"Scope 2 Energy (kWh)\" becomes scope_2_energy_kwh) and whose range is the value column cell of that row. Rows with an empty name are skipped. Use this after the reporting team edits the mapper sheet, or to bootstrap a new spreadsheet. Afterwards workiva_search_fields and workiva_get_field resolve the synced names, and workiva_update_field can write them with confirmation. The sync itself is recorded in the audit trail. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Discovers fields from a two-column \"mapper\" sheet and upserts them into the mapping store. Reads the sheet live: the name column holds human-readable field labels, the value column holds the cells those labels refer to. Every row from start_row on becomes one field whose name is the label normalized to snake_case (for example \"Scope 2 Energy (kWh)\" becomes scope_2_energy_kwh) and whose range is the value column cell of that row. Rows with an empty name are skipped. Use this after the reporting team edits the mapper sheet, or to bootstrap a new spreadsheet. Afterwards workiva_search_fields and workiva_get_field resolve the synced names, and workiva_update_field can write them with confirmation. The sync itself is recorded in the audit trail."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000433",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_sync_mapping",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_sync_mapping",
+                              "ref": "@e1000434"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_transfer_value Stages, confirms, acknowledges, or reconciles a typed value transfer. Bulk phases are disabled. Single-transfer phases require a configured transfer service backed by a verified durable fence. See More workiva_transfer_value",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_transfer_value",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_transfer_value"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Stages, confirms, acknowledges, or reconciles a typed value transfer. Bulk phases are disabled. Single-transfer phases require a configured transfer service backed by a verified durable fence. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Stages, confirms, acknowledges, or reconciles a typed value transfer. Bulk phases are disabled. Single-transfer phases require a configured transfer service backed by a verified durable fence."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000435",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_transfer_value",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_transfer_value",
+                              "ref": "@e1000436"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_update_field Writes a new value to one mapped field, identified by its exact field name. This tool is two-phase by default so a human approves every write before it reaches Workiva (EU AI Act Art. 14 human oversight): 1. Call with just name and value. Nothing is written. The response carries the current value (before), a preview of the new value (after_preview), and a confirm_token that is valid for 5 minutes and single use. 2. Show the before/after preview to the user. When they approve, call the tool again with the same name, value, and the confirm_token. Only then is the batched editCells write sent to Workiva, and the mutation is recorded in the audit trail with before and after values plus the Workiva operation URL. The confirmation requirement can be disabled by the server operator (require_write_confirmation: false); when disabled a call without confirm_token writes immediately, still fully audited. Values are written in Ones scale regardless of the cell display format. After a successful write the snapshot cache is refreshed so subsequent reads return the new value. See More workiva_update_field",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_update_field",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_update_field"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Writes a new value to one mapped field, identified by its exact field name. This tool is two-phase by default so a human approves every write before it reaches Workiva (EU AI Act Art. 14 human oversight): 1. Call with just name and value. Nothing is written. The response carries the current value (before), a preview of the new value (after_preview), and a confirm_token that is valid for 5 minutes and single use. 2. Show the before/after preview to the user. When they approve, call the tool again with the same name, value, and the confirm_token. Only then is the batched editCells write sent to Workiva, and the mutation is recorded in the audit trail with before and after values plus the Workiva operation URL. The confirmation requirement can be disabled by the server operator (require_write_confirmation: false); when disabled a call without confirm_token writes immediately, still fully audited. Values are written in Ones scale regardless of the cell display format. After a successful write the snapshot cache is refreshed so subsequent reads return the new value. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Writes a new value to one mapped field, identified by its exact field name. This tool is two-phase by default so a human approves every write before it reaches Workiva (EU AI Act Art. 14 human oversight): 1. Call with just name and value. Nothing is written. The response carries the current value (before), a preview of the new value (after_preview), and a confirm_token that is valid for 5 minutes and single use. 2. Show the before/after preview to the user. When they approve, call the tool again with the same name, value, and the confirm_token. Only then is the batched editCells write sent to Workiva, and the mutation is recorded in the audit trail with before and after values plus the Workiva operation URL. The confirmation requirement can be disabled by the server operator (require_write_confirmation: false); when disabled a call without confirm_token writes immediately, still fully audited. Values are written in Ones scale regardless of the cell display format. After a successful write the snapshot cache is refreshed so subsequent reads return the new value."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000437",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_update_field",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_update_field",
+                              "ref": "@e1000438"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "row",
+                      "name": "workiva_validate_report Deterministically validates one immutable server-owned report snapshot using its approved closed rule set. The provider is never called. See More workiva_validate_report",
+                      "children": [
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_validate_report",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "workiva_validate_report"
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "Deterministically validates one immutable server-owned report snapshot using its approved closed rule set. The provider is never called. See More",
+                          "children": [
+                            {
+                              "role": "StaticText",
+                              "name": "Deterministically validates one immutable server-owned report snapshot using its approved closed rule set. The provider is never called."
+                            },
+                            {
+                              "role": "button",
+                              "name": "See More",
+                              "ref": "@e1000439",
+                              "children": [
+                                {
+                                  "role": "StaticText",
+                                  "name": "See More"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "role": "gridcell",
+                          "name": "workiva_validate_report",
+                          "children": [
+                            {
+                              "role": "switch",
+                              "name": "workiva_validate_report",
+                              "ref": "@e1000440"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "role": "group",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Resources"
+            },
+            {
+              "role": "StaticText",
+              "name": "Preview"
+            },
+            {
+              "role": "StaticText",
+              "name": "MCP resources provide context for LLM interactions to ensure accurate responses. They're updated dynamically by MCP servers. For a full list, visit the MCP server's documentation."
+            },
+            {
+              "role": "group",
+              "name": "Important ",
+              "children": [
+                {
+                  "role": "StaticText",
+                  "name": "Important"
+                },
+                {
+                  "role": "StaticText",
+                  "name": "  "
+                },
+                {
+                  "role": "StaticText",
+                  "name": "Resources are only used through MCP tools, not as knowledge sources. Server owners must configure resources as tool outputs. "
+                },
+                {
+                  "role": "link",
+                  "name": "Learn more",
+                  "ref": "@e1000391",
+                  "children": [
+                    {
+                      "role": "StaticText",
+                      "name": "Learn more"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "role": "grid",
+              "children": [
+                {
+                  "role": "row",
+                  "name": "Resource name Description Refresh connector",
+                  "children": [
+                    {
+                      "role": "columnheader",
+                      "name": "Resource name",
+                      "children": [
+                        {
+                          "role": "StaticText",
+                          "name": "Resource name"
+                        }
+                      ]
+                    },
+                    {
+                      "role": "columnheader",
+                      "name": "Description Refresh connector",
+                      "children": [
+                        {
+                          "role": "StaticText",
+                          "name": "Description"
+                        },
+                        {
+                          "role": "button",
+                          "name": "Refresh connector",
+                          "ref": "@e1000441"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "role": "StaticText",
+                  "name": "No resources available."
+                },
+                {
+                  "role": "rowgroup"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "role": "separator",
+          "value": 65
+        },
+        {
+          "role": "heading",
+          "name": "Test your agent",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Test your agent"
+            }
+          ]
+        },
+        {
+          "role": "button",
+          "name": "Start new test session",
+          "ref": "@e1000392"
+        },
+        {
+          "role": "button",
+          "name": "Evaluate Workiva_Sandbox_Test",
+          "ref": "@e1000393"
+        },
+        {
+          "role": "button",
+          "name": "Chat mode",
+          "ref": "@e1000394"
+        },
+        {
+          "role": "button",
+          "name": "Variables",
+          "ref": "@e1000395"
+        },
+        {
+          "role": "button",
+          "name": "More",
+          "ref": "@e1000396"
+        },
+        {
+          "role": "button",
+          "name": "Expand test pane",
+          "ref": "@e1000397"
+        },
+        {
+          "role": "button",
+          "name": "Close test pane ",
+          "ref": "@e1000398"
+        },
+        {
+          "role": "log"
+        },
+        {
+          "role": "group",
+          "name": "Chat history, press arrow keys to navigate.",
+          "children": [
+            {
+              "role": "feed",
+              "children": [
+                {
+                  "role": "article",
+                  "children": [
+                    {
+                      "role": "group",
+                      "children": [
+                        {
+                          "role": "StaticText",
+                          "name": "Bot said:"
+                        },
+                        {
+                          "role": "StaticText",
+                          "name": "Hello, I'm Workiva_Sandbox_Test. How can I help?"
+                        },
+                        {
+                          "role": "form",
+                          "children": [
+                            {
+                              "role": "radio",
+                              "name": "Like",
+                              "ref": "@e1000399"
+                            },
+                            {
+                              "role": "radio",
+                              "name": "Dislike",
+                              "ref": "@e1000400"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "role": "StaticText",
+                      "name": "Sent at October 21 at 7:00 PM"
+                    },
+                    {
+                      "role": "article",
+                      "name": "Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "role": "note",
+              "name": "End of chat history"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "Connectivity Status: Connected"
+        },
+        {
+          "role": "form",
+          "children": [
+            {
+              "role": "toolbar",
+              "name": "Suggested actions"
+            },
+            {
+              "role": "textbox",
+              "name": "Ask a question or describe what you need, Workiva_Sandbox_Test",
+              "ref": "@e1000401"
+            },
+            {
+              "role": "StaticText",
+              "name": "0/2000"
+            },
+            {
+              "role": "button",
+              "name": "Upload file",
+              "ref": "@e1000402"
+            },
+            {
+              "role": "separator"
+            },
+            {
+              "role": "button",
+              "name": "Send",
+              "ref": "@e1000403"
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": "You're testing your agent's real responses and capabilities. "
+        },
+        {
+          "role": "link",
+          "name": "Find troubleshooting help here.",
+          "ref": "@e1000404",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "Find troubleshooting help here."
+            }
+          ]
+        },
+        {
+          "role": "StaticText",
+          "name": " Make sure AI-generated content is accurate and appropriate before using. "
+        },
+        {
+          "role": "link",
+          "name": "See terms",
+          "ref": "@e1000405",
+          "children": [
+            {
+              "role": "StaticText",
+              "name": "See terms"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "role": "file-input",
+      "name": "0/2000",
+      "ref": "@e1000406",
+      "hidden": true,
+      "multiple": true
+    }
+  ]
+}

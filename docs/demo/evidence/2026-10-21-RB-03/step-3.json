@@ -1,0 +1,8 @@
+{
+  "test_session_stop_exit_code": 0,
+  "demo_server": "stopped",
+  "demo_tunnel": "stopped",
+  "port_8090_listening": false,
+  "database_preserved": true,
+  "unrelated_tunnel_untouched": true
+}

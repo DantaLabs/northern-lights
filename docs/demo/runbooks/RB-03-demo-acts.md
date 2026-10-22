@@ -20,11 +20,11 @@ Run by Tom in the browser on Wednesday 28 October, then before each rehearsal. U
 
 ## Checklist
 
-- [ ] Act 1: each comparison reads the current and prior cells with workiva_get_field or workiva_read_range, gives both values with units, periods and separate spreadsheet/sheet/cell citations, and states the direction in words without computing a percentage; the numbers match the Workiva screen.
-- [ ] Act 2: findings appear before the change set and match `configs/demo/data/README.md`.
-- [ ] Act 3: one approval wrote every change set field; the report document shows "Environmental disclosures" with the narrative and the unchanged verbatim block.
-- [ ] Act 3: the narrative follows `NARRATIVE_STYLE.md` rules 1 to 4 (movement first, only fact numbers, material changes first, percentage points for shares).
-- [ ] Act 4: the verbatim edit and the invented number were both refused with the server's message; workiva_audit_trail (`limit: 100`) shows the 25 environmental field-write rows and one completed section row matched to confirmation audit IDs, with actor, timestamp, target, before/after or section details, and Workiva operation URL. Repeating the audit prompt after Act 5 shows all 41 field writes and both section rows for the current run.
-- [ ] Act 5: the social section completed without code or configuration changes during the run.
-- [ ] Total run time of the five acts is 8 minutes or less.
-- [ ] No token or secret is visible in the recording or the screenshots.
+- [ ] Act 1: each comparison reads the current and prior cells with workiva_get_field or workiva_read_range, gives both values with units, periods and separate spreadsheet/sheet/cell citations, and states the direction in words without computing a percentage; the numbers match the Workiva screen. **FAIL (2026-10-21):** act-1-1.png; prompt-1.1.txt in `docs/demo/evidence/2026-10-21-RB-03/`.
+- [ ] Act 2: findings appear before the change set and match `configs/demo/data/README.md`. **NOT SHOWN (2026-10-21):** checklist.md; step-2.json in `docs/demo/evidence/2026-10-21-RB-03/`.
+- [ ] Act 3: one approval wrote every change set field; the report document shows "Environmental disclosures" with the narrative and the unchanged verbatim block. **NOT SHOWN (2026-10-21):** checklist.md; step-2.json in `docs/demo/evidence/2026-10-21-RB-03/`.
+- [ ] Act 3: the narrative follows `NARRATIVE_STYLE.md` rules 1 to 4 (movement first, only fact numbers, material changes first, percentage points for shares). **NOT SHOWN (2026-10-21):** checklist.md; step-2.json in `docs/demo/evidence/2026-10-21-RB-03/`.
+- [ ] Act 4: the verbatim edit and the invented number were both refused with the server's message; workiva_audit_trail (`limit: 100`) shows the 25 environmental field-write rows and one completed section row matched to confirmation audit IDs, with actor, timestamp, target, before/after or section details, and Workiva operation URL. Repeating the audit prompt after Act 5 shows all 41 field writes and both section rows for the current run. **NOT SHOWN (2026-10-21):** checklist.md; step-2.json in `docs/demo/evidence/2026-10-21-RB-03/`.
+- [ ] Act 5: the social section completed without code or configuration changes during the run. **NOT SHOWN (2026-10-21):** checklist.md; step-2.json in `docs/demo/evidence/2026-10-21-RB-03/`.
+- [ ] Total run time of the five acts is 8 minutes or less. **NOT SHOWN (2026-10-21):** checklist.md; step-2.json in `docs/demo/evidence/2026-10-21-RB-03/`.
+- [ ] No token or secret is visible in the recording or the screenshots. **NOT SHOWN (2026-10-21):** checklist.md; step-2.json in `docs/demo/evidence/2026-10-21-RB-03/`.

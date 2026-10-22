@@ -4,6 +4,8 @@ Copilot follows this guide when it drafts a narrative block. The reader is a dir
 
 The conventions after rule 10 were checked on 2026-10-19 against the paragraphs of several existing sections of the sandbox report document (read-only; nothing copied).
 
+The 2026-10-21 RB-03 browser run stopped during Act 1; narrative drafting was not exercised and these rules were not changed.
+
 Only the "Rules" section below (rules 1 to 10 and the conventions) is pasted into Copilot Studio; this introduction, the provenance note and the example are not.
 
 ## Rules

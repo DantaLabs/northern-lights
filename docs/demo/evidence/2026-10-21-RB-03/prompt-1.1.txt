@@ -1,0 +1,31 @@
+Bot said:
+
+Hello, I'm Workiva_Sandbox_Test. How can I help?
+
+Like
+Dislike
+Sent at October 21 at 7:15 PM
+Just now
+Bot said: Hello, I'm Workiva_Sandbox_Test. How can I help? Message is interactive. Click to interact.
+You said:
+
+What was total energy consumption in 2025 and how does it compare with 2024?
+
+You said: What was total energy consumption in 2025 and how does it compare with 2024?
+Bot said:
+
+Total energy consumption in 2025 was 1,978 (period: 2025), from spreadsheet "VSME-Digital-Template-1.0.1 Unlocked", sheet "Environmental Disclosures", cell G5.
+
+Total energy consumption in 2024 was 2,030 (period: 2024), from spreadsheet "VSME - Factbook template", sheet "PY Data Output", cell L2.
+
+Comparison: total energy consumption fell from 2,030 in 2024 to 1,978 in 2025.
+
+Sources:
+
+2025: VSME-Digital-Template-1.0.1 Unlocked → Environmental Disclosures → G5
+2024: VSME - Factbook template → PY Data Output → L2
+Like
+Dislike
+Sent at October 21 at 7:15 PM
+Just now
+Bot said: Total energy consumption in 2025 was 1,978 (period: 2025), from spreadsheet "VSME-Digital-Template-1.0.1 Unlocked", sheet "Environmental Disclosures", cell G5. Total energy consumption in 2024 was 2,030 (period: 2024), from spreadsheet "VSME - Factbook template", sheet "PY Data Output", cell L2. Comparison: total energy consumption fell from 2,030 in 2024 to 1,978 in 2025. Sources: 2025: VSME-Digital-Template-1.0.1 Unlocked → Environmental Disclosures → G5 2024: VSME - Factbook template → PY Data Output → L2

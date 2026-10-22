@@ -1,0 +1,49 @@
+# Redacted MCP requests from the last 60 minutes
+# time method status auth key_match user_agent error_present
+19:00:05 initialize 200 bearer/53 yes user_agent='curl/7.81.0' error_present=False
+19:00:05 notifications/initialized 202 bearer/53 yes user_agent='curl/7.81.0' error_present=False
+19:00:05 tools/list 200 bearer/53 yes user_agent='curl/7.81.0' error_present=False
+19:00:27 initialize 200 bearer/53 yes user_agent='curl/7.81.0' error_present=False
+19:00:27 notifications/initialized 202 bearer/53 yes user_agent='curl/7.81.0' error_present=False
+19:00:28 tools/list 200 bearer/53 yes user_agent='curl/7.81.0' error_present=False
+19:01:09 initialize 200 bearer/53 yes user_agent='curl/7.81.0' error_present=False
+19:01:09 notifications/initialized 202 bearer/53 yes user_agent='curl/7.81.0' error_present=False
+19:01:09 tools/list 200 bearer/53 yes user_agent='curl/7.81.0' error_present=False
+19:04:07 initialize 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:04:07 initialize 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:04:08 notifications/initialized 202 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:04:09 notifications/initialized 202 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:04:10 tools/list 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:05:02 initialize 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:05:02 notifications/initialized 202 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:05:03 tools/list 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:05:50 initialize 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:05:51 notifications/initialized 202 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:05:51 tools/list 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:05:56 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:05:59 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:06:09 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:06:15 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:06:19 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:08:42 initialize 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:08:42 notifications/initialized 202 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:08:42 tools/list 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:08:47 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:08:51 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:08:53 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:09:01 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:09:07 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:13:42 initialize 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:13:43 notifications/initialized 202 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:13:44 tools/list 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:13:51 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:13:55 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:14:01 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:14:03 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:15:18 initialize 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:15:19 notifications/initialized 202 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:15:20 tools/list 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:15:28 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:15:36 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:15:38 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
+19:15:42 tools/call 200 bearer/53 yes user_agent='CopilotStudio PowerFx/1.99.0-l' error_present=False
