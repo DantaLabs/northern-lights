@@ -695,7 +695,7 @@ func requiredPermission(tool string, arguments json.RawMessage, requireConfirmat
 		return identity.PermissionWorkivaWritePreview, nil
 	case "workiva_confirm_change_set", "workiva_confirm_section_text":
 		return identity.PermissionWorkivaWriteConfirm, nil
-	case "workiva_list_spreadsheets", "workiva_read_range", "workiva_search_fields", "workiva_get_field":
+	case "workiva_list_spreadsheets", "workiva_read_range", "workiva_search_fields", "workiva_get_field", "workiva_compare_fields":
 		return identity.PermissionWorkivaRead, nil
 	case "workiva_update_field":
 		if !requireConfirmation {

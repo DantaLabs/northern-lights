@@ -2,13 +2,14 @@ package tools
 
 import "github.com/dantalabs/northern-lights/internal/mcpserver"
 
-// Demo returns the four demo pipeline tools, registered after All() only when NL_DEMO_PIPELINE=true.
+// Demo returns the demo pipeline tools, registered after All() only when NL_DEMO_PIPELINE=true.
 func Demo() []mcpserver.Tool {
 	return []mcpserver.Tool{
 		PrepareSection(),
 		ConfirmChangeSet(),
 		StageSectionText(),
 		ConfirmSectionText(),
+		CompareFields(),
 	}
 }
 

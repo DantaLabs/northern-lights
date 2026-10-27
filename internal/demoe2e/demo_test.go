@@ -114,8 +114,8 @@ func TestEnvironmentalDemoPipeline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 17 {
-		t.Fatalf("listed %d tools, want 17", len(listed.Tools))
+	if len(listed.Tools) != 18 {
+		t.Fatalf("listed %d tools, want 18", len(listed.Tools))
 	}
 	call := func(name string, args map[string]any) *mcp.CallToolResult {
 		t.Helper()
@@ -178,6 +178,27 @@ func TestEnvironmentalDemoPipeline(t *testing.T) {
 	travel := factsByKey["ghg_scope3_business_travel"]
 	if travel.Prior != "140" || travel.Change != "25" || !slices.Contains(travel.Display, "17.9%") || !travel.Material || travel.Direction != "up" {
 		t.Fatalf("business travel fact = %+v", travel)
+	}
+	// A read-only comparison quotes the same server-computed facts as the narrative.
+	var compared struct {
+		SectionTitle   string `json:"section_title"`
+		MaterialityPct string `json:"materiality_pct"`
+		Items          []struct {
+			factOutput
+			CurrentCell struct {
+				Range string `json:"range"`
+			} `json:"current_cell"`
+		} `json:"items"`
+	}
+	decode(t, call("workiva_compare_fields", map[string]any{"section_id": "esg-environmental", "fields": []any{"energy_total", "business travel"}}), &compared)
+	if compared.SectionTitle != "Environmental disclosures" || compared.MaterialityPct != "10" || len(compared.Items) != 2 {
+		t.Fatalf("comparison = %+v", compared)
+	}
+	for _, item := range compared.Items {
+		want := factsByKey[item.Key]
+		if item.ChangePct != want.ChangePct || item.Material != want.Material || !slices.Equal(item.Display, want.Display) || item.CurrentCell.Range == "" {
+			t.Fatalf("compared %+v, prepared %+v", item, want)
+		}
 	}
 	preview := prepared.ChangeSet
 	if preview.ID == "" || preview.Token == "" || len(preview.Items) != len(wantValues) {
