@@ -16,7 +16,7 @@ func ConfirmChangeSet() mcpserver.Tool { return confirmChangeSetTool{} }
 
 const confirmChangeSetName = "workiva_confirm_change_set"
 
-const confirmChangeSetDescription = `Writes every field in a previewed change set after the person approved it, using the change set ID and confirmation token. Call it only after workiva_prepare_section returned a change set and the person explicitly approved the preview.`
+const confirmChangeSetDescription = `Writes every field in a previewed change set after the person approved it, using the change set ID and confirmation token. Call it only after workiva_prepare_section returned a change set and the person explicitly approved the preview. Report how many fields completed and name any that did not, grouped by category rather than one line per field. Never retry an item whose status is mismatch or reconciliation_required; tell the person to check the spreadsheet.`
 
 func (confirmChangeSetTool) Name() string { return confirmChangeSetName }
 

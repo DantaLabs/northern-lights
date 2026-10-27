@@ -2,7 +2,7 @@
 
 Copilot follows this guide when it drafts a narrative block. The reader is a director, shareholder or advisor who wants to know what changed and what it means, not the raw figure. The server's number guard rejects any number that is not a narrative fact, so the rules below also keep drafts from being refused.
 
-Rules 1 and 8 and the company-name convention follow KPMG's illustrative IFRS financial statements (2025): "increased/decreased by", the prior year in brackets and "the Group". The other conventions after rule 10 were checked on 2026-10-19 against the paragraphs of several existing sections of the sandbox report document (read-only; nothing copied).
+Rules 1 and 8 follow KPMG's illustrative IFRS financial statements (2025): "increased/decreased by" and the prior year in brackets. The company is always named; "the Group" read as a group of people in the 27 October Teams run. The other conventions after rule 10 were checked on 2026-10-19 against the paragraphs of several existing sections of the sandbox report document (read-only; nothing copied).
 
 The 2026-10-21 RB-03 browser run stopped during Act 1; narrative drafting was not exercised and these rules were not changed.
 
@@ -22,7 +22,7 @@ Only the "Rules" section below (rules 1 to 10 and the conventions) is pasted int
 10. Verbatim blocks are never edited, shortened, merged with narrative, translated or summarized.
 
 Conventions:
-- Name the company ("Demo Harbour Components") once per section, then "the Group".
+- Refer to the company by its name, "Demo Harbour Components", never "the Group".
 - British spelling (organisation, programme, decarbonisation, labour).
 - Digits for every number, comma as thousands separator (18,400), decimal point, "%" attached (12%), a space between number and unit (1.98 GWh, 165.0 tCO2e), years as four digits ("in 2025", "compared with 2024").
 - Units: MWh, GWh, tCO2e, m3.

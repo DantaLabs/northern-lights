@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
+	"github.com/dantalabs/northern-lights/internal/config"
+	"github.com/dantalabs/northern-lights/internal/identity"
+	"github.com/dantalabs/northern-lights/internal/mcpserver"
 )
 
 func seedAuditTrail(t *testing.T, env testEnv) {
@@ -258,5 +262,52 @@ func TestAuditTrailFindsAllowedBeyondTenThousandDeniedRows(t *testing.T) {
 		if !strings.Contains(string(data), "older-allowed") || strings.Contains(string(data), "secret") || strings.Contains(string(data), "denied") {
 			t.Fatalf("results=%s", data)
 		}
+	}
+}
+
+func TestAuditTrailNamesOnlyTheCallersOwnEntries(t *testing.T) {
+	deps, _ := authorizationTestDeps(t)
+	caller := toolPrincipal(identity.PermissionAuditRead)
+	caller.DisplayLabel = "Sigmundo Contreras"
+	ctx := identity.ContextWithPrincipal(context.Background(), caller)
+	for _, actor := range []string{caller.AuditActor(), caller.TenantID + "/33333333-3333-3333-3333-333333333333"} {
+		if _, err := deps.Audit.Append(ctx, audit.Entry{Actor: actor, Tool: "workiva_list_spreadsheets", Action: "call"}); err != nil {
+			t.Fatalf("Append: %v", err)
+		}
+	}
+	reg := mcpserver.NewRegistry()
+	reg.Register(AuditTrail())
+	handler, err := mcpserver.New(deps, reg, &mcpserver.Options{AuthMode: config.AuthModeEntra, TokenVerifier: toolTokenVerifier{principal: caller}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"workiva_audit_trail","arguments":{"limit":10}}}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Authorization", "Bearer valid")
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	var body struct {
+		Result struct {
+			StructuredContent struct {
+				Entries []struct {
+					Actor     string `json:"actor"`
+					ActorName string `json:"actor_name"`
+				} `json:"entries"`
+			} `json:"structuredContent"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
+		t.Fatalf("status %d, body %q: %v", res.Code, res.Body.String(), err)
+	}
+	named := map[string]string{}
+	for _, e := range body.Result.StructuredContent.Entries {
+		named[e.Actor] = e.ActorName
+	}
+	if named[caller.AuditActor()] != "Sigmundo Contreras" {
+		t.Errorf("caller's entry name = %q, want Sigmundo Contreras (entries %+v)", named[caller.AuditActor()], body.Result.StructuredContent.Entries)
+	}
+	if other := named[caller.TenantID+"/33333333-3333-3333-3333-333333333333"]; other != "" {
+		t.Errorf("another actor's entry is named %q, want no name", other)
 	}
 }
