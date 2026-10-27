@@ -7,6 +7,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
+	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 )
 
@@ -20,7 +21,9 @@ const auditTrailDescription = `Returns recent entries of the hash-chained audit 
 
 Use this to answer "who changed what and when": every read, sync, and write through this server is one entry carrying the tool, the action, the target (spreadsheet/sheet/range), the before and after values for writes, the Workiva operation URL, and the timestamp. Filter by target to trace one cell, for example target "ss-1/sh-1/B3".
 
-The full chain can be integrity-verified by the operator (workiva-mcp audit verify): every entry hashes the previous entry, so any tampering with a stored row breaks the chain at that sequence number. This tool exposes the entries; verification stays an operator-side command so clients cannot rewrite history through the MCP surface.`
+The full chain can be integrity-verified by the operator (workiva-mcp audit verify): every entry hashes the previous entry, so any tampering with a stored row breaks the chain at that sequence number. This tool exposes the entries; verification stays an operator-side command so clients cannot rewrite history through the MCP surface.
+
+actor is the stable tenant/object ID used for attribution. actor_name is the signed-in caller's display name, shown only on the caller's own entries; it is display metadata, not part of the hash chain. When presenting writes, show a compact table: time, actor_name (or actor), what changed, before and after.`
 
 func (auditTrailTool) Name() string { return "workiva_audit_trail" }
 
@@ -39,9 +42,16 @@ type auditTrailInput struct {
 type auditTrailOutput struct {
 	// NLAuditID is filled by the server middleware with the audit ID of this
 	// call; declared here so the advertised output schema allows it.
-	NLAuditID string        `json:"nl_audit_id,omitempty"`
-	Count     int           `json:"count"`
-	Entries   []audit.Entry `json:"entries"`
+	NLAuditID string            `json:"nl_audit_id,omitempty"`
+	Count     int               `json:"count"`
+	Entries   []auditTrailEntry `json:"entries"`
+}
+
+// auditTrailEntry adds the caller's display name to their own entries. The
+// name never feeds attribution or the hash chain (identity.Principal).
+type auditTrailEntry struct {
+	audit.Entry
+	ActorName string `json:"actor_name,omitempty"`
 }
 
 func (auditTrailTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
@@ -87,7 +97,20 @@ func (auditTrailTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 			}
 			before = entries[len(entries)-1].Seq
 		}
-		return nil, auditTrailOutput{Count: len(filtered), Entries: filtered}, nil
+		// ponytail: only the caller's own name is known; a persisted label table
+		// would be needed to name other actors.
+		name, self := "", ""
+		if principal, ok := identity.PrincipalFromContext(ctx); ok {
+			name, self = principal.DisplayLabel, principal.AuditActor()
+		}
+		out := make([]auditTrailEntry, len(filtered))
+		for i, entry := range filtered {
+			out[i] = auditTrailEntry{Entry: entry}
+			if name != "" && entry.Actor == self {
+				out[i].ActorName = name
+			}
+		}
+		return nil, auditTrailOutput{Count: len(out), Entries: out}, nil
 	})
 }
 

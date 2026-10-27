@@ -182,6 +182,7 @@ func auditEntrySchema() map[string]any {
 		"ts":             boundedSchema("audit timestamp", 64),
 		"tenant_id":      boundedSchema("tenant identifier", 128),
 		"actor":          optionalString("audit actor", 256),
+		"actor_name":     optionalString("display name of the signed-in caller, on their own entries only", 256),
 		"tool":           boundedSchema("tool name", 128),
 		"action":         boundedSchema("audit action", 128),
 		"target":         optionalString("audit target", 1024),

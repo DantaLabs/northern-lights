@@ -142,7 +142,7 @@ func prepareSectionOutputSchema() map[string]any {
 	}), []string{"section_id", "findings", "facts", "verbatim", "change_set", "summary", "next_step"})
 }
 
-const prepareSectionNextStep = "Show the analyst the findings first, then the change set summary. Ask for approval, and after the analyst approves call workiva_confirm_change_set with change_set_id and confirm_token."
+const prepareSectionNextStep = "Show the findings before anything else, most serious first (missing, then out_of_range, then material_change and sign_change), each with its field, current and prior values and units. For a missing field, give its prior-period value from workiva_compare_fields. Then give the change set summary grouped by category (energy, emissions, water and so on) in a few bullets, not one line per field, and ask for approval. After the analyst approves, call workiva_confirm_change_set with change_set_id and confirm_token."
 
 func (prepareSectionTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 	mcp.AddTool(s, &mcp.Tool{

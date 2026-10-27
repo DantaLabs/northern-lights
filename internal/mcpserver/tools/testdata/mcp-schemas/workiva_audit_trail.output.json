@@ -21,6 +21,11 @@
             "maxLength": 256,
             "type": "string"
           },
+          "actor_name": {
+            "description": "display name of the signed-in caller, on their own entries only",
+            "maxLength": 256,
+            "type": "string"
+          },
           "after_json": {
             "description": "redacted after payload",
             "maxLength": 4096,
