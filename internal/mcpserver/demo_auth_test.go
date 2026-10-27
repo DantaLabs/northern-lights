@@ -70,3 +70,40 @@ func TestDemoToolsEntraAuthorization(t *testing.T) {
 		})
 	}
 }
+
+func TestCompareFieldsEntraAuthorizationIsRead(t *testing.T) {
+	const name = "workiva_compare_fields"
+	if writeTools[name] {
+		t.Fatal("workiva_compare_fields is read-only and must not be audited as a write")
+	}
+	for _, tc := range []struct {
+		permission identity.Permission
+		allowed    bool
+	}{
+		{identity.PermissionWorkivaRead, true},
+		{identity.PermissionAuditRead, false},
+	} {
+		t.Run(string(tc.permission), func(t *testing.T) {
+			called := false
+			reg := NewRegistry()
+			reg.Register(demoAuthTool{name: name, called: &called})
+			handler, err := New(testDeps(t), reg, &Options{AuthMode: config.AuthModeEntra, TokenVerifier: &fakeTokenVerifier{principal: delegatedPrincipal(tc.permission)}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":%q,"arguments":{}}}`, name)))
+			req.Header.Set("Authorization", "Bearer valid-token")
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Accept", "application/json, text/event-stream")
+			res := httptest.NewRecorder()
+			handler.ServeHTTP(res, req)
+			wantStatus := http.StatusForbidden
+			if tc.allowed {
+				wantStatus = http.StatusOK
+			}
+			if res.Code != wantStatus || called != tc.allowed {
+				t.Fatalf("status=%d called=%v, want status=%d called=%v: %s", res.Code, called, wantStatus, tc.allowed, res.Body.String())
+			}
+		})
+	}
+}

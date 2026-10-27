@@ -40,6 +40,7 @@ var demoToolNames = []string{
 	"workiva_confirm_change_set",
 	"workiva_stage_section_text",
 	"workiva_confirm_section_text",
+	"workiva_compare_fields",
 }
 
 func TestDemoToolsOrder(t *testing.T) {
@@ -64,8 +65,8 @@ func TestDemoToolsOrder(t *testing.T) {
 		reg.Register(tool)
 	}
 	names := reg.Names()
-	if len(names) != 17 {
-		t.Fatalf("registry has %d names, want 17: %v", len(names), names)
+	if len(names) != 18 {
+		t.Fatalf("registry has %d names, want 18: %v", len(names), names)
 	}
 	for i, want := range demoToolNames {
 		if got := names[13+i]; got != want {
@@ -114,6 +115,7 @@ func TestDemoToolsNameMissingDependency(t *testing.T) {
 		{"workiva_confirm_change_set", map[string]any{"change_set_id": "cs-1", "confirm_token": "tok"}, "ChangeSets"},
 		{"workiva_stage_section_text", map[string]any{"section_id": "environmental", "blocks": []any{block}}, "SectionText"},
 		{"workiva_confirm_section_text", map[string]any{"text_id": "tx-1", "confirm_token": "tok"}, "SectionText"},
+		{"workiva_compare_fields", map[string]any{"section_id": "environmental"}, "Recipes"},
 	}
 	for _, c := range calls {
 		t.Run(c.tool, func(t *testing.T) {
