@@ -8,6 +8,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/dantalabs/northern-lights/internal/changeset"
 	"github.com/dantalabs/northern-lights/internal/mcpserver"
 	"github.com/dantalabs/northern-lights/internal/recipe"
 )
@@ -116,21 +117,7 @@ func prepareSectionOutputSchema() map[string]any {
 		"title": boundedSchema("verbatim block title", 256),
 		"text":  boundedSchema("verbatim block text, exact", 16000),
 	}, []string{"id", "title", "text"})
-	item := objectSchema(map[string]any{
-		"field_name":     boundedSchema("field name", 256),
-		"spreadsheet_id": boundedSchema("spreadsheet ID", 128),
-		"sheet_id":       boundedSchema("sheet ID", 128),
-		"range":          boundedSchema("cell range", 512),
-		"before":         optionalString("value before the write", 4096),
-		"after":          optionalString("value after the write", 4096),
-		"source":         optionalString("where the new value comes from", 256),
-	}, []string{"field_name", "spreadsheet_id", "sheet_id", "range"})
-	changeSet := objectSchema(map[string]any{
-		"change_set_id": boundedSchema("change set ID", 128),
-		"confirm_token": boundedSchema("confirmation token for the change set", 4096),
-		"expires_at":    boundedSchema("expiry time, RFC 3339", 64),
-		"items":         map[string]any{"type": "array", "maxItems": 500, "items": item},
-	}, []string{"change_set_id", "confirm_token", "expires_at", "items"})
+	changeSet := changeSetPreviewSchema()
 	return objectSchema(mergeProperties(commonStructuredOutputProperties(), map[string]any{
 		"section_id": boundedSchema("section ID", 128),
 		"findings":   map[string]any{"type": "array", "maxItems": 500, "items": finding},
@@ -221,6 +208,36 @@ func newPrepareSectionOutput(p recipe.Prepared) prepareSectionOutput {
 	}
 	for _, item := range p.ChangeSet.Items {
 		out.ChangeSet.Items = append(out.ChangeSet.Items, prepareChangeSetItem{
+			FieldName: item.FieldName, SpreadsheetID: item.SpreadsheetID, SheetID: item.SheetID,
+			Range: item.Range, Before: item.Before, After: item.After, Source: item.Source,
+		})
+	}
+	return out
+}
+
+// changeSetPreviewSchema is the staged change set returned by prepare and revert.
+func changeSetPreviewSchema() map[string]any {
+	item := objectSchema(map[string]any{
+		"field_name":     boundedSchema("field name", 256),
+		"spreadsheet_id": boundedSchema("spreadsheet ID", 128),
+		"sheet_id":       boundedSchema("sheet ID", 128),
+		"range":          boundedSchema("cell range", 512),
+		"before":         optionalString("value before the write", 4096),
+		"after":          optionalString("value after the write", 4096),
+		"source":         optionalString("where the new value comes from", 256),
+	}, []string{"field_name", "spreadsheet_id", "sheet_id", "range"})
+	return objectSchema(map[string]any{
+		"change_set_id": boundedSchema("change set ID", 128),
+		"confirm_token": boundedSchema("confirmation token for the change set", 4096),
+		"expires_at":    boundedSchema("expiry time, RFC 3339", 64),
+		"items":         map[string]any{"type": "array", "maxItems": 500, "items": item},
+	}, []string{"change_set_id", "confirm_token", "expires_at", "items"})
+}
+
+func newPrepareChangeSet(p changeset.Preview) prepareChangeSet {
+	out := prepareChangeSet{ChangeSetID: p.ID, ConfirmToken: p.Token, ExpiresAt: p.ExpiresAt.UTC().Format(time.RFC3339), Items: make([]prepareChangeSetItem, 0, len(p.Items))}
+	for _, item := range p.Items {
+		out.Items = append(out.Items, prepareChangeSetItem{
 			FieldName: item.FieldName, SpreadsheetID: item.SpreadsheetID, SheetID: item.SheetID,
 			Range: item.Range, Before: item.Before, After: item.After, Source: item.Source,
 		})

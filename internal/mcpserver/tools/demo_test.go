@@ -41,6 +41,7 @@ var demoToolNames = []string{
 	"workiva_stage_section_text",
 	"workiva_confirm_section_text",
 	"workiva_compare_fields",
+	"workiva_revert_change_set",
 }
 
 func TestDemoToolsOrder(t *testing.T) {
@@ -65,8 +66,8 @@ func TestDemoToolsOrder(t *testing.T) {
 		reg.Register(tool)
 	}
 	names := reg.Names()
-	if len(names) != 18 {
-		t.Fatalf("registry has %d names, want 18: %v", len(names), names)
+	if len(names) != 19 {
+		t.Fatalf("registry has %d names, want 19: %v", len(names), names)
 	}
 	for i, want := range demoToolNames {
 		if got := names[13+i]; got != want {

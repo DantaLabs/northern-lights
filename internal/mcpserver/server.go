@@ -214,6 +214,7 @@ func New(deps Deps, reg *Registry, opts *Options) (http.Handler, error) {
 var writeTools = map[string]bool{
 	"workiva_prepare_section":        true,
 	"workiva_stage_section_text":     true,
+	"workiva_revert_change_set":      true,
 	"workiva_confirm_change_set":     true,
 	"workiva_confirm_section_text":   true,
 	"workiva_update_field":           true,
@@ -691,7 +692,7 @@ func confirmationRequired(deps Deps) bool {
 // it is a direct mutation and requires confirm permission.
 func requiredPermission(tool string, arguments json.RawMessage, requireConfirmation bool) (identity.Permission, error) {
 	switch tool {
-	case "workiva_prepare_section", "workiva_stage_section_text":
+	case "workiva_prepare_section", "workiva_stage_section_text", "workiva_revert_change_set":
 		return identity.PermissionWorkivaWritePreview, nil
 	case "workiva_confirm_change_set", "workiva_confirm_section_text":
 		return identity.PermissionWorkivaWriteConfirm, nil

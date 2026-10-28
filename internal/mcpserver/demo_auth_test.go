@@ -35,6 +35,7 @@ func TestDemoToolsEntraAuthorization(t *testing.T) {
 	}{
 		{"workiva_prepare_section", identity.PermissionWorkivaWritePreview},
 		{"workiva_stage_section_text", identity.PermissionWorkivaWritePreview},
+		{"workiva_revert_change_set", identity.PermissionWorkivaWritePreview},
 		{"workiva_confirm_change_set", identity.PermissionWorkivaWriteConfirm},
 		{"workiva_confirm_section_text", identity.PermissionWorkivaWriteConfirm},
 	} {

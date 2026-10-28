@@ -10,6 +10,7 @@ func Demo() []mcpserver.Tool {
 		StageSectionText(),
 		ConfirmSectionText(),
 		CompareFields(),
+		RevertChangeSet(),
 	}
 }
 

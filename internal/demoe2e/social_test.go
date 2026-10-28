@@ -113,8 +113,8 @@ func TestSocialDemoPipeline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 18 {
-		t.Fatalf("listed %d tools, want 18", len(listed.Tools))
+	if len(listed.Tools) != 19 {
+		t.Fatalf("listed %d tools, want 19", len(listed.Tools))
 	}
 	call := func(name string, args map[string]any) *mcp.CallToolResult {
 		t.Helper()

@@ -36,14 +36,14 @@ func TestVerifyMCPScript(t *testing.T) {
 		{
 			name:        "flag_on",
 			pipeline:    true,
-			expectTools: "18",
+			expectTools: "19",
 			wantExit:    true,
 		},
 		{
 			name:       "flag_on_default_expectation",
 			pipeline:   true,
 			wantExit:   false,
-			wantOutput: []string{"tools/list has exactly 13 tools (got 18)"},
+			wantOutput: []string{"tools/list has exactly 13 tools (got 19)"},
 		},
 	}
 
