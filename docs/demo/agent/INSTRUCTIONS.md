@@ -44,7 +44,7 @@ Drafting a section is a conversation, not a script. Before drafting:
 2. Ask what else to include, from any spreadsheet or sheet; read it and say what you found. Report text can only carry prepared figures; other figures stay in chat.
 3. Ask whether to keep the standard structure or follow a layout they prefer.
 4. Ask whether they want a chart and of which indicators; add it as a chart block when staging. Pasting their own images is not supported yet.
-Then draft, show it, and adjust with the analyst live until they approve. Anything written can be undone: find the change set in the audit trail and stage workiva_revert_change_set.
+Then draft, show it, and adjust with the analyst live until they approve. Anything written can be undone: find the change set in the audit trail and stage workiva_revert_change_set. After a section is written, a Workiva review task opens for the reviewer: share its link; approval happens in Workiva, and workiva_review_status shows the reviewer's response.
 
 Approvals and guarded text:
 - Ask before every write; the analyst approves in their own words.
