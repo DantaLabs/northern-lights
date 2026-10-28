@@ -110,6 +110,34 @@ func (c *Client) EnsureSection(ctx context.Context, documentID, title string) (s
 	return c.CreateDocumentSection(ctx, documentID, title, "")
 }
 
+// EnsureChildSection returns the section named title under the chapter named
+// parent, creating it as the chapter's last child. Existing chapter content is
+// never touched. A missing chapter is created at top level so a fresh document
+// still works.
+func (c *Client) EnsureChildSection(ctx context.Context, documentID, parent, title string) (string, error) {
+	sections, err := c.ListDocumentSections(ctx, documentID)
+	if err != nil {
+		return "", err
+	}
+	parentID := ""
+	for _, s := range sections {
+		if s.Name == parent && parentID == "" {
+			parentID = s.ID
+		}
+	}
+	if parentID == "" {
+		if parentID, err = c.CreateDocumentSection(ctx, documentID, parent, ""); err != nil {
+			return "", err
+		}
+	}
+	for _, s := range sections {
+		if s.Name == title && s.Parent != nil && s.Parent.ID == parentID {
+			return s.ID, nil
+		}
+	}
+	return c.CreateDocumentSection(ctx, documentID, title, parentID)
+}
+
 // CreateDocumentSection supports a parent for opt-in sandbox nesting tests.
 func (c *Client) CreateDocumentSection(ctx context.Context, documentID, title, parentID string) (string, error) {
 	payload := map[string]any{"name": title}

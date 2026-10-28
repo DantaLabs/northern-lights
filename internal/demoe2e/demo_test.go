@@ -191,7 +191,7 @@ func TestEnvironmentalDemoPipeline(t *testing.T) {
 		} `json:"items"`
 	}
 	decode(t, call("workiva_compare_fields", map[string]any{"section_id": "esg-environmental", "fields": []any{"energy_total", "business travel"}}), &compared)
-	if compared.SectionTitle != "Environmental disclosures" || compared.MaterialityPct != "10" || len(compared.Items) != 2 {
+	if compared.SectionTitle != "2.3 Environmental performance" || compared.MaterialityPct != "10" || len(compared.Items) != 2 {
 		t.Fatalf("comparison = %+v", compared)
 	}
 	for _, item := range compared.Items {
@@ -284,7 +284,7 @@ func TestEnvironmentalDemoPipeline(t *testing.T) {
 	blocks := []textBlock{{Kind: "narrative", Text: narrative}, {Kind: "verbatim", VerbatimID: "env-policy", Text: prepared.Verbatim[0].Text}}
 	var stagedText textPreview
 	decode(t, call("workiva_stage_section_text", map[string]any{"section_id": prepared.SectionID, "blocks": blocks}), &stagedText)
-	if stagedText.ID == "" || stagedText.Token == "" || stagedText.SectionID != prepared.SectionID || stagedText.Title != "Environmental disclosures" || !reflect.DeepEqual(stagedText.Blocks, blocks) {
+	if stagedText.ID == "" || stagedText.Token == "" || stagedText.SectionID != prepared.SectionID || stagedText.Title != "2.3 Environmental performance" || !reflect.DeepEqual(stagedText.Blocks, blocks) {
 		t.Fatalf("text preview = %+v", stagedText)
 	}
 	var writtenText textResult

@@ -85,7 +85,7 @@ func New(env demoenv.Env, changes changeset.Service) (Service, FactStore, error)
 func (s *service) Sections() []SectionInfo {
 	out := make([]SectionInfo, 0, len(s.recipes))
 	for _, r := range s.recipes {
-		out = append(out, SectionInfo{ID: r.ID, Title: r.Title, Period: r.Period, PriorPeriod: r.PriorPeriod, DocumentID: r.DocumentID})
+		out = append(out, SectionInfo{ID: r.ID, Title: r.Title, Period: r.Period, PriorPeriod: r.PriorPeriod, DocumentID: r.DocumentID, Parent: r.Parent})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out

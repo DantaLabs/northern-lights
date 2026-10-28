@@ -182,6 +182,30 @@ func (s *service) addNotes(ctx context.Context, writer any, documentID, sectionI
 	return notes, "completed"
 }
 
+type childSectioner interface {
+	EnsureChildSection(ctx context.Context, documentID, parent, title string) (string, error)
+}
+
+// ensureSection writes inside the recipe's report chapter when it names one.
+func (s *service) ensureSection(ctx context.Context, writer workivaprovider.DocumentWriter, sectionID, documentID, title string) (string, error) {
+	parent := ""
+	if s.recipes != nil {
+		for _, info := range s.recipes.Sections() {
+			if info.ID == sectionID {
+				parent = info.Parent
+			}
+		}
+	}
+	if parent == "" {
+		return writer.EnsureSection(ctx, documentID, title)
+	}
+	placer, ok := writer.(childSectioner)
+	if !ok {
+		return "", errors.New("document writer cannot place a section under a chapter")
+	}
+	return placer.EnsureChildSection(ctx, documentID, parent, title)
+}
+
 // textBlocks drops the chart block, which is drawn, not written as text.
 func textBlocks(blocks []Block) []Block {
 	out := make([]Block, 0, len(blocks))
@@ -377,7 +401,7 @@ func (s *service) Confirm(ctx context.Context, actor, id, token string) (Result,
 		return Result{}, err
 	}
 	result := Result{SectionID: sectionID, DocumentID: documentID, Status: "reconciliation_required"}
-	workivaID, writeErr := writer.EnsureSection(ctx, documentID, title)
+	workivaID, writeErr := s.ensureSection(ctx, writer, sectionID, documentID, title)
 	result.WorkivaSectionID = workivaID
 	var op string
 	paragraphs := strings.Split(fullText(textBlocks(blocks)), "\n")

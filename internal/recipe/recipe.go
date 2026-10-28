@@ -20,6 +20,7 @@ import (
 // recipeDef is one validated section recipe.
 type recipeDef struct {
 	ID, Title, Period, PriorPeriod, DocumentID string
+	Parent                                     string // report chapter the section is written under
 	MaterialityPct                             string // decimal text
 	Fields                                     []fieldDef
 	Verbatim                                   []verbatimDef
@@ -67,6 +68,7 @@ type rawRecipe struct {
 	Period         string        `yaml:"period"`
 	PriorPeriod    string        `yaml:"prior_period"`
 	DocumentID     string        `yaml:"document_id"`
+	Parent         string        `yaml:"parent_section"`
 	MaterialityPct decimalText   `yaml:"materiality_pct"`
 	Fields         []rawField    `yaml:"fields"`
 	Verbatim       []verbatimDef `yaml:"verbatim"`
@@ -159,7 +161,7 @@ func loadRecipeFile(ctx context.Context, root *os.Root, name string, fields fiel
 	}
 	r := recipeDef{
 		ID: raw.ID, Title: raw.Title, Period: raw.Period, PriorPeriod: raw.PriorPeriod,
-		DocumentID: raw.DocumentID, MaterialityPct: string(raw.MaterialityPct),
+		DocumentID: raw.DocumentID, Parent: raw.Parent, MaterialityPct: string(raw.MaterialityPct),
 		Verbatim: raw.Verbatim, root: root, file: name,
 	}
 	for _, f := range raw.Fields {

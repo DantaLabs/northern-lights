@@ -1,6 +1,7 @@
 # Section recipe for the social section (demo; fictional data).
 id: esg-social
-title: Social disclosures
+title: 3.1 Social performance
+parent_section: 3. Social information
 period: "2025"
 prior_period: "2024"
 document_id: "demo-doc-annual-report"

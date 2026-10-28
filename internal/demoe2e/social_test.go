@@ -257,7 +257,7 @@ func TestSocialDemoPipeline(t *testing.T) {
 	blocks := []textBlock{{Kind: "narrative", Text: narrative}, {Kind: "verbatim", VerbatimID: "social-policy", Text: prepared.Verbatim[0].Text}}
 	var stagedText textPreview
 	decode(t, call("workiva_stage_section_text", map[string]any{"section_id": prepared.SectionID, "blocks": blocks}), &stagedText)
-	if stagedText.ID == "" || stagedText.Token == "" || stagedText.SectionID != prepared.SectionID || stagedText.Title != "Social disclosures" || !reflect.DeepEqual(stagedText.Blocks, blocks) {
+	if stagedText.ID == "" || stagedText.Token == "" || stagedText.SectionID != prepared.SectionID || stagedText.Title != "3.1 Social performance" || !reflect.DeepEqual(stagedText.Blocks, blocks) {
 		t.Fatalf("text preview = %+v", stagedText)
 	}
 	var writtenText textResult

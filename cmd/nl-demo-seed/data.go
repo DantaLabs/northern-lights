@@ -81,6 +81,7 @@ type Recipe struct {
 	Period         string        `yaml:"period"`
 	PriorPeriod    string        `yaml:"prior_period"`
 	DocumentID     string        `yaml:"document_id"`
+	Parent         string        `yaml:"parent_section"`
 	MaterialityPct int           `yaml:"materiality_pct"`
 	Fields         []RecipeField `yaml:"fields"`
 	Verbatim       []VerbatimRef `yaml:"verbatim"`

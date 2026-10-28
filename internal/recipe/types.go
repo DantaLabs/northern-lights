@@ -34,8 +34,9 @@ type Prepared struct {
 	ChangeSet changeset.Preview
 }
 
-// SectionInfo describes a section known to the recipe service.
-type SectionInfo struct{ ID, Title, Period, PriorPeriod, DocumentID string }
+// SectionInfo describes a recipe section. Parent names the existing report
+// chapter the section is created under; empty means top level.
+type SectionInfo struct{ ID, Title, Period, PriorPeriod, DocumentID, Parent string }
 
 // Service prepares section recipes.
 type Service interface {

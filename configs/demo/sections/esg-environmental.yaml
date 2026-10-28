@@ -1,6 +1,7 @@
 # Section recipe for the environmental section (demo; fictional data).
 id: esg-environmental
-title: Environmental disclosures
+title: 2.3 Environmental performance
+parent_section: 2. Environmental information
 period: "2025"
 prior_period: "2024"
 document_id: "demo-doc-annual-report"

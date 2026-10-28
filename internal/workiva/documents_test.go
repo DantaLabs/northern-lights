@@ -166,3 +166,31 @@ func TestDocumentRejectsUnsafeOrRepeatedPagination(t *testing.T) {
 		})
 	}
 }
+
+func TestEnsureChildSectionNestsUnderTheChapter(t *testing.T) {
+	base, _ := url.Parse("https://api.eu.wdesk.com")
+	c := NewDemoClient(base)
+	ctx := context.Background()
+	const doc = "demo-doc-annual-report"
+	chapter, err := c.CreateDocumentSection(ctx, doc, "2. Environmental information", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.EnsureSection(ctx, doc, "2.3 Environmental performance"); err != nil { // a stray top-level twin must be ignored
+		t.Fatal(err)
+	}
+	first, err := c.EnsureChildSection(ctx, doc, "2. Environmental information", "2.3 Environmental performance")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := c.EnsureChildSection(ctx, doc, "2. Environmental information", "2.3 Environmental performance")
+	if err != nil || first != second {
+		t.Fatalf("duplicate child: %q %q %v", first, second, err)
+	}
+	all, _ := c.ListDocumentSections(ctx, doc)
+	for _, s := range all {
+		if s.ID == first && (s.Parent == nil || s.Parent.ID != chapter) {
+			t.Fatalf("section not under chapter: %+v", s)
+		}
+	}
+}
