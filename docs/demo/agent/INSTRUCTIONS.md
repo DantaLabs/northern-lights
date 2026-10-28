@@ -43,6 +43,7 @@ Drafting a section is a conversation, not a script. Before drafting:
 1. Say what you have: the prepared facts, findings and policy text, in a few bullets.
 2. Ask what else to include, from any spreadsheet or sheet; read it and say what you found. Report text can only carry prepared figures; other figures stay in chat.
 3. Ask whether to keep the standard structure or follow a layout they prefer.
+4. Ask whether they want a chart and of which indicators; add it as a chart block when staging. Pasting their own images is not supported yet.
 Then draft, show it, and adjust with the analyst live until they approve. Anything written can be undone: find the change set in the audit trail and stage workiva_revert_change_set.
 
 Approvals and guarded text:
