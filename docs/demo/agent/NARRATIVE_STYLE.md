@@ -12,13 +12,13 @@ Only the "Rules" section below (rules 1 to 10 and the conventions) is pasted int
 
 1. Lead each paragraph with the movement and its size, the absolute value, then the prior year in brackets: "Total energy consumption decreased by 3% to 1.98 GWh (2024: 2.03 GWh)."
 2. Use only numbers from the narrative facts, copied exactly as one of their `Display` forms. Never round, convert, add or subtract yourself. Years may be written as the section's reporting and prior period.
-3. Put material changes (facts with `Material: true`) first, largest first. Describe the remaining indicators together in one sentence without numbers ("Other environmental indicators remained within the materiality threshold.")
+3. Put material changes (facts with `Material: true`) first, largest first. Then cover the other main indicators (energy, emissions, water, waste, or headcount and pay for social) with their figures and prior year, two to four sentences.
 4. For shares and rates (facts whose unit is %), describe the change in percentage points, not as a percentage of a percentage. Use 0 decimals unless two changes in one paragraph would then look identical.
 5. State causes only when the analyst gave them in the conversation or a fact label contains them. If the cause of a material change is unknown, ask the analyst before drafting; do not guess and do not leave a gap in the text.
 6. Do not write about a field that has a `missing` finding. Tell the analyst it is missing instead.
 7. Sentences of 25 words or fewer, active voice, past tense for the reporting period and present tense for policies and commitments.
 8. Verbs: increased, decreased, was unchanged; never rose or fell. Write "material", not "significant". No promotional words (strong, impressive, remarkable, dramatic, robust), no speculation (likely, expected to, should).
-9. Structure: paragraph 1 is the headline movement; paragraph 2 covers other material movements and the grouped sentence from rule 3; then the verbatim block, unchanged. Two narrative paragraphs at most.
+9. Structure: always two narrative paragraphs. Paragraph 1: the headline material movement and its cause. Paragraph 2: the other indicators from rule 3. Then the verbatim block, unchanged. Give each narrative paragraph a one-line note with your reasoning; it is saved as an "NL AGENT:" bookmark beside the text, not in the report. Show notes in italics in the preview.
 10. Verbatim blocks are never edited, shortened, merged with narrative, translated or summarized.
 
 Conventions:
@@ -39,6 +39,10 @@ Advisory draft:
 
 > Business travel emissions increased by 18% to 165.0 tCO2e (2024: 140.0 tCO2e), as customer site visits returned.
 >
-> Other environmental indicators, including total energy consumption, remained within the materiality threshold.
+> Total energy consumption decreased by 3% to 1.98 GWh (2024: 2.03 GWh). Renewable electricity purchased decreased to 490 MWh (2024: 520 MWh), within the materiality threshold.
 
-Rule 3 puts the one material change first even though total energy consumption is the larger figure; energy consumption and renewable electricity disappear into the grouped sentence because they are not material, so the number guard has nothing to refuse.
+Notes saved as bookmarks (not report text):
+- Paragraph 1: _NL AGENT: led with business travel, the only change above the 10% threshold; cause given by the analyst._
+- Paragraph 2: _NL AGENT: energy and renewable electricity moved less than 10%, so they follow the headline._
+
+Rule 3 puts the one material change first even though total energy consumption is the larger figure. Every figure in paragraph 2 is a narrative fact display form, so the number guard accepts it.

@@ -240,6 +240,54 @@ func (c *Client) WriteSectionText(ctx context.Context, documentID, sectionID str
 	return op, err
 }
 
+// Bookmark tags one whole paragraph of a section with a name. Workiva shows
+// bookmarks in its bookmarks panel; they are not part of the printed text.
+type Bookmark struct {
+	ParagraphIndex, Length int
+	Name                   string
+}
+
+// AddSectionBookmarks inserts the bookmarks in one atomic batch and waits for
+// the operation, like WriteSectionText.
+func (c *Client) AddSectionBookmarks(ctx context.Context, documentID, sectionID string, marks []Bookmark) error {
+	if len(marks) == 0 {
+		return nil
+	}
+	section, err := c.documentSection(ctx, documentID, sectionID)
+	if err != nil {
+		return err
+	}
+	edits := make([]any, len(marks))
+	for i, m := range marks {
+		selection := map[string]textCaret{"start": {ParagraphIndex: m.ParagraphIndex}, "stop": {ParagraphIndex: m.ParagraphIndex, Offset: m.Length}}
+		location := map[string]any{"type": "richTextSelection", "richTextSelection": map[string]any{"id": section.Body.RichText, "selection": selection}}
+		edits[i] = map[string]any{"type": "insertBookmark", "insertBookmark": map[string]any{"location": location, "name": m.Name}}
+	}
+	var response struct {
+		OperationLocation string `json:"operationLocation"`
+	}
+	headers, err := c.documentJSON(ctx, http.MethodPost, "/documents/"+url.PathEscape(documentID)+"/bookmarks/edit", map[string]any{"data": edits}, &response)
+	if err != nil {
+		return err
+	}
+	op := headers.Get("Location")
+	if op == "" {
+		op = response.OperationLocation
+	}
+	if op == "" {
+		return errors.New("bookmark edit returned no operation location")
+	}
+	ref, err := url.Parse(op)
+	if err != nil {
+		return err
+	}
+	if target := c.baseURL.ResolveReference(ref); target.Scheme != c.baseURL.Scheme || target.Host != c.baseURL.Host || target.User != nil {
+		return errors.New("bookmark operation is outside the Workiva API origin")
+	}
+	_, err = c.WaitOperationWithInitialRetryAfter(ctx, op, initialRetryAfterDelay(headers.Get("Retry-After")))
+	return err
+}
+
 // ReadSectionText concatenates textSpan.text for each indexed body paragraph.
 func (c *Client) ReadSectionText(ctx context.Context, documentID, sectionID string) ([]string, error) {
 	section, err := c.documentSection(ctx, documentID, sectionID)

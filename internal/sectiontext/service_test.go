@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -121,6 +122,41 @@ func TestVerbatimGuard(t *testing.T) {
 		}
 	}
 }
+func TestAgentNotesBecomeBookmarks(t *testing.T) {
+	s, _ := newService(t)
+	base, _ := url.Parse("https://api.eu.wdesk.com")
+	transport := workiva.NewDemoTransport()
+	httpClient := &http.Client{Transport: transport}
+	s.env.Client = workiva.NewClient(base, workiva.NewTokenProvider(base, "demo", "demo", "file:read file:write", httpClient), nil, httpClient)
+	for _, note := range []string{"NL AGENT: about 9% higher", strings.Repeat("x", 241), "two\nlines"} {
+		if _, err := s.Stage(context.Background(), "analyst", "environmental", []Block{{Kind: "narrative", Text: "Scope 1 emissions", Note: note}}); err == nil {
+			t.Fatalf("note %q was staged", note)
+		}
+	}
+	if _, err := s.Stage(context.Background(), "analyst", "environmental", []Block{{Kind: "verbatim", VerbatimID: "policy", Text: "Approved policy.\nUnchanged.", Note: "why"}}); err == nil {
+		t.Fatal("note on a verbatim block was staged")
+	}
+	p, err := s.Stage(context.Background(), "analyst", "environmental", []Block{
+		{Kind: "narrative", Text: "Energy consumption fell 8.1% to 1.24 GWh in 2025", Note: "NL AGENT: led with energy, the only material change."},
+		{Kind: "narrative", Text: "Scope 1 emissions in 2024"},
+		{Kind: "verbatim", VerbatimID: "policy", Text: "Approved policy.\nUnchanged."},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := s.Confirm(context.Background(), "analyst", p.ID, p.Token)
+	if err != nil || result.Status != "completed" || result.Notes != "completed" {
+		t.Fatalf("confirm: %+v %v", result, err)
+	}
+	if got := transport.WrittenCells["document:demo-doc-annual-report"]; !strings.Contains(got, `"Bookmarks":["NL AGENT: led with energy, the only material change."]`) {
+		t.Fatalf("bookmarks: %s", got)
+	}
+	var after string
+	if err := s.env.DB.QueryRow(`SELECT after_json FROM audit_log`).Scan(&after); err != nil || !strings.Contains(after, `"agent_notes_status":"completed"`) {
+		t.Fatalf("audit: %s %v", after, err)
+	}
+}
+
 func TestNumberGuard(t *testing.T) {
 	s, _ := newService(t)
 	for _, text := range []string{"Energy consumption fell 8.1% to 1.24 GWh in 2025", "in 2025 compared with 2024", "Scope 1 emissions", "18,400 m3", "CO2 and m3", "Change -2.5% and +10"} {

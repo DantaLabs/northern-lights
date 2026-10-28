@@ -7,8 +7,10 @@ import (
 	"time"
 )
 
-// Block is one paragraph of section text. Kind: narrative | verbatim
-type Block struct{ Kind, Text, VerbatimID string }
+// Block is one paragraph of section text. Kind: narrative | verbatim. Note is
+// the agent's reasoning for a narrative paragraph; it is written as a Workiva
+// bookmark named "NL AGENT: <note>", never as report text.
+type Block struct{ Kind, Text, VerbatimID, Note string }
 
 // Preview is staged section text awaiting confirmation.
 type Preview struct {
@@ -18,7 +20,8 @@ type Preview struct {
 }
 
 // Result is the outcome of confirming section text.
-type Result struct{ SectionID, DocumentID, WorkivaSectionID, Status, AuditID string }
+// Notes is "", "completed" or "failed"; a failed note never undoes the text.
+type Result struct{ SectionID, DocumentID, WorkivaSectionID, Status, AuditID, Notes string }
 
 // Service stages section text and confirms it.
 type Service interface {

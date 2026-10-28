@@ -9,8 +9,9 @@ import (
 )
 
 type demoDocument struct {
-	Next     int
-	Sections []demoDocumentSection
+	Next      int
+	Sections  []demoDocumentSection
+	Bookmarks []string
 }
 type demoDocumentSection struct {
 	ID, Name, Parent string
@@ -46,6 +47,30 @@ func (t *DemoTransport) demoDocumentsResponse(req *http.Request) *http.Response 
 	parts := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
 	if req.Method == http.MethodGet && req.URL.Path == "/documents" {
 		return demoJSONResponse(mustJSON(map[string]any{"data": []any{map[string]string{"id": documentID, "name": "Annual report"}}}))
+	}
+	if len(parts) == 4 && parts[0] == "documents" && parts[1] == documentID && parts[2] == "bookmarks" && parts[3] == "edit" && req.Method == http.MethodPost {
+		var input struct {
+			Data []struct {
+				Type           string `json:"type"`
+				InsertBookmark struct {
+					Name string `json:"name"`
+				} `json:"insertBookmark"`
+			} `json:"data"`
+		}
+		if err := json.NewDecoder(req.Body).Decode(&input); err != nil || len(input.Data) == 0 {
+			return demoBadRequest("invalid bookmark batch")
+		}
+		for _, edit := range input.Data {
+			if edit.Type != "insertBookmark" || utf8.RuneCountInString(edit.InsertBookmark.Name) > 250 {
+				return demoBadRequest("unsupported bookmark edit")
+			}
+			state.Bookmarks = append(state.Bookmarks, edit.InsertBookmark.Name)
+		}
+		save()
+		resp := demoJSONResponse([]byte(`{"operationLocation":"/operations/demo-bookmark-edit"}`))
+		resp.StatusCode = http.StatusAccepted
+		resp.Header.Set("Location", "/operations/demo-bookmark-edit")
+		return resp
 	}
 	if len(parts) >= 3 && parts[0] == "documents" && parts[1] == documentID && parts[2] == "sections" {
 		if len(parts) == 3 {

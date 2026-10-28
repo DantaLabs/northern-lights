@@ -100,13 +100,16 @@ func TestLiveSandboxSectionText(t *testing.T) {
 	defer cleanup(sectionID, title)
 	s.recipes = liveRecipe{f, recipe.SectionInfo{ID: "environmental", Title: title, DocumentID: documentID, Period: "2025", PriorPeriod: "2024"}}
 	paragraphs := []string{"Energy consumption fell 8.1% to 1.24 GWh in 2025.", "Scope 1 emissions in 2024."}
-	preview, err := s.Stage(ctx, "analyst", "environmental", []Block{{Kind: "narrative", Text: paragraphs[0]}, {Kind: "narrative", Text: paragraphs[1]}})
+	preview, err := s.Stage(ctx, "analyst", "environmental", []Block{{Kind: "narrative", Text: paragraphs[0], Note: "NL AGENT: live bookmark check."}, {Kind: "narrative", Text: paragraphs[1]}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	result, err := s.Confirm(ctx, "analyst", preview.ID, preview.Token)
 	if err != nil || result.Status != "completed" || result.WorkivaSectionID != sectionID {
 		t.Fatalf("live confirmation failed: status %q", result.Status)
+	}
+	if result.Notes != "completed" {
+		t.Fatalf("live NL AGENT bookmark failed: %q", result.Notes)
 	}
 	actual, err := client.ReadSectionText(ctx, documentID, sectionID)
 	if err != nil || !reflect.DeepEqual(actual, paragraphs) {

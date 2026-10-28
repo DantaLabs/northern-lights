@@ -20,6 +20,7 @@ import (
 	"github.com/dantalabs/northern-lights/internal/identity"
 	"github.com/dantalabs/northern-lights/internal/recipe"
 	"github.com/dantalabs/northern-lights/internal/sqlitedb"
+	"github.com/dantalabs/northern-lights/internal/workiva"
 	"github.com/dantalabs/northern-lights/internal/workivaprovider"
 )
 
@@ -94,11 +95,17 @@ func (s *service) Stage(ctx context.Context, actor, sectionID string, blocks []B
 				}
 			}
 			b.Text = normalizeLines(b.Text)
+			if b.Note != "" {
+				return Preview{}, refusal("Notes belong on narrative paragraphs, not verbatim blocks.")
+			}
 			if !found || b.VerbatimID == "" || b.Text != normalizeLines(approved) {
 				return Preview{}, &VerbatimError{ID: b.VerbatimID, Position: firstDifference(b.Text, normalizeLines(approved))}
 			}
 		case "narrative":
 			if err := guardNumbers(b.Text, facts, section); err != nil {
+				return Preview{}, err
+			}
+			if err := guardNote(b, facts, section); err != nil {
 				return Preview{}, err
 			}
 			b.Text = normalizeLines(b.Text)
@@ -119,6 +126,51 @@ func (s *service) Stage(ctx context.Context, actor, sectionID string, blocks []B
 	}
 	_, err = s.env.DB.ExecContext(ctx, `INSERT INTO section_text_previews (id,tenant,actor,permission,section_id,document_id,title,blocks,text_hash,token_digest,expires_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`, preview.ID, identity.StorageTenant(ctx), actor, string(identity.PermissionWorkivaWriteConfirm), sectionID, section.DocumentID, section.Title, string(encoded), digest(fullText(blocks)), digest(preview.Token), preview.ExpiresAt.UnixNano())
 	return preview, err
+}
+
+// NotePrefix marks a bookmark as the agent's reasoning, since the write itself
+// is attributed to the signed-in analyst.
+const NotePrefix = "NL AGENT: "
+
+// maxNoteRunes keeps prefix plus note inside Workiva's 250-character bookmark name.
+const maxNoteRunes = 240
+
+func guardNote(b *Block, facts []recipe.Fact, section recipe.SectionInfo) error {
+	b.Note = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(b.Note), strings.TrimSpace(NotePrefix)))
+	if b.Note == "" {
+		return nil
+	}
+	if utf8.RuneCountInString(b.Note) > maxNoteRunes || strings.ContainsAny(b.Note, "\r\n") {
+		return refusal("A note must be one line of at most 240 characters.")
+	}
+	return guardNumbers(b.Note, facts, section)
+}
+
+type bookmarker interface {
+	AddSectionBookmarks(ctx context.Context, documentID, sectionID string, marks []workiva.Bookmark) error
+}
+
+// addNotes bookmarks each noted narrative paragraph after the text is verified.
+// The text write already completed, so a failure here is reported, not undone.
+func (s *service) addNotes(ctx context.Context, writer any, documentID, sectionID string, blocks []Block) ([]string, string) {
+	notes, marks, index := []string{}, []workiva.Bookmark{}, 0
+	for _, b := range blocks {
+		lines := strings.Split(b.Text, "\n")
+		if b.Note != "" {
+			last := lines[len(lines)-1]
+			marks = append(marks, workiva.Bookmark{ParagraphIndex: index + len(lines) - 1, Length: utf8.RuneCountInString(last), Name: NotePrefix + b.Note})
+			notes = append(notes, NotePrefix+b.Note)
+		}
+		index += len(lines)
+	}
+	if len(marks) == 0 {
+		return notes, ""
+	}
+	bm, ok := writer.(bookmarker)
+	if !ok || bm.AddSectionBookmarks(ctx, documentID, sectionID, marks) != nil {
+		return notes, "failed"
+	}
+	return notes, "completed"
 }
 
 func normalizeLines(s string) string { return strings.ReplaceAll(s, "\r\n", "\n") }
@@ -222,6 +274,10 @@ func (s *service) Confirm(ctx context.Context, actor, id, token string) (Result,
 			}
 		}
 	}
+	notes := []string{}
+	if result.Status == "completed" {
+		notes, result.Notes = s.addNotes(ctx, writer, documentID, workivaID, blocks)
+	}
 	ids := []string{}
 	for _, b := range blocks {
 		if b.Kind == "verbatim" {
@@ -235,7 +291,9 @@ func (s *service) Confirm(ctx context.Context, actor, id, token string) (Result,
 		TextHash         string   `json:"text_sha256"`
 		VerbatimIDs      []string `json:"verbatim_ids"`
 		Status           string   `json:"status"`
-	}{sectionID, documentID, workivaID, hash, ids, result.Status})
+		Notes            []string `json:"agent_notes,omitempty"`
+		NotesStatus      string   `json:"agent_notes_status,omitempty"`
+	}{sectionID, documentID, workivaID, hash, ids, result.Status, notes, result.Notes})
 	if err != nil {
 		return result, err
 	}
