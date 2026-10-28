@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -408,5 +409,59 @@ func TestMissingPrincipalCannotConfirmOutsideAPIKeyMode(t *testing.T) {
 				t.Fatal("missing principal wrote a section")
 			}
 		})
+	}
+}
+
+type chartWriter struct {
+	outcomeWriter
+	images [][]byte
+}
+
+func (w *chartWriter) WriteSectionText(_ context.Context, _, _ string, paragraphs []string) (string, error) {
+	w.actual = paragraphs
+	return "/operations/test", nil
+}
+
+func (w *chartWriter) AppendSectionImage(_ context.Context, _, _, _ string, png []byte, width, height int) error {
+	if width <= 0 || height <= 0 {
+		return errors.New("bad size")
+	}
+	w.images = append(w.images, png)
+	return nil
+}
+
+func TestChartBlockIsDrawnAfterTheText(t *testing.T) {
+	s, f := newService(t)
+	f.facts = append(f.facts, recipe.Fact{Key: "business_travel", Label: "6. Business Travel", Unit: "tCO2e", Current: "165", Prior: "140", ChangePct: "17.9", Material: true})
+	for _, bad := range [][]Block{
+		{{Kind: "chart", Text: "business_travel"}, {Kind: "narrative", Text: "Scope 1 emissions"}},
+		{{Kind: "narrative", Text: "Scope 1 emissions"}, {Kind: "chart", Text: "revenue"}},
+	} {
+		if _, err := s.Stage(context.Background(), "analyst", "environmental", bad); err == nil {
+			t.Fatalf("staged %+v", bad)
+		}
+	}
+	w := &chartWriter{}
+	s.env.Client = w
+	p, err := s.Stage(context.Background(), "analyst", "environmental", []Block{{Kind: "narrative", Text: "Scope 1 emissions"}, {Kind: "chart", Text: "business_travel, scope 1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := s.Confirm(context.Background(), "analyst", p.ID, p.Token)
+	if err != nil || result.Status != "completed" || result.Chart != "completed" || len(w.images) != 1 {
+		t.Fatalf("confirm: %+v %v images=%d", result, err, len(w.images))
+	}
+	if !reflect.DeepEqual(w.actual, []string{"Scope 1 emissions"}) {
+		t.Fatalf("chart keys were written as text: %q", w.actual)
+	}
+}
+
+func TestChartRowFormatsPreparedFigures(t *testing.T) {
+	r := chartRow(recipe.Fact{Label: "Energy", Unit: "MWh", Current: "1978", Prior: "-2030.5", ChangePct: "-2.6"})
+	if r.CurrentText != "1,978 MWh" || r.PriorText != "-2,030.5 MWh" || r.Tag != "" {
+		t.Fatalf("%+v", r)
+	}
+	if r := chartRow(recipe.Fact{Label: "Water", Unit: "m3", Prior: "2300"}); r.CurrentText != "missing" || r.Current != 0 {
+		t.Fatalf("%+v", r)
 	}
 }

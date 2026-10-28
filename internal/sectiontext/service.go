@@ -10,11 +10,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	"github.com/dantalabs/northern-lights/internal/audit"
+	"github.com/dantalabs/northern-lights/internal/chart"
 	"github.com/dantalabs/northern-lights/internal/config"
 	"github.com/dantalabs/northern-lights/internal/demoenv"
 	"github.com/dantalabs/northern-lights/internal/identity"
@@ -109,8 +111,15 @@ func (s *service) Stage(ctx context.Context, actor, sectionID string, blocks []B
 				return Preview{}, err
 			}
 			b.Text = normalizeLines(b.Text)
+		case "chart":
+			if i != len(blocks)-1 {
+				return Preview{}, refusal("A chart must be the last block; it is inserted after the text.")
+			}
+			if _, err := chartRows(b.Text, facts); err != nil {
+				return Preview{}, err
+			}
 		default:
-			return Preview{}, errors.New("block kind must be narrative or verbatim")
+			return Preview{}, errors.New("block kind must be narrative, verbatim or chart")
 		}
 	}
 	if s.initErr != nil {
@@ -171,6 +180,117 @@ func (s *service) addNotes(ctx context.Context, writer any, documentID, sectionI
 		return notes, "failed"
 	}
 	return notes, "completed"
+}
+
+// textBlocks drops the chart block, which is drawn, not written as text.
+func textBlocks(blocks []Block) []Block {
+	out := make([]Block, 0, len(blocks))
+	for _, b := range blocks {
+		if b.Kind != "chart" {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+type imageAppender interface {
+	AppendSectionImage(ctx context.Context, documentID, sectionID, fileName string, png []byte, width, height int) error
+}
+
+// addChart draws the chart block from the facts prepared for this section and
+// inserts it after the verified text. A failure is reported, never undone.
+func (s *service) addChart(ctx context.Context, writer any, actor, sectionID, documentID, workivaID string, blocks []Block) string {
+	last := blocks[len(blocks)-1]
+	if last.Kind != "chart" {
+		return ""
+	}
+	facts, _, err := s.facts.LatestFacts(ctx, actor, sectionID)
+	if err != nil {
+		return "failed"
+	}
+	rows, err := chartRows(last.Text, facts)
+	if err != nil {
+		return "failed"
+	}
+	section := recipe.SectionInfo{Title: sectionID}
+	if s.recipes != nil {
+		for _, info := range s.recipes.Sections() {
+			if info.ID == sectionID {
+				section = info
+			}
+		}
+	}
+	data, w, h, err := chart.Bars(section.Title, section.Period+" compared with "+section.PriorPeriod+"; bars scaled per indicator", section.Period, section.PriorPeriod, rows)
+	appender, ok := writer.(imageAppender)
+	if err != nil || !ok || appender.AppendSectionImage(ctx, documentID, workivaID, sectionID+"-chart.png", data, w, h) != nil {
+		return "failed"
+	}
+	return "completed"
+}
+
+// maxChartRows keeps the chart readable on a report page.
+const maxChartRows = 8
+
+// chartRows resolves comma-separated field keys (or label words) to prepared
+// facts. Every printed figure comes from the fact, as the number guard requires.
+func chartRows(spec string, facts []recipe.Fact) ([]chart.Row, error) {
+	var rows []chart.Row
+	for _, want := range strings.Split(spec, ",") {
+		want = strings.ToLower(strings.TrimSpace(want))
+		if want == "" {
+			continue
+		}
+		var match *recipe.Fact
+		for i := range facts {
+			if strings.ToLower(facts[i].Key) == want || strings.Contains(strings.ToLower(facts[i].Label), want) {
+				match = &facts[i]
+				break
+			}
+		}
+		if match == nil {
+			return nil, refusal(fmt.Sprintf("No prepared figure matches %q for the chart.", want))
+		}
+		rows = append(rows, chartRow(*match))
+	}
+	if len(rows) == 0 || len(rows) > maxChartRows {
+		return nil, refusal(fmt.Sprintf("A chart needs 1 to %d fields.", maxChartRows))
+	}
+	return rows, nil
+}
+
+func chartRow(f recipe.Fact) chart.Row {
+	value := func(v string) (float64, string) {
+		n, err := strconv.ParseFloat(v, 64)
+		if v == "" || err != nil {
+			return 0, "missing"
+		}
+		return n, groupThousands(v) + " " + f.Unit
+	}
+	r := chart.Row{Label: f.Label}
+	r.Current, r.CurrentText = value(f.Current)
+	r.Prior, r.PriorText = value(f.Prior)
+	if pct, err := strconv.ParseFloat(f.ChangePct, 64); err == nil && f.Material {
+		r.Tag = strconv.FormatFloat(pct, 'f', 1, 64) + "%, material"
+		if pct > 0 {
+			r.Tag = "+" + r.Tag
+		}
+	}
+	return r
+}
+
+// groupThousands adds comma separators to a canonical decimal string.
+func groupThousands(v string) string {
+	sign, intPart, frac := "", v, ""
+	if strings.HasPrefix(intPart, "-") {
+		sign, intPart = "-", intPart[1:]
+	}
+	if i := strings.IndexByte(intPart, '.'); i >= 0 {
+		intPart, frac = intPart[:i], intPart[i:]
+	}
+	for i := len(intPart) - 3; i > 0; i -= 3 {
+		intPart = intPart[:i] + "," + intPart[i:]
+	}
+	return sign + intPart + frac
 }
 
 func normalizeLines(s string) string { return strings.ReplaceAll(s, "\r\n", "\n") }
@@ -260,7 +380,7 @@ func (s *service) Confirm(ctx context.Context, actor, id, token string) (Result,
 	workivaID, writeErr := writer.EnsureSection(ctx, documentID, title)
 	result.WorkivaSectionID = workivaID
 	var op string
-	paragraphs := strings.Split(fullText(blocks), "\n")
+	paragraphs := strings.Split(fullText(textBlocks(blocks)), "\n")
 	if writeErr == nil {
 		op, writeErr = writer.WriteSectionText(ctx, documentID, workivaID, paragraphs)
 	}
@@ -276,7 +396,8 @@ func (s *service) Confirm(ctx context.Context, actor, id, token string) (Result,
 	}
 	notes := []string{}
 	if result.Status == "completed" {
-		notes, result.Notes = s.addNotes(ctx, writer, documentID, workivaID, blocks)
+		notes, result.Notes = s.addNotes(ctx, writer, documentID, workivaID, textBlocks(blocks))
+		result.Chart = s.addChart(ctx, writer, actor, sectionID, documentID, workivaID, blocks)
 	}
 	ids := []string{}
 	for _, b := range blocks {
@@ -293,7 +414,8 @@ func (s *service) Confirm(ctx context.Context, actor, id, token string) (Result,
 		Status           string   `json:"status"`
 		Notes            []string `json:"agent_notes,omitempty"`
 		NotesStatus      string   `json:"agent_notes_status,omitempty"`
-	}{sectionID, documentID, workivaID, hash, ids, result.Status, notes, result.Notes})
+		ChartStatus      string   `json:"chart_status,omitempty"`
+	}{sectionID, documentID, workivaID, hash, ids, result.Status, notes, result.Notes, result.Chart})
 	if err != nil {
 		return result, err
 	}

@@ -19,7 +19,7 @@ const (
 	confirmSectionTextName = "workiva_confirm_section_text"
 )
 
-const stageSectionTextDescription = `Stages the narrative blocks and verbatim blocks for a section in the report document and returns a preview, after the number guard checks every number. Call it after workiva_prepare_section, once the narrative blocks are drafted from the narrative facts. For Copilot, prefer blocks_json: construct a JSON array string from your drafted narrative and the exact prepared verbatim blocks, for example [{"kind":"narrative","text":"Draft from prepared facts."},{"kind":"verbatim","verbatim_id":"policy","text":"Exact prepared policy text."}]. Supply exactly one of blocks_json or blocks. Copy every verbatim ID and text from prepare; never rewrite or invent them. Before staging, ask the person for the cause of any material change the facts do not explain. Give each narrative block a short note with your reasoning (why this change leads, where the cause came from, what you left out); the server saves it as a Workiva bookmark named "NL AGENT: ..." on that paragraph, so reviewers see the reasoning beside the text without it entering the report. Show the preview with narrative as a quote, each note in italics under its paragraph and verbatim blocks labelled, and ask before writing. If the server refuses a block, explain the reason in one sentence and fix only what it names; never reword a number into words to get past the number guard.`
+const stageSectionTextDescription = `Stages the narrative blocks and verbatim blocks for a section in the report document and returns a preview, after the number guard checks every number. Call it after workiva_prepare_section, once the narrative blocks are drafted from the narrative facts. For Copilot, prefer blocks_json: construct a JSON array string from your drafted narrative and the exact prepared verbatim blocks, for example [{"kind":"narrative","text":"Draft from prepared facts."},{"kind":"verbatim","verbatim_id":"policy","text":"Exact prepared policy text."}]. Supply exactly one of blocks_json or blocks. Copy every verbatim ID and text from prepare; never rewrite or invent them. Before staging, ask the person for the cause of any material change the facts do not explain. Give each narrative block a short note with your reasoning (why this change leads, where the cause came from, what you left out); the server saves it as a Workiva bookmark named "NL AGENT: ..." on that paragraph, so reviewers see the reasoning beside the text without it entering the report. To add a chart, end with one block {"kind":"chart","text":"business_travel, energy_total"}: up to 8 field keys or label words; the server draws current against prior year from the prepared figures and inserts it below the text. Show the preview with narrative as a quote, each note in italics under its paragraph and verbatim blocks labelled, and ask before writing. If the server refuses a block, explain the reason in one sentence and fix only what it names; never reword a number into words to get past the number guard.`
 
 const confirmSectionTextDescription = `Writes previously staged section text into the report document after the person approved the preview. Call it only after workiva_stage_section_text returned a preview and the person explicitly approved it.`
 
@@ -80,11 +80,12 @@ type confirmSectionTextOutput struct {
 	WorkivaSectionID string `json:"workiva_section_id"`
 	AuditID          string `json:"audit_id,omitempty"`
 	AgentNotes       string `json:"agent_notes,omitempty"`
+	Chart            string `json:"chart,omitempty"`
 }
 
 func sectionTextBlockSchema() map[string]any {
 	return objectSchema(map[string]any{
-		"kind":        boundedEnum("narrative", "verbatim"),
+		"kind":        boundedEnum("narrative", "verbatim", "chart"),
 		"text":        optionalString("block text", 4000),
 		"verbatim_id": optionalString("verbatim block ID, required for verbatim blocks", 128),
 		"note":        optionalString("narrative blocks only: one line of reasoning for reviewers, saved as a Workiva bookmark named \"NL AGENT: ...\" on the paragraph, never as report text", 250),
@@ -160,6 +161,7 @@ func confirmSectionTextOutputSchema() map[string]any {
 		"workiva_section_id": optionalString("Workiva section ID; empty if section creation is uncertain", 128),
 		"audit_id":           optionalString("audit ID of the write", 128),
 		"status":             boundedEnum("completed", "mismatch", "reconciliation_required"),
+		"chart":              optionalString("chart image: completed, failed, or empty when none was asked for; a failed chart never undoes the written text", 32),
 		"agent_notes":        optionalString("NL AGENT bookmarks: completed, failed, or empty when there were no notes; a failed note never undoes the written text", 32),
 	}), []string{"section_id", "document_id", "workiva_section_id", "status"})
 }
@@ -238,6 +240,6 @@ func (confirmSectionTextTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		if err != nil {
 			return nil, confirmSectionTextOutput{}, err
 		}
-		return nil, confirmSectionTextOutput{SectionID: result.SectionID, DocumentID: result.DocumentID, WorkivaSectionID: result.WorkivaSectionID, AuditID: result.AuditID, Status: result.Status, AgentNotes: result.Notes}, nil
+		return nil, confirmSectionTextOutput{SectionID: result.SectionID, DocumentID: result.DocumentID, WorkivaSectionID: result.WorkivaSectionID, AuditID: result.AuditID, Status: result.Status, AgentNotes: result.Notes, Chart: result.Chart}, nil
 	})
 }

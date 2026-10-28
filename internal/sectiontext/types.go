@@ -7,7 +7,9 @@ import (
 	"time"
 )
 
-// Block is one paragraph of section text. Kind: narrative | verbatim. Note is
+// Block is one paragraph of section text. Kind: narrative | verbatim | chart.
+// A chart block lists field keys in Text; the server draws them from the
+// prepared facts and inserts the image after the text. Note is
 // the agent's reasoning for a narrative paragraph; it is written as a Workiva
 // bookmark named "NL AGENT: <note>", never as report text.
 type Block struct{ Kind, Text, VerbatimID, Note string }
@@ -20,8 +22,8 @@ type Preview struct {
 }
 
 // Result is the outcome of confirming section text.
-// Notes is "", "completed" or "failed"; a failed note never undoes the text.
-type Result struct{ SectionID, DocumentID, WorkivaSectionID, Status, AuditID, Notes string }
+// Notes and Chart are "", "completed" or "failed"; neither undoes the text.
+type Result struct{ SectionID, DocumentID, WorkivaSectionID, Status, AuditID, Notes, Chart string }
 
 // Service stages section text and confirms it.
 type Service interface {

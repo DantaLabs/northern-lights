@@ -178,6 +178,11 @@ func (c *Client) richTextParagraphs(ctx context.Context, richTextID string) ([]s
 			return nil, errors.New("rich text paragraphs have missing or duplicate indexes")
 		}
 		for _, e := range p.Elements {
+			if e.Type == "image" {
+				// An inserted chart; U+FFFC keeps its length of one for delete offsets.
+				paragraphs[i] += "\uFFFC"
+				continue
+			}
 			if e.Type != "textSpan" {
 				return nil, fmt.Errorf("section contains unsupported rich text element %q", e.Type)
 			}
@@ -286,6 +291,101 @@ func (c *Client) AddSectionBookmarks(ctx context.Context, documentID, sectionID 
 	}
 	_, err = c.WaitOperationWithInitialRetryAfter(ctx, op, initialRetryAfterDelay(headers.Get("Retry-After")))
 	return err
+}
+
+// AppendSectionImage uploads a PNG and inserts it as a new last paragraph of
+// the section. Workiva scans uploads before they can be used, so this waits for
+// both the upload and the edit operations.
+func (c *Client) AppendSectionImage(ctx context.Context, documentID, sectionID, fileName string, png []byte, width, height int) error {
+	var upload struct {
+		UploadURL string `json:"uploadUrl"`
+	}
+	headers, err := c.documentJSON(ctx, http.MethodPost, "/content/images/upload", map[string]string{"fileName": fileName}, &upload)
+	if err != nil {
+		return fmt.Errorf("start image upload: %w", err)
+	}
+	op := headers.Get("Location")
+	if upload.UploadURL == "" || op == "" {
+		return errors.New("image upload returned no upload URL or operation")
+	}
+	if err = c.putUpload(ctx, upload.UploadURL, png); err != nil {
+		return fmt.Errorf("upload image bytes: %w", err)
+	}
+	resource, err := c.WaitOperationWithInitialRetryAfter(ctx, op, initialRetryAfterDelay(headers.Get("Retry-After")))
+	if err != nil {
+		return err
+	}
+	var results struct {
+		Data []struct {
+			Image string `json:"image"`
+		} `json:"data"`
+	}
+	if _, err = c.documentJSON(ctx, http.MethodGet, resource, nil, &results); err != nil {
+		return err
+	}
+	if len(results.Data) != 1 || results.Data[0].Image == "" {
+		return errors.New("image upload returned no image")
+	}
+	section, err := c.documentSection(ctx, documentID, sectionID)
+	if err != nil {
+		return err
+	}
+	old, err := c.richTextParagraphs(ctx, section.Body.RichText)
+	if err != nil {
+		return err
+	}
+	last := len(old) - 1
+	edits := []any{
+		map[string]any{"type": "insertText", "insertText": map[string]any{"insertAt": textCaret{ParagraphIndex: last, Offset: utf8.RuneCountInString(old[last])}, "text": "\n"}},
+		map[string]any{"type": "insertImage", "insertImage": map[string]any{"image": results.Data[0].Image, "dimensions": map[string]int{"width": width, "height": height}, "insertAt": textCaret{ParagraphIndex: last + 1}}},
+	}
+	var response struct {
+		OperationLocation string `json:"operationLocation"`
+	}
+	headers, err = c.documentJSON(ctx, http.MethodPost, "/content/richText/"+url.PathEscape(section.Body.RichText)+"/edit", map[string]any{"revision": section.Body.Revision, "data": edits}, &response)
+	if err != nil {
+		return err
+	}
+	if op = headers.Get("Location"); op == "" {
+		op = response.OperationLocation
+	}
+	if op == "" {
+		return errors.New("image insert returned no operation location")
+	}
+	_, err = c.WaitOperationWithInitialRetryAfter(ctx, op, initialRetryAfterDelay(headers.Get("Retry-After")))
+	return err
+}
+
+// putUpload sends the file bytes to the upload URL Workiva returned. The bearer
+// token is sent only over HTTPS to the API host or another wdesk.com host
+// (uploads go to Workiva blob storage, e.g. h.eu.wdesk.com).
+func (c *Client) putUpload(ctx context.Context, rawURL string, data []byte) error {
+	target, err := c.baseURL.Parse(rawURL)
+	if err != nil || target.Scheme != "https" && target.Scheme != c.baseURL.Scheme {
+		return errors.New("image upload URL is not valid")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, target.String(), bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("X-Version", c.apiVersion)
+	req.Header.Set("Content-Type", "application/octet-stream")
+	if target.Host == c.baseURL.Host || target.Scheme == "https" && strings.HasSuffix(target.Hostname(), ".wdesk.com") {
+		token, err := c.tokens.ClientCredentialsToken(ctx)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode/100 != 2 {
+		return &APIError{StatusCode: resp.StatusCode}
+	}
+	return nil
 }
 
 // ReadSectionText concatenates textSpan.text for each indexed body paragraph.

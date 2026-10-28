@@ -100,7 +100,7 @@ func TestLiveSandboxSectionText(t *testing.T) {
 	defer cleanup(sectionID, title)
 	s.recipes = liveRecipe{f, recipe.SectionInfo{ID: "environmental", Title: title, DocumentID: documentID, Period: "2025", PriorPeriod: "2024"}}
 	paragraphs := []string{"Energy consumption fell 8.1% to 1.24 GWh in 2025.", "Scope 1 emissions in 2024."}
-	preview, err := s.Stage(ctx, "analyst", "environmental", []Block{{Kind: "narrative", Text: paragraphs[0], Note: "NL AGENT: live bookmark check."}, {Kind: "narrative", Text: paragraphs[1]}})
+	preview, err := s.Stage(ctx, "analyst", "environmental", []Block{{Kind: "narrative", Text: paragraphs[0], Note: "NL AGENT: live bookmark check."}, {Kind: "narrative", Text: paragraphs[1]}, {Kind: "chart", Text: "scope 1 energy"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,8 +111,11 @@ func TestLiveSandboxSectionText(t *testing.T) {
 	if result.Notes != "completed" {
 		t.Fatalf("live NL AGENT bookmark failed: %q", result.Notes)
 	}
+	if result.Chart != "completed" {
+		t.Fatalf("live chart insert failed: %q", result.Chart)
+	}
 	actual, err := client.ReadSectionText(ctx, documentID, sectionID)
-	if err != nil || !reflect.DeepEqual(actual, paragraphs) {
+	if err != nil || !reflect.DeepEqual(actual, append(paragraphs, "\uFFFC")) {
 		t.Fatal("live initial paragraphs differ")
 	}
 	t.Log("PASS create, confirm and exact two-paragraph read-back")
