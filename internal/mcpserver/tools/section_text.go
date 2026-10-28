@@ -81,6 +81,8 @@ type confirmSectionTextOutput struct {
 	AuditID          string `json:"audit_id,omitempty"`
 	AgentNotes       string `json:"agent_notes,omitempty"`
 	Chart            string `json:"chart,omitempty"`
+	ReviewTask       string `json:"review_task,omitempty"`
+	ReviewURL        string `json:"review_url,omitempty"`
 }
 
 func sectionTextBlockSchema() map[string]any {
@@ -162,6 +164,8 @@ func confirmSectionTextOutputSchema() map[string]any {
 		"audit_id":           optionalString("audit ID of the write", 128),
 		"status":             boundedEnum("completed", "mismatch", "reconciliation_required"),
 		"chart":              optionalString("chart image: completed, failed, or empty when none was asked for; a failed chart never undoes the written text", 32),
+		"review_task":        optionalString("Workiva review task opened for the reviewer, or failed; empty when no reviewer is configured", 256),
+		"review_url":         optionalString("link to the review task in Workiva", 2048),
 		"agent_notes":        optionalString("NL AGENT bookmarks: completed, failed, or empty when there were no notes; a failed note never undoes the written text", 32),
 	}), []string{"section_id", "document_id", "workiva_section_id", "status"})
 }
@@ -240,6 +244,6 @@ func (confirmSectionTextTool) RegisterSDK(s *mcp.Server, deps mcpserver.Deps) {
 		if err != nil {
 			return nil, confirmSectionTextOutput{}, err
 		}
-		return nil, confirmSectionTextOutput{SectionID: result.SectionID, DocumentID: result.DocumentID, WorkivaSectionID: result.WorkivaSectionID, AuditID: result.AuditID, Status: result.Status, AgentNotes: result.Notes, Chart: result.Chart}, nil
+		return nil, confirmSectionTextOutput{SectionID: result.SectionID, DocumentID: result.DocumentID, WorkivaSectionID: result.WorkivaSectionID, AuditID: result.AuditID, Status: result.Status, AgentNotes: result.Notes, Chart: result.Chart, ReviewTask: result.ReviewTask, ReviewURL: result.ReviewURL}, nil
 	})
 }

@@ -22,6 +22,7 @@ var demoToolNames = []string{
 	"workiva_confirm_section_text",
 	"workiva_compare_fields",
 	"workiva_revert_change_set",
+	"workiva_review_status",
 }
 
 // demoSession builds the server with the demo environment, serves it and
@@ -92,8 +93,8 @@ func TestDemoPipelineFlagOffKeepsThirteenTools(t *testing.T) {
 func TestDemoPipelineFlagOnAddsFourTools(t *testing.T) {
 	session := demoSession(t, true, "")
 	got := listToolNames(t, session)
-	if len(got) != 19 {
-		t.Fatalf("got %d tools, want 19: %v", len(got), got)
+	if len(got) != 20 {
+		t.Fatalf("got %d tools, want 20: %v", len(got), got)
 	}
 	equalNames(t, got, append(allToolNames(), demoToolNames...))
 }
@@ -107,6 +108,7 @@ func TestDemoPipelineServicesReachTools(t *testing.T) {
 		"workiva_confirm_section_text": {"text_id": "st-1", "confirm_token": "tok"},
 		"workiva_compare_fields":       {"section_id": "esg-environmental"},
 		"workiva_revert_change_set":    {"change_set_id": "cs-1"},
+		"workiva_review_status":        {"section_id": "esg-environmental"},
 	}
 	for name, args := range calls {
 		res, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: name, Arguments: args})

@@ -465,3 +465,35 @@ func TestChartRowFormatsPreparedFigures(t *testing.T) {
 		t.Fatalf("%+v", r)
 	}
 }
+
+type reviewWriter struct {
+	chartWriter
+	tasks []string
+}
+
+func (w *reviewWriter) CreateReviewTask(_ context.Context, documentID, sectionID, reviewerID, title, description string, _ time.Time) (workiva.Task, error) {
+	w.tasks = append(w.tasks, reviewerID+"|"+title+"|"+description)
+	return workiva.Task{ID: "task-1", URL: "https://eu.wdesk.com/task-1"}, nil
+}
+
+func TestReviewTaskOpensAfterAVerifiedWrite(t *testing.T) {
+	s, _ := newService(t)
+	w := &reviewWriter{}
+	s.env.Client = w
+	s.env.Cfg.WorkivaReviewerID = "u_reviewer"
+	p, err := s.Stage(context.Background(), "analyst", "environmental", []Block{{Kind: "narrative", Text: "Scope 1 emissions", Note: "led with scope 1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := s.Confirm(context.Background(), "analyst", p.ID, p.Token)
+	if err != nil || result.ReviewTask != "task-1" || result.ReviewURL == "" || len(w.tasks) != 1 {
+		t.Fatalf("result=%+v err=%v tasks=%q", result, err, w.tasks)
+	}
+	if !strings.HasPrefix(w.tasks[0], "u_reviewer|Review ") || !strings.Contains(w.tasks[0], "NL AGENT: led with scope 1") {
+		t.Fatalf("task=%q", w.tasks[0])
+	}
+}
+
+func (w *reviewWriter) AddSectionBookmarks(context.Context, string, string, []workiva.Bookmark) error {
+	return nil
+}

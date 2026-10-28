@@ -56,6 +56,10 @@ type Config struct {
 	// DemoMode swaps the Workiva client for a synthetic fixture client so
 	// the server can be tried without real Workiva credentials.
 	DemoMode bool
+	// WorkivaReviewerID is the Workiva user (u_...) who reviews and approves
+	// written report sections. When set, the server asks for task scopes and
+	// opens a Workiva review task after each section write.
+	WorkivaReviewerID string
 	// DemoPipelineEnabled registers the four demo pipeline tools (tools.Demo())
 	// and wires the lane services. Off by default so the server exposes the
 	// current 13 tools (ADR 0002).
@@ -311,6 +315,7 @@ func applyEnv(cfg *Config) error {
 	cfg.WorkivaClientID = os.Getenv("NL_WORKIVA_CLIENT_ID")
 	cfg.WorkivaClientSecret = os.Getenv("NL_WORKIVA_CLIENT_SECRET")
 	cfg.DemoMode = os.Getenv("NL_DEMO_MODE") == "true"
+	cfg.WorkivaReviewerID = strings.TrimSpace(os.Getenv("NL_WORKIVA_REVIEWER_ID"))
 	if v, ok := os.LookupEnv("NL_DEMO_PIPELINE"); ok {
 		cfg.DemoPipelineEnabled = v == "true"
 	}

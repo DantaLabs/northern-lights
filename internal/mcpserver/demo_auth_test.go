@@ -73,9 +73,14 @@ func TestDemoToolsEntraAuthorization(t *testing.T) {
 }
 
 func TestCompareFieldsEntraAuthorizationIsRead(t *testing.T) {
-	const name = "workiva_compare_fields"
+	for _, name := range []string{"workiva_compare_fields", "workiva_review_status"} {
+		t.Run(name, func(t *testing.T) { testReadOnlyDemoTool(t, name) })
+	}
+}
+
+func testReadOnlyDemoTool(t *testing.T, name string) {
 	if writeTools[name] {
-		t.Fatal("workiva_compare_fields is read-only and must not be audited as a write")
+		t.Fatalf("%s is read-only and must not be audited as a write", name)
 	}
 	for _, tc := range []struct {
 		permission identity.Permission

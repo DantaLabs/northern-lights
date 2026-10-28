@@ -23,7 +23,12 @@ type Preview struct {
 
 // Result is the outcome of confirming section text.
 // Notes and Chart are "", "completed" or "failed"; neither undoes the text.
-type Result struct{ SectionID, DocumentID, WorkivaSectionID, Status, AuditID, Notes, Chart string }
+// ReviewTask is the Workiva review task ID ("failed" if it could not be
+// opened); ReviewURL links to it.
+type Result struct {
+	SectionID, DocumentID, WorkivaSectionID, Status, AuditID, Notes, Chart string
+	ReviewTask, ReviewURL                                                  string
+}
 
 // Service stages section text and confirms it.
 type Service interface {

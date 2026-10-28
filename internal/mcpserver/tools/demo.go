@@ -11,6 +11,7 @@ func Demo() []mcpserver.Tool {
 		ConfirmSectionText(),
 		CompareFields(),
 		RevertChangeSet(),
+		ReviewStatus(),
 	}
 }
 

@@ -39,7 +39,7 @@ func TestLiveSandboxSectionText(t *testing.T) {
 	}
 	base, _ := url.Parse(baseURL)
 	httpClient := &http.Client{Timeout: 30 * time.Second}
-	tokens := workiva.NewTokenProvider(base, os.Getenv("NL_WORKIVA_CLIENT_ID"), os.Getenv("NL_WORKIVA_CLIENT_SECRET"), "file:read file:write", httpClient)
+	tokens := workiva.NewTokenProvider(base, os.Getenv("NL_WORKIVA_CLIENT_ID"), os.Getenv("NL_WORKIVA_CLIENT_SECRET"), "file:read file:write task:read task:write", httpClient)
 	client := workiva.NewClient(base, tokens, ratelimit.NewLimiter(), httpClient)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
@@ -113,6 +113,22 @@ func TestLiveSandboxSectionText(t *testing.T) {
 	}
 	if result.Chart != "completed" {
 		t.Fatalf("live chart insert failed: %q", result.Chart)
+	}
+	if reviewer := os.Getenv("NL_WORKIVA_REVIEWER_ID"); reviewer != "" {
+		task, err := client.CreateReviewTask(ctx, documentID, sectionID, reviewer, "NL test review", "NL AGENT: live review task check.", time.Now().Add(72*time.Hour))
+		if err != nil || task.ID == "" {
+			t.Fatal("live review task creation failed")
+		}
+		defer func() {
+			if err := client.DeleteTask(context.Background(), task.ID); err != nil {
+				t.Error("live review task cleanup failed")
+			}
+		}()
+		tasks, err := client.SectionTasks(ctx, documentID, sectionID)
+		if err != nil || len(tasks) == 0 || tasks[0].ID != task.ID {
+			t.Fatal("live review task not listed on the section")
+		}
+		t.Log("PASS review task created and listed on the section")
 	}
 	actual, err := client.ReadSectionText(ctx, documentID, sectionID)
 	if err != nil || !reflect.DeepEqual(actual, append(paragraphs, "\uFFFC")) {

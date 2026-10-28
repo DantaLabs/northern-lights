@@ -5,7 +5,7 @@
 #
 # Sends initialize, notifications/initialized (keeping Mcp-Session-Id when
 # the server returns one) and tools/list, checks for exactly NL_EXPECT_TOOLS
-# current tools (default 13; set NL_EXPECT_TOOLS=19 when the server runs with
+# current tools (default 13; set NL_EXPECT_TOOLS=20 when the server runs with
 # NL_DEMO_PIPELINE=true) application/json responses, then repeats tools/list
 # with a malformed key and expects 401. Exits non-zero on the first failed
 # check. NL_KEY is passed to curl through a private header file and is never

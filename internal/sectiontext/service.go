@@ -206,6 +206,37 @@ func (s *service) ensureSection(ctx context.Context, writer workivaprovider.Docu
 	return placer.EnsureChildSection(ctx, documentID, parent, title)
 }
 
+type reviewTasker interface {
+	CreateReviewTask(ctx context.Context, documentID, sectionID, reviewerID, title, description string, due time.Time) (workiva.Task, error)
+}
+
+// reviewDays is how long the reviewer has to approve a written section.
+const reviewDays = 3
+
+// openReview asks the configured reviewer to approve the written section in
+// Workiva. It returns the task ID ("failed" on error) and its Workiva link.
+func (s *service) openReview(ctx context.Context, writer any, title, documentID, sectionID string, notes []string, chart string) (string, string) {
+	if s.env.Cfg == nil || s.env.Cfg.WorkivaReviewerID == "" {
+		return "", ""
+	}
+	tasker, ok := writer.(reviewTasker)
+	if !ok {
+		return "failed", ""
+	}
+	description := "NL AGENT: written by Northern Lights after the analyst approved it in Teams. Please review the section and approve or reject it."
+	for _, n := range notes {
+		description += "\n" + n
+	}
+	if chart == "completed" {
+		description += "\nNL AGENT: a chart of the selected indicators follows the text."
+	}
+	task, err := tasker.CreateReviewTask(ctx, documentID, sectionID, s.env.Cfg.WorkivaReviewerID, "Review "+title, description, s.now().AddDate(0, 0, reviewDays))
+	if err != nil {
+		return "failed", ""
+	}
+	return task.ID, task.URL
+}
+
 // textBlocks drops the chart block, which is drawn, not written as text.
 func textBlocks(blocks []Block) []Block {
 	out := make([]Block, 0, len(blocks))
@@ -422,6 +453,7 @@ func (s *service) Confirm(ctx context.Context, actor, id, token string) (Result,
 	if result.Status == "completed" {
 		notes, result.Notes = s.addNotes(ctx, writer, documentID, workivaID, textBlocks(blocks))
 		result.Chart = s.addChart(ctx, writer, actor, sectionID, documentID, workivaID, blocks)
+		result.ReviewTask, result.ReviewURL = s.openReview(ctx, writer, title, documentID, workivaID, notes, result.Chart)
 	}
 	ids := []string{}
 	for _, b := range blocks {
@@ -439,7 +471,8 @@ func (s *service) Confirm(ctx context.Context, actor, id, token string) (Result,
 		Notes            []string `json:"agent_notes,omitempty"`
 		NotesStatus      string   `json:"agent_notes_status,omitempty"`
 		ChartStatus      string   `json:"chart_status,omitempty"`
-	}{sectionID, documentID, workivaID, hash, ids, result.Status, notes, result.Notes, result.Chart})
+		ReviewTask       string   `json:"review_task,omitempty"`
+	}{sectionID, documentID, workivaID, hash, ids, result.Status, notes, result.Notes, result.Chart, result.ReviewTask})
 	if err != nil {
 		return result, err
 	}
@@ -465,4 +498,56 @@ func equalParagraphs(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// Reviewer reads the Workiva review tasks of a written section.
+type Reviewer interface {
+	ReviewStatus(ctx context.Context, sectionID string) (workivaSectionID string, tasks []workiva.Task, err error)
+}
+
+var _ Reviewer = (*service)(nil)
+
+type sectionTaskReader interface {
+	ListDocumentSections(ctx context.Context, documentID string) ([]workiva.DocumentSection, error)
+	SectionTasks(ctx context.Context, documentID, sectionID string) ([]workiva.Task, error)
+}
+
+// ReviewStatus finds the recipe's section in the report document, read-only,
+// and returns its tasks with their approval responses.
+func (s *service) ReviewStatus(ctx context.Context, sectionID string) (string, []workiva.Task, error) {
+	var info recipe.SectionInfo
+	if s.recipes != nil {
+		for _, i := range s.recipes.Sections() {
+			if i.ID == sectionID {
+				info = i
+			}
+		}
+	}
+	if info.ID == "" {
+		return "", nil, errors.New("unknown section")
+	}
+	writer, ok := workivaprovider.DocumentWriterFor(s.env.Client)
+	reader, ok2 := writer.(sectionTaskReader)
+	if !ok || !ok2 {
+		return "", nil, errors.New("review tasks are not available")
+	}
+	sections, err := reader.ListDocumentSections(ctx, info.DocumentID)
+	if err != nil {
+		return "", nil, err
+	}
+	parents := map[string]string{}
+	for _, sec := range sections {
+		parents[sec.ID] = sec.Name
+	}
+	for _, sec := range sections {
+		parent := ""
+		if sec.Parent != nil {
+			parent = parents[sec.Parent.ID]
+		}
+		if sec.Name == info.Title && parent == info.Parent {
+			tasks, err := reader.SectionTasks(ctx, info.DocumentID, sec.ID)
+			return sec.ID, tasks, err
+		}
+	}
+	return "", nil, refusal("That section has not been written to the report yet.")
 }

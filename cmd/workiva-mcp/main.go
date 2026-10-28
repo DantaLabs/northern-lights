@@ -378,7 +378,11 @@ func buildServer(configPath, mappingsPath string) (*config.Config, http.Handler,
 		client = workiva.NewDemoClient(baseURL)
 	} else {
 		httpClient := &http.Client{Timeout: 60 * time.Second}
-		tokens := workiva.NewTokenProvider(baseURL, cfg.WorkivaClientID, cfg.WorkivaClientSecret, "file:read file:write", httpClient)
+		scopes := "file:read file:write"
+		if cfg.WorkivaReviewerID != "" {
+			scopes += " task:read task:write"
+		}
+		tokens := workiva.NewTokenProvider(baseURL, cfg.WorkivaClientID, cfg.WorkivaClientSecret, scopes, httpClient)
 		client = workiva.NewClient(baseURL, tokens, ratelimit.NewLimiter(), httpClient)
 	}
 	// Keep Northern Lights' proven REST implementation primary. The provider
