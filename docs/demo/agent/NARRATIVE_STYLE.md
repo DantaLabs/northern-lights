@@ -22,14 +22,14 @@ Only the "Rules" section below (rules 1 to 10 and the conventions) is pasted int
 10. Verbatim blocks are never edited, shortened, merged with narrative, translated or summarized.
 
 Conventions:
-- Refer to the company by its name, "Demo Harbour Components", never "the Group".
+- Refer to the company by its name, "Calderiq Components", never "the Group".
 - British spelling (organisation, programme, decarbonisation, labour).
 - Digits for every number, comma as thousands separator (18,400), decimal point, "%" attached (12%), a space between number and unit (1.98 GWh, 165.0 tCO2e), years as four digits ("in 2025", "compared with 2024").
 - Units: MWh, GWh, tCO2e, m3.
 
 ## Example
 
-Narrative facts (synthetic, for Demo Harbour Components, period 2025, prior period 2024): total energy consumption `1.98 GWh`, prior `2.03 GWh`, change -3% (-2.6%), not material; "6. Business Travel" `165.0 tCO2e`, prior `140.0 tCO2e`, change 18% (17.9%), material; renewable electricity `490 MWh`, prior `520 MWh`, not material. The analyst said the business travel increase came from the return of customer site visits.
+Narrative facts (synthetic, for Calderiq Components, period 2025, prior period 2024): total energy consumption `1.98 GWh`, prior `2.03 GWh`, change -3% (-2.6%), not material; "6. Business Travel" `165.0 tCO2e`, prior `140.0 tCO2e`, change 18% (17.9%), material; renewable electricity `490 MWh`, prior `520 MWh`, not material. The analyst said the business travel increase came from the return of customer site visits.
 
 Data-dump draft (rejected by the style guide):
 
