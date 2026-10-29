@@ -32,6 +32,7 @@ fields:
     source: src_env_electricity_non_renewable
     target: rpt_env_electricity_non_renewable_2025
     prior: rpt_env_electricity_non_renewable_2024
+    required: true
     min: 0
   - key: self_generated_electricity_renewable
     label: "Self-generated electricity - Renewable"
